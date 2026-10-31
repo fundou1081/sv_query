@@ -18,7 +18,10 @@ import typer
 from cli._evidence_helpers import build_resolver as _build_evidence_resolver  # noqa: E402
 from cli._evidence_helpers import evidence_to_dict as _evidence_to_dict  # noqa: E402
 from cli._output import emit_json
-from cli.core.semantic.trace_common import _collect_signals
+from cli.core.semantic.trace_common import (
+    _collect_signals, resolve_signal, resolution_fields,
+    resolution_error_message, SignalResolutionError,
+)
 from trace.core.sva_extractor import SVAExtractor
 from trace.unified_tracer import UnifiedTracer
 
@@ -59,16 +62,28 @@ def evidence(
         per_signal_errors = []
         for i, sig in enumerate(signals):
             try:
+                _res = resolve_signal(_graph, sig)
+                if not _res["ok"]:
+                    raise SignalResolutionError(
+                        resolution_error_message(sig, _res),
+                        error_code=("E_SIGNAL_AMBIGUOUS" if _res["status"] == "ambiguous"
+                                    else "E_SIGNAL_NOT_FOUND"),
+                        resolution=_res["status"], candidates=_res.get("candidates"),
+                        suggestions=_res.get("suggestions"),
+                    )
+                _query_sig = _res["resolved"]
                 if chain:
-                    evidences = resolver.resolve_chain(sig)
+                    evidences = resolver.resolve_chain(_query_sig)
                     ev_dicts = [_evidence_to_dict(e) for e in evidences]
                 else:
-                    ev = resolver.resolve(sig)
+                    ev = resolver.resolve(_query_sig)
                     ev_dicts = _evidence_to_dict(ev)
                 signals_result.append({
                     "signal": sig,
                     "index": i,
                     "evidence": ev_dicts,
+                    "error": "",
+                    **resolution_fields(_res),
                 })
             except Exception as sig_err:
                 # [A3 2026-07-04] Per-signal failure → record error, continue
@@ -86,6 +101,11 @@ def evidence(
                     "signal": sig,
                     "index": i,
                     "evidence": None,
+                    "resolved_signal": getattr(sig_err, "resolved", None),
+                    "resolution": getattr(sig_err, "resolution", "internal"),
+                    "candidates": getattr(sig_err, "candidates", []),
+                    "suggestions": getattr(sig_err, "suggestions", []),
+                    "error": err_data["error"],
                 })
 
         data = {
@@ -114,6 +134,13 @@ def evidence(
                 total = len(signals)
                 print(f"signal {idx}/{total}: {sig}")
                 print("=" * 60)
+                if sig_entry.get("resolution") in ("not_found", "ambiguous"):
+                    print(f"  error: {sig_entry.get('error', sig_entry.get('resolution'))}")
+                    for cand in sig_entry.get("candidates", [])[:8]:
+                        print(f"    candidate: {cand}")
+                    if idx < total:
+                        print()
+                    continue
                 ev_data = {"signal": sig}
                 if chain:
                     ev_data["evidence_chain"] = sig_entry["evidence"]

@@ -107,7 +107,7 @@ def test_a1_no_cache_flag_in_help():
 # 3) Mock tracer 让 trace_fanin 抛, 验证 per-sig error 收集逻辑
 
 def test_a3_batch_with_nonexistent_sig_silent():
-    """A3: 不存在 sig 走静默 (跟 N5 一致), 但 schema 兼容 (errors[], failed_signals)."""
+    """A3: 不存在 sig 显式 not_found; 好的 sig 仍成功 (batch 部分失败)."""
     r = _run("fanin",
              "--batch", "uart_top.rx_fifo.count_q,nonexistent.foo,uart_top.rx_data_o",
              "--filelist", STRICT_UART_FILELIST, "--json")
@@ -118,59 +118,59 @@ def test_a3_batch_with_nonexistent_sig_silent():
     assert "errors" in data
     assert isinstance(data["errors"], list)
     assert "failed_signals" in data["result"]
-    assert data["result"]["failed_signals"] == 0  # 不存在 sig 走静默 (N5)
+    assert data["result"]["failed_signals"] == 1
+    assert data["ok"] is False
+    assert data["errors"][0]["error_code"] == "E_SIGNAL_NOT_FOUND"
 
-    # ok=true (跟 N5 一致, 不存在 sig 不当 error)
-    assert data["ok"] is True
-
-    # 3 个 sig 都在 signals[]
+    # 3 个 sig 都在 signals[]; 坏的显式 not_found
     sigs = data["result"]["signals"]
     assert len(sigs) == 3
     assert sigs[0]["count"] >= 1  # uart_top.rx_fifo.count_q 成功 (实例级 id)
-    assert sigs[1]["count"] == 0  # nonexistent.foo 静默
+    assert sigs[1]["resolution"] == "not_found"
+    assert sigs[1]["count"] == 0
     assert sigs[2]["count"] >= 1  # uart_top.rx_data_o 成功
 
-    print("✅ A3 batch silent empty: 3 sigs all in result, failed_signals=0, ok=true")
+    print("✅ A3 batch partial: good sigs kept, nonexistent explicit not_found")
 
 
 def test_a3_batch_with_nonexistent_fanout():
-    """A3: fanout 不存在 sig 静默 + schema 兼容."""
+    """A3: fanout 不存在 sig 显式 not_found."""
     r = _run("fanout",
              "--batch", "uart_top.rx_fifo.count_q,nonexistent.foo",
              "--filelist", STRICT_UART_FILELIST, "--json")
     assert r.returncode == 0
     data = json.loads(r.stdout)
-    assert data["ok"] is True
-    assert "errors" in data
-    assert "failed_signals" in data["result"]
-    print("✅ A3 fanout silent empty: schema compatible")
+    assert data["ok"] is False
+    assert data["errors"][0]["error_code"] == "E_SIGNAL_NOT_FOUND"
+    assert data["result"]["failed_signals"] == 1
+    print("✅ A3 fanout: nonexistent explicit not_found")
 
 
 def test_a3_batch_with_nonexistent_impact():
-    """A3: impact 不存在 sig 静默 + schema 兼容."""
+    """A3: impact 不存在 sig 显式 not_found."""
     r = _run("impact",
              "--batch", "uart_top.rx_fifo.count_q,nonexistent.foo",
              "--filelist", STRICT_UART_FILELIST, "--json")
     assert r.returncode == 0
     data = json.loads(r.stdout)
-    assert data["ok"] is True
-    assert "errors" in data
-    assert "failed_signals" in data["result"]
-    print("✅ A3 impact silent empty: schema compatible")
+    assert data["ok"] is False
+    assert data["errors"][0]["error_code"] == "E_SIGNAL_NOT_FOUND"
+    assert data["result"]["failed_signals"] == 1
+    print("✅ A3 impact: nonexistent explicit not_found")
 
 
 def test_a3_batch_with_nonexistent_evidence():
-    """A3: evidence 不存在 sig 静默 + schema 兼容 (evidence=null)."""
+    """A3: evidence 不存在 sig 显式 not_found (evidence=null)."""
     r = _run("evidence",
              "--batch", "uart_top.rx_fifo.count_q,nonexistent.foo",
              "--filelist", STRICT_UART_FILELIST, "--json")
     assert r.returncode == 0
     data = json.loads(r.stdout)
-    assert data["ok"] is True
-    assert "errors" in data
-    assert "failed_signals" in data["result"]
-    # Silent empty: evidence = {} (空 dict) 而非 null (跟 N5 一致)
-    print("✅ A3 evidence silent empty: schema compatible")
+    assert data["ok"] is False
+    assert data["errors"][0]["error_code"] == "E_SIGNAL_NOT_FOUND"
+    assert data["result"]["failed_signals"] == 1
+    assert data["result"]["signals"][1]["evidence"] is None
+    print("✅ A3 evidence: nonexistent explicit not_found")
 
 
 def test_a3_batch_all_succeed_ok_true():

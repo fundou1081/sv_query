@@ -51,6 +51,7 @@ from cli.core.semantic.trace_common import (
     resolve_node_id, driver_stats,  # [iter_307 P13.6]
     has_dynamic_index, node_is_dynamic, node_is_function_call,  # [iter_308 P14.1 / iter_310 P16 / iter_313 P18.2]
     attach_edge_conditions,  # [iter_318 P22.1]
+    resolve_signal, resolution_fields, resolution_error_message, SignalResolutionError,  # [iter_329 P33.1]
     detect_cycles, truncated_by_depth,  # [iter_321 P26.1]
     node_is_runtime_system_call,  # [iter_322 P26.2]
 )
@@ -78,6 +79,11 @@ def output_text(data: dict, human: bool = False, tree: bool = False) -> None:
                 signal = sig_entry["signal"]
                 drivers = sig_entry["drivers"]
                 print(f"Fanin of '{signal}':")
+                if sig_entry.get("resolution") in ("not_found", "ambiguous"):
+                    print(f"  error: {sig_entry.get('error', sig_entry.get('resolution'))}")
+                    for cand in sig_entry.get("candidates", [])[:8]:
+                        print(f"    candidate: {cand}")
+                    return
                 if not drivers:
                     print("  (no drivers)")
                 for d in drivers:
@@ -92,6 +98,13 @@ def output_text(data: dict, human: bool = False, tree: bool = False) -> None:
                 drivers = sig_entry["drivers"]
                 i = sig_entry["index"] + 1
                 print(f"signal {i}/{total}: {sig}")
+                if sig_entry.get("resolution") in ("not_found", "ambiguous"):
+                    print(f"  error: {sig_entry.get('error', sig_entry.get('resolution'))}")
+                    for cand in sig_entry.get("candidates", [])[:8]:
+                        print(f"    candidate: {cand}")
+                    if i < total:
+                        print()
+                    continue
                 if human:
                     ev = sig_entry.get("evidence")
                     print(_format_fanin_human(sig, drivers, evidence_map={sig: ev} if ev else None, tree=tree))
@@ -130,6 +143,13 @@ def output_text(data: dict, human: bool = False, tree: bool = False) -> None:
                 loads = sig_entry["loads"]
                 i = sig_entry["index"] + 1
                 print(f"signal {i}/{total}: {sig}")
+                if sig_entry.get("resolution") in ("not_found", "ambiguous"):
+                    print(f"  error: {sig_entry.get('error', sig_entry.get('resolution'))}")
+                    for cand in sig_entry.get("candidates", [])[:8]:
+                        print(f"    candidate: {cand}")
+                    if i < total:
+                        print()
+                    continue
                 if human:
                     ev = sig_entry.get("evidence")
                     print(_format_fanout_human(sig, loads, evidence_map={sig: ev} if ev else None, tree=tree))
@@ -387,17 +407,28 @@ def fanin(
         truncated_global = False
         for i, sig in enumerate(signals):
             try:
-                result = tracer.trace_fanin(sig, depth=depth)
+                _g = tracer.get_graph()
+                _res = resolve_signal(_g, sig)
+                if not _res["ok"]:
+                    raise SignalResolutionError(
+                        resolution_error_message(sig, _res),
+                        error_code=("E_SIGNAL_AMBIGUOUS" if _res["status"] == "ambiguous"
+                                    else "E_SIGNAL_NOT_FOUND"),
+                        resolution=_res["status"], candidates=_res.get("candidates"),
+                        suggestions=_res.get("suggestions"),
+                    )
+                _query_sig = _res["resolved"]
+                result = tracer.trace_fanin(_query_sig, depth=depth)
                 drivers = []
                 for d in result if hasattr(result, "__iter__") else []:
                     if hasattr(d, "id"):
                         drivers.append(_node_to_dict(d))
-                attach_distances(tracer.get_graph(), sig, drivers, reverse=True)
+                attach_distances(tracer.get_graph(), _query_sig, drivers, reverse=True)
                 # [iter_303 / PLAN P13.2] 粒度判定必须在过滤前（过滤会掩盖粗粒度回退）
                 precision, coarse_fallback = query_precision(sig, list(drivers))
                 # [iter_307 / PLAN P13.6] 直接驱动统计（多驱动/条件分支）
                 _g = tracer.get_graph()
-                _root = resolve_node_id(_g, sig)
+                _root = resolve_node_id(_g, _query_sig)
                 driver_count, multi_driver, conditional_drivers = driver_stats(_g, _root)
                 _root_node = _g.get_node(_root) if _root else None
                 _conditions = attach_edge_conditions(_g, drivers, [sig, _root], reverse=True, depth=depth)
@@ -447,6 +478,8 @@ def fanin(
                     "condition_truncated": _condition_truncated,
                     "truncated_by_depth": _depth_truncated,
                     "cycles_detected": _cycles_detected,
+                    "error": "",
+                    **resolution_fields(_res),
                 })
                 total_count += len(drivers)
                 total_pre_filter += drivers_pre
@@ -482,6 +515,11 @@ def fanin(
                     "condition_truncated": False,
                     "truncated_by_depth": False,
                     "cycles_detected": False,
+                    "error": err_data["error"],
+                    "resolved_signal": getattr(sig_err, "resolved", None),
+                    "resolution": getattr(sig_err, "resolution", "internal"),
+                    "candidates": getattr(sig_err, "candidates", []),
+                    "suggestions": getattr(sig_err, "suggestions", []),
                 })
 
         data = {
@@ -623,8 +661,19 @@ def fanout(
         truncated_global = False
         for i, sig in enumerate(signals):
             try:
+                _g = tracer.get_graph()
+                _res = resolve_signal(_g, sig)
+                if not _res["ok"]:
+                    raise SignalResolutionError(
+                        resolution_error_message(sig, _res),
+                        error_code=("E_SIGNAL_AMBIGUOUS" if _res["status"] == "ambiguous"
+                                    else "E_SIGNAL_NOT_FOUND"),
+                        resolution=_res["status"], candidates=_res.get("candidates"),
+                        suggestions=_res.get("suggestions"),
+                    )
+                _query_sig = _res["resolved"]
                 result = tracer.trace_fanout(
-                    sig, depth=depth,
+                    _query_sig, depth=depth,
                     include_clock=include_clock,
                     include_reset=include_reset,
                     include_control=include_control,
@@ -634,13 +683,13 @@ def fanout(
                     if hasattr(load, "id"):
                         loads.append(_node_to_dict(load))
                 # [iter_278] 填真实跳数 (原 distance 恒为 1)
-                attach_distances(tracer.get_graph(), sig, loads, reverse=False)
+                attach_distances(tracer.get_graph(), _query_sig, loads, reverse=False)
                 # [iter_303 / PLAN P13.2] 粒度判定必须在过滤前
                 precision, coarse_fallback = query_precision(sig, list(loads))
                 _g = tracer.get_graph()
-                _root = resolve_node_id(_g, sig)
+                _root = resolve_node_id(_g, _query_sig)
                 _root_node = _g.get_node(_root) if _root else None
-                _conditions = attach_edge_conditions(_g, loads, [sig, _root], reverse=False, depth=depth)
+                _conditions = attach_edge_conditions(_g, loads, [_query_sig, _root], reverse=False, depth=depth)
                 _condition_truncated = any(x.get("condition_truncated") for x in loads)
                 _cycles_detected = detect_cycles(_g, _root, reverse=False)
                 _depth_truncated = truncated_by_depth(_g, loads, depth, reverse=False)
@@ -683,6 +732,8 @@ def fanout(
                     "condition_truncated": _condition_truncated,
                     "truncated_by_depth": _depth_truncated,
                     "cycles_detected": _cycles_detected,
+                    "error": "",
+                    **resolution_fields(_res),
                 })
                 total_count += len(loads)
                 total_pre_filter += loads_pre
@@ -714,6 +765,11 @@ def fanout(
                     "condition_truncated": False,
                     "truncated_by_depth": False,
                     "cycles_detected": False,
+                    "error": err_data["error"],
+                    "resolved_signal": getattr(sig_err, "resolved", None),
+                    "resolution": getattr(sig_err, "resolution", "internal"),
+                    "candidates": getattr(sig_err, "candidates", []),
+                    "suggestions": getattr(sig_err, "suggestions", []),
                 })
 
         data = {
@@ -864,12 +920,6 @@ def impact(
             elif len(_bits) != len(signals):
                 raise ValueError(
                     f"--bits 数量 ({len(_bits)}) 与 signals 数量 ({len(signals)}) 不一致")
-        try:
-            _endpoints = [normalize_endpoint(graph, sig, _bits[i])
-                          for i, sig in enumerate(signals)]
-        except ValueError as e:
-            raise ValueError(str(e)) from None
-
         # 提取 SVA 和 Coverage 信息 (shared across batch)
         if filelist or from_snapshot:
             # [BUGFIX 2026-07-03] c.sources 是 dict (不是 callable!), 之前 .sources() 错
@@ -900,9 +950,18 @@ def impact(
         total_paths_all = 0
         total_high_risk_all = 0
         for i, sig in enumerate(signals):
-            ep = _endpoints[i]
-            resolved = ep["resolved"]
             try:
+                _res = resolve_signal(graph, sig)
+                if not _res["ok"]:
+                    raise SignalResolutionError(
+                        resolution_error_message(sig, _res),
+                        error_code=("E_SIGNAL_AMBIGUOUS" if _res["status"] == "ambiguous"
+                                    else "E_SIGNAL_NOT_FOUND"),
+                        resolution=_res["status"], candidates=_res.get("candidates"),
+                        suggestions=_res.get("suggestions"),
+                    )
+                ep = normalize_endpoint(graph, _res["resolved"], _bits[i])
+                resolved = ep["resolved"]
                 load_nodes = tracer.trace_fanout(resolved, depth=None)
                 paths = _build_impact_paths(resolved, load_nodes, graph, sva_signals, cov_signals, min_risk)
                 modules = _extract_modules(paths)
@@ -913,6 +972,10 @@ def impact(
                     "signal": sig,
                     "index": i,
                     "resolved_signal": resolved,
+                    "resolution": _res["status"],
+                    "error": "",
+                    "candidates": _res.get("candidates", []),
+                    "suggestions": _res.get("suggestions", []),
                     "requested_bit": ep["requested_bit"],
                     "precision": ep["precision"],
                     "coarse_fallback": ep["coarse_fallback"],
@@ -938,14 +1001,18 @@ def impact(
                 signals_result.append({
                     "signal": sig,
                     "index": i,
-                    "resolved_signal": ep["resolved"],
-                    "requested_bit": ep["requested_bit"],
-                    "precision": ep["precision"],
-                    "coarse_fallback": ep["coarse_fallback"],
+                    "resolved_signal": getattr(sig_err, "resolved", None),
+                    "resolution": getattr(sig_err, "resolution", "internal"),
+                    "candidates": getattr(sig_err, "candidates", []),
+                    "suggestions": getattr(sig_err, "suggestions", []),
+                    "requested_bit": _bits[i] if i < len(_bits) else None,
+                    "precision": "unknown",
+                    "coarse_fallback": False,
                     "total_paths": 0,
                     "high_risk_count": 0,
                     "modules": [],
                     "paths": [],
+                    "error": err_data["error"],
                 })
 
         data = {

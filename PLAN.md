@@ -7,7 +7,7 @@
 >
 > 格式（每行一项，子项用 `-- ` 前缀，id 全局唯一）：
 > ```
-> current item : P32.2 测试与契约 <已完成>
+> current item : P34.1 fanin/fanout/path/connection/bit 一致性检查 + verify 原语 <待做>
 >
 > P0 建图层与查询层的结构化拆分 <已完成>
 > -- P0.1 图快照基线工具 <待做>
@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P32.2 测试与契约 <已完成>
+current item : P34.1 fanin/fanout/path/connection/bit 一致性检查 + verify 原语 <待做>
 
 ## 计划树
 
@@ -133,6 +133,14 @@ P31 功能分层收敛：低完成度能力降级到 exp <已完成>
 P32 trace evidence 稳定性 <已完成>
 -- P32.1 evidence source_text/always 回退与字段一致性 <已完成>
 -- P32.2 测试与契约 <已完成>
+
+P33 Grounding P0：canonical signal identity <已完成>
+-- P33.1 canonical resolver / not_found / ambiguous + resolved_signal <已完成>
+-- P33.2 测试、JSON 契约与文档 <已完成>
+
+P34 双向一致性与 claim verification <待做>
+-- P34.1 fanin/fanout/path/connection/bit 一致性检查 + verify 原语 <待做>
+-- P34.2 测试与文档 <待做>
 -- P11.1 聚合宽度/signedness（var/net/port，含嵌套） <已完成>
 -- P11.2 成员宽度/位偏移（p.a → 4 位 + 在 p 中的位段） <已完成>
 -- P11.3 测试与文档：聚合/成员矩阵 + 基线 <已完成>

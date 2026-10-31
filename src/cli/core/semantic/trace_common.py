@@ -413,6 +413,95 @@ def truncated_by_depth(graph, items: list[dict], depth: int | None,
     return False
 
 
+class SignalResolutionError(ValueError):
+    """[iter_329 / PLAN P33.1] 信号无法唯一解析到图节点。"""
+
+    def __init__(self, message: str, *, error_code: str, resolution: str,
+                 candidates: list[str] | None = None,
+                 suggestions: list[str] | None = None):
+        super().__init__(message)
+        self.error_code = error_code
+        self.resolution = resolution
+        self.candidates = candidates or []
+        self.suggestions = suggestions or []
+
+
+def resolve_signal(graph, raw: str, max_candidates: int = 20) -> dict:
+    """[iter_329 / PLAN P33.1] 把用户信号解析到图节点，返回可解释结果。
+
+    status:
+      - exact: 完整 id 命中
+      - relative: 唯一后缀命中（u.a / a）
+      - bit_base_fallback: 位/切片节点不存在，但父总线存在（保留现有位查询回退）
+      - ambiguous: 多个候选
+      - not_found: 无候选
+    """
+    if graph is None:
+        return {"ok": False, "status": "not_found", "resolved": None,
+                "candidates": [], "suggestions": [], "bit_fallback": False}
+    nodes = set(graph.nodes())
+    if raw in nodes:
+        return {"ok": True, "status": "exact", "resolved": raw,
+                "candidates": [], "suggestions": [], "bit_fallback": False}
+
+    import re as _re
+    m = _re.match(r"^(.*)(\[[^\]]+\])$", raw or "")
+    if m:
+        base_raw, suffix = m.group(1), m.group(2)
+        base = resolve_signal(graph, base_raw, max_candidates=max_candidates)
+        if not base["ok"]:
+            if base["status"] == "ambiguous":
+                return base
+        elif base["resolved"]:
+            candidate = base["resolved"] + suffix
+            if candidate in nodes:
+                return {"ok": True, "status": "relative", "resolved": candidate,
+                        "candidates": [], "suggestions": [], "bit_fallback": False}
+            return {"ok": True, "status": "bit_base_fallback", "resolved": candidate,
+                    "base": base["resolved"], "candidates": [], "suggestions": [],
+                    "bit_fallback": True}
+
+    # 唯一后缀匹配：u.a -> top.u.a；a -> 唯一 top.a
+    suffix = "." + raw
+    matches = sorted(n for n in nodes if n.endswith(suffix))
+    if len(matches) == 1:
+        return {"ok": True, "status": "relative", "resolved": matches[0],
+                "candidates": [], "suggestions": [], "bit_fallback": False}
+    if len(matches) > 1:
+        return {"ok": False, "status": "ambiguous", "resolved": None,
+                "candidates": matches[:max_candidates], "suggestions": [],
+                "bit_fallback": False, "match_count": len(matches)}
+
+    leaf = (raw or "").split(".")[-1].split("[")[0]
+    suggestions = sorted({n for n in nodes if leaf and leaf.lower() in n.lower()})[:10]
+    return {"ok": False, "status": "not_found", "resolved": None,
+            "candidates": [], "suggestions": suggestions, "bit_fallback": False}
+
+
+def resolution_error_message(raw: str, result: dict) -> str:
+    status = result.get("status")
+    if status == "ambiguous":
+        cands = ", ".join(result.get("candidates", [])[:8])
+        total = result.get("match_count", len(result.get("candidates", [])))
+        return (f"signal {raw!r} is ambiguous ({total} matches); "
+                f"use a longer path or one of: {cands}")
+    sugg = ", ".join(result.get("suggestions", [])[:8])
+    msg = f"signal {raw!r} not found in graph"
+    if sugg:
+        msg += f"; candidates: {sugg}"
+    return msg
+
+
+def resolution_fields(result: dict) -> dict:
+    """把 resolve_signal 结果转成 JSON 字段（trace signal 通用）。"""
+    return {
+        "resolved_signal": result.get("resolved"),
+        "resolution": result.get("status"),
+        "candidates": result.get("candidates", []),
+        "suggestions": result.get("suggestions", []),
+    }
+
+
 def _edge_condition_text(edge) -> str:
     """[iter_318 / PLAN P22.1] 单条边的条件文本（优先 condition，退化 chain/effective）。"""
     chain = getattr(edge, "condition_chain", None) or []

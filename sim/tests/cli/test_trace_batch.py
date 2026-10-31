@@ -14,7 +14,7 @@ test_trace_batch.py - Tests for trace batch mode (--batch, --batch-file)
   - N2: --batch-file 不存在 → ValueError 含路径
   - N3: --batch-file 空 (只有注释) → ValueError
   - N4: --batch "" (空字符串) → ValueError
-  - N5: 不存在的 signal → 静默空 drivers (不报错)
+  - N5: 不存在的 signal → 显式 not_found (不静默空)
 
 **Golden 机制**: 用 sim/tests/fixtures/strict_uart/filelist.f (3 SV, 自洽).
 不依赖外部项目, 跨平台稳定.

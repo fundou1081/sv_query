@@ -289,6 +289,13 @@ JSON_CONTRACT = {
     "trace_signal": {
         "signal": {"type": "string", "desc": "queried signal id (as requested)"},
         "index": {"type": "integer", "desc": "position in the batch/signals request"},
+        "resolved_signal": {"type": "string|null", "desc": "canonical graph id after resolution"},
+        "resolution": {"type": "string", "enum": ["exact", "relative", "bit_base_fallback",
+                                                  "not_found", "ambiguous", "internal"],
+                       "desc": "how the requested signal resolved"},
+        "candidates": {"type": "array<string>", "desc": "ambiguous candidate ids"},
+        "suggestions": {"type": "array<string>", "desc": "not_found suggestions"},
+        "error": {"type": "string", "desc": "per-signal resolution/query error"},
         "precision": {
             "type": "string", "enum": ["bit", "bus", "unknown"],
             "desc": "answer granularity; unknown means runtime/opaque dependency",
@@ -553,6 +560,10 @@ JSON_CONTRACT = {
         "signal": {"type": "string", "desc": "requested signal"},
         "index": {"type": "integer", "desc": "batch position"},
         "resolved_signal": {"type": "string", "desc": "resolved bit/slice/bus id"},
+        "resolution": {"type": "string", "desc": "exact|relative|bit_base_fallback|not_found|ambiguous|internal"},
+        "candidates": {"type": "array<string>", "desc": "ambiguous candidate ids"},
+        "suggestions": {"type": "array<string>", "desc": "not_found suggestions"},
+        "error": {"type": "string", "desc": "per-signal resolution/query error"},
         "requested_bit": {"type": "integer|null", "desc": "requested bit (legacy field)"},
         "precision": {"type": "string", "enum": ["bit", "bus", "unknown"],
                       "desc": "resolution granularity"},
@@ -652,6 +663,11 @@ JSON_CONTRACT = {
     "evidence_signal": {
         "signal": {"type": "string", "desc": "signal id"},
         "index": {"type": "integer", "desc": "batch position"},
+        "resolved_signal": {"type": "string|null", "desc": "canonical graph id after resolution"},
+        "resolution": {"type": "string", "desc": "exact|relative|bit_base_fallback|not_found|ambiguous|internal"},
+        "candidates": {"type": "array<string>", "desc": "ambiguous candidate ids"},
+        "suggestions": {"type": "array<string>", "desc": "not_found suggestions"},
+        "error": {"type": "string", "desc": "per-signal resolution error"},
         "evidence": "evidence_payload",
     },
     "evidence_result": {

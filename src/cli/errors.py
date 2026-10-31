@@ -46,6 +46,7 @@ class ErrorCode(StrEnum):
     # 查询类
     E_TARGET_NOT_FOUND = "E_TARGET_NOT_FOUND"  # module/signal 不存在
     E_SIGNAL_NOT_FOUND = "E_SIGNAL_NOT_FOUND"  # trace target signal 不存在
+    E_SIGNAL_AMBIGUOUS = "E_SIGNAL_AMBIGUOUS"  # 相对名匹配多个图节点
 
     # 数据类
     E_NO_DATA = "E_NO_DATA"  # 命令成功但无结果
@@ -102,6 +103,13 @@ def make_error(
 
 def code_for_exception(exc: BaseException) -> ErrorCode:
     """[Phase 2 B2 2026-06-28] Map exception to ErrorCode via MRO walk."""
+    # [iter_329 / PLAN P33.1] 显式 error_code 优先（SignalResolutionError 等）
+    explicit = getattr(exc, "error_code", None)
+    if explicit:
+        try:
+            return ErrorCode(explicit)
+        except ValueError:
+            explicit = None
     for cls in type(exc).__mro__:
         if cls in EXCEPTION_TO_CODE:
             return EXCEPTION_TO_CODE[cls]
