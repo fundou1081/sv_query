@@ -1,14 +1,14 @@
 # CLI 能力清单 (生成物 — 请勿手改)
 
 > **生成方式**: `python3 tools/gen_cli_surface.py`  (数据源: `src/cli/_registry.py` + typer introspection)
-> **生成日期**: 2026-10-26  |  **漂移校验**: `python3 tools/gen_cli_surface.py --check`
+> **生成日期**: 2026-10-31  |  **漂移校验**: `python3 tools/gen_cli_surface.py --check`
 > **分层检查**: `python3 tools/check_cli_layers.py` (R1~R6)
 
 ## 总览
 
 - 叶子命令总数: **35**
-- 按层: `core`=25, `view`=10
-- core 内分组: `semantic`=15, `locate`=5, `diagnose`=1, `state`=4
+- 按层: `core`=23, `exp`=12
+- core 内分组: `semantic`=14, `locate`=5, `state`=4
 
 | 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | schema | 说明 |
 |---|---|---|---|---|---|---|
@@ -18,17 +18,15 @@
 | `dev` | dev | none | ✅ | — | — | 开发者内部调试 (当前无命令; expression 已于 iter_252 归档) |
 | `out` | none | none | ✅ | — | — | 移出 CLI (会写 RTL/项目文件) → tools/; 不算产品命令 |
 
-## `core` (25 个)
+## `core` (23 个)
 
 | 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
 |---|---|---|---|---|---|---|---|---|---|
-| `diagnose` | — | — | diagnose | diagnosis | cheap | ✅ | ✅ | ✅ | 只读诊断: <检查项> = imports|report|timescale|widths; 不改文件 (写文件用 tools/fix_*.py) |
 | `capabilities` | — | — | locate | primitive | cheap | ✅ | — | ✅ | 本清单自身 (agent 应先读它再决定调什么) |
 | `graph edges` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | 列出图边; 支持 --file / --filelist (iter_236 补) |
 | `graph nodes` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | 列图节点 (kind/module/--match 过滤; --detail 给表达式等富字段); 支持 --file / --filelist |
 | `search` | — | — | locate | primitive | cheap | ✅ | — | ✅ | 文本/正则搜索; [iter_231] 已补 --json |
 | `stats` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ |  |
-| `audit` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | [规范入口] 设计审计 (只读): 协议识别/握手配对/反压环候选/断言覆盖/覆盖缺口/验证缺口/改动风险/约束覆盖/CDC 候选/组合链长度; 每条带 confidence |
 | `class` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 不给 name → 列出所有 class; 给了 → 成员(类型级)+实例(实例级); --member 查某成员实例 |
 | `connections` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | [规范入口] 连接: 实例→端口↔内部信号 / 模块→四类边+置信度 (输出带 resolved_as) |
 | `controlflow analyze` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 信号的驱动条件分析; --conditions-only 只要扁平条件列表 (原 controlflow conditions) |
@@ -48,20 +46,22 @@
 | `snapshot list` | — | — | state | state | cheap | ✅ | — | ✅ | 列出快照; 给 tag → 该快照详情 (原 snapshot show) |
 | `snapshot save` | — | — | state | state | medium | ✅ | ✅ | ✅ | [iter_239 1b] 默认写缓存目录 (~/.svq/cache/snapshots; 可用 SVQ_SNAPSHOT_DIR 覆盖) |
 
-## `view` (10 个)
+## `exp` (12 个)
 
 | 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
 |---|---|---|---|---|---|---|---|---|---|
-| `arch show` | — | — | render | presentation | expensive | — | ✅ | ✅ | 项目架构总览 (L1 模块 + L2 端口) |
-| `design show` | — | — | render | presentation | expensive | — | ✅ | ✅ | IP 级设计理解; 仅 1 个测试文件 (覆盖缺口) |
-| `trace overview` | — | — | render | presentation | expensive | ✅ | ✅ | ✅ | 两个信号之间的综合叙述 (dataflow + controlflow + evidence) |
-| `visualize chain` | — | — | render | presentation | expensive | — | ✅ | ✅ |  |
-| `visualize dataflow` | — | — | render | presentation | expensive | — | ✅ | ✅ |  |
-| `visualize datapath` | — | — | render | presentation | expensive | — | ✅ | ✅ | 定点计算架构图; 0 个测试文件 (只有 fixture 名引用, 覆盖缺口) |
-| `visualize graph` | — | — | render | presentation | expensive | — | ✅ | ✅ |  |
-| `visualize module` | — | — | render | presentation | expensive | — | ✅ | ✅ |  |
-| `visualize pipeline` | — | — | render | presentation | medium | ✅ | ✅ | ✅ |  |
-| `visualize teach` | — | — | render | presentation | expensive | — | ✅ | ✅ |  |
+| `diagnose` | — | — | diagnose | experimental | cheap | ✅ | ✅ | ✅ | [exp] 只读诊断; --json 干净路径不稳定, 默认不提供, 仅 --include-exp 列出 |
+| `arch show` | — | — | render | experimental | expensive | — | ✅ | ✅ | 项目架构总览 (L1 模块 + L2 端口) ; [exp] experimental, hidden by default |
+| `design show` | — | — | render | experimental | expensive | — | ✅ | ✅ | IP 级设计理解; 仅 1 个测试文件 (覆盖缺口) ; [exp] experimental, hidden by default |
+| `trace overview` | — | — | render | experimental | expensive | ✅ | ✅ | ✅ | 两个信号之间的综合叙述 (dataflow + controlflow + evidence) ; [exp] experimental, hidden by default |
+| `visualize chain` | — | — | render | experimental | expensive | — | ✅ | ✅ |  ; [exp] experimental, hidden by default |
+| `visualize dataflow` | — | — | render | experimental | expensive | — | ✅ | ✅ |  ; [exp] experimental, hidden by default |
+| `visualize datapath` | — | — | render | experimental | expensive | — | ✅ | ✅ | 定点计算架构图; 0 个测试文件 (只有 fixture 名引用, 覆盖缺口) ; [exp] experimental, hidden by default |
+| `visualize graph` | — | — | render | experimental | expensive | — | ✅ | ✅ |  ; [exp] experimental, hidden by default |
+| `visualize module` | — | — | render | experimental | expensive | — | ✅ | ✅ |  ; [exp] experimental, hidden by default |
+| `visualize pipeline` | — | — | render | experimental | medium | ✅ | ✅ | ✅ |  ; [exp] experimental, hidden by default |
+| `visualize teach` | — | — | render | experimental | expensive | — | ✅ | ✅ |  ; [exp] experimental, hidden by default |
+| `audit` | — | — | semantic | experimental | medium | ✅ | ✅ | ✅ | [exp] 设计审计; 启发式/完成度低, 默认不提供, 仅 --include-exp 列出 |
 
 ## 兼容别名 (老名保留, 同一实现)
 

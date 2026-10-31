@@ -267,13 +267,121 @@ class TraceEvidenceResolver:
                 if cond_snippet is not None:
                     ev.enclosing_if = cond_snippet
 
-        # 7. source_text fallback (assign 边可能没 source_location)
-        if ev.source_text == "" and ev.enclosing_assign is not None:
-            ev.source_location = ev.enclosing_assign.location
-            if ev.enclosing_assign.text:
-                ev.source_text = ev.enclosing_assign.text.split("\n")[0].strip()
+        # 6c. [iter_327 / PLAN P32] condition_ast 存在时 parent chain 可能不包含
+        # always 块；只要 assign_type 是 always 且还没找到 enclosing_always，就补。
+        if ev.enclosing_always is None and self._is_always_kind(edge.assign_type):
+            always_syn = self._find_always_block_syntax_semantic(signal_id)
+            if always_syn is not None:
+                snippet = self._snippet_from_syntax(always_syn)
+                if snippet is not None:
+                    ev.enclosing_always = snippet
+                    if "AlwaysComb" in str(getattr(always_syn, "kind", "")):
+                        if ev.enclosing_always_comb is None:
+                            ev.enclosing_always_comb = snippet
+
+        # 7. source_text fallback（优先真正的 LHS 赋值行，而不是 if 条件行）
+        lhs_name = signal_id.split(".")[-1] if signal_id else ""
+        if ev.source_location is not None and ev.source_location.file:
+            text, line_no = self._assignment_line_from_file(
+                ev.source_location.file, ev.source_location.line_start, lhs_name)
+            if text and line_no:
+                ev.source_text = text
+                from .coverage_models import SourceLocation
+                loc = ev.source_location
+                ev.source_location = SourceLocation(
+                    file=loc.file, line_start=line_no, line_end=line_no,
+                    column=loc.column,
+                )
+        preferred = (ev.enclosing_always, ev.enclosing_always_comb, ev.enclosing_assign)
+        for snippet in ([] if ev.source_text else preferred):
+            text = ""
+            line_no = None
+            if snippet is not None and snippet.location.file:
+                text, line_no = self._assignment_line_from_file(
+                    snippet.location.file, snippet.location.line_start, lhs_name)
+            if not text:
+                text, line_no = self._assignment_line_in_snippet(snippet, lhs_name)
+            if text:
+                ev.source_text = text
+                if snippet is not None and line_no:
+                    loc = snippet.location
+                    from .coverage_models import SourceLocation
+                    ev.source_location = SourceLocation(
+                        file=loc.file, line_start=line_no, line_end=line_no,
+                        column=loc.column,
+                    )
+                break
+
+        if ev.source_text == "" and ev.source_location is not None and start_syn is not None:
+            line_text = self._line_text_from_syntax(start_syn, ev.source_location.line_start)
+            if line_text:
+                ev.source_text = line_text
+        if ev.source_text == "":
+            for snippet in (ev.enclosing_if, ev.enclosing_always,
+                            ev.enclosing_always_comb, ev.enclosing_assign):
+                if snippet is not None and snippet.text:
+                    ev.source_location = snippet.location
+                    ev.source_text = snippet.text.split("\n")[0].strip()
+                    break
 
         return ev
+
+    def _assignment_line_from_file(self, file: str, hint_line: int, lhs_name: str):
+        """[iter_327 / PLAN P32] 从源文件找 LHS 赋值行，取离 hint 最近的一条。
+
+        edge.source_location 存的是条件表达式位置（可能偏差 1 行）；直接用文件行
+        搜索赋值语句，能避免把 `if` 条件行当成 source_text。
+        """
+        if not file:
+            return "", None
+        import re as _re
+        from pathlib import Path as _Path
+        try:
+            text = _Path(file).read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            return "", None
+        pattern = _re.compile(rf"\b{_re.escape(lhs_name)}\b\s*(<=|=)(?!=)")
+        candidates = []
+        for idx, line in enumerate(text.splitlines(), 1):
+            if pattern.search(line):
+                candidates.append((idx, line.strip()))
+        if not candidates:
+            return "", None
+        hint = int(hint_line or candidates[0][0])
+        line_no, line = min(candidates, key=lambda item: abs(item[0] - hint))
+        return line, line_no
+
+    def _assignment_line_in_snippet(self, snippet, lhs_name: str):
+        """[iter_327 / PLAN P32] 在 enclosing snippet 里找 LHS 赋值行（不是 if 条件行）。"""
+        if snippet is None or not getattr(snippet, "text", ""):
+            return "", None
+        import re as _re
+        pattern = _re.compile(rf"\b{_re.escape(lhs_name)}\b\s*(<=|=)(?!=)")
+        for offset, line in enumerate(snippet.text.splitlines()):
+            if pattern.search(line):
+                return line.strip(), snippet.location.line_start + offset
+        return "", None
+
+    def _line_text_from_syntax(self, syn, line_no: int) -> str:
+        """[iter_327 / PLAN P32] 按 sourceLocation 从 sourceManager 取整行文本。"""
+        if syn is None or not line_no or line_no <= 0:
+            return ""
+        sr = getattr(syn, "sourceRange", None)
+        if sr is None:
+            return ""
+        try:
+            sm = self._get_source_manager()
+            if sm is None:
+                return ""
+            full = sm.getSourceText(sr.start.buffer) or ""
+            if full.endswith("\x00"):
+                full = full[:-1]
+            lines = full.splitlines()
+            if 1 <= line_no <= len(lines):
+                return lines[line_no - 1].strip()
+        except Exception:
+            return ""
+        return ""
 
     def resolve_chain(self, signal_id: str, max_depth: int = 5) -> list[Evidence]:
         """递归解析 driver 链上每一步的 evidence"""
@@ -369,6 +477,20 @@ class TraceEvidenceResolver:
                 text = ""
         except Exception:
             text = ""
+
+        # [iter_327 / PLAN P32] pyslang syntax range 常从关键字之后开始
+        # （AlwaysFF 从 @ 开始、ContinuousAssign 从赋值体开始）；补回关键字，
+        # 保证 enclosing snippet 是完整源码块而不是半行。
+        kind = str(getattr(syn, "kind", ""))
+        stripped = text.lstrip()
+        if kind and "ContinuousAssign" in kind and not stripped.startswith("assign"):
+            text = "assign " + stripped
+        elif "AlwaysComb" in kind and not stripped.startswith("always"):
+            text = "always_comb " + stripped
+        elif "AlwaysFF" in kind and not stripped.startswith("always"):
+            text = "always_ff " + stripped
+        elif "Always" in kind and not stripped.startswith("always"):
+            text = "always " + stripped
 
         return SourceSnippet(
             location=SourceLocation(

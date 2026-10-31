@@ -1214,4 +1214,4 @@ from cli.core.semantic.trace_evidence import evidence, _output_evidence_text  # 
 from cli.core.semantic.trace_overview import overview, _output_overview_text  # noqa: E402
 
 trace_app.command("evidence")(evidence)
-trace_app.command("overview")(overview)
+trace_app.command("overview", hidden=True)(overview)

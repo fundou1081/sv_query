@@ -93,7 +93,7 @@ app.command("params", help="[规范入口] 实例的生效参数值 (含是否�
 app.command("ports", help="[规范入口] 模块端口总览 (方向/位宽/驱动数/负载数)")(ports_cmd)
 app.command("paths", help="[规范入口] 图上路径 (跨模块端口可跳转; --all 枚举全部)")(paths_cmd)
 app.command("class", help="[规范入口] 不给 class 名→列出所有 class; 给了→成员(类型级)+实例(实例级); --member 查成员实例")(class_cmd)
-app.command("audit", help="[规范入口] 设计审计: 协议/握手/反压/断言/覆盖/风险/CDC/时序链 (只读, 启发式有标注)")(audit_cmd)
+app.command("audit", hidden=True, help="[exp] 设计审计 (实验性; 默认隐藏)")(audit_cmd)
 
 app.command("drivers", help="[规范入口] 谁驱动这个信号 (上游); 不给 --module 时跨模块追, 给了则限定模块内")(_fanin_cmd)
 app.command("loads", help="[规范入口] 这个信号被谁使用 (下游); 不给 --module 时跨模块追, 给了则限定模块内")(_fanout_cmd)
@@ -105,9 +105,9 @@ app.add_typer(controlflow_app, name="controlflow")
 # [iter_259] 10 个历史顶层组已**删除** (iter_251 先隐藏, 本次彻底移除):
 # 规范入口只有 `svq exp <组> <子>`。测试调用点已同步改写 (~151 处)。
 # 如需恢复, 见 git 历史与 docs/EXP_NAMESPACE.md。
-app.add_typer(vis_app, name="visualize")
-app.add_typer(arch_app, name="arch")
-app.add_typer(design_app, name="design")
+app.add_typer(vis_app, name="visualize", hidden=True)
+app.add_typer(arch_app, name="arch", hidden=True)
+app.add_typer(design_app, name="design", hidden=True)
 
 # [iter_252] 删除 `expression` (dev 层 3 命令): 内部调试用, 0 测试, `--file` 路径未实现;
 # 模块已归档到 docs/archive/2026-10-19-src-archived/cli_dev/。构造 expression 节点请用
@@ -122,7 +122,7 @@ app.command("capabilities")(capabilities)
 
 # [iter_248 T2] 诊断: 单一入口 `diagnose <check>` (imports|report|timescale|widths)
 # 不传 help= → 用 docstring (里面写清了 4 项检查与两个写入工具)
-app.command("diagnose")(diagnose_cmd)
+app.command("diagnose", hidden=True)(diagnose_cmd)
 
 # stats 是单独命令，不需要子 Typer
 # 动态导入避免循环依赖

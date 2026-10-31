@@ -10,9 +10,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: 无（P30 完成；等待新需求/评审项）
+- **当前 item**: 无（P31/P32 完成；等待新需求/评审项）
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **P18~P24** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P26.1** 遍历完整性 ✅（iter_321）；**P26.2** 运行期系统函数 ✅（iter_322）
+- **P18~P30** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P31** exp 降级 ✅（iter_327）；**P32** evidence 稳定性 ✅（iter_328）
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -184,10 +184,14 @@ graph edges / search / stats / trace evidence / controlflow analyze+list 字段�
 契约测试 15 个。发现并标注 envelope 不统一（search direct、evidence/controlflow 额外 top-level）。
 全量 **2624 passed**。
 
-## ✅ 刚完成（P30，结构/元数据契约）
+## ✅ 刚完成（P31 + P32）
 
-instances / hierarchy / ports / params / connections / class 字段契约 + direct_error 形态；
-契约测试 22 个。端口命令的 module 实为实例路径等坑已写清。全量 **2631 passed**。
+1. **P31**：audit/diagnose/view 降级 exp；默认 help/capabilities 不提供；
+   `--include-exp` 才列出；老路径兼容。
+2. **P32**：trace evidence 稳定化——always 回退、LHS 赋值行、snippet 关键字、
+   source_location 行号修正；无 driver 端口保持空证据。
+
+全量 **2635 passed**；默认 core 23 命令。
 
 ## 后续候选
 

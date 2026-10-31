@@ -8,7 +8,7 @@ core 层命令必须有 --json (agent 契约)。
 本文件锁定四件事:
   1. 注册表与 CLI 一致 (每个叶子命令要么是规范名, 要么是已声明别名) —— 防"偷偷加命令"
   2. drivers/loads 与 trace fanin/trace fanout **输出完全一致** (同一实现, 非双份)
-  3. capabilities 的分层过滤 (默认 core+view; exp 需 --include-exp; --recommended 是子集)
+  3. capabilities 的分层过滤 (默认 core; exp 需 --include-exp; --recommended 是子集)
   4. 本轮补的三条 core 结构化输出: search / snapshot save / snapshot delete
 """
 from __future__ import annotations
@@ -125,18 +125,27 @@ class TestCapabilities:
         assert set(d["layers"]) >= {"core", "view", "exp", "dev", "out"}
         assert any(c["name"] == "drivers" and c["layer"] == "core" for c in d["commands"])
 
-    def test_exp_namespace_retired(self):
-        """[iter_263] exp 已整体退役: `svq exp` 不再是命令, 想法记录在 docs/EXP_IDEAS.md。"""
+    def test_exp_default_hidden(self):
+        """[iter_327] 低完成度能力 (audit/diagnose/view) 降级 exp, 默认不提供。"""
         from cli._registry import COMMANDS
-        assert [c.key for c in COMMANDS if c.layer == "exp"] == []
-        r = subprocess.run([sys.executable, str(PROJECT_ROOT / "run_cli.py"), "exp", "--help"],
-                           capture_output=True, text=True)
-        assert r.returncode != 0, "exp 命令应已不存在"
+        exp_keys = {c.key for c in COMMANDS if c.layer == "exp"}
+        assert {"audit", "diagnose", "visualize graph", "trace overview"} <= exp_keys
+        default = _json("capabilities", "--json")
+        assert not any(c["layer"] == "exp" for c in default["commands"])
+        full = _json("capabilities", "--json", "--include-exp")
+        assert exp_keys <= {c["name"] for c in full["commands"]}
 
-    def test_view_included_by_default(self):
-        """方豆决定: capabilities 默认包含 view (人眼面)。"""
+    def test_view_not_included_by_default(self):
+        """[iter_327] view 已并入 exp, 默认 capabilities 不列。"""
         d = _json("capabilities", "--json")
-        assert any(c["layer"] == "view" for c in d["commands"])
+        assert not any(c["layer"] in ("view", "exp") for c in d["commands"])
+
+    def test_experimental_commands_hidden_from_help(self):
+        top = _run("--help").stdout
+        assert "audit" not in top and "diagnose" not in top
+        assert "visualize" not in top and "design" not in top
+        trace_help = _run("trace", "--help").stdout
+        assert "overview" not in trace_help
 
     def test_recommended_is_subset(self):
         d = _json("capabilities", "--json", "--recommended")
