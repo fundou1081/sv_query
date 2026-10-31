@@ -406,7 +406,10 @@ class UnifiedTracer:
 
     def _step_class(self, ctx):
         # [iter_154 C4-B / D5] class 类型级节点在 filter 之后加入（显式保留）
-        ClassGraphBuilder(ctx["adapter"]).build(ctx["graph"])
+        # [iter_334 / PLAN P38] 保留 hierarchy，供 class relations 查询 extends 链
+        result = ClassGraphBuilder(ctx["adapter"]).build(ctx["graph"])
+        self._class_hierarchy = getattr(result, "hierarchy", None)
+        self._class_build_errors = getattr(result, "errors", [])
         return None
 
     def _step_class_member(self, ctx):
@@ -453,6 +456,13 @@ class UnifiedTracer:
         返回 None 表示尚未构建 (需先 build_graph)。
         """
         return getattr(self, "_path_resolver", None)
+
+    def get_class_hierarchy(self):
+        """[iter_334 / PLAN P38] 公开 class extends 层级（build_graph 后可用）。"""
+        return getattr(self, "_class_hierarchy", None)
+
+    def get_class_build_errors(self):
+        return getattr(self, "_class_build_errors", [])
 
     def get_module_graph(self):
         """[iter_236 1a] 公开访问 ModuleInstanceGraph (实例层级 + 端口映射)。

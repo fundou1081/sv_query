@@ -501,6 +501,7 @@ JSON_CONTRACT = {
             "fields": "class_result",
             "member_fields": "class_member",
             "instance_fields": "class_instance",
+            "relations_fields": "class_relations",
         },
     },
     "bit_endpoint": {
@@ -719,6 +720,39 @@ JSON_CONTRACT = {
         "signals": {"type": "array<string>", "desc": "signals with conditioned drivers"},
         "count": {"type": "integer", "desc": "signal count"},
     },
+    "class_call": {
+        "receiver": {"type": "string|null", "desc": "receiver object/member; null = bare call"},
+        "method": {"type": "string", "desc": "called method"},
+        "target_class": {"type": "string|null", "desc": "resolved owner class; null = unknown"},
+    },
+    "class_method": {
+        "name": {"type": "string", "desc": "method name"},
+        "kind": {"type": "string", "desc": "function|task"},
+        "file": {"type": "string", "desc": "definition file"},
+        "line": {"type": "integer", "desc": "definition line"},
+        "calls": {"type": "array<class_call>", "desc": "calls inside body"},
+    },
+    "class_member_instances": {
+        "member": {"type": "string", "desc": "member name"},
+        "count": {"type": "integer", "desc": "graph instance-member nodes"},
+        "instances": {"type": "array<class_instance>", "desc": "instance nodes"},
+    },
+    "class_constraint": {
+        "target": {"type": "string", "desc": "constraint/member target id"},
+        "kind": {"type": "string", "desc": "CONSTRAINS/HAS_* edge"},
+    },
+    "class_relations": {
+        "class": {"type": "string", "desc": "class name"},
+        "extends": {"type": "string|null", "desc": "direct parent"},
+        "ancestors": {"type": "array<string>", "desc": "parent chain"},
+        "subclasses": {"type": "array<string>", "desc": "direct children"},
+        "descendants": {"type": "array<string>", "desc": "all descendants"},
+        "members": {"type": "array<class_member>", "desc": "type-level members"},
+        "instances": {"type": "array<class_instance>", "desc": "class instances"},
+        "member_instances": {"type": "array<class_member_instances>", "desc": "per-member instances"},
+        "constraints": {"type": "array<class_constraint>", "desc": "graph constraint edges"},
+        "methods": {"type": "array<class_method>", "desc": "method definitions + calls"},
+    },
     "instance_item": {
         "full_path": {"type": "string", "desc": "instance path"},
         "name": {"type": "string", "desc": "instance name"},
@@ -814,6 +848,7 @@ JSON_CONTRACT = {
         "instances": {"type": "array<class_instance>", "desc": "instance-level nodes"},
         "member": {"type": "string", "desc": "requested member (member mode)"},
         "note": {"type": "string", "desc": "member-mode note"},
+        "relations": "class_relations",
     },
     "direct_error": {
         "ok": {"type": "boolean", "desc": "always false"},
