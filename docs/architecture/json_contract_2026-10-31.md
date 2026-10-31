@@ -95,3 +95,49 @@ fanout 额外：`loads[]`。
 - `paths` / `dataflow` / `impact` / `graph nodes` 的字段契约（当前只做 envelope + trace）
 - 错误对象（`errors[]`）字段固定化
 - 可选 `svq schema --json` 独立命令（若 agent 不想拉完整 capabilities）
+
+---
+
+## P28 扩展（2026-10-31）
+
+契约范围新增 5 组：`paths`、`dataflow analyze`、`trace impact`、`graph nodes`、`error_entry`。
+
+### paths（直接 envelope，无 command/params）
+
+- 基础字段：`ok/src/dst/src_resolved/dst_resolved/bits/directed`
+- `one` 模式追加：`found/hop_count/path`
+- `all` 模式追加：`count/truncated/all_paths`
+- `bits` 结构 = `bit_normalization`：`{src,dst,coarse_fallback}`，每个端点 = `bit_endpoint`
+  （`requested_bit/requested_range/resolved/precision/coarse_fallback/kind`）
+
+### dataflow analyze
+
+- result：`from_signal/to_signal/from_resolved/to_resolved/bits/is_reachable/paths_count/
+  intermediate_signals/primary_latency_cycles/primary_is_async/all_conditions/clock_domain/
+  timing_risk/paths`
+- path：`path_id/segments/distance/has_conditional/latency_cycles/is_async_crossing/
+  latency_note/stage_breakdown`
+- segment：`from_signal/to_signal/driver/condition/timing/assign_type/distance`，
+  `evidence` 仅在 `--evidence` 时出现（可选字段）
+
+### trace impact
+
+- result：`signals/total_signals/total_paths/total_high_risk_count/failed_signals/risk_model`
+- signal：`signal/index/resolved_signal/requested_bit/precision/coarse_fallback/
+  total_paths/high_risk_count/modules/paths`
+- path：`path/path_type/risk/risk_score/fanout/coverage/condition/clock_domain/suggestion`
+
+### graph nodes
+
+- result：`nodes/total`
+- 普通节点：`id/name/kind/module`
+- `--detail` 追加：`width/expression/operands/signals/function_name/
+  condition/true_branch/false_branch`
+
+### error_entry（trace 分信号错误）
+
+`signal/index/error/error_code`。
+
+> `errors[]` 在不同命令可能是**字符串**（如 `trace overview`）或 `error_entry` 对象
+> （如 trace fanin/fanout 分信号错误）；契约 `top_level.errors` 类型标为
+> `array<string|error_entry>`，消费方按 `typeof` 分支处理。

@@ -39,8 +39,16 @@ def test_top_level_contract_shape():
 
 def test_contract_fields_have_type_and_desc():
     _, c = _contract()
-    for section in ("top_level", "trace_signal", "trace_node"):
-        for name, spec in c[section].items():
+    skip = {"commands", "bit_normalization", "paths_modes"}
+    for section, fields in c.items():
+        if section in skip or section in ("schema_version", "policy", "scope",
+                                          "precision_values", "notes"):
+            continue
+        if not isinstance(fields, dict):
+            continue
+        for name, spec in fields.items():
+            if not isinstance(spec, dict):
+                continue
             assert "type" in spec, f"{section}.{name} missing type"
             assert "desc" in spec, f"{section}.{name} missing desc"
     item = c["trace_node"]["condition_paths"]["item"]
@@ -73,3 +81,83 @@ def test_fanout_output_matches_contract(tmp_path):
     sig = data["result"]["signals"][0]
     assert set(sig) == allowed_signal
     assert set(sig[cmd["node_array"]][0]) == set(c["trace_node"])
+
+
+PATH_SRC = """
+module top(input [7:0] a, output [7:0] y);
+  assign y[7:4] = a[7:4];
+endmodule
+"""
+
+IMPACT_SRC = """
+module top(input [7:0] a, output [7:0] y);
+  assign y = a;
+endmodule
+"""
+
+
+def test_paths_contract_matches(tmp_path):
+    p = tmp_path / "t.sv"
+    p.write_text(PATH_SRC)
+    _, c = _contract()
+    cmd = c["commands"]["paths"]
+    base = set(cmd["base_fields"])
+    one = json.loads(_run(["paths", "top.a", "top.y", "--bits", "7:4,7:4",
+                           "--directed", "--file", str(p), "--json"]).stdout)
+    assert set(one) == base | set(cmd["modes"]["one"])
+    assert set(one["bits"]) == set(c["bit_normalization"])
+    assert set(one["bits"]["src"]) == set(c["bit_endpoint"])
+    allp = json.loads(_run(["paths", "top.a", "top.y", "--bits", "7:4,7:4",
+                            "--all", "--directed", "--file", str(p), "--json"]).stdout)
+    assert set(allp) == base | set(cmd["modes"]["all"])
+
+
+def test_dataflow_contract_matches(tmp_path):
+    p = tmp_path / "t.sv"
+    p.write_text(PATH_SRC)
+    _, c = _contract()
+    data = json.loads(_run(["dataflow", "analyze", "top.a", "top.y",
+                            "--bits", "7:4,7:4", "--file", str(p), "--json"]).stdout)
+    cmd = c["commands"]["dataflow analyze"]
+    r = data["result"]
+    assert set(r) == set(cmd["result_fields"])
+    path = r["paths"][0]
+    assert set(path) == set(c["dataflow_path"])
+    seg = path["segments"][0]
+    required = set(c["dataflow_segment"]) - {"evidence"}
+    assert required <= set(seg) <= set(c["dataflow_segment"])
+
+
+def test_impact_contract_matches(tmp_path):
+    p = tmp_path / "t.sv"
+    p.write_text(IMPACT_SRC)
+    _, c = _contract()
+    data = json.loads(_run(["trace", "impact", "top.a", "--file", str(p),
+                            "--json", "--no-cache"]).stdout)
+    cmd = c["commands"]["trace impact"]
+    r = data["result"]
+    assert set(r) == set(cmd["result_fields"])
+    sig = r["signals"][0]
+    assert set(sig) == set(c["impact_signal"])
+    assert set(sig["paths"][0]) == set(c["impact_path"])
+
+
+def test_graph_nodes_contract_matches(tmp_path):
+    p = tmp_path / "t.sv"
+    p.write_text(IMPACT_SRC)
+    _, c = _contract()
+    cmd = c["commands"]["graph nodes"]
+    plain = json.loads(_run(["graph", "nodes", "--match", "top.y", "--file", str(p),
+                             "--json"]).stdout)["result"]
+    assert set(plain) == set(cmd["result_fields"])
+    assert set(plain["nodes"][0]) == set(c["graph_node"])
+    detail = json.loads(_run(["graph", "nodes", "--match", "top.y", "--detail",
+                              "--file", str(p), "--json"]).stdout)["result"]
+    expected = set(c["graph_node"]) | set(c["graph_node_detail"])
+    assert set(detail["nodes"][0]) == expected
+
+
+def test_error_entry_schema():
+    _, c = _contract()
+    assert set(c["error_entry"]) == {"signal", "index", "error", "error_code"}
+    assert "error_entry" in c["top_level"]["errors"]["type"]
