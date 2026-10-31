@@ -11,9 +11,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: 无（P34 完成；等待下一阶段/评审项）
+- **当前 item**: P36.1 trace profile（待做，下一步）
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **P18~P30** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P31** exp 降级 ✅（iter_327）；**P32** evidence 稳定性 ✅（iter_328）；**P33** canonical identity ✅（iter_329）；**P34** verify 一致性/claim ✅（iter_330）
+- **P18~P30** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P31** exp 降级 ✅（iter_327）；**P32** evidence 稳定性 ✅（iter_328）；**P33** ✅；**P34** verify ✅（iter_330）；**P35** include_control unsupported ✅（iter_331）；**P36** profile → 待做
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -208,7 +208,16 @@ graph edges / search / stats / trace evidence / controlflow analyze+list 字段�
 - 三态 verified / contradicted / unknown；
 - 9 个新测试；全量 **2653 passed**。
 
-## 🔜 下一步候选
+## ✅ 刚完成（P35，include_control）
+
+`--include-control` 不再 AttributeError；显式 unsupported + help 标注；
+错误路径保留 resolution；全量 **2655 passed**。
+
+## 🔜 下一步（P36，待做）
+
+trace profile：clock/reset/sequential/source/bit/aliases，作为波形工具关联元数据。
+
+## 后续候选
 
 - `include_control` API 缺口修复（引用不存在的 EdgeKind.CONTROL）
 - trace profile / clock/reset/sequential（波形关联元数据）

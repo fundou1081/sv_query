@@ -1612,6 +1612,14 @@ class SignalTracer:
 
         默认只走 DRIVER + CONNECTION 边. 要看全部边, 用 visualize graph.
         """
+        # [iter_331 / PLAN P35.1] 图构建器当前不产生 CONTROL 边。
+        # 旧实现 allowed_kinds.add(EdgeKind.CONTROL) 会直接 AttributeError；
+        # 按“失败显式”原则报 unsupported，而不是静默忽略或伪造边。
+        if include_control:
+            raise ValueError(
+                "include_control is unsupported: graph builder emits no CONTROL edges; "
+                "use include_conditional / --include-conditional for branch conditions"
+            )
         signal_id = self.make_id(signal, module)
         # [iter_294 / PLAN P6.2] 记录原始位索引：lift/回退到总线后仍按位映射表达式负载
         _orig_bit = self._bit_index_of(signal_id)
@@ -1632,8 +1640,6 @@ class SignalTracer:
             allowed_kinds.add(EdgeKind.CLOCK)
         if include_reset:
             allowed_kinds.add(EdgeKind.RESET)
-        if include_control:
-            allowed_kinds.add(EdgeKind.CONTROL)
         # [FIX 2026-08-21 Plan B Step 2] 包含 conditional branches (?: / case)
         if include_conditional:
             allowed_kinds.update({

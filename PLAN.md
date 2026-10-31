@@ -7,7 +7,7 @@
 >
 > 格式（每行一项，子项用 `-- ` 前缀，id 全局唯一）：
 > ```
-> current item : P34.2 测试与文档 <已完成>
+> current item : P36.1 signal profile（clock/reset/sequential/source/bit/aliases） <待做>
 >
 > P0 建图层与查询层的结构化拆分 <已完成>
 > -- P0.1 图快照基线工具 <待做>
@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P34.2 测试与文档 <已完成>
+current item : P36.1 signal profile（clock/reset/sequential/source/bit/aliases） <待做>
 
 ## 计划树
 
@@ -141,6 +141,17 @@ P33 Grounding P0：canonical signal identity <已完成>
 P34 双向一致性与 claim verification <已完成>
 -- P34.1 fanin/fanout/path/connection/bit 一致性检查 + verify 原语 <已完成>
 -- P34.2 测试与文档 <已完成>
+
+P35 include_control API 修复 <已完成>
+-- P35.1 显式 unsupported + 测试与文档 <已完成>
+
+P36 trace profile（波形关联元数据） <待做>
+-- P36.1 signal profile：clock/reset/sequential/source/bit/aliases <待做>
+-- P36.2 测试与契约 <待做>
+
+P37 evidence 粒度（driver/path） <待做>
+-- P37.1 per-driver/per-path evidence <待做>
+-- P37.2 测试与文档 <待做>
 -- P11.1 聚合宽度/signedness（var/net/port，含嵌套） <已完成>
 -- P11.2 成员宽度/位偏移（p.a → 4 位 + 在 p 中的位段） <已完成>
 -- P11.3 测试与文档：聚合/成员矩阵 + 基线 <已完成>

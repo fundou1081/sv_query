@@ -406,6 +406,7 @@ def fanin(
         total_pre_filter = 0
         truncated_global = False
         for i, sig in enumerate(signals):
+            _res = None
             try:
                 _g = tracer.get_graph()
                 _res = resolve_signal(_g, sig)
@@ -516,10 +517,14 @@ def fanin(
                     "truncated_by_depth": False,
                     "cycles_detected": False,
                     "error": err_data["error"],
-                    "resolved_signal": getattr(sig_err, "resolved", None),
-                    "resolution": getattr(sig_err, "resolution", "internal"),
-                    "candidates": getattr(sig_err, "candidates", []),
-                    "suggestions": getattr(sig_err, "suggestions", []),
+                    "resolved_signal": (getattr(sig_err, "resolved", None)
+                                        or (_res or {}).get("resolved")),
+                    "resolution": (getattr(sig_err, "resolution", None)
+                                   or (_res or {}).get("status", "internal")),
+                    "candidates": (getattr(sig_err, "candidates", None)
+                                   or (_res or {}).get("candidates", [])),
+                    "suggestions": (getattr(sig_err, "suggestions", None)
+                                    or (_res or {}).get("suggestions", [])),
                 })
 
         data = {
@@ -606,7 +611,7 @@ def fanout(
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
     include_clock: bool = typer.Option(False, "--include-clock", help="[Req-12] Include CLOCK edges (sensitivity list)"),
     include_reset: bool = typer.Option(False, "--include-reset", help="[Req-12] Include RESET edges"),
-    include_control: bool = typer.Option(False, "--include-control", help="[Req-12] Include CONTROL edges (always block refs)"),
+    include_control: bool = typer.Option(False, "--include-control", help="[UNSUPPORTED] no CONTROL edges are emitted; returns explicit error (use --include-conditional)"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments"),
     max_results: int | None = typer.Option(None, "--max-results", "-N", help="[C1 2026-06-28 LLM] Cap number of results per signal (None=unlimited). Returns truncated=true if any signal capped."),
     batch_file: str = typer.Option(None, "--batch-file", help="[B1 2026-07-03] Path to file with one signal per line (# comment, blank skipped)."),
@@ -660,6 +665,7 @@ def fanout(
         total_pre_filter = 0
         truncated_global = False
         for i, sig in enumerate(signals):
+            _res = None
             try:
                 _g = tracer.get_graph()
                 _res = resolve_signal(_g, sig)
@@ -766,10 +772,14 @@ def fanout(
                     "truncated_by_depth": False,
                     "cycles_detected": False,
                     "error": err_data["error"],
-                    "resolved_signal": getattr(sig_err, "resolved", None),
-                    "resolution": getattr(sig_err, "resolution", "internal"),
-                    "candidates": getattr(sig_err, "candidates", []),
-                    "suggestions": getattr(sig_err, "suggestions", []),
+                    "resolved_signal": (getattr(sig_err, "resolved", None)
+                                        or (_res or {}).get("resolved")),
+                    "resolution": (getattr(sig_err, "resolution", None)
+                                   or (_res or {}).get("status", "internal")),
+                    "candidates": (getattr(sig_err, "candidates", None)
+                                   or (_res or {}).get("candidates", [])),
+                    "suggestions": (getattr(sig_err, "suggestions", None)
+                                    or (_res or {}).get("suggestions", [])),
                 })
 
         data = {
