@@ -42,6 +42,7 @@ class TestBitPrecisionContract:
         assert "signal.dynamic_index" in markers
         assert "signal.conditions" in markers
         assert "signal.condition_truncated" in markers
+        assert "signal.runtime_system_call" in markers
 
     def test_cli_json_exposes_contract(self):
         r = subprocess.run(["sv_query", "capabilities", "--json"],

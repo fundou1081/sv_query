@@ -301,6 +301,7 @@ BIT_PRECISION = {
         "signal.function_call": "true when the query passes through a function call (result or condition/clock; not inlined) -> precision=unknown",
         "signal.conditions": "edge/path conditions on the queried signal; deeper nodes get multi-path OR with per-path condition_paths",
         "signal.condition_truncated": "true when condition path enumeration hit caps (max 8 paths/depth 20/5000 expansions)",
+        "signal.runtime_system_call": "true when the query passes through a runtime system call ($random/$urandom/...) -> precision=unknown",
     },
     "notes": "precision markers describe granularity, not a proof of bit-exact dependency; "
              "coarse_fallback=true means the answer should be downgraded to bus level.",

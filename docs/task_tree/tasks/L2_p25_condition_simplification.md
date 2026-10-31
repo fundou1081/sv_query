@@ -2,7 +2,7 @@
 
 **Created**: 2026-10-31 GMT+8
 **方豆**: "先只记录，先不做。"
-**状态**: 待做，不进入当前迭代。
+**状态**: 仅记录设计，未登记 PLAN 排期。
 
 详细设计: [condition_analysis_plan_2026-10-31](../../architecture/condition_analysis_plan_2026-10-31.md)
 

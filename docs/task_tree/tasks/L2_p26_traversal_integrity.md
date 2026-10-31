@@ -21,3 +21,10 @@
 ## P26.3
 
 - CLI 测试 + 序列化/缓存测试 + 文档。
+
+
+## 完成记录（2026-10-31）
+
+- P26.1 ✅ iter_321：truncated_by_depth / cycles_detected（capped null）
+- P26.2 ✅ iter_322：$random 等 runtime_system_call=true + unknown；修对象 repr 节点 id
+- P26.3 ✅ 6 新测试；3 golden 重生成；smoke 全 PASS；全量 2609 passed

@@ -10,9 +10,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: P26.2 运行期系统调用标记（进行中）
+- **当前 item**: 无（P26 完成；等待新需求/评审项）
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **P18~P24** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P26.1** 遍历完整性 ✅（iter_321）；**P26.2** 运行期系统函数 → 进行中
+- **P18~P24** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P26.1** 遍历完整性 ✅（iter_321）；**P26.2** 运行期系统函数 ✅（iter_322）
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -159,13 +159,13 @@ depth>1 深层 driver 沿最短路径组合条件 `(c1) && (c2)`，输出 `condi
 枚举上限 8 路径/深度 20/5000 展开，触顶标 `condition_truncated`。
 全量 **2598 passed**。
 
-## 🔥 当前任务（P26.1）
+## ✅ 刚完成（P26，遍历完整性 + 运行期系统函数）
 
-方豆: "先只记录，先不做。回到主线任务"。
-P25（条件化简/互斥）只登记设计文档，不实现；主线回到 P26：
-1) fanin/fanout `truncated_by_depth` + `cycles_detected`（capped 三态）
-2) `$random/$urandom` 等运行期系统调用标记
-3) 测试与文档
+1. **P26.1** ✅ 遍历完整性：`truncated_by_depth`、`cycles_detected`（capped null）。
+2. **P26.2** ✅ 运行期系统调用：`$random/$urandom...` → `runtime_system_call=true` + unknown；
+   修了 `$random` 节点 id 变成对象 repr 的不可复现 bug。
+3. **P26.3** ✅ 6 新测试；3 golden 重生成；真实 smoke 全 PASS；全量 **2609 passed**。
+P25（条件化简/互斥）仍只记录、未排期。
 
 ## 后续候选
 
