@@ -370,115 +370,162 @@ def _edge_condition_text(edge) -> str:
     return (getattr(edge, "effective_condition", "") or "").strip()
 
 
-def _build_condition_paths(graph, root: str, reverse: bool) -> dict:
-    """[iter_319 / PLAN P23.1] 从查询根做一次 BFS，记录最短路径上的边。
+# [iter_320 / PLAN P24.1] 多路径枚举上限：防止组合爆炸
+MAX_PATHS_PER_NODE = 8
+MAX_PATH_DEPTH = 20
+MAX_PATH_EXPANSIONS = 5000
 
-    reverse=True (fanin): root 反向遍历 predecessors；prev[node] = (closer_root, edge)
-    reverse=False (fanout): root 正向遍历 successors；prev[node] = (closer_root, edge)
-    只走 DRIVER/CONNECTION（与默认 fanin/fanout 遍历一致）；BIT_SELECT 跳过。
+
+def _condition_edges(edge) -> bool:
+    return getattr(edge.kind, "name", "") in ("DRIVER", "CONNECTION")
+
+
+def _build_condition_adjacency(graph, reverse: bool) -> dict[str, list[tuple[str, object]]]:
+    """条件路径邻接（node→root DFS）。
+
+    fanin (reverse=True): 沿数据流 node→root → 正向邻接 u→v。
+    fanout: 路径 root→node，从 node 反向走到 root → 反向邻接 v→(u,edge)。
     """
-    from collections import deque
-
-    allowed = {"DRIVER", "CONNECTION"}
-    prev: dict[str, tuple[str, object]] = {}
-    seen = {root}
-    queue = deque([root])
-    while queue:
-        cur = queue.popleft()
-        neighbors = (graph.predecessors(cur) if reverse
-                     else graph.successors(cur))
-        for other in neighbors:
-            if other in seen:
+    adj: dict[str, list[tuple[str, object]]] = {}
+    for src, dst in graph.edges():
+        for edge in graph.get_edges(src, dst):
+            if not _condition_edges(edge):
                 continue
-            edges = (graph.get_edges(other, cur) if reverse
-                     else graph.get_edges(cur, other))
-            edge = next((e for e in edges
-                         if getattr(e.kind, "name", "") in allowed), None)
-            if edge is None:
+            if reverse:
+                adj.setdefault(src, []).append((dst, edge))
+            else:
+                adj.setdefault(dst, []).append((src, edge))
+    return adj
+
+
+def _find_paths(node: str, root: str, back_adj: dict) -> tuple[list[list], bool]:
+    """枚举 node→root 的简单路径（最多 MAX_PATHS_PER_NODE 条）。
+
+    返回 (paths, truncated)。truncated=True 表示命中路径数/深度/展开预算上限。
+    """
+    paths: list[list] = []
+    truncated = False
+    expansions = 0
+    visited = {node}
+    edges: list = []
+
+    def dfs(cur: str) -> None:
+        nonlocal truncated, expansions
+        if len(paths) >= MAX_PATHS_PER_NODE or expansions >= MAX_PATH_EXPANSIONS:
+            truncated = True
+            return
+        if cur == root:
+            paths.append(list(edges))
+            return
+        if len(edges) >= MAX_PATH_DEPTH:
+            truncated = True
+            return
+        for parent, edge in back_adj.get(cur, ()):  # type: ignore[arg-type]
+            if parent in visited:
                 continue
-            seen.add(other)
-            prev[other] = (cur, edge)
-            queue.append(other)
-    return prev
+            expansions += 1
+            if expansions > MAX_PATH_EXPANSIONS:
+                truncated = True
+                return
+            visited.add(parent)
+            edges.append(edge)
+            dfs(parent)
+            edges.pop()
+            visited.remove(parent)
+            if len(paths) >= MAX_PATHS_PER_NODE:
+                truncated = True
+                return
+
+    dfs(node)
+    return paths, truncated
 
 
-def _compose_path_condition(prev: dict, node: str, root: str,
-                            reverse: bool) -> tuple[str, list[str]]:
-    """沿 BFS 最短路径组合条件：raw 列表 + `(c1) && (c2)` 文本。"""
-    if node == root:
-        return "", []
-    conds: list[str] = []
-    cur = node
-    while cur != root:
-        item = prev.get(cur)
-        if item is None:
-            return "", []
-        parent, edge = item
-        text = _edge_condition_text(edge)
-        if text:
-            conds.append(text)
-        cur = parent
-    ordered = conds if reverse else list(reversed(conds))
-    if not ordered:
-        return "", []
-    combined = " && ".join(f"({c})" if len(ordered) > 1 else c for c in ordered)
-    return combined, ordered
+def _path_condition(path: list, reverse: bool) -> tuple[str, list[str]]:
+    """一条路径的条件：path 是 node→root 的边序列；fanout 反向成 root→node。"""
+    ordered = path if reverse else list(reversed(path))
+    parts = [c for c in (_edge_condition_text(e) for e in ordered) if c]
+    combined = " && ".join(f"({c})" if len(parts) > 1 else c for c in parts)
+    return combined, parts
+
+
+def _or_conditions(conds: list[str]) -> str:
+    """条件 OR；为空表示无条件。调用方需先处理空条件路径。"""
+    if not conds:
+        return ""
+    if len(conds) == 1:
+        return conds[0]
+    return " || ".join(f"({c})" for c in conds)
+
+
+def _direct_paths(graph, nid: str, eps: list[str], reverse: bool) -> list[dict]:
+    """直接边条件（depth=1 / 路径枚举失败时的回退）。"""
+    paths: list[dict] = []
+    if nid not in graph:
+        return paths
+    for ep in eps:
+        if ep not in graph:
+            continue
+        src, dst = (nid, ep) if reverse else (ep, nid)
+        for edge in graph.get_edges(src, dst):
+            if getattr(edge.kind, "name", "") == "BIT_SELECT":
+                continue
+            text = _edge_condition_text(edge)
+            paths.append({"condition": text, "path": [text] if text else []})
+    return paths
+
+
+def _apply_paths(item: dict, path_infos: list[dict], truncated: bool) -> list[str]:
+    """把路径结果写进 item；返回其中非空条件（供 signal 级汇总）。"""
+    conds = [x["condition"] for x in path_infos if x["condition"]]
+    uncond = any(not x["condition"] for x in path_infos)
+    item["condition_paths"] = path_infos
+    item["conditions"] = conds
+    item["condition_path"] = path_infos[0]["path"] if path_infos else []
+    item["condition_unconditional"] = uncond
+    item["condition"] = "" if uncond else _or_conditions(conds)
+    item["condition_truncated"] = truncated
+    return conds
 
 
 def attach_edge_conditions(graph, items: list[dict], endpoints: list[str | None],
-                           reverse: bool) -> list[str]:
-    """给 fanin/fanout 结果补条件，返回 signal 级条件并集。
+                           reverse: bool, depth: int | None = None) -> list[str]:
+    """给 fanin/fanout 结果补条件（直接边 + 多路径 OR）。
 
-    - 直接边：node.condition = `" | "` 连接；node.conditions = 原列表
-    - 无直接边（depth>1 深层节点）：沿**最短路径**组合条件
-      node.condition = `(c1) && (c2)`；node.conditions = [combined]；
-      node.condition_path = 原始条件序列（数据流方向）
-    - 无条件的普通连接仍输出空字段（契约稳定）
+    每节点输出：
+      - condition: 直接边 OR / 多路径 OR（`(p1) || (p2)`）；无条件路径 -> ""
+      - conditions: 保留原本多条件（直接边原列表 / 每路径组合）
+      - condition_paths: [{condition, path:[原始条件...]}, ...]
+      - condition_path: 第一条路径的原始条件（兼容 P23）
+      - condition_unconditional: 是否存在无条件路径
+      - condition_truncated: 路径枚举是否触顶
+    depth=1 只取直接边；depth=None/递归才枚举多路径。
     """
     if graph is None:
         return []
-    eps = [e for e in endpoints if e]
-    # 位查询节点可能不存在（attach_distances guarded 场景）；条件端点必须真实存在
+    # sig 与 _root 可能是同一节点：去重，避免同一条边被算两次
+    eps = list(dict.fromkeys(e for e in endpoints if e))
     root = next((e for e in eps if e in graph), None)
     all_conditions: list[str] = []
-    need_paths: list[dict] = []
+    adj = None
+    if depth != 1:
+        adj = _build_condition_adjacency(graph, reverse)
 
     for item in items:
         nid = item.get("id")
-        conds: list[str] = []
-        direct_found = False
-        if nid:
-            for ep in eps:
-                src, dst = (nid, ep) if reverse else (ep, nid)
-                if nid not in graph or ep not in graph:
-                    continue
-                edges = graph.get_edges(src, dst)
-                if edges:
-                    direct_found = True
-                for edge in edges:
-                    if getattr(edge.kind, "name", "") == "BIT_SELECT":
-                        continue
-                    text = _edge_condition_text(edge)
-                    if text and text not in conds:
-                        conds.append(text)
-        item["condition"] = " | ".join(conds)
-        item["conditions"] = conds
-        item["condition_path"] = list(conds)
-        for c in conds:
+        path_infos: list[dict] = []
+        truncated = False
+        if nid and nid != root and root and adj is not None:
+            paths, truncated = _find_paths(nid, root, adj)
+            for path in paths:
+                text, raw = _path_condition(path, reverse)
+                path_infos.append({"condition": text, "path": raw})
+        if not path_infos:
+            # depth=1，或位提升等图上无完整路径：回退直接边（不猜测路径）
+            path_infos = _direct_paths(graph, nid, eps, reverse)
+            truncated = False
+        for c in _apply_paths(item, path_infos, truncated):
             if c not in all_conditions:
                 all_conditions.append(c)
-        if not direct_found and nid and root and nid != root:
-            need_paths.append(item)
-
-    if need_paths and root:
-        prev = _build_condition_paths(graph, root, reverse)
-        for item in need_paths:
-            combined, raw = _compose_path_condition(prev, item["id"], root, reverse)
-            item["condition"] = combined
-            item["conditions"] = [combined] if combined else []
-            item["condition_path"] = raw
-            if combined and combined not in all_conditions:
-                all_conditions.append(combined)
 
     return all_conditions
 
@@ -518,6 +565,9 @@ def _node_to_dict(node) -> dict:
         "condition": "",
         "conditions": [],
         "condition_path": [],
+        "condition_paths": [],
+        "condition_unconditional": False,
+        "condition_truncated": False,
     }
 
 

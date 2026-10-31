@@ -398,7 +398,8 @@ def fanin(
                 _root = resolve_node_id(_g, sig)
                 driver_count, multi_driver, conditional_drivers = driver_stats(_g, _root)
                 _root_node = _g.get_node(_root) if _root else None
-                _conditions = attach_edge_conditions(_g, drivers, [sig, _root], reverse=True)
+                _conditions = attach_edge_conditions(_g, drivers, [sig, _root], reverse=True, depth=depth)
+                _condition_truncated = any(d.get("condition_truncated") for d in drivers)
                 _dynamic = (node_is_dynamic(_root_node)
                             or any(d.get("dynamic_index") for d in drivers))
                 _function = (node_is_function_call(_root_node)
@@ -436,6 +437,7 @@ def fanin(
                     "dynamic_index": _dynamic,
                     "function_call": _function,
                     "conditions": _conditions,
+                    "condition_truncated": _condition_truncated,
                 })
                 total_count += len(drivers)
                 total_pre_filter += drivers_pre
@@ -467,6 +469,7 @@ def fanin(
                     "dynamic_index": False,
                     "function_call": False,
                     "conditions": [],
+                    "condition_truncated": False,
                 })
 
         data = {
@@ -625,7 +628,8 @@ def fanout(
                 _g = tracer.get_graph()
                 _root = resolve_node_id(_g, sig)
                 _root_node = _g.get_node(_root) if _root else None
-                _conditions = attach_edge_conditions(_g, loads, [sig, _root], reverse=False)
+                _conditions = attach_edge_conditions(_g, loads, [sig, _root], reverse=False, depth=depth)
+                _condition_truncated = any(x.get("condition_truncated") for x in loads)
                 _dynamic = (node_is_dynamic(_root_node)
                             or any(x.get("dynamic_index") for x in loads))
                 _function = (node_is_function_call(_root_node)
@@ -659,6 +663,7 @@ def fanout(
                     "dynamic_index": _dynamic,
                     "function_call": _function,
                     "conditions": _conditions,
+                    "condition_truncated": _condition_truncated,
                 })
                 total_count += len(loads)
                 total_pre_filter += loads_pre
@@ -686,6 +691,7 @@ def fanout(
                     "dynamic_index": False,
                     "function_call": False,
                     "conditions": [],
+                    "condition_truncated": False,
                 })
 
         data = {

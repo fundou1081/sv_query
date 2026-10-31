@@ -24,6 +24,7 @@
     "signals": [
       {
         "coarse_fallback": false,
+        "condition_truncated": false,
         "conditional_drivers": false,
         "conditions": [
           "!(!rst_ni) && pop_i && !empty_o"
@@ -37,6 +38,16 @@
             "condition_path": [
               "!(!rst_ni) && pop_i && !empty_o"
             ],
+            "condition_paths": [
+              {
+                "condition": "!(!rst_ni) && pop_i && !empty_o",
+                "path": [
+                  "!(!rst_ni) && pop_i && !empty_o"
+                ]
+              }
+            ],
+            "condition_truncated": false,
+            "condition_unconditional": false,
             "conditions": [
               "!(!rst_ni) && pop_i && !empty_o"
             ],
@@ -65,6 +76,7 @@
       },
       {
         "coarse_fallback": false,
+        "condition_truncated": false,
         "conditional_drivers": true,
         "conditions": [
           "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b1",
@@ -76,11 +88,26 @@
         "drivers": [
           {
             "bit_range": null,
-            "condition": "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b1 | !(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b10",
+            "condition": "(!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b1) || (!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b10)",
             "condition_path": [
-              "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b1",
-              "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b10"
+              "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b1"
             ],
+            "condition_paths": [
+              {
+                "condition": "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b1",
+                "path": [
+                  "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b1"
+                ]
+              },
+              {
+                "condition": "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b10",
+                "path": [
+                  "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b10"
+                ]
+              }
+            ],
+            "condition_truncated": false,
+            "condition_unconditional": false,
             "conditions": [
               "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b1",
               "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b10"
@@ -104,6 +131,16 @@
             "condition_path": [
               "!rst_ni"
             ],
+            "condition_paths": [
+              {
+                "condition": "!rst_ni",
+                "path": [
+                  "!rst_ni"
+                ]
+              }
+            ],
+            "condition_truncated": false,
+            "condition_unconditional": false,
             "conditions": [
               "!rst_ni"
             ],
