@@ -93,7 +93,7 @@ def test_p1_fanin_single_signal(validator, schema):
 
 def test_p2_fanin_batch(validator, schema):
     """P2: trace fanin batch JSON matches schema."""
-    data = _run("fanin", "--batch", "uart_top.rx_data_o,sync_fifo.count_q",
+    data = _run("fanin", "--batch", "uart_top.rx_data_o,uart_top.rx_fifo.count_q",
                 "--filelist", STRICT_UART_FILELIST, "--json")
     _validate_result("trace_fanin", data, schema, validator)
     assert data["result"]["total_signals"] == 2
@@ -114,7 +114,7 @@ def test_p3_fanin_with_filter(validator, schema):
 
 def test_p4_fanout_single_signal(validator, schema):
     """P4: trace fanout 1-signal JSON matches schema."""
-    data = _run("fanout", "sync_fifo.count_q",
+    data = _run("fanout", "uart_top.rx_fifo.count_q",
                 "--filelist", STRICT_UART_FILELIST, "--json")
     _validate_result("trace_fanout", data, schema, validator)
     print("✅ P4 fanout single: schema valid")
@@ -122,7 +122,7 @@ def test_p4_fanout_single_signal(validator, schema):
 
 def test_p5_fanout_with_include_clock(validator, schema):
     """P5: trace fanout + --include-clock 保持 schema valid."""
-    data = _run("fanout", "uart_top.clk",
+    data = _run("fanout", "uart_top.clk_i",
                 "--filelist", STRICT_UART_FILELIST,
                 "--include-clock", "--json")
     _validate_result("trace_fanout", data, schema, validator)
@@ -139,7 +139,7 @@ def test_p6_impact_single_signal(validator, schema):
 
 def test_p7_impact_batch(validator, schema):
     """P7: trace impact batch JSON matches schema."""
-    data = _run("impact", "--batch", "uart_top.rx_data_o,sync_fifo.count_q",
+    data = _run("impact", "--batch", "uart_top.rx_data_o,uart_top.rx_fifo.count_q",
                 "--filelist", STRICT_UART_FILELIST, "--json")
     _validate_result("trace_impact", data, schema, validator)
     assert data["result"]["total_signals"] == 2
@@ -148,7 +148,7 @@ def test_p7_impact_batch(validator, schema):
 
 def test_p8_evidence_single_signal(validator, schema):
     """P8: trace evidence 1-signal JSON matches schema."""
-    data = _run("evidence", "sync_fifo.count_q",
+    data = _run("evidence", "uart_top.rx_fifo.count_q",
                 "--filelist", STRICT_UART_FILELIST, "--json")
     _validate_result("trace_evidence", data, schema, validator)
     print("✅ P8 evidence single: schema valid")
@@ -156,7 +156,7 @@ def test_p8_evidence_single_signal(validator, schema):
 
 def test_p9_evidence_with_chain(validator, schema):
     """P9: trace evidence --chain (returns array instead of object) 保持 schema valid."""
-    data = _run("evidence", "sync_fifo.count_q",
+    data = _run("evidence", "uart_top.rx_fifo.count_q",
                 "--filelist", STRICT_UART_FILELIST, "--chain", "--json")
     _validate_result("trace_evidence", data, schema, validator)
     # evidence 应该是 array

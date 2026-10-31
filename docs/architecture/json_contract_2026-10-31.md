@@ -237,3 +237,32 @@ member：`id/name/kind/module/width`；instance：`id/name/kind/module/width`。
 
 通用错误形态：`ok/error/hint` + 命令特有 `path`/`target`/`resolved_as`；
 消费方应先用 `ok` 判断，不能假定所有 direct 命令都有统一 errors 数组。
+
+---
+
+## P33 扩展：canonical signal identity（2026-10-31）
+
+### trace signal 新增字段
+
+| 字段 | 类型 | 语义 |
+|---|---|---|
+| `resolved_signal` | `string|null` | 解析后的图节点 id |
+| `resolution` | `exact|relative|bit_base_fallback|not_found|ambiguous|internal` | 解析方式 |
+| `candidates` | `array<string>` | ambiguous 时的候选 |
+| `suggestions` | `array<string>` | not_found 时的近似名 |
+| `error` | `string` | per-signal 错误（成功为空串） |
+
+适用：`trace fanin` / `trace fanout` / `trace impact` / `trace evidence`。
+
+### 语义
+
+- **exact**：完整 id 命中。
+- **relative**：唯一后缀命中（`u.a` → `top.u.a`）。
+- **bit_base_fallback**：`y[3]` 位节点不存在但父总线存在；`resolved_signal`
+  仍是完整位 id，查询保留原回退语义。
+- **ambiguous**：多个候选 → `ok=false`，`errors[].error_code=E_SIGNAL_AMBIGUOUS`，
+  `candidates[]` 给出候选。
+- **not_found**：无候选 → `ok=false`，`errors[].error_code=E_SIGNAL_NOT_FOUND`，
+  不再返回 `ok=true + drivers=[]`。
+
+> 这是 grounding P0 的第一步：空结果不再等价于“信号不存在”。

@@ -11,9 +11,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: 无（P31/P32 完成；等待新需求/评审项）
+- **当前 item**: P34.1 双向一致性/claim verify（待做，下一步）
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **P18~P30** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P31** exp 降级 ✅（iter_327）；**P32** evidence 稳定性 ✅（iter_328）
+- **P18~P30** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P31** exp 降级 ✅（iter_327）；**P32** evidence 稳定性 ✅（iter_328）；**P33** canonical identity ✅（iter_329）；**P34** 双向/claim verify → 待做
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -193,6 +193,17 @@ graph edges / search / stats / trace evidence / controlflow analyze+list 字段�
    source_location 行号修正；无 driver 端口保持空证据。
 
 全量 **2635 passed**；默认 core 23 命令。
+
+## ✅ 刚完成（P33，canonical identity）
+
+- exact / relative / bit_base_fallback / not_found / ambiguous；
+- fanin/fanout/impact/evidence 统一 `resolved_signal/resolution/candidates/suggestions`；
+- 未知信号 `E_SIGNAL_NOT_FOUND`，歧义 `E_SIGNAL_AMBIGUOUS`；
+- 7 个新测试；全量 **2642 passed**。
+
+## 🔜 下一步（P34，待做）
+
+双向一致性 + claim verification：fanin/fanout、path、connection、bit mapping；
 
 ## 后续候选
 

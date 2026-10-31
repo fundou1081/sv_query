@@ -22,6 +22,7 @@
     "failed_signals": 0,
     "signals": [
       {
+        "candidates": [],
         "coarse_fallback": false,
         "condition_truncated": false,
         "conditional_drivers": true,
@@ -76,13 +77,17 @@
           }
         ],
         "dynamic_index": false,
+        "error": "",
         "function_call": false,
         "index": 0,
         "multi_driver": false,
         "pre_filter_count": 2,
         "precision": "bus",
+        "resolution": "exact",
+        "resolved_signal": "uart_top.rx_fifo.count_q",
         "runtime_system_call": false,
         "signal": "uart_top.rx_fifo.count_q",
+        "suggestions": [],
         "truncated": false,
         "truncated_by_depth": false
       }

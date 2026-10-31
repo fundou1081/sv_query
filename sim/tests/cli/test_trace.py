@@ -133,7 +133,8 @@ endmodule
         try:
             result = self._run_svq(["trace", "fanin", "top.nonexistent", "--file", path])
             self.assertEqual(result.returncode, 0)
-            self.assertIn("(no drivers)", result.stdout)
+            self.assertIn("not found", result.stdout)
+            self.assertNotIn("(no drivers)", result.stdout)
         finally:
             os.unlink(path)
 

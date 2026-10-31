@@ -119,7 +119,7 @@ def test_f6_format_json_is_structured(mode):
     """
     if not ADV.exists():
         pytest.skip(f"fixture 缺失: {ADV}")
-    r = _run(["trace", mode, "macro_top.a_q_q", "-f", str(ADV), "--format", "json"])
+    r = _run(["trace", mode, "macro_top.a_q", "-f", str(ADV), "--format", "json"])
     assert r.returncode == 0, r.stderr[-300:]
     payload = _json_or_none(r.stdout)
     assert payload is not None, f"--format json 必须是 JSON: {r.stdout[:200]!r}"
@@ -131,8 +131,8 @@ def test_f6_format_json_matches_json_flag():
     """F6: `--format json` 与 `--json` 必须给出同一结构 (单一实现)。"""
     if not ADV.exists():
         pytest.skip(f"fixture 缺失: {ADV}")
-    a = _run(["trace", "fanin", "macro_top.a_q_q", "-f", str(ADV), "--format", "json"])
-    b = _run(["trace", "fanin", "macro_top.a_q_q", "-f", str(ADV), "--json"])
+    a = _run(["trace", "fanin", "macro_top.a_q", "-f", str(ADV), "--format", "json"])
+    b = _run(["trace", "fanin", "macro_top.a_q", "-f", str(ADV), "--json"])
     pa, pb = _json_or_none(a.stdout), _json_or_none(b.stdout)
     assert pa and pb
     assert set(pa.keys()) == set(pb.keys()), (sorted(pa), sorted(pb))
