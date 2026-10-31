@@ -185,3 +185,55 @@ fanout 额外：`loads[]`。
 > 这组再次确认 envelope 并非所有 core 命令统一：
 > `search` 是 direct output；`trace evidence`/`controlflow list-conditioned`
 > 有额外的 top-level 字段。契约用 `envelope`/`optional_top_level` 显式标注。
+
+---
+
+## P30 扩展：结构/元数据（2026-10-31）
+
+这组命令继续使用 **direct output**（无 `ok/command/params/result` 统一外壳，部分有 `ok`），
+契约用 `envelope: "direct"` 标注；成功/错误形态分别登记。
+
+### instances
+
+- 成功：`ok/count/module/instances[]`；item `full_path/name/module_type/parent`
+- 错误：`ok/error/path/hint`（见 `direct_error`）
+
+### hierarchy
+
+- `ok/root_count/instance_count/tree_node_count/root/depth/tree[]`
+- node：`full_path/module_type/children[]/synthetic`
+
+### ports
+
+- `ok/module/count/by_direction/ports[]`
+- port：`port/id/direction/width/in_edges/out_edges`
+- `module` 实际是**实例路径**（`top.u`），不是模块类型名
+
+### params
+
+- `ok/instance/module_type/count/parameters[]`
+- param：`name/value/is_overridden/is_local_param`
+- 错误：`ok/error/path/hint`
+
+### connections
+
+- `ok/resolved_as/instance/module_type/parent/port_count/ports[]`
+- port：`port/direction/width/internal_signal`
+- 只接受**实例路径**；错误含 `resolved_as`
+
+### class
+
+三种模式共用 `class_result` 的字段并集：
+
+| 模式 | 字段 |
+|---|---|
+| 无类名 | `ok/count/classes[]` |
+| 类详情 | `ok/class/member_count/members[]/instance_count/instances[]` |
+| `--member` | `ok/class/member/count/instances[]/note` |
+
+member：`id/name/kind/module/width`；instance：`id/name/kind/module/width`。
+
+### direct_error
+
+通用错误形态：`ok/error/hint` + 命令特有 `path`/`target`/`resolved_as`；
+消费方应先用 `ok` 判断，不能假定所有 direct 命令都有统一 errors 数组。

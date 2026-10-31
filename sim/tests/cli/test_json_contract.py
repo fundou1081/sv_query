@@ -224,3 +224,78 @@ def test_controlflow_list_contract():
     cmd = c["commands"]["controlflow list-conditioned"]
     assert set(data) == set(c["top_level"]) | set(cmd["optional_top_level"])
     assert set(data["result"]) == set(cmd["result_fields"])
+
+
+STRUCT = str(PROJECT_ROOT / "sim" / "tests" / "fixtures" / "json_contract" / "struct.sv")
+CLASS_FIX = str(PROJECT_ROOT / "sim" / "tests" / "fixtures" / "golden_mini" /
+                "golden_dataflow_35_class_oop.sv")
+
+
+def test_instances_contract():
+    _, c = _contract()
+    data = json.loads(_run(["instances", "-f", STRUCT, "--json"]).stdout)
+    cmd = c["commands"]["instances"]
+    assert set(data) == set(c["instances_result"])
+    assert set(data["instances"][0]) == set(c["instance_item"])
+    err = json.loads(_run(["instances", "top", "-f", STRUCT, "--json"]).stdout)
+    assert set(err) <= set(c["direct_error"])
+
+
+def test_hierarchy_contract():
+    _, c = _contract()
+    data = json.loads(_run(["hierarchy", "-f", STRUCT, "--json"]).stdout)
+    cmd = c["commands"]["hierarchy"]
+    assert set(data) == set(c["hierarchy_result"])
+    assert set(data["tree"][0]) == set(c["hierarchy_node"])
+
+
+def test_ports_contract():
+    _, c = _contract()
+    data = json.loads(_run(["ports", "top.u", "-f", STRUCT, "--json"]).stdout)
+    cmd = c["commands"]["ports"]
+    assert set(data) == set(c["ports_result"])
+    assert set(data["ports"][0]) == set(c["port_item"])
+
+
+def test_params_contract():
+    _, c = _contract()
+    data = json.loads(_run(["params", "top.u", "-f", STRUCT, "--json"]).stdout)
+    cmd = c["commands"]["params"]
+    assert set(data) == set(c["params_result"])
+    assert set(data["parameters"][0]) == set(c["param_item"])
+
+
+def test_connections_contract():
+    _, c = _contract()
+    data = json.loads(_run(["connections", "top.u", "-f", STRUCT, "--json"]).stdout)
+    cmd = c["commands"]["connections"]
+    assert set(data) == set(c["connections_result"])
+    assert set(data["ports"][0]) == set(c["connection_port"])
+
+
+def test_class_contract_modes():
+    _, c = _contract()
+    cmd = c["commands"]["class"]
+    names = json.loads(_run(["class", "-f", CLASS_FIX, "--json"]).stdout)
+    assert set(names) == {"ok", "count", "classes"}
+    assert set(names) <= set(c["class_result"])
+
+    detail = json.loads(_run(["class", "packet", "-f", CLASS_FIX, "--json"]).stdout)
+    assert set(detail) == {"ok", "class", "member_count", "members",
+                           "instance_count", "instances"}
+    assert set(detail) <= set(c["class_result"])
+    assert set(detail["members"][0]) == set(c["class_member"])
+    assert set(detail["instances"][0]) == set(c["class_instance"])
+
+    member = json.loads(_run(["class", "packet", "--member", "data",
+                              "-f", CLASS_FIX, "--json"]).stdout)
+    assert set(member) <= set(c["class_result"])
+    assert member["member"] == "data"
+
+
+def test_structure_error_shapes():
+    _, c = _contract()
+    bad_conn = json.loads(_run(["connections", "top.u.a", "-f", STRUCT,
+                                "--json"]).stdout)
+    assert set(bad_conn) <= set(c["direct_error"])
+    assert bad_conn["ok"] is False
