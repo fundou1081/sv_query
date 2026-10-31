@@ -10,7 +10,7 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: 无（P27 完成；等待新需求/评审项）
+- **当前 item**: 无（P28 完成；等待新需求/评审项）
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
 - **P18~P24** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P26.1** 遍历完整性 ✅（iter_321）；**P26.2** 运行期系统函数 ✅（iter_322）
   → P13.6（多驱动/静态 memory）
@@ -172,6 +172,11 @@ P25（条件化简/互斥）仍只记录、未排期。
 `capabilities --json` 新增 `json_contract`：envelope + trace signal/node 字段类型/含义、
 v1 版本策略、精度枚举、条件路径结构、null 语义。新增契约测试锁住“真实输出 == 契约字段”。
 全量 **2613 passed**。
+
+## ✅ 刚完成（P28，JSON 契约扩展）
+
+`capabilities.json_contract` 新增 paths / dataflow / impact / graph nodes / error_entry
+字段契约；契约测试 9 个，用真实 CLI JSON 校验。全量 **2618 passed**。
 
 ## 后续候选
 
