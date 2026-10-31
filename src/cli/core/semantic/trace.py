@@ -1297,7 +1297,9 @@ trace_app.command("fanout")(fanout)
 from cli.core.semantic.trace_evidence import evidence, _output_evidence_text  # noqa: E402
 from cli.core.semantic.trace_overview import overview, _output_overview_text  # noqa: E402
 from cli.core.semantic.trace_profile import profile  # noqa: E402
+from cli.core.semantic.trace_lookup import lookup  # noqa: E402
 
 trace_app.command("evidence")(evidence)
 trace_app.command("overview", hidden=True)(overview)
 trace_app.command("profile")(profile)
+trace_app.command("lookup")(lookup)
