@@ -7,7 +7,7 @@
 >
 > 格式（每行一项，子项用 `-- ` 前缀，id 全局唯一）：
 > ```
-> current item : P28.2 测试与文档 <已完成>
+> current item : P29.2 测试与文档 <已完成>
 >
 > P0 建图层与查询层的结构化拆分 <已完成>
 > -- P0.1 图快照基线工具 <待做>
@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P28.2 测试与文档 <已完成>
+current item : P29.2 测试与文档 <已完成>
 
 ## 计划树
 
@@ -117,6 +117,10 @@ P27 Agent JSON 契约 <已完成>
 P28 JSON 契约扩展 <已完成>
 -- P28.1 paths/dataflow/impact/graph nodes/error_entry 契约 <已完成>
 -- P28.2 测试与文档 <已完成>
+
+P29 JSON 契约扩展（locate/evidence/controlflow） <已完成>
+-- P29.1 graph edges/search/stats/trace evidence/controlflow analyze+list 契约 <已完成>
+-- P29.2 测试与文档 <已完成>
 -- P11.1 聚合宽度/signedness（var/net/port，含嵌套） <已完成>
 -- P11.2 成员宽度/位偏移（p.a → 4 位 + 在 p 中的位段） <已完成>
 -- P11.3 测试与文档：聚合/成员矩阵 + 基线 <已完成>
