@@ -91,6 +91,7 @@ class TestTraceConditions:
         assert s["conditions"] == []
         assert s["drivers"][0]["condition"] == ""
         assert s["drivers"][0]["conditions"] == []
+        assert s["condition_truncated"] is False
 
 
 PATH_CHAIN = """
@@ -123,3 +124,62 @@ class TestPathConditionComposition:
         d = next(d for d in s["drivers"] if d["id"] == "top.d")
         assert d["condition"] == "!(c2)"
         assert d["conditions"] == ["!(c2)"]
+
+
+MULTIPATH = """
+module top(input c1,c2,c3, input [7:0] a,b,d, output [7:0] y);
+  reg [7:0] t;
+  always_comb if (c1) t = a; else t = b;
+  assign y = c2 ? t : (c3 ? a : d);
+endmodule
+"""
+
+DIRECT_MULTI = """
+module top(input c1, input [7:0] a,b, output [7:0] y);
+  assign y = a;
+  assign y = c1 ? a : b;
+endmodule
+"""
+
+
+class TestMultiPathOr:
+    """[iter_320 / PLAN P24.1] 多路径条件 OR，保留每路径原始条件。"""
+
+    def test_fanin_multi_path_or(self, tmp_path):
+        s = _run("fanin", "top.y", MULTIPATH, tmp_path)
+        a = next(d for d in s["drivers"] if d["id"] == "top.a")
+        # 两条路径：直接分支 + 经 t
+        assert len(a["condition_paths"]) == 2
+        assert len(a["conditions"]) == 2
+        assert "||" in a["condition"]
+        assert "!(c2) && c3" in a["condition"]
+        assert "(c1) && (c2)" in a["condition"]
+        raw_paths = [set(p["path"]) for p in a["condition_paths"]]
+        assert {"!(c2) && c3"} in raw_paths
+        assert {"c1", "c2"} in raw_paths
+
+    def test_fanout_multi_path_or(self, tmp_path):
+        s = _run("fanout", "top.a", MULTIPATH, tmp_path)
+        y = next(d for d in s["loads"] if d["id"] == "top.y")
+        assert len(y["condition_paths"]) == 2
+        assert "||" in y["condition"]
+
+    def test_depth1_does_not_compose(self, tmp_path):
+        p = tmp_path / "t.sv"
+        p.write_text(MULTIPATH)
+        r = subprocess.run(
+            ["sv_query", "trace", "fanin", "top.y", "--depth", "1",
+             "--file", str(p), "--json", "--no-cache"],
+            capture_output=True, text=True, timeout=60, cwd=str(PROJECT_ROOT),
+        )
+        s = json.loads(r.stdout)["result"]["signals"][0]
+        a = next(d for d in s["drivers"] if d["id"] == "top.a")
+        assert a["condition"] == "!(c2) && c3"
+        assert len(a["condition_paths"]) == 1
+
+    def test_unconditional_path_wins(self, tmp_path):
+        s = _run("fanin", "top.y", DIRECT_MULTI, tmp_path)
+        a = next(d for d in s["drivers"] if d["id"] == "top.a")
+        assert a["condition"] == ""
+        assert a["condition_unconditional"] is True
+        assert "c1" in a["conditions"]

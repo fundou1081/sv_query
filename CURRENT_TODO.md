@@ -10,9 +10,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: 无（P23 完成；等待新需求/评审项）
+- **当前 item**: 无（P24 完成；等待新需求/评审项）
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **P18** ✅ P19 ✅ P20 ✅；P21 ✅ P22 ✅；**P23** 路径条件组合 ✅（iter_319）
+- **P18** ✅ P19 ✅ P20 ✅；P21 ✅ P22 ✅；P23 ✅（iter_319）；**P24** 多路径条件 OR ✅（iter_320）
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -151,6 +151,13 @@ depth>1 深层 driver 沿最短路径组合条件 `(c1) && (c2)`，输出 `condi
 `NetworkXError`（smoke 发现）。全量 **2594 passed**。
 
 > 边界：只走最短路径，不枚举多路径 OR；无图路径的位节点条件可能为空。
+
+## ✅ 刚完成（P24，多路径条件 OR）
+
+同一 driver 多条路径：`condition=(p1) || (p2)`；`conditions` 保留每路径组合，
+`condition_paths` 保留每路径原始序列；无条件路径优先为 `condition=""`；
+枚举上限 8 路径/深度 20/5000 展开，触顶标 `condition_truncated`。
+全量 **2598 passed**。
 
 ## 后续候选
 
