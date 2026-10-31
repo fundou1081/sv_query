@@ -161,3 +161,66 @@ def test_error_entry_schema():
     _, c = _contract()
     assert set(c["error_entry"]) == {"signal", "index", "error", "error_code"}
     assert "error_entry" in c["top_level"]["errors"]["type"]
+
+
+FIFO = str(PROJECT_ROOT / "sim" / "tests" / "integration" / "dataflow_fixtures" / "sync_fifo.sv")
+
+
+def test_graph_edges_contract():
+    _, c = _contract()
+    data = json.loads(_run(["graph", "edges", "-f", FIFO, "--json"]).stdout)
+    cmd = c["commands"]["graph edges"]
+    assert set(data) == set(c["top_level"])
+    assert set(data["result"]) == set(cmd["result_fields"])
+    assert set(data["result"]["edges"][0]) == set(c["graph_edge"])
+
+
+def test_search_contract():
+    _, c = _contract()
+    data = json.loads(_run(["search", "rd_en", "-f", FIFO, "--json"]).stdout)
+    assert set(data) == set(c["search_result"])
+    assert set(data["files"][0]) == set(c["search_file"])
+    assert set(data["files"][0]["lines"][0]) == set(c["search_line"])
+
+
+def test_stats_contract():
+    _, c = _contract()
+    data = json.loads(_run(["stats", "-f", FIFO, "--json"]).stdout)
+    assert set(data) == set(c["top_level"])
+    assert set(data["result"]) == set(c["commands"]["stats"]["result_fields"])
+
+
+def test_evidence_contract():
+    _, c = _contract()
+    data = json.loads(_run(["trace", "evidence", "sync_fifo.reg_stage1",
+                            "-f", FIFO, "--json"]).stdout)
+    cmd = c["commands"]["trace evidence"]
+    assert set(data) == set(c["top_level"]) | set(cmd["optional_top_level"])
+    assert set(data["result"]) == set(cmd["result_fields"])
+    sig = data["result"]["signals"][0]
+    assert set(sig) == set(c["evidence_signal"])
+    assert set(sig["evidence"]) == set(c["evidence_payload"])
+    assert set(data["evidence"]) == set(c["evidence_payload"])
+
+
+def test_controlflow_analyze_contract():
+    _, c = _contract()
+    data = json.loads(_run(["controlflow", "analyze", "sync_fifo.reg_stage1",
+                            "-f", FIFO, "--json"]).stdout)
+    cmd = c["commands"]["controlflow analyze"]
+    r = data["result"]
+    assert set(r) == set(cmd["result_fields"])
+    drv = r["conditioned_drivers"][0]
+    assert set(drv) == set(c["controlflow_driver"])
+    cond = drv["conditions"][0]
+    assert set(cond) == set(c["controlflow_condition"])
+    assert set(cond["edge"]) == set(c["controlflow_edge"])
+
+
+def test_controlflow_list_contract():
+    _, c = _contract()
+    data = json.loads(_run(["controlflow", "list-conditioned",
+                            "-f", FIFO, "--json"]).stdout)
+    cmd = c["commands"]["controlflow list-conditioned"]
+    assert set(data) == set(c["top_level"]) | set(cmd["optional_top_level"])
+    assert set(data["result"]) == set(cmd["result_fields"])

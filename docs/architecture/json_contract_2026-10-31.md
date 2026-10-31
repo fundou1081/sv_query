@@ -141,3 +141,47 @@ fanout 额外：`loads[]`。
 > `errors[]` 在不同命令可能是**字符串**（如 `trace overview`）或 `error_entry` 对象
 > （如 trace fanin/fanout 分信号错误）；契约 `top_level.errors` 类型标为
 > `array<string|error_entry>`，消费方按 `typeof` 分支处理。
+
+---
+
+## P29 扩展：locate / evidence / controlflow（2026-10-31）
+
+### graph edges
+
+- result：`edges[]` + `total`
+- edge：`src/dst/kind`
+
+### search（direct envelope，无 `command/params`）
+
+- 顶层：`keyword/target/regex/case_insensitive/total_matches/file_count/files[]`
+- file：`file/match_count/lines[]/truncated`
+- line：`line/text`
+
+### stats
+
+- result：`total_nodes/total_edges/nodes/edges/modules/elaboration_errors`
+- `nodes`/`edges` 是 `{kind: count}` 对象
+
+### trace evidence
+
+- 标准 envelope + **可选 top-level `evidence`**（单信号便捷镜像）
+- result：`signals[]/total_signals/failed_signals`
+- signal：`signal/index/evidence`
+- evidence payload：`signal/source_location/source_text/enclosing_*/enclosing_chain/
+  is_verified/credibility_score`
+
+### controlflow analyze
+
+- result：`signal/conditioned_drivers[]/warnings[]`
+- driver：`to_node/conditions[]`
+- condition：`expr/edge`
+- edge：`src/dst/kind/condition`
+
+### controlflow list-conditioned
+
+- 标准 envelope + **可选 top-level `subcommand`**
+- result：`signals[]/count`
+
+> 这组再次确认 envelope 并非所有 core 命令统一：
+> `search` 是 direct output；`trace evidence`/`controlflow list-conditioned`
+> 有额外的 top-level 字段。契约用 `envelope`/`optional_top_level` 显式标注。
