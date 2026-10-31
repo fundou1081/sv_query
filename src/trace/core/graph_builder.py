@@ -175,6 +175,8 @@ class GraphBuilder:
         self._mark_dynamic_provenance()
         # [iter_313 / PLAN P18.2] 函数调用诚实标记（不 inline）
         self._mark_function_calls()
+        # [iter_322 / PLAN P26.2] 运行期系统调用（$random 等）
+        self._mark_runtime_system_calls()
         return self.graph
 
     def _expand_slice_bit_nodes(self) -> None:
@@ -1255,6 +1257,83 @@ class GraphBuilder:
                 node.extra = {}
             node.extra["function_call"] = True
         self.graph._function_nodes = seen
+
+    def _mark_runtime_system_calls(self):
+        """[iter_322 / PLAN P26.2] 运行期系统调用标记（$random/$urandom 等）。
+
+        这些调用每次求值不同（或依赖仿真时间），结果不能当确定值：
+        节点标 `runtime_system_call`，下游/位子树传播，CLI 强制 precision=unknown。
+        `$clog2/$bits` 等 elaboration/常量内建不在集合内，不标。
+        """
+        import re as _re
+
+        runtime_names = {
+            "random", "urandom", "urandom_range",
+            "time", "stime", "realtime",
+            "value$plusargs", "test$plusargs",
+        }
+        call_re = _re.compile(r"\$([A-Za-z_]\w*)")
+        seeds = set()
+
+        for nid in self.graph.nodes():
+            if nid.startswith("$") and nid[1:] in runtime_names:
+                seeds.add(nid)
+        for (_src, dst), edges in list(self.graph._edge_data.items()):
+            for e in edges:
+                parts = [getattr(e, "expression", "") or "",
+                         getattr(e, "condition", "") or "",
+                         getattr(e, "effective_condition", "") or ""]
+                parts.extend(getattr(e, "condition_chain", []) or [])
+                text = " ; ".join(p for p in parts if p)
+                if any(m.group(1) in runtime_names for m in call_re.finditer(text)):
+                    seeds.add(dst)
+
+        if not seeds:
+            self.graph._runtime_system_nodes = set()
+            return
+
+        children_by_parent: dict[str, list[str]] = {}
+        for nid in self.graph.nodes():
+            node = self.graph.get_node(nid)
+            parent = getattr(node, "parent", None) if node is not None else None
+            if parent:
+                children_by_parent.setdefault(parent, []).append(nid)
+
+        def descendants(root: str) -> set[str]:
+            out = set()
+            stack = [root]
+            while stack:
+                cur = stack.pop()
+                for child in children_by_parent.get(cur, []):
+                    if child not in out:
+                        out.add(child)
+                        stack.append(child)
+            return out
+
+        data_kinds = {"DRIVER", "CONNECTION", "BRANCH_CONDITION", "BRANCH_TRUE",
+                      "BRANCH_FALSE", "BRANCH_RESULT", "CASE_SELECT", "CASE_ITEM",
+                      "CASE_RESULT", "CLOCK", "RESET"}
+        seen = set(seeds)
+        frontier = list(seeds)
+        while frontier:
+            cur = frontier.pop()
+            nxts = set(descendants(cur))
+            for succ in self.graph.successors(cur):
+                if any(e.kind.name in data_kinds for e in self.graph.get_edges(cur, succ)):
+                    nxts.add(succ)
+            for nid in nxts:
+                if nid not in seen:
+                    seen.add(nid)
+                    frontier.append(nid)
+
+        for nid in seen:
+            node = self.graph.get_node(nid)
+            if node is None:
+                continue
+            if node.extra is None:
+                node.extra = {}
+            node.extra["runtime_system_call"] = True
+        self.graph._runtime_system_nodes = seen
 
     def _fix_array_element_widths(self):
         """[iter_307 / PLAN P13.6] unpacked array 元素节点宽度回填。

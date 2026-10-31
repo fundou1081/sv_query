@@ -52,6 +52,7 @@ from cli.core.semantic.trace_common import (
     has_dynamic_index, node_is_dynamic, node_is_function_call,  # [iter_308 P14.1 / iter_310 P16 / iter_313 P18.2]
     attach_edge_conditions,  # [iter_318 P22.1]
     detect_cycles, truncated_by_depth,  # [iter_321 P26.1]
+    node_is_runtime_system_call,  # [iter_322 P26.2]
 )
 
 
@@ -407,7 +408,9 @@ def fanin(
                             or any(d.get("dynamic_index") for d in drivers))
                 _function = (node_is_function_call(_root_node)
                              or any(d.get("function_call") for d in drivers))
-                if _dynamic or _function:
+                _runtime_system = (node_is_runtime_system_call(_root_node)
+                                   or any(d.get("runtime_system_call") for d in drivers))
+                if _dynamic or _function or _runtime_system:
                     precision = "unknown"
                 # [B2 2026-07-03] Apply 5 filters
                 drivers_pre = len(drivers)
@@ -439,6 +442,7 @@ def fanin(
                     "conditional_drivers": conditional_drivers,
                     "dynamic_index": _dynamic,
                     "function_call": _function,
+                    "runtime_system_call": _runtime_system,
                     "conditions": _conditions,
                     "condition_truncated": _condition_truncated,
                     "truncated_by_depth": _depth_truncated,
@@ -473,6 +477,7 @@ def fanin(
                     "conditional_drivers": False,
                     "dynamic_index": False,
                     "function_call": False,
+                    "runtime_system_call": False,
                     "conditions": [],
                     "condition_truncated": False,
                     "truncated_by_depth": False,
@@ -643,7 +648,9 @@ def fanout(
                             or any(x.get("dynamic_index") for x in loads))
                 _function = (node_is_function_call(_root_node)
                              or any(x.get("function_call") for x in loads))
-                if _dynamic or _function:
+                _runtime_system = (node_is_runtime_system_call(_root_node)
+                                   or any(x.get("runtime_system_call") for x in loads))
+                if _dynamic or _function or _runtime_system:
                     precision = "unknown"
                 # [B2 2026-07-03] Apply 5 filters
                 loads_pre = len(loads)
@@ -671,6 +678,7 @@ def fanout(
                     "coarse_fallback": coarse_fallback,
                     "dynamic_index": _dynamic,
                     "function_call": _function,
+                    "runtime_system_call": _runtime_system,
                     "conditions": _conditions,
                     "condition_truncated": _condition_truncated,
                     "truncated_by_depth": _depth_truncated,
@@ -701,6 +709,7 @@ def fanout(
                     "coarse_fallback": False,
                     "dynamic_index": False,
                     "function_call": False,
+                    "runtime_system_call": False,
                     "conditions": [],
                     "condition_truncated": False,
                     "truncated_by_depth": False,

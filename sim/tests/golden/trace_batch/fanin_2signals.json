@@ -61,6 +61,7 @@
             "module": "uart_top.rx_fifo",
             "parent": null,
             "precision": "bus",
+            "runtime_system_call": false,
             "width": 8,
             "width_lsb": 0,
             "width_msb": 7
@@ -72,6 +73,7 @@
         "multi_driver": false,
         "pre_filter_count": 1,
         "precision": "unknown",
+        "runtime_system_call": false,
         "signal": "uart_top.rx_data_o",
         "truncated": false,
         "truncated_by_depth": false
@@ -124,6 +126,7 @@
             "module": "uart_top.rx_fifo",
             "parent": null,
             "precision": "bus",
+            "runtime_system_call": false,
             "width": 5,
             "width_lsb": 0,
             "width_msb": 4
@@ -156,6 +159,7 @@
             "module": "",
             "parent": null,
             "precision": "constant",
+            "runtime_system_call": false,
             "width": 1,
             "width_lsb": 0,
             "width_msb": 0
@@ -167,6 +171,7 @@
         "multi_driver": false,
         "pre_filter_count": 2,
         "precision": "bus",
+        "runtime_system_call": false,
         "signal": "uart_top.rx_fifo.count_q",
         "truncated": false,
         "truncated_by_depth": false

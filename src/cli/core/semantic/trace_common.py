@@ -203,6 +203,11 @@ _CONST_WIDTH_RE = re.compile(r"^-?(\d+)'[sS]?[bodhBODH][0-9a-fA-F_]+$")
 _DYNAMIC_INDEX_RE = re.compile(r"\[[^\]]*[A-Za-z_?][^\]]*\]$")
 
 
+def node_is_runtime_system_call(node) -> bool:
+    """[iter_322 / PLAN P26.2] 运行期系统调用结果节点（$random 等）。"""
+    return bool((getattr(node, "extra", None) or {}).get("runtime_system_call"))
+
+
 def node_is_function_call(node) -> bool:
     """[iter_313 / PLAN P18.2] 函数调用结果节点（图级标记）。"""
     return bool((getattr(node, "extra", None) or {}).get("function_call"))
@@ -254,7 +259,7 @@ def node_precision(node) -> str:
     - 其余：总线/切片/成员聚合
     """
     nid = getattr(node, "id", "") or ""
-    if node_is_function_call(node) or is_dynamic_index(nid):
+    if node_is_function_call(node) or node_is_runtime_system_call(node) or is_dynamic_index(nid):
         return "unknown"
     if re.match(r"^1'b[01]$", nid):
         return "bit"
@@ -614,6 +619,7 @@ def _node_to_dict(node) -> dict:
         "dynamic_index": node_is_dynamic(node),
         # [iter_313 / PLAN P18.2] 函数调用结果（未 inline，仅诚实标记）
         "function_call": node_is_function_call(node),
+        "runtime_system_call": node_is_runtime_system_call(node),
         # [iter_318 / PLAN P22.1] 由 attach_edge_conditions 填（直接边条件）
         "condition": "",
         "conditions": [],

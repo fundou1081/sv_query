@@ -69,6 +69,7 @@
             "module": "uart_top.rx_fifo",
             "parent": null,
             "precision": "bus",
+            "runtime_system_call": false,
             "width": 5,
             "width_lsb": 0,
             "width_msb": 4
@@ -80,6 +81,7 @@
         "multi_driver": false,
         "pre_filter_count": 2,
         "precision": "bus",
+        "runtime_system_call": false,
         "signal": "uart_top.rx_fifo.count_q",
         "truncated": false,
         "truncated_by_depth": false

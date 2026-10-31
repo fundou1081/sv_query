@@ -54,3 +54,15 @@ endmodule"""}, log_level="ERROR")
     g = t.build_graph()
     assert not (g.get_node("top.y").extra or {}).get("dynamic")
     assert g._dynamic_nodes == set()
+
+
+def test_runtime_system_flags_survive_roundtrip():
+    t = UnifiedTracer(sources={"t.sv": """
+module top(output [7:0] y);
+  assign y = $random;
+endmodule"""}, log_level="ERROR")
+    g = t.build_graph()
+    assert g.get_node("top.y").extra.get("runtime_system_call") is True
+    g2 = SignalGraph.from_dict(g.to_dict())
+    assert g2.get_node("top.y").extra.get("runtime_system_call") is True
+    assert "top.y" in g2._runtime_system_nodes

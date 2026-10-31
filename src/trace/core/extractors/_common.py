@@ -314,13 +314,14 @@ def get_signal(
             elif "NamedValue" in ok:
                 return get_signal(operand, ctx, current_module)
             elif "Call" in ok or "Invocation" in ok:
-                sub = getattr(operand, "subroutine", None) or safe_attr(operand, "name", None)
-                if sub:
-                    sname = safe_attr(sub, "name", None)
-                    if sname:
-                        return str(sname)
-                    return str(sub).strip()
-                return str(operand).strip()
+                sub = getattr(operand, "subroutine", None)
+                sname = safe_attr(sub, "name", None) if sub is not None else None
+                if sname is None:
+                    sname = getattr(operand, "subroutineName", None)
+                if sname:
+                    return str(sname).strip()
+                # 系统调用 sub 是 SystemCallInfo（无 name），禁止返回对象 repr
+                return None
             sig = get_signal(operand, ctx, current_module)
             if sig and not sig.startswith("Expression("):
                 return sig
