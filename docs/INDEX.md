@@ -63,6 +63,7 @@
 | [poc/2026-10-23_native_connectivity.md](poc/2026-10-23_native_connectivity.md) | **POC**: slang-native 连通性 vs 现有两套路径实现 (影子节点 30~38%、0 可达; PathResolver 终点错误 60%+) |
 | [architecture/signal_graph_accuracy_audit.md](architecture/signal_graph_accuracy_audit.md) | **Accuracy Claim 分层声明** (L1/L2/L3 + 反例表 + covergroup 观察域) |
 | [architecture/trace_capability_review_2026-10-27.md](architecture/trace_capability_review_2026-10-27.md) | **信号追踪能力评审** (2026-10-27): 现状矩阵 + P0~P3 缺口 backlog（含缓存模式 P0 bug） |
+| [architecture/condition_analysis_plan_2026-10-31.md](architecture/condition_analysis_plan_2026-10-31.md) | **条件化简/互斥设计评估** (2026-10-31, 未排期): L1 局部布尔 / L2 来源互斥 / L3 真值表-BDD |
 | [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) | 已知限制 (含 pyslang 侧限制) |
 | [EXTRACTION_COVERAGE.md](EXTRACTION_COVERAGE.md) | SV 语法抽取覆盖率总表 (逐语法 ✅/⚠️/❌) |
 | [EXTRACTION_FAILURES.md](EXTRACTION_FAILURES.md) | 提取失败路径集中表 |
