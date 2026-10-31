@@ -381,3 +381,13 @@ def test_class_relations_contract():
     assert set(rel["methods"][0]["calls"][0]) == set(c["class_call"])
     assert set(rel["member_instances"][0]) == set(c["class_member_instances"])
     assert set(rel["constraints"][0]) == set(c["class_constraint"])
+
+
+def test_trace_lookup_contract():
+    _, c = _contract()
+    data = json.loads(_run(["trace", "lookup", "--path", "sync_fifo.data_out",
+                            "-f", FIFO, "--json"]).stdout)
+    cmd = c["commands"]["trace lookup"]
+    assert set(data) == set(c["top_level"])
+    assert set(data["result"]) == set(cmd["result_fields"])
+    assert set(data["result"]["paths"][0]) == set(c["lookup_path"])

@@ -11,9 +11,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: 无（P38 完成；等待下一阶段/评审项）
+- **当前 item**: P39.2 profile 增强（待做，下一步）
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **P18~P30** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P31** exp 降级 ✅（iter_327）；**P32** evidence 稳定性 ✅（iter_328）；**P33** ✅；**P34** verify ✅（iter_330）；**P35** include_control ✅（iter_331）；**P37** evidence 粒度 ✅（iter_333）；**P38** class 关系 ✅（iter_334）
+- **P18~P30** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P31** exp 降级 ✅（iter_327）；**P32** evidence 稳定性 ✅（iter_328）；**P33** ✅；**P34** verify ✅（iter_330）；**P35** include_control ✅（iter_331）；**P38** class 关系 ✅（iter_334）；**P39.1** waveform lookup ✅（iter_335）；**P39.2** profile 增强 → 待做
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -232,26 +232,15 @@ graph edges / search / stats / trace evidence / controlflow analyze+list 字段�
 - methods + calls（裸调用 owner 解析，receiver 调用 target_class=null）；
 - 4 个测试 + 1 契约；全量 **2672 passed**。
 
-## 后续候选
+## ✅ 刚完成（P39.1，waveform lookup）
 
-- profile `--no-cache`/`--from-snapshot` 对齐
-- CONTINUE：波形工具联调 / class 关系 / 性能优化（按实际需求）
+- `trace lookup --path/--paths-file`：严格完整路径 → canonical；
+- exact / bit_parent / not_found；$root 归一化；port/internal aliases；
+- 3 个测试 + 1 契约；全量 **2676 passed**。
 
+## 🔜 下一步（P39.2，待做）
 
-## 后续候选
-
-- `include_control` API 缺口修复（引用不存在的 EdgeKind.CONTROL）
-- trace profile / clock/reset/sequential（波形关联元数据）
-- evidence 粒度到 driver/path
-
-
-## 后续候选
-
-P0~P18 backlog 已清空。可选方向：
-- 函数 inline（需单独立项；当前只做诚实标记）
-- 有符号算术/比较语义（按方豆决定暂不做逐位）
-- 条件层次化显示文本（当前 dynamic 解析已修，显示仍可能退化）
-- `--bits` 的 `+:`/变量范围（当前仅静态 hi:lo）
+profile 增强：type/enum/array/struct、clock posedge/negedge、reset active_low/async、stage。
 
 ---
 

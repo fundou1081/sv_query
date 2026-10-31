@@ -138,6 +138,8 @@ COMMANDS: list[CommandSpec] = [
     _c("trace evidence", "semantic", recommended=True, note="源码证据 (always/if 块原文)"),
     _c("trace profile", "semantic", recommended=True, cost="cheap",
        note="信号 profile: canonical/aliases/位映射/clock/reset/sequential/source (波形关联)"),
+    _c("trace lookup", "semantic", recommended=True, cost="cheap",
+       note="完整 RTL hier path → canonical id (严格; $root/位父回退/aliases; 不做模糊后缀)"),
     _c("controlflow analyze", "semantic", cost="medium", recommended=True,
        note="信号的驱动条件分析; --conditions-only 只要扁平条件列表 (原 controlflow conditions)"),
     _c("controlflow list-conditioned", "semantic", cost="expensive",
@@ -450,6 +452,10 @@ JSON_CONTRACT = {
         "trace profile": {
             "result_fields": ["signals", "total_signals", "failed_signals"],
             "signal_fields": "profile_signal",
+        },
+        "trace lookup": {
+            "result_fields": ["paths", "total", "found", "failed"],
+            "path_fields": "lookup_path",
         },
         "controlflow analyze": {
             "result_fields": ["signal", "conditioned_drivers", "warnings"],
@@ -857,6 +863,24 @@ JSON_CONTRACT = {
         "path": {"type": "string", "desc": "requested path (instances/params)"},
         "target": {"type": "string", "desc": "requested target (connections)"},
         "resolved_as": {"type": "string", "desc": "connection target resolution kind"},
+    },
+    "lookup_path": {
+        "requested": {"type": "string", "desc": "full waveform path as requested"},
+        "found": {"type": "boolean", "desc": "strictly resolved to a graph node"},
+        "canonical": {"type": "string|null", "desc": "canonical graph id"},
+        "resolution": {"type": "string", "desc": "exact|bit_parent|not_found"},
+        "bit_suffix": {"type": "string|null", "desc": "bit/part-select suffix for bit_parent"},
+        "aliases": {"type": "array<string>", "desc": "port/internal aliases"},
+        "suggestions": {"type": "array<string>", "desc": "not_found candidates"},
+        "width": {"type": "array|null", "desc": "[msb,lsb]"},
+        "kind": {"type": "string", "desc": "NodeKind name"},
+        "module": {"type": "string", "desc": "module/instance path"},
+    },
+    "lookup_result": {
+        "paths": {"type": "array<lookup_path>", "desc": "per-path lookups"},
+        "total": {"type": "integer", "desc": "requested paths"},
+        "found": {"type": "integer", "desc": "resolved paths"},
+        "failed": {"type": "integer", "desc": "not_found paths"},
     },
     "edge_evidence": {
         "kind": {"type": "string", "desc": "edge kind"},

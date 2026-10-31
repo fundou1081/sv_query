@@ -377,3 +377,33 @@ member：`id/name/kind/module/width`；instance：`id/name/kind/module/width`。
 - `target_class`：裸调用解析到当前类/祖先；receiver 调用类型未解析时为 `null`。
 - 继承链来自 `ClassHierarchy`；方法调用来自方法体文本（不展开内部细节）。
 - 空关系是事实：`members=[]` / `instances=[]` / `methods=[]`，不臆造。
+
+---
+
+## P39 扩展：waveform path lookup（2026-11-01）
+
+波形工具提供完整 RTL hier path；`trace lookup` **严格**映射：
+
+| 字段 | 语义 |
+|---|---|
+| `requested` | 原 path |
+| `found` | 是否严格命中 |
+| `canonical` | 图 canonical id |
+| `resolution` | `exact` / `bit_parent` / `not_found` |
+| `bit_suffix` | `[3]` / `[7:4]`（bit_parent） |
+| `aliases` | port/internal 等别名 |
+| `suggestions` | not_found 候选 |
+| `width` / `kind` / `module` | 信号元数据 |
+
+- `$root.` 前缀会剥离；首尾空白 trim；
+- **不做模糊后缀解析**（与 agent 的 relative 模式区分）；
+- 位节点缺失 → canonical=父总线 + bit_suffix，不返回 not_found；
+- `found=false` 是正常结果，`ok` 仍为 true；批量看 `result.failed`。
+
+### 尚未覆盖（P39.2/后续）
+
+- interface / modport 路径别名；
+- generate 标签与 waveform 工具命名差异；
+- escaped identifier 的空白/转义变体（基础 exact 可用）；
+- type/enum/array/struct 解码元数据；
+- clock posedge/negedge、reset active_low/async、sequential stage。
