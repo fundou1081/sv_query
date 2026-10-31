@@ -264,6 +264,133 @@ def counts() -> dict:
 # 位精确性契约 (agent 可发现性; 与 docs/architecture/trace_capability_review 同步)
 # 只描述"静态可判定"部分, 运行期相关形态明确列为 coarse。
 # ---------------------------------------------------------------------------
+JSON_CONTRACT = {
+    "schema_version": "1",
+    "policy": (
+        "v1 allows additive optional fields; removing/renaming a field, changing a "
+        "field type, or adding a required field requires a schema_version bump. "
+        "Nullable values use JSON null (not omission)."
+    ),
+    "scope": (
+        "Top-level envelope + trace fanin/fanout signal/node fields. Other core "
+        "commands share the top-level envelope; command-specific fields are added "
+        "incrementally with the same policy."
+    ),
+    "top_level": {
+        "ok": {"type": "boolean", "desc": "false if any per-signal error was recorded"},
+        "command": {"type": "string", "desc": "command name, e.g. trace_fanin"},
+        "params": {"type": "object", "desc": "echo of resolved request parameters"},
+        "result": {"type": "object", "desc": "command-specific result payload"},
+        "errors": {"type": "array", "desc": "per-signal errors; empty when ok=true"},
+    },
+    "trace_signal": {
+        "signal": {"type": "string", "desc": "queried signal id (as requested)"},
+        "index": {"type": "integer", "desc": "position in the batch/signals request"},
+        "precision": {
+            "type": "string", "enum": ["bit", "bus", "unknown"],
+            "desc": "answer granularity; unknown means runtime/opaque dependency",
+        },
+        "coarse_fallback": {
+            "type": "boolean",
+            "desc": "bit query mixed with bus/constant fallback; downgrade to bus",
+        },
+        "dynamic_index": {
+            "type": "boolean",
+            "desc": "runtime index (mem[i]) affects this query -> precision=unknown",
+        },
+        "function_call": {
+            "type": "boolean",
+            "desc": "function call result/condition affects this query (not inlined) -> unknown",
+        },
+        "runtime_system_call": {
+            "type": "boolean",
+            "desc": "runtime system call ($random/$urandom/...) affects this query -> unknown",
+        },
+        "conditions": {
+            "type": "array<string>",
+            "desc": "per-path condition expressions (direct edge or multi-path OR components)",
+        },
+        "condition_truncated": {
+            "type": "boolean",
+            "desc": "condition path enumeration hit caps; conditions may be incomplete",
+        },
+        "truncated_by_depth": {
+            "type": "boolean",
+            "desc": "a node at the depth boundary still has unexpanded edges",
+        },
+        "cycles_detected": {
+            "type": "boolean|null",
+            "desc": "reachable cycle in traversal direction; null = analysis cap reached",
+        },
+        "count": {"type": "integer", "desc": "returned item count after filters"},
+        "pre_filter_count": {"type": "integer", "desc": "item count before filters"},
+        "truncated": {"type": "boolean", "desc": "max_results cap applied (independent of depth)"},
+    },
+    "trace_node": {
+        "id": {"type": "string", "desc": "graph node id"},
+        "module": {"type": "string", "desc": "instance/module path"},
+        "kind": {"type": "string", "desc": "NodeKind name (SIGNAL/PORT_IN/...)"},
+        "width": {"type": "integer", "desc": "bit width (0 if unknown)"},
+        "width_msb": {"type": "integer|null", "desc": "declared MSB"},
+        "width_lsb": {"type": "integer|null", "desc": "declared LSB"},
+        "distance": {"type": "integer", "desc": "hops from query signal; 1 = direct"},
+        "precision": {
+            "type": "string", "enum": ["bit", "bus", "constant", "unknown"],
+            "desc": "node granularity",
+        },
+        "is_signed": {"type": "boolean|null", "desc": "declared signedness, null if unknown"},
+        "parent": {"type": "string|null", "desc": "parent bus/member node id"},
+        "bit_range": {"type": "array|null", "desc": "[hi, lo] for slice/bit nodes"},
+        "dynamic_index": {"type": "boolean", "desc": "runtime index affects node"},
+        "function_call": {"type": "boolean", "desc": "function call result/condition node"},
+        "runtime_system_call": {"type": "boolean", "desc": "runtime system call node"},
+        "condition": {
+            "type": "string",
+            "desc": "direct-edge OR or multi-path OR for this node; empty = unconditional",
+        },
+        "conditions": {
+            "type": "array<string>",
+            "desc": "preserved per-edge/per-path conditions (not flattened)",
+        },
+        "condition_path": {
+            "type": "array<string>",
+            "desc": "first path's raw conditions (compat with P23)",
+        },
+        "condition_paths": {
+            "type": "array<object>",
+            "item": {"condition": "string", "path": "array<string>"},
+            "desc": "each path: combined condition + raw condition sequence",
+        },
+        "condition_unconditional": {
+            "type": "boolean",
+            "desc": "at least one path has no condition -> condition is empty",
+        },
+        "condition_truncated": {
+            "type": "boolean",
+            "desc": "path enumeration hit caps for this node",
+        },
+    },
+    "commands": {
+        "trace fanin": {
+            "result_fields": ["drivers"],
+            "signal_fields": ["driver_count", "multi_driver", "conditional_drivers"],
+            "node_array": "drivers",
+        },
+        "trace fanout": {
+            "result_fields": ["loads"],
+            "signal_fields": [],
+            "node_array": "loads",
+        },
+    },
+    "precision_values": ["bit", "bus", "unknown"],
+    "notes": (
+        "null != false: cycles_detected=null means the analysis cap was hit. "
+        "condition fields are display strings, not a normalized boolean AST. "
+        "unknown/coarse_fallback are intentional downgrades, not failures."
+    ),
+}
+
+
 BIT_PRECISION = {
     "schema_version": "1",
     "modes": {
@@ -345,6 +472,7 @@ def to_json(*, include_exp: bool = False, recommended_only: bool = False) -> dic
         "counts": counts(),
         "planned_new": NEW_PLANNED,
         "bit_precision": BIT_PRECISION,
+        "json_contract": JSON_CONTRACT,
         "commands": cmds,
     }
 
