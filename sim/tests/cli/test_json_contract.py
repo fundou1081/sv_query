@@ -324,3 +324,20 @@ def test_verify_claim_contract():
     assert set(data) == set(c["top_level"])
     assert set(data["result"]) == set(cmd["result_fields"])
     assert data["result"]["status"] == "verified"
+
+
+def test_profile_contract():
+    _, c = _contract()
+    data = json.loads(_run(["trace", "profile", "sync_fifo.data_out",
+                            "-f", FIFO, "--json"]).stdout)
+    cmd = c["commands"]["trace profile"]
+    assert set(data) == set(c["top_level"])
+    assert set(data["result"]) == set(cmd["result_fields"])
+    sig = data["result"]["signals"][0]
+    assert set(sig) == set(c["profile_signal"])
+    assert set(sig["bit"]) == set(c["profile_bit"])
+    assert set(sig["source"]) == set(c["profile_source"])
+    assert set(sig["role"]) == set(c["profile_role"])
+    assert set(sig["sequential"]) == set(c["profile_sequential"])
+    assert set(sig["clocks"][0]) == set(c["profile_clock"])
+    assert set(sig["resets"][0]) == set(c["profile_reset"])
