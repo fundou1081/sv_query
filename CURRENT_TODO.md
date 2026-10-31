@@ -11,9 +11,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: P36.1 trace profile（待做，下一步）
+- **当前 item**: P37.1 evidence 粒度（待做，下一步）
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **P18~P30** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P31** exp 降级 ✅（iter_327）；**P32** evidence 稳定性 ✅（iter_328）；**P33** ✅；**P34** verify ✅（iter_330）；**P35** include_control unsupported ✅（iter_331）；**P36** profile → 待做
+- **P18~P30** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P31** exp 降级 ✅（iter_327）；**P32** evidence 稳定性 ✅（iter_328）；**P33** ✅；**P34** verify ✅（iter_330）；**P35** include_control ✅（iter_331）；**P36** profile ✅（iter_332）；**P37** evidence 粒度 → 待做
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -213,9 +213,15 @@ graph edges / search / stats / trace evidence / controlflow analyze+list 字段�
 `--include-control` 不再 AttributeError；显式 unsupported + help 标注；
 错误路径保留 resolution；全量 **2655 passed**。
 
-## 🔜 下一步（P36，待做）
+## ✅ 刚完成（P36，trace profile）
 
-trace profile：clock/reset/sequential/source/bit/aliases，作为波形工具关联元数据。
+- canonical/aliases/width/bit/source/role/clock/reset/sequential/counts；
+- clock_domains 去重；driver 位置用 evidence 修正；stage 显式未计算；
+- 5 个 profile 测试 + 1 契约测试；全量 **2661 passed**。
+
+## 🔜 下一步（P37，待做）
+
+per-driver / per-path evidence：把 file:line/表达式证据挂到每个驱动/路径跳。
 
 ## 后续候选
 

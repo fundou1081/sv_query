@@ -6,9 +6,9 @@
 
 ## 总览
 
-- 叶子命令总数: **37**
-- 按层: `core`=25, `exp`=12
-- core 内分组: `semantic`=14, `verify`=2, `locate`=5, `state`=4
+- 叶子命令总数: **38**
+- 按层: `core`=26, `exp`=12
+- core 内分组: `semantic`=15, `verify`=2, `locate`=5, `state`=4
 
 | 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | schema | 说明 |
 |---|---|---|---|---|---|---|
@@ -18,7 +18,7 @@
 | `dev` | dev | none | ✅ | — | — | 开发者内部调试 (当前无命令; expression 已于 iter_252 归档) |
 | `out` | none | none | ✅ | — | — | 移出 CLI (会写 RTL/项目文件) → tools/; 不算产品命令 |
 
-## `core` (25 个)
+## `core` (26 个)
 
 | 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
 |---|---|---|---|---|---|---|---|---|---|
@@ -41,6 +41,7 @@
 | `ports` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | [规范入口] 模块端口总览 (方向/位宽/入边数/出边数) |
 | `trace evidence` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 源码证据 (always/if 块原文) |
 | `trace impact` | — | — | semantic | fact | expensive | ✅ | ✅ | ✅ | 传递影响 + 启发式风险分 (未标定, 仅用于同一图内相对排序; 见 KNOWN_LIMITATIONS §3.4) |
+| `trace profile` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | 信号 profile: canonical/aliases/位映射/clock/reset/sequential/source (波形关联) |
 | `snapshot compare` | — | — | state | state | medium | ✅ | — | ✅ | 比较两个快照, 或两个 SV 文件 (文件模式 = 原 diff compare; --signal 看可达性差异) |
 | `snapshot delete` | — | — | state | state | cheap | ✅ | — | ✅ | [iter_231] 已补 --json |
 | `snapshot list` | — | — | state | state | cheap | ✅ | — | ✅ | 列出快照; 给 tag → 该快照详情 (原 snapshot show) |

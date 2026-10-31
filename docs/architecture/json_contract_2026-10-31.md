@@ -302,3 +302,27 @@ member：`id/name/kind/module/width`；instance：`id/name/kind/module/width`。
 | `bit` | `target`,`source` | 两位节点之间直接边存在；位节点缺失 → unknown |
 
 > 不把“无法证明”伪造成 contradicted；位节点缺失返回 unknown。
+
+---
+
+## P36 扩展：trace profile（波形关联元数据，2026-10-31）
+
+`trace profile` 输出每个信号的静态画像，供外部波形工具对齐：
+
+| 字段 | 语义 |
+|---|---|
+| `resolved_signal` / `resolution` | canonical id + 解析方式 |
+| `aliases` | canonical/leaf/relative 候选名（不保证唯一） |
+| `width` / `is_signed` / `kind` / `module` | 信号类型信息 |
+| `bit` | `bit_range/parent/parent_bit_start/end` |
+| `source` | 声明 `file/line/declaration`；`driver` 为赋值行（evidence resolver 修正） |
+| `role` | clock/reset/enable/port/modport |
+| `clock_domains` | 唯一 clock domain/信号名 |
+| `clocks[]` | `signal/condition/clock_domain` |
+| `resets[]` | `signal/condition` |
+| `sequential` | `is_sequential/assign_types/stage/stage_known` |
+| `driver_count` / `load_count` | 直接驱动/负载数 |
+| `error` | per-signal 错误（成功为空串） |
+
+> `stage` 暂未计算：`stage=null, stage_known=false`，不伪造流水级数。
+> evidence 缺失时 `source.driver` 可能为 null；aliases 是波形候选名，消歧仍需 canonical id。
