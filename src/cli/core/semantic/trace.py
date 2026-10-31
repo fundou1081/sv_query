@@ -51,6 +51,7 @@ from cli.core.semantic.trace_common import (
     resolve_node_id, driver_stats,  # [iter_307 P13.6]
     has_dynamic_index, node_is_dynamic, node_is_function_call,  # [iter_308 P14.1 / iter_310 P16 / iter_313 P18.2]
     attach_edge_conditions,  # [iter_318 P22.1]
+    detect_cycles, truncated_by_depth,  # [iter_321 P26.1]
 )
 
 
@@ -400,6 +401,8 @@ def fanin(
                 _root_node = _g.get_node(_root) if _root else None
                 _conditions = attach_edge_conditions(_g, drivers, [sig, _root], reverse=True, depth=depth)
                 _condition_truncated = any(d.get("condition_truncated") for d in drivers)
+                _cycles_detected = detect_cycles(_g, _root, reverse=True)
+                _depth_truncated = truncated_by_depth(_g, drivers, depth, reverse=True)
                 _dynamic = (node_is_dynamic(_root_node)
                             or any(d.get("dynamic_index") for d in drivers))
                 _function = (node_is_function_call(_root_node)
@@ -438,6 +441,8 @@ def fanin(
                     "function_call": _function,
                     "conditions": _conditions,
                     "condition_truncated": _condition_truncated,
+                    "truncated_by_depth": _depth_truncated,
+                    "cycles_detected": _cycles_detected,
                 })
                 total_count += len(drivers)
                 total_pre_filter += drivers_pre
@@ -470,6 +475,8 @@ def fanin(
                     "function_call": False,
                     "conditions": [],
                     "condition_truncated": False,
+                    "truncated_by_depth": False,
+                    "cycles_detected": False,
                 })
 
         data = {
@@ -630,6 +637,8 @@ def fanout(
                 _root_node = _g.get_node(_root) if _root else None
                 _conditions = attach_edge_conditions(_g, loads, [sig, _root], reverse=False, depth=depth)
                 _condition_truncated = any(x.get("condition_truncated") for x in loads)
+                _cycles_detected = detect_cycles(_g, _root, reverse=False)
+                _depth_truncated = truncated_by_depth(_g, loads, depth, reverse=False)
                 _dynamic = (node_is_dynamic(_root_node)
                             or any(x.get("dynamic_index") for x in loads))
                 _function = (node_is_function_call(_root_node)
@@ -664,6 +673,8 @@ def fanout(
                     "function_call": _function,
                     "conditions": _conditions,
                     "condition_truncated": _condition_truncated,
+                    "truncated_by_depth": _depth_truncated,
+                    "cycles_detected": _cycles_detected,
                 })
                 total_count += len(loads)
                 total_pre_filter += loads_pre
@@ -692,6 +703,8 @@ def fanout(
                     "function_call": False,
                     "conditions": [],
                     "condition_truncated": False,
+                    "truncated_by_depth": False,
+                    "cycles_detected": False,
                 })
 
         data = {

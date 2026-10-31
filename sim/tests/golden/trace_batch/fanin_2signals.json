@@ -30,6 +30,7 @@
           "!(!rst_ni) && pop_i && !empty_o"
         ],
         "count": 1,
+        "cycles_detected": true,
         "driver_count": 0,
         "drivers": [
           {
@@ -72,7 +73,8 @@
         "pre_filter_count": 1,
         "precision": "unknown",
         "signal": "uart_top.rx_data_o",
-        "truncated": false
+        "truncated": false,
+        "truncated_by_depth": false
       },
       {
         "coarse_fallback": false,
@@ -84,6 +86,7 @@
           "!rst_ni"
         ],
         "count": 2,
+        "cycles_detected": true,
         "driver_count": 2,
         "drivers": [
           {
@@ -165,7 +168,8 @@
         "pre_filter_count": 2,
         "precision": "bus",
         "signal": "uart_top.rx_fifo.count_q",
-        "truncated": false
+        "truncated": false,
+        "truncated_by_depth": false
       }
     ],
     "total_count": 3,

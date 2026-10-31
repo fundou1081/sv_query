@@ -30,6 +30,7 @@
           "!rst_ni"
         ],
         "count": 1,
+        "cycles_detected": true,
         "driver_count": 2,
         "drivers": [
           {
@@ -79,7 +80,8 @@
         "pre_filter_count": 2,
         "precision": "bus",
         "signal": "uart_top.rx_fifo.count_q",
-        "truncated": false
+        "truncated": false,
+        "truncated_by_depth": false
       }
     ],
     "total_count": 1,
