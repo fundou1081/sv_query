@@ -106,8 +106,10 @@ def _c(key, group, kind="fact", cost="medium", json=True, *, stateful=False,
 
 
 def _v(key, kind="presentation", cost="expensive", json=False, note="") -> CommandSpec:
-    return CommandSpec(key=key, layer="view", group="render", kind=kind,
-                       cost=cost, json=json, note=note)
+    """[iter_327 / PLAN P31] 人眼/展示能力统一降级到 exp（默认隐藏、不进 capabilities）。"""
+    return CommandSpec(key=key, layer="exp", group="render", kind="experimental",
+                       cost=cost, json=json,
+                       note=(note + " ; [exp] experimental, hidden by default"))
 
 
 def _e(key, group, cost="medium", note="") -> CommandSpec:
@@ -157,9 +159,9 @@ COMMANDS: list[CommandSpec] = [
             "--directed 只沿数据流方向, 与 dataflow analyze 结论一致)"),
     _c("class", "semantic", cost="medium",
        note="不给 name → 列出所有 class; 给了 → 成员(类型级)+实例(实例级); --member 查某成员实例"),
-    _c("audit", "semantic", cost="medium", recommended=True,
-       note="[规范入口] 设计审计 (只读): 协议识别/握手配对/反压环候选/断言覆盖/覆盖缺口/"
-            "验证缺口/改动风险/约束覆盖/CDC 候选/组合链长度; 每条带 confidence"),
+    CommandSpec(key="audit", layer="exp", group="semantic", kind="experimental",
+                cost="medium", json=True, recommended=False,
+                note="[exp] 设计审计; 启发式/完成度低, 默认不提供, 仅 --include-exp 列出"),
 
     # ---- core / locate (枚举与统计) ----
     _c("stats", "locate", kind="primitive", cost="cheap", recommended=True),
@@ -169,8 +171,9 @@ COMMANDS: list[CommandSpec] = [
        note="列图节点 (kind/module/--match 过滤; --detail 给表达式等富字段); 支持 --file / --filelist"),
     _c("graph edges", "locate", kind="primitive", cost="cheap",
        note="列出图边; 支持 --file / --filelist (iter_236 补)"),
-    _c("diagnose", "diagnose", kind="diagnosis", cost="cheap", recommended=True,
-       note="只读诊断: <检查项> = imports|report|timescale|widths; 不改文件 (写文件用 tools/fix_*.py)"),
+    CommandSpec(key="diagnose", layer="exp", group="diagnose", kind="experimental",
+                cost="cheap", json=True, recommended=False,
+                note="[exp] 只读诊断; --json 干净路径不稳定, 默认不提供, 仅 --include-exp 列出"),
     _c("capabilities", "locate", kind="primitive", cost="cheap", recommended=True,
        note="本清单自身 (agent 应先读它再决定调什么)"),
 

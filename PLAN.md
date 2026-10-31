@@ -7,7 +7,7 @@
 >
 > 格式（每行一项，子项用 `-- ` 前缀，id 全局唯一）：
 > ```
-> current item : P30.2 测试与文档 <已完成>
+> current item : P32.2 测试与契约 <已完成>
 >
 > P0 建图层与查询层的结构化拆分 <已完成>
 > -- P0.1 图快照基线工具 <待做>
@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P30.2 测试与文档 <已完成>
+current item : P32.2 测试与契约 <已完成>
 
 ## 计划树
 
@@ -125,6 +125,14 @@ P29 JSON 契约扩展（locate/evidence/controlflow） <已完成>
 P30 JSON 契约扩展（结构/元数据） <已完成>
 -- P30.1 instances/hierarchy/ports/params/connections/class 契约 <已完成>
 -- P30.2 测试与文档 <已完成>
+
+P31 功能分层收敛：低完成度能力降级到 exp <已完成>
+-- P31.1 audit/diagnose/view 降级到 exp + 默认隐藏（capabilities 默认不提供） <已完成>
+-- P31.2 测试与文档 <已完成>
+
+P32 trace evidence 稳定性 <已完成>
+-- P32.1 evidence source_text/always 回退与字段一致性 <已完成>
+-- P32.2 测试与契约 <已完成>
 -- P11.1 聚合宽度/signedness（var/net/port，含嵌套） <已完成>
 -- P11.2 成员宽度/位偏移（p.a → 4 位 + 在 p 中的位段） <已完成>
 -- P11.3 测试与文档：聚合/成员矩阵 + 基线 <已完成>

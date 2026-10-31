@@ -70,7 +70,7 @@ class TestV11CLISmoke:
         assert rc == 0
         d = json.loads(out)
         assert d["ok"] is True
-        assert d["evidence"]["source_text"] == "data = din;"
+        assert d["evidence"]["source_text"] == "assign data = din;"
 
     def test_dataflow_evidence(self):
         rc, out, _ = _run_cli("dataflow", "analyze", "top.din", "top.dout", "-f", TEST_FILE, "--evidence", "--json")
