@@ -10,9 +10,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: 无（P24 完成；等待新需求/评审项）
+- **当前 item**: P26.2 运行期系统调用标记（进行中）
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **P18** ✅ P19 ✅ P20 ✅；P21 ✅ P22 ✅；P23 ✅（iter_319）；**P24** 多路径条件 OR ✅（iter_320）
+- **P18~P24** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P26.1** 遍历完整性 ✅（iter_321）；**P26.2** 运行期系统函数 → 进行中
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -158,6 +158,14 @@ depth>1 深层 driver 沿最短路径组合条件 `(c1) && (c2)`，输出 `condi
 `condition_paths` 保留每路径原始序列；无条件路径优先为 `condition=""`；
 枚举上限 8 路径/深度 20/5000 展开，触顶标 `condition_truncated`。
 全量 **2598 passed**。
+
+## 🔥 当前任务（P26.1）
+
+方豆: "先只记录，先不做。回到主线任务"。
+P25（条件化简/互斥）只登记设计文档，不实现；主线回到 P26：
+1) fanin/fanout `truncated_by_depth` + `cycles_detected`（capped 三态）
+2) `$random/$urandom` 等运行期系统调用标记
+3) 测试与文档
 
 ## 后续候选
 

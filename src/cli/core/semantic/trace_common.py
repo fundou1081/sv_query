@@ -355,6 +355,59 @@ def driver_stats(graph, node_id: str | None) -> tuple[int, bool, bool]:
     return len(srcs), len(unconditional) >= 2, conditional
 
 
+def detect_cycles(graph, root: str | None, reverse: bool,
+                  max_nodes: int = 20000, max_edges: int = 100000) -> bool | None:
+    """[iter_321 / PLAN P26.1] 从查询根沿遍历方向检测可达环。
+
+    reverse=True (fanin): 沿 predecessors；False (fanout): successors。
+    capped 三态：True=有环；False=无环；None=触顶无法判定（不静默当 false）。
+    """
+    if graph is None or root is None or root not in graph:
+        return False
+    color: dict[str, int] = {root: 1}
+    neighbor = (lambda n: graph.predecessors(n) if reverse else graph.successors(n))
+    stack: list[tuple[str, object]] = [(root, iter(list(neighbor(root))))]
+    nodes = 1
+    edges = 0
+    while stack:
+        cur, it = stack[-1]
+        advanced = False
+        for nxt in it:
+            edges += 1
+            if edges > max_edges:
+                return None
+            state = color.get(nxt, 0)
+            if state == 0:
+                nodes += 1
+                if nodes > max_nodes:
+                    return None
+                color[nxt] = 1
+                stack.append((nxt, iter(list(neighbor(nxt)))))
+                advanced = True
+                break
+            if state == 1:
+                return True
+        if not advanced:
+            color[cur] = 2
+            stack.pop()
+    return False
+
+
+def truncated_by_depth(graph, items: list[dict], depth: int | None,
+                       reverse: bool) -> bool:
+    """[iter_321 / PLAN P26.1] depth 边界节点是否仍有未展开的边。"""
+    if graph is None or depth is None:
+        return False
+    neighbor = (lambda n: graph.predecessors(n) if reverse else graph.successors(n))
+    for item in items:
+        nid = item.get("id")
+        if not nid or item.get("distance") != depth or nid not in graph:
+            continue
+        if next(iter(neighbor(nid)), None) is not None:
+            return True
+    return False
+
+
 def _edge_condition_text(edge) -> str:
     """[iter_318 / PLAN P22.1] 单条边的条件文本（优先 condition，退化 chain/effective）。"""
     chain = getattr(edge, "condition_chain", None) or []
