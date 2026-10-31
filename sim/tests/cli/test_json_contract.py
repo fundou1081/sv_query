@@ -364,3 +364,20 @@ def test_paths_evidence_contract(tmp_path):
     assert set(data) == set(c["commands"]["paths"]["base_fields"]) | \
         set(c["commands"]["paths"]["modes"]["one"]) | {"edge_evidence"}
     assert set(data["edge_evidence"][0]) == set(c["edge_evidence"])
+
+
+CLASS_REL = str(PROJECT_ROOT / "sim" / "tests" / "fixtures" / "json_contract" / "class_rel.sv")
+
+
+def test_class_relations_contract():
+    _, c = _contract()
+    data = json.loads(_run(["class", "child", "--relations", "-f", CLASS_REL,
+                            "--json"]).stdout)
+    assert set(data) == {"ok", "class", "relations"}
+    rel = data["relations"]
+    assert set(rel) == set(c["class_relations"])
+    assert set(rel["members"][0]) == set(c["class_member"])
+    assert set(rel["methods"][0]) == set(c["class_method"])
+    assert set(rel["methods"][0]["calls"][0]) == set(c["class_call"])
+    assert set(rel["member_instances"][0]) == set(c["class_member_instances"])
+    assert set(rel["constraints"][0]) == set(c["class_constraint"])

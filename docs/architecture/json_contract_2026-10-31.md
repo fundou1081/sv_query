@@ -356,3 +356,24 @@ member：`id/name/kind/module/width`；instance：`id/name/kind/module/width`。
 
 > evidence 的 `line` 可能来自 edge.source_location（条件行），不是赋值行；
 > 需要赋值行时用 `trace evidence`（已做 assignment-line 修正）。
+
+---
+
+## P38 扩展：class relations（2026-10-31）
+
+`class <name> --relations`（direct output）：
+
+| 字段 | 语义 |
+|---|---|
+| `extends` / `ancestors` | 直接父类 / 祖先链 |
+| `subclasses` / `descendants` | 直接子类 / 全部后代 |
+| `members` | 类型级成员（class_member） |
+| `instances` | 类实例（class_instance） |
+| `member_instances[]` | 每个成员的图内实例节点 + count |
+| `constraints[]` | 图内 `CONSTRAINS/HAS_*` 边 |
+| `methods[]` | 方法定义 + 方法体调用 |
+| `methods[].calls[]` | `receiver/method/target_class` |
+
+- `target_class`：裸调用解析到当前类/祖先；receiver 调用类型未解析时为 `null`。
+- 继承链来自 `ClassHierarchy`；方法调用来自方法体文本（不展开内部细节）。
+- 空关系是事实：`members=[]` / `instances=[]` / `methods=[]`，不臆造。
