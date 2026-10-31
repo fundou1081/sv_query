@@ -7,7 +7,7 @@
 >
 > 格式（每行一项，子项用 `-- ` 前缀，id 全局唯一）：
 > ```
-> current item : P36.1 signal profile（clock/reset/sequential/source/bit/aliases） <待做>
+> current item : P36.1 signal profile：clock/reset/sequential/source/bit/aliases <待做>
 >
 > P0 建图层与查询层的结构化拆分 <已完成>
 > -- P0.1 图快照基线工具 <待做>
@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P36.1 signal profile（clock/reset/sequential/source/bit/aliases） <待做>
+current item : P36.1 signal profile：clock/reset/sequential/source/bit/aliases <待做>
 
 ## 计划树
 
