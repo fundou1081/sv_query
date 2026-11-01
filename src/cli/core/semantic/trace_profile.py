@@ -184,12 +184,10 @@ def _build_type_lookup(adapter):
             return None
         return _symbols(mod).get(base)
 
-    def member_info(node):
-        """[iter_340 / PLAN P41.1] struct 成员类型：从父 symbol layout 推导。"""
-        base = (getattr(node, "name", "") or "").split("[")[0].strip()
+    def member_info_for(module_path: str, base: str):
         if "." not in base:
             return None
-        mod = modules.get(getattr(node, "module", "") or "")
+        mod = modules.get(module_path or "")
         if mod is None:
             return None
         parts = base.split(".")
@@ -207,7 +205,13 @@ def _build_type_lookup(adapter):
                         **m}
         return None
 
+    def member_info(node):
+        """[iter_340 / PLAN P41.1] struct 成员类型：从父 symbol layout 推导。"""
+        base = (getattr(node, "name", "") or "").split("[")[0].strip()
+        return member_info_for(getattr(node, "module", "") or "", base)
+
     lookup.member_info = member_info
+    lookup.member_info_for = member_info_for
     return lookup
 
 
@@ -225,6 +229,11 @@ def _type_meta(node, type_lookup, adapter=None) -> dict:
     sym = type_lookup(node)
     if sym is None:
         info = getattr(type_lookup, "member_info", lambda _n: None)(node)
+        if info is None and getattr(node, "parent", None):
+            base_name = (getattr(node, "name", "") or "").split("[")[0].strip()
+            parent_name = str(node.parent).rsplit(".", 1)[-1]
+            info = getattr(type_lookup, "member_info_for", lambda *_a: None)(
+                getattr(node, "module", "") or "", f"{parent_name}.{base_name}")
         if info is None:
             return base
         return {
