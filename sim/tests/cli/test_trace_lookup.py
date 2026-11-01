@@ -68,3 +68,18 @@ def test_interface_connection_aliases(tmp_path):
     assert "top.u_if.data" in a["aliases"]
     assert b["canonical"] == "top.u_if.data"
     assert "top.u_prod.m.data" in b["aliases"]
+
+
+GEN_PATHS = ROOT / "sim" / "tests" / "fixtures" / "json_contract" / "generate_paths.sv"
+
+
+def test_unnamed_generate_paths_and_type(tmp_path):
+    d = _lookup(tmp_path, "top.genblk1[0].x", "top.genblk2.y", fixture=GEN_PATHS)
+    items = d["result"]["paths"]
+    assert [i["canonical"] for i in items] == ["top.genblk1[0].x", "top.genblk2.y"]
+    assert all(i["resolution"] == "exact" for i in items)
+
+    r = _run("trace", "profile", "top.genblk1[0].x", "-f", str(GEN_PATHS), "--json")
+    prof = json.loads(r.stdout)["result"]["signals"][0]
+    assert prof["type"]["known"] is True
+    assert prof["type"]["name"] == "logic"
