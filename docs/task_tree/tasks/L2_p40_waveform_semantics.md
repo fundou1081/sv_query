@@ -10,7 +10,7 @@
 - is_array/unpacked_array/array_element；
 - module Port/Variable 解析；class 保持 unknown。
 
-## P40.2 sequential stage / 时间语义（待做）
+## P40.2 sequential stage / 时间语义（✅ iter_339）
 
 - 从 sequential 链/路径证据推导 register stage；
 - 不能算时保持 null + stage_known=false；

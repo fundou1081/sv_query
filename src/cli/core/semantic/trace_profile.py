@@ -100,6 +100,26 @@ def _bit_meta(node, graph, requested: str | None = None) -> dict:
     }
 
 
+def _build_stage_index(graph) -> dict[str, int]:
+    """[iter_339 / PLAN P40.2] REG -> pipeline stage（每图一次）。
+
+    只给 detect_pipeline 识别出的 pipeline reg 映射；状态机/控制/组合不做猜测。
+    """
+    try:
+        from trace.core.graph.analyzer.signal_classifier import classify_graph
+        from trace.core.graph.analyzer.pipeline_viz import detect_pipeline
+        classification = classify_graph(graph)
+        info = detect_pipeline(graph, classification)
+        out = {}
+        for stage in getattr(info, "stages", []):
+            for rid in getattr(stage, "reg_nodes", []):
+                out[rid] = int(getattr(stage, "stage_id", 0))
+        return out
+    except Exception as exc:
+        logger.debug("pipeline detection unavailable: %s", exc)
+        return {}
+
+
 def _build_type_lookup(adapter):
     """[iter_338 / PLAN P40.1] node -> semantic type metadata.
 
@@ -191,7 +211,7 @@ def _type_meta(node, type_lookup, adapter=None) -> dict:
     }
 
 
-def _profile_signal(tracer, graph, sig: str, evidence_resolver=None, type_lookup=None, adapter=None) -> dict:
+def _profile_signal(tracer, graph, sig: str, evidence_resolver=None, type_lookup=None, adapter=None, stage_index=None) -> dict:
     res = resolve_signal(graph, sig)
     if not res["ok"]:
         raise SignalResolutionError(
@@ -256,6 +276,38 @@ def _profile_signal(tracer, graph, sig: str, evidence_resolver=None, type_lookup
         r["edge"] = _edge_of(always_text, r["signal"])
         r["async"] = r["edge"] is not None
         r["active_low"] = _active_low(r.get("condition", ""), r["signal"])
+    # [iter_339 / PLAN P40.2] stage / sample：有证据才给，组合/多 clock 显式 unknown
+    stage = None
+    stage_known = False
+    stage_reason = None
+    stage_source = None
+    if node.kind.name == "REG":
+        if stage_index and node_id in stage_index:
+            stage = stage_index[node_id]
+            stage_known = True
+            stage_source = "pipeline_detect"
+        else:
+            stage_reason = ("no_pipeline_detected" if not stage_index
+                            else "not_pipeline_reg")
+    else:
+        stage_reason = "combinational"
+    sample = None
+    sample_reason = None
+    if is_seq:
+        uniq_clocks = {c["signal"] for c in clocks}
+        if len(uniq_clocks) == 1 and clocks:
+            edge = clocks[0].get("edge")
+            if edge:
+                sample = f"{edge} {clocks[0]['signal']}"
+            else:
+                sample_reason = "clock_edge_unknown"
+        elif len(uniq_clocks) > 1:
+            sample_reason = "multi_clock"
+        else:
+            sample_reason = "no_clock"
+    else:
+        sample_reason = "combinational"
+
     aliases = []
     for a in (node.id, node.name,
               node.id.split(".", 1)[1] if "." in node.id else ""):
@@ -295,8 +347,12 @@ def _profile_signal(tracer, graph, sig: str, evidence_resolver=None, type_lookup
         "sequential": {
             "is_sequential": is_seq,
             "assign_types": assign_types,
-            "stage": None,
-            "stage_known": False,
+            "stage": stage,
+            "stage_known": stage_known,
+            "stage_source": stage_source,
+            "stage_unknown_reason": stage_reason,
+            "sample": sample,
+            "sample_unknown_reason": sample_reason,
             "always": ({"file": always_loc.file, "line": always_loc.line_start}
                        if always_loc is not None and not always_loc.is_empty() else None),
         },
@@ -330,9 +386,11 @@ def profile(
         except Exception:
             evidence_resolver = None
             type_lookup = None
+        stage_index = _build_stage_index(graph)
         for i, sig in enumerate(signals):
             try:
-                item = _profile_signal(tracer, graph, sig, evidence_resolver, type_lookup, _adapter)
+                item = _profile_signal(tracer, graph, sig, evidence_resolver,
+                                       type_lookup, _adapter, stage_index)
                 item["index"] = i
                 out.append(item)
             except Exception as e:

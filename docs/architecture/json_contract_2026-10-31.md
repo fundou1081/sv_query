@@ -462,3 +462,22 @@ member：`id/name/kind/module/width`；instance：`id/name/kind/module/width`。
 - 只解析 module/instance 的 Port/Variable；class/constraint 仍 `known=false`；
 - struct 成员 offset 是 LSB 在聚合中的位置；
 - enum value 保留源码字面量；不做运行期编码转换。
+
+---
+
+## P40.2 sequential stage / sample（2026-11-01）
+
+`profile_signal.sequential` 新增：
+
+| 字段 | 语义 |
+|---|---|
+| `stage` | pipeline stage（仅 detect_pipeline 识别出的 REG） |
+| `stage_known` / `stage_source` | 是否已知 / `pipeline_detect` |
+| `stage_unknown_reason` | `combinational` / `not_pipeline_reg` / `no_pipeline_detected` |
+| `sample` | 采样边沿，如 `posedge top.clk` |
+| `sample_unknown_reason` | `combinational` / `multi_clock` / `clock_edge_unknown` |
+| `always` | enclosing always `{file,line}` |
+
+- stage 只对 REG 且 pipeline 检测命中时给；组合/状态机不猜。
+- 多 clock / 无 edge 时 `sample=null` + reason，不伪造采样时刻。
+- 所有 unknown 都显式，保持 `stage_known=false`。
