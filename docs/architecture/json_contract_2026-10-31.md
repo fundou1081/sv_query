@@ -499,3 +499,24 @@ member：`id/name/kind/module/width`；instance：`id/name/kind/module/width`。
 | `packed_members` | 成员自身不是 aggregate，通常 [] |
 
 > 只对 module/instance 内的 packed struct 成员推导；嵌套/class 成员仍 unknown。
+
+---
+
+## P41.2 waveform manifest（2026-11-01）
+
+`trace manifest` 批量输出 waveform 工具可直接消费的条目：
+
+```json
+{
+  "waveform_path": "top.u.data[3]",
+  "index": 0,
+  "found": true,
+  "lookup": { ...lookup_path... },
+  "profile": { ...profile_signal... }
+}
+```
+
+- 一次 graph build，批量 paths；
+- 未找到：`found=false, lookup.resolution=not_found, profile=null`；
+- 找到：`lookup` + 完整 `profile`（type/bit/clock/reset/stage/source）；
+- 契约：`manifest_entry` / `manifest_result`。
