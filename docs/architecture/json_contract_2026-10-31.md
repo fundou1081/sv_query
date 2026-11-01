@@ -550,3 +550,39 @@ member：`id/name/kind/module/width`；instance：`id/name/kind/module/width`。
 
 > 若波形工具对 generate 使用非 LRM 命名（如零填充 `genblk01`），需要该工具
 > 提供样例；当前不猜别名，避免错配。
+
+---
+
+## P44 Scope 层收敛（2026-11-01）
+
+### capabilities `mode`
+
+每个命令新增：
+
+```
+mode: scope | trace | verify | locate | state | exp
+```
+
+映射：
+
+- scope: scope/instances/hierarchy/ports/params/connections/class
+- trace: drivers/loads/trace */paths/dataflow/controlflow
+- verify: verify *
+- locate: graph/search/stats/capabilities
+- state: snapshot *
+- exp: audit/diagnose/view
+
+### `scope <instance>` 聚合
+
+标准 envelope；直接输出：
+
+| 字段 | 语义 |
+|---|---|
+| `scope` / `canonical_id` | scope path |
+| `module_type` / `parent` | 类型/父 |
+| `children[]` | 直接子实例 + canonical_id |
+| `ports[]` | name/direction/width/canonical_id/internal_signal |
+| `parameters[]` | name/value/is_overridden/is_local_param |
+
+- 支持实例路径；顶层模块 path（如 `top`）也可作为 scope；
+- scope 只做入口/上下文，不做因果追踪。

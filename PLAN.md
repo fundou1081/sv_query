@@ -7,7 +7,7 @@
 >
 > 格式（每行一项，子项用 `-- ` 前缀，id 全局唯一）：
 > ```
-> current item : P43.2 测试与文档 <已完成>
+> current item : P44.4 测试与文档 <已完成>
 >
 > P0 建图层与查询层的结构化拆分 <已完成>
 > -- P0.1 图快照基线工具 <待做>
@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P43.2 测试与文档 <已完成>
+current item : P44.4 测试与文档 <已完成>
 
 ## 计划树
 
@@ -177,6 +177,12 @@ P42 波形路径别名收尾 <已完成>
 P43 generate 路径覆盖 <已完成>
 -- P43.1 genblk 路径 lookup + generate scope type <已完成>
 -- P43.2 测试与文档 <已完成>
+
+P44 Scope 层收敛 <已完成>
+-- P44.1 产品方向 scope/trace/verify 分层文档 <已完成>
+-- P44.2 capabilities mode <已完成>
+-- P44.3 scope 聚合命令 + canonical ID <已完成>
+-- P44.4 测试与文档 <已完成>
 -- P11.1 聚合宽度/signedness（var/net/port，含嵌套） <已完成>
 -- P11.2 成员宽度/位偏移（p.a → 4 位 + 在 p 中的位段） <已完成>
 -- P11.3 测试与文档：聚合/成员矩阵 + 基线 <已完成>

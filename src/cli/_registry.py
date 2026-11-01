@@ -154,6 +154,8 @@ COMMANDS: list[CommandSpec] = [
     _c("verify claim", "verify", kind="fact", cost="medium", recommended=True,
        note="验证 claim: driver/path/connection/bit → verified|contradicted|unknown"),
     # [iter_236 1a] 实例/层级查询 (补 agent 理解架构的第一步; 复用 get_instances/MIG)
+    _c("scope", "scope", kind="fact", cost="cheap", recommended=True,
+       note="[规范入口] scope 聚合: 类型/父/子/端口/参数 (入口层, 不做因果追踪)"),
     _c("instances", "semantic", cost="cheap", recommended=True,
        note="列出实例; 给实例路径 → 详情 (类型/父/子/端口); 支持 --filelist"),
     _c("connections", "semantic", cost="medium", recommended=True,
@@ -239,6 +241,33 @@ ALIASES: dict[str, str] = {
 def canonical(key: str) -> str:
     """别名 → 规范名; 规范名原样返回。"""
     return ALIASES.get(key, key)
+
+
+_SCOPE_KEYS = {
+    "scope", "instances", "hierarchy", "ports", "params", "connections", "class",
+}
+_TRACE_KEYS = {
+    "drivers", "loads", "trace fanin", "trace fanout", "trace impact",
+    "trace evidence", "trace profile", "trace lookup", "trace manifest",
+    "paths", "dataflow analyze", "controlflow analyze", "controlflow list-conditioned",
+}
+_VERIFY_KEYS = {"verify consistency", "verify claim"}
+_STATE_KEYS = {"snapshot save", "snapshot list", "snapshot compare", "snapshot delete"}
+
+
+def mode_of(key: str, layer: str = "core") -> str:
+    """[iter_344 / PLAN P44.2] agent 工作流模式: scope|trace|verify|locate|state|exp."""
+    if layer != "core":
+        return "exp"
+    if key in _SCOPE_KEYS:
+        return "scope"
+    if key in _TRACE_KEYS:
+        return "trace"
+    if key in _VERIFY_KEYS:
+        return "verify"
+    if key in _STATE_KEYS:
+        return "state"
+    return "locate"
 
 
 def aliases_of(canonical_key: str) -> list[str]:
@@ -479,6 +508,13 @@ JSON_CONTRACT = {
         },
         "verify claim": {
             "result_fields": ["claim", "status", "reason", "evidence", "counterevidence"],
+        },
+        "scope": {
+            "result_fields": ["scope", "canonical_id", "module_type", "parent",
+                              "children", "ports", "parameters"],
+            "port_fields": "scope_port",
+            "param_fields": "scope_param",
+            "child_fields": "scope_child",
         },
         "instances": {
             "envelope": "direct",
@@ -911,6 +947,34 @@ JSON_CONTRACT = {
         "file": {"type": "string|null", "desc": "edge source file"},
         "line": {"type": "integer|null", "desc": "edge source line"},
     },
+    "scope_child": {
+        "full_path": {"type": "string", "desc": "child instance path"},
+        "name": {"type": "string", "desc": "child instance name"},
+        "module_type": {"type": "string", "desc": "child module type"},
+        "canonical_id": {"type": "string", "desc": "canonical child scope id"},
+    },
+    "scope_port": {
+        "name": {"type": "string", "desc": "port name"},
+        "direction": {"type": "string", "desc": "input/output/inout/unknown"},
+        "width": {"type": "array|null", "desc": "[msb,lsb]"},
+        "canonical_id": {"type": "string", "desc": "canonical port id"},
+        "internal_signal": {"type": "string|null", "desc": "internal net id"},
+    },
+    "scope_param": {
+        "name": {"type": "string", "desc": "parameter name"},
+        "value": {"type": "string|null", "desc": "effective value"},
+        "is_overridden": {"type": "boolean", "desc": "overridden at instantiation"},
+        "is_local_param": {"type": "boolean", "desc": "localparam"},
+    },
+    "scope_result": {
+        "scope": {"type": "string", "desc": "scope path"},
+        "canonical_id": {"type": "string", "desc": "canonical scope id"},
+        "module_type": {"type": "string", "desc": "module/interface type"},
+        "parent": {"type": "string|null", "desc": "parent scope"},
+        "children": {"type": "array<scope_child>", "desc": "direct children"},
+        "ports": {"type": "array<scope_port>", "desc": "ports + canonical ids"},
+        "parameters": {"type": "array<scope_param>", "desc": "effective parameters"},
+    },
     "profile_clock": {
         "signal": {"type": "string", "desc": "CLOCK edge source"},
         "condition": {"type": "string", "desc": "clock edge condition"},
@@ -1106,6 +1170,7 @@ def to_json(*, include_exp: bool = False, recommended_only: bool = False) -> dic
             "aliases": aliases_of(c.key),
             "layer": c.layer,
             "group": c.group,
+            "mode": mode_of(c.key, c.layer),
             "kind": c.kind,
             "cost": c.cost,
             "json": c.json,
