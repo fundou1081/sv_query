@@ -956,8 +956,12 @@ JSON_CONTRACT = {
     "profile_sequential": {
         "is_sequential": {"type": "boolean", "desc": "clock/reset/nonblocking evidence"},
         "assign_types": {"type": "array<string>", "desc": "driver assign types"},
-        "stage": {"type": "integer|null", "desc": "register stage (null=not computed)"},
+        "stage": {"type": "integer|null", "desc": "pipeline stage (null=unknown)"},
         "stage_known": {"type": "boolean", "desc": "stage computed?"},
+        "stage_source": {"type": "string|null", "desc": "pipeline_detect|null"},
+        "stage_unknown_reason": {"type": "string|null", "desc": "combinational|not_pipeline_reg|no_pipeline_detected|null"},
+        "sample": {"type": "string|null", "desc": "sample edge, e.g. posedge top.clk"},
+        "sample_unknown_reason": {"type": "string|null", "desc": "combinational|multi_clock|clock_edge_unknown|null"},
         "always": {"type": "object|null", "desc": "{file,line} enclosing always"},
     },
     "profile_signal": {

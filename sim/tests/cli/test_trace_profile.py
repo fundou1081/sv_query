@@ -123,3 +123,21 @@ def test_array_and_plain_type_metadata():
     assert plain["known"] is True
     assert plain["name"] == "logic[7:0]"
     assert plain["packed_members"] == []
+
+
+def test_sequential_stage_and_sample():
+    s = _profile("sync_fifo.data_out")["result"]["signals"][0]["sequential"]
+    assert s["stage_known"] is True
+    assert isinstance(s["stage"], int)
+    assert s["stage_source"] == "pipeline_detect"
+    assert s["sample"] == "posedge sync_fifo.clk"
+    assert s["sample_unknown_reason"] is None
+
+
+def test_combinational_stage_unknown():
+    s = _profile("sync_fifo.full")["result"]["signals"][0]["sequential"]
+    assert s["stage"] is None
+    assert s["stage_known"] is False
+    assert s["stage_unknown_reason"] == "combinational"
+    assert s["sample"] is None
+    assert s["sample_unknown_reason"] == "combinational"
