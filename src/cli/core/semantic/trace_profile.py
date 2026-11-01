@@ -154,6 +154,30 @@ def _build_type_lookup(adapter):
             return None
         return _symbols(mod).get(base)
 
+    def member_info(node):
+        """[iter_340 / PLAN P41.1] struct 成员类型：从父 symbol layout 推导。"""
+        base = (getattr(node, "name", "") or "").split("[")[0].strip()
+        if "." not in base:
+            return None
+        mod = modules.get(getattr(node, "module", "") or "")
+        if mod is None:
+            return None
+        parts = base.split(".")
+        sym = _symbols(mod).get(parts[0])
+        if sym is None:
+            return None
+        try:
+            layout = adapter.get_packed_member_layout(sym) or []
+        except Exception:
+            return None
+        name = ".".join(parts[1:])
+        for m in layout:
+            if m.get("name") == name:
+                return {"parent_type": str(getattr(sym, "type", "") or ""),
+                        **m}
+        return None
+
+    lookup.member_info = member_info
     return lookup
 
 
@@ -163,12 +187,25 @@ def _type_meta(node, type_lookup, adapter=None) -> dict:
             "is_enum": False, "is_struct": False, "is_union": False,
             "is_unpacked_array": False, "is_array": False, "array_element": None,
             "bit_width": None, "is_signed": None,
+            "member_of": None, "member_offset": None,
             "enum_values": [], "packed_members": []}
     if type_lookup is None:
         return base
     sym = type_lookup(node)
     if sym is None:
-        return base
+        info = getattr(type_lookup, "member_info", lambda _n: None)(node)
+        if info is None:
+            return base
+        return {
+            **base,
+            "known": True,
+            "name": f"{info.get('parent_type', '')}.{info.get('name', '')}",
+            "canonical": info.get("parent_type"),
+            "bit_width": info.get("width"),
+            "is_signed": info.get("signed"),
+            "member_of": info.get("parent_type"),
+            "member_offset": info.get("offset"),
+        }
     t = getattr(sym, "type", None)
     if t is None:
         return base
@@ -206,6 +243,8 @@ def _type_meta(node, type_lookup, adapter=None) -> dict:
                           if getattr(ct, "elementType", None) is not None else None),
         "bit_width": getattr(t, "bitWidth", None),
         "is_signed": bool(getattr(t, "isSigned", False)),
+        "member_of": None,
+        "member_offset": None,
         "enum_values": values,
         "packed_members": members,
     }

@@ -927,6 +927,8 @@ JSON_CONTRACT = {
         "array_element": {"type": "string|null", "desc": "array element type"},
         "bit_width": {"type": "integer|null", "desc": "semantic bit width"},
         "is_signed": {"type": "boolean|null", "desc": "semantic signedness"},
+        "member_of": {"type": "string|null", "desc": "parent struct type for member"},
+        "member_offset": {"type": "integer|null", "desc": "member LSB offset"},
         "enum_values": {"type": "array<enum_value>", "desc": "enum members"},
         "packed_members": {"type": "array<packed_member>", "desc": "struct member layout"},
     },

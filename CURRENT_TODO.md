@@ -11,9 +11,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: 无（P40 完成；等待下一阶段/评审项）
+- **当前 item**: P41.2 waveform manifest（待做，下一步）
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **P18~P30** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P31** exp 降级 ✅（iter_327）；**P32** evidence 稳定性 ✅（iter_328）；**P33** ✅；**P34** verify ✅（iter_330）；**P35** include_control ✅（iter_331）；**P38** class 关系 ✅（iter_334）；**P39.1** lookup ✅（iter_335）；**P39.2** profile 语义 ✅（iter_336）；**P39.3** alias ✅（iter_337）；**P40.1** type ✅（iter_338）；**P40.2** stage/sample ✅（iter_339）
+- **P18~P30** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P31** exp 降级 ✅（iter_327）；**P32** evidence 稳定性 ✅（iter_328）；**P33** ✅；**P34** verify ✅（iter_330）；**P35** include_control ✅（iter_331）；**P38** class 关系 ✅（iter_334）；**P39.1** lookup ✅（iter_335）；**P39.2** profile 语义 ✅（iter_336）；**P39.3** alias ✅（iter_337）；**P40.2** stage/sample ✅（iter_339）；**P41.1** struct member type ✅（iter_340）；**P41.2** manifest → 待做
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -238,19 +238,19 @@ graph edges / search / stats / trace evidence / controlflow analyze+list 字段�
 - enum_values + packed_members(offset)；
 - module/instance 的 Port/Variable 可解析；class 保持 unknown。
 
+## ✅ 刚完成（P41.1，struct member type）
+
+- `top.p.a` type：member_of/member_offset/width；
+- `name=父类型.成员`；只支持 module/instance packed struct；
+- 1 个测试；全量 **2686 passed**。
+
 ## ✅ 刚完成（P40.2，stage/sample）
 
-- REG 的 pipeline stage（仅 detect_pipeline 命中）；
-- `sample=posedge/negedge clock`；
-- 组合/状态机/多 clock 显式 unknown；
-- 2 个新测试；全量 **2685 passed**。
+- REG 的 pipeline stage；sample edge；组合/状态机/多 clock 显式 unknown。
 
-## 🔜 下一步候选
+## 🔜 下一步（P41.2，待做）
 
-- struct 成员 type 从父 struct 推导；
-- interface/modport、generate genblk 别名；
-- waveform manifest 联调 fixture；
-- 性能/缓存。
+waveform manifest：批量 path → canonical/profile 一体化输出。
 ---
 
 ## 🧰 固定设施与门禁
