@@ -604,3 +604,25 @@ mode: scope | trace | verify | locate | state | exp
 - generate scope（如 `top.genblk1[0]`）：`kind=generate`，`signals` 列出直接子信号；
 - class 类型（如 `packet`）：`kind=class`，返回 members/instances，不展开方法体；
 - 普通实例：`signals` 同时列出端口和直接内部信号。
+
+---
+
+## P45 模拟 waveform 端到端（2026-11-01）
+
+新增 fixture `waveform_end_to_end.sv` + `test_waveform_end_to_end.py`，覆盖：
+
+| path | 覆盖点 |
+|---|---|
+| `$root.top.clk` | `$root` 归一化 |
+| `top.genblk1[0].x` | 未命名 generate |
+| `top.gen_if.y` | 命名 generate |
+| `top.u_if.data` | interface 成员 |
+| `top.u_prod.m.data` | modport 成员 + connection alias |
+| `top.p.a` | packed struct 成员 |
+| `top.gen_sig[3]` | bit_parent |
+| `top.not_here` | not_found |
+
+同时修复：
+
+- `resolve_signal` 全局支持 `$root.`；
+- packed struct 成员节点（node.name 只有成员名、parent 指向父总线）可解析 member type。

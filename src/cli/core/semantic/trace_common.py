@@ -439,6 +439,9 @@ def resolve_signal(graph, raw: str, max_candidates: int = 20) -> dict:
     if graph is None:
         return {"ok": False, "status": "not_found", "resolved": None,
                 "candidates": [], "suggestions": [], "bit_fallback": False}
+    raw = (raw or "").strip()
+    if raw.startswith("$root."):
+        raw = raw[len("$root."):]
     nodes = set(graph.nodes())
     if raw in nodes:
         return {"ok": True, "status": "exact", "resolved": raw,
