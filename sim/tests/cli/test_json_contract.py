@@ -335,6 +335,7 @@ def test_profile_contract():
     assert set(data["result"]) == set(cmd["result_fields"])
     sig = data["result"]["signals"][0]
     assert set(sig) == set(c["profile_signal"])
+    assert set(sig["type"]) == set(c["profile_type"])
     assert set(sig["bit"]) == set(c["profile_bit"])
     assert set(sig["source"]) == set(c["profile_source"])
     assert set(sig["role"]) == set(c["profile_role"])

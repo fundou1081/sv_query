@@ -8,7 +8,7 @@
 - 严格完整路径映射；$root/bit_parent/not_found；port/internal aliases
 - 批量 paths file；契约/测试
 
-## P39.2 profile 增强（待做）
+## P39.2 profile 增强（✅ iter_336）
 
 - type/enum/array/struct/bit offset
 - clock posedge/negedge、reset active_low/async
@@ -23,3 +23,7 @@
 
 - P39.1 ✅ iter_335：trace lookup 严格完整路径；3 测试 + 1 契约
 - 全量 2676 passed；P39.2/39.3 待做
+
+## 完成记录（2026-11-01）
+
+- P39.2 ✅ iter_336：clock/reset/bit 语义；2 测试；全量 2678

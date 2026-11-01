@@ -67,3 +67,24 @@ def test_batch_partial_profile():
     assert d["result"]["failed_signals"] == 1
     assert d["result"]["signals"][0]["resolved_signal"] == "sync_fifo.full"
     assert d["result"]["signals"][1]["resolution"] == "not_found"
+
+
+def test_clock_reset_event_semantics():
+    i = _profile("sync_fifo.data_out")["result"]["signals"][0]
+    assert all(c["edge"] == "posedge" for c in i["clocks"])
+    r = i["resets"][0]
+    assert r["edge"] == "negedge"
+    assert r["async"] is True
+    assert r["active_low"] is True
+    assert i["sequential"]["always"] is not None
+    assert i["sequential"]["always"]["line"] > 0
+
+
+def test_bit_fallback_metadata():
+    i = _profile("sync_fifo.data_out[3]")["result"]["signals"][0]
+    assert i["resolution"] == "bit_base_fallback"
+    assert i["resolved_signal"] == "sync_fifo.data_out"
+    assert i["bit"]["parent"] == "sync_fifo.data_out"
+    assert i["bit"]["select"] == "3"
+    assert i["bit"]["kind"] == "bit"
+    assert i["bit"]["offset"] == 3

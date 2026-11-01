@@ -35,6 +35,71 @@ def _first_source(edge) -> tuple[str, int | None]:
     return "", None
 
 
+def _edge_of(text: str, signal: str) -> str | None:
+    if not text or not signal:
+        return None
+    leaf = signal.split(".")[-1]
+    m = re.search(rf"\b(posedge|negedge)\s+{re.escape(leaf)}\b", text)
+    return m.group(1) if m else None
+
+
+def _active_low(cond: str, signal: str) -> bool | None:
+    if not signal:
+        return None
+    leaf = signal.split(".")[-1]
+    c = (cond or "").replace(" ", "")
+    if re.search(rf"!\b{re.escape(leaf)}\b", c) or re.search(
+            rf"\b{re.escape(leaf)}\b==0", c):
+        return True
+    if re.search(rf"\b{re.escape(leaf)}\b", c):
+        return False
+    if leaf.lower().endswith("_n") or leaf.lower() in ("resetn", "rstn"):
+        return True
+    return None
+
+
+def _bit_meta(node, graph, requested: str | None = None) -> dict:
+    parent = node.parent
+    suffix = None
+    source_id = requested or node.id
+    m = re.search(r"\[([^\]]+)\]$", source_id)
+    if m:
+        suffix = m.group(1)
+    kind = None
+    offset = node.parent_bit_start
+    if suffix is not None:
+        if parent is None and requested and requested != node.id:
+            parent = node.id
+        if ":" in suffix:
+            kind = "range"
+            try:
+                lo = int(suffix.split(":")[-1])
+                offset = lo if offset is None else offset
+            except ValueError:
+                kind = "dynamic"
+        elif suffix.lstrip("-").isdigit():
+            kind = "bit"
+            if offset is None:
+                offset = int(suffix)
+        else:
+            kind = "dynamic"
+    parent_width = None
+    if parent is not None:
+        pn = graph.get_node(parent)
+        if pn is not None and pn.width:
+            parent_width = list(pn.width)
+    return {
+        "bit_range": node.bit_range,
+        "parent": parent,
+        "parent_bit_start": node.parent_bit_start,
+        "parent_bit_end": node.parent_bit_end,
+        "select": suffix,
+        "kind": kind,
+        "offset": offset,
+        "parent_width": parent_width,
+    }
+
+
 def _profile_signal(tracer, graph, sig: str, evidence_resolver=None) -> dict:
     res = resolve_signal(graph, sig)
     if not res["ok"]:
@@ -47,6 +112,9 @@ def _profile_signal(tracer, graph, sig: str, evidence_resolver=None) -> dict:
         )
     node_id = res["resolved"]
     node = graph.get_node(node_id)
+    if node is None and res["status"] == "bit_base_fallback":
+        node_id = res.get("base") or node_id
+        node = graph.get_node(node_id)
     if node is None:
         raise SignalResolutionError(
             f"resolved signal {node_id!r} has no graph node",
@@ -77,14 +145,26 @@ def _profile_signal(tracer, graph, sig: str, evidence_resolver=None) -> dict:
     is_seq = bool(clocks or resets) or any(
         t in ("always_ff", "always_ff_nonblocking", "nonblocking") for t in assign_types)
     # 用 evidence resolver 修正 driver 源码行（edge.source_location 常是条件行）
+    always_text = ""
+    always_loc = None
     if evidence_resolver is not None:
         try:
             ev = evidence_resolver.resolve(node_id)
             loc = getattr(ev, "source_location", None)
             if loc is not None and not loc.is_empty():
                 driver_file, driver_line = loc.file, loc.line_start
+            snippet = getattr(ev, "enclosing_always", None)
+            if snippet is not None:
+                always_text = getattr(snippet, "text", "") or ""
+                always_loc = getattr(snippet, "location", None)
         except Exception as ev_err:
             logger.debug("profile evidence driver loc failed for %s: %s", node_id, ev_err)
+    for c in clocks:
+        c["edge"] = _edge_of(always_text, c["signal"])
+    for r in resets:
+        r["edge"] = _edge_of(always_text, r["signal"])
+        r["async"] = r["edge"] is not None
+        r["active_low"] = _active_low(r.get("condition", ""), r["signal"])
     aliases = []
     for a in (node.id, node.name,
               node.id.split(".", 1)[1] if "." in node.id else ""):
@@ -101,12 +181,9 @@ def _profile_signal(tracer, graph, sig: str, evidence_resolver=None) -> dict:
         "is_signed": node.is_signed,
         "kind": getattr(getattr(node, "kind", None), "name", ""),
         "module": node.module,
-        "bit": {
-            "bit_range": node.bit_range,
-            "parent": node.parent,
-            "parent_bit_start": node.parent_bit_start,
-            "parent_bit_end": node.parent_bit_end,
-        },
+        "type": {"kind": getattr(getattr(node, "kind", None), "name", ""),
+                 "known": False},
+        "bit": _bit_meta(node, graph, res.get("resolved")),
         "source": {
             "file": getattr(node, "file", ""),
             "line": getattr(node, "line", 0),
@@ -130,6 +207,8 @@ def _profile_signal(tracer, graph, sig: str, evidence_resolver=None) -> dict:
             "assign_types": assign_types,
             "stage": None,
             "stage_known": False,
+            "always": ({"file": always_loc.file, "line": always_loc.line_start}
+                       if always_loc is not None and not always_loc.is_empty() else None),
         },
         "driver_count": len(tracer.trace_fanin(node_id, depth=1)),
         "load_count": len(tracer.trace_fanout(node_id, depth=1)),
