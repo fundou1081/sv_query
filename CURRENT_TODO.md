@@ -11,9 +11,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: 无（P42 完成；等待下一阶段/评审项）
+- **当前 item**: 无（P43 完成；等待下一阶段/评审项）
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **P18~P30** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P31** exp 降级 ✅（iter_327）；**P32** evidence 稳定性 ✅（iter_328）；**P33** ✅；**P34** verify ✅（iter_330）；**P35** include_control ✅（iter_331）；**P38** class 关系 ✅（iter_334）；**P39.1** lookup ✅（iter_335）；**P39.2** profile 语义 ✅（iter_336）；**P39.3** alias ✅（iter_337）；**P40.2** stage/sample ✅（iter_339）；**P41.2** manifest ✅（iter_341）；**P42.1** interface 别名 ✅（iter_342）
+- **P18~P30** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P31** exp 降级 ✅（iter_327）；**P32** evidence 稳定性 ✅（iter_328）；**P33** ✅；**P34** verify ✅（iter_330）；**P35** include_control ✅（iter_331）；**P38** class 关系 ✅（iter_334）；**P39.1** lookup ✅（iter_335）；**P39.2** profile 语义 ✅（iter_336）；**P39.3** alias ✅（iter_337）；**P40.2** stage/sample ✅（iter_339）；**P41.2** manifest ✅（iter_341）；**P42.1** interface 别名 ✅（iter_342）；**P43.1** generate ✅（iter_343）
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -248,17 +248,21 @@ graph edges / search / stats / trace evidence / controlflow analyze+list 字段�
 
 - `top.p.a` type：member_of/member_offset/width。
 
+## ✅ 刚完成（P43.1，generate）
+
+- `top.genblk1[0].x` / `top.genblk2.y` exact lookup；
+- generate scope type 递归解析（logic）；
+- 修正 generate index 被 `split("[")` 截断的 bug；
+- 1 个测试；全量 **2691 passed**。
+
 ## ✅ 刚完成（P42.1，interface 别名）
 
-- CONNECTION 边双向别名：interface 实例成员 ↔ modport 成员；
-- lookup aliases 可见；exact 优先、冲突 ambiguous；
-- 1 个测试；全量 **2690 passed**。
+- CONNECTION 边双向别名：interface 实例成员 ↔ modport 成员。
 
 ## 🔜 下一步候选
 
-- generate `genblk` 命名别名；
-- manifest 体积/性能裁剪；
-- 真实 waveform 工具联调 fixture。
+- 真实 waveform 工具样例（供应商 genblk 命名）；
+- manifest 体积/性能裁剪。
 
 ---
 

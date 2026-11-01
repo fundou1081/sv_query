@@ -131,6 +131,32 @@ def _build_type_lookup(adapter):
         if hp:
             modules[hp] = m
     symbol_cache = {}
+    path_symbols: dict[str, object] = {}
+
+    def _walk_scope(scope, seen):
+        sid = id(scope)
+        if sid in seen:
+            return
+        seen.add(sid)
+        body = getattr(scope, "body", None)
+        if body is None:
+            try:
+                body = list(scope)
+            except TypeError:
+                body = []
+        for member in body:
+            hp = getattr(member, "hierarchicalPath", None)
+            kind = str(getattr(member, "kind", ""))
+            if hp and (("Port" in kind) or ("Variable" in kind) or ("Net" in kind)):
+                path_symbols[hp] = member
+            if "GenerateBlockArray" in kind:
+                for entry in getattr(member, "entries", []) or []:
+                    _walk_scope(entry, seen)
+            elif "GenerateBlock" in kind:
+                _walk_scope(member, seen)
+
+    for _m in modules.values():
+        _walk_scope(_m, set())
 
     def _symbols(mod):
         key = id(mod)
@@ -146,6 +172,10 @@ def _build_type_lookup(adapter):
         return out
 
     def lookup(node):
+        nid = getattr(node, "id", "") or ""
+        direct = path_symbols.get(re.sub(r"\[[^\]]+\]$", "", nid).strip())
+        if direct is not None:
+            return direct
         base = (getattr(node, "name", "") or "").split("[")[0].strip()
         if not base:
             return None

@@ -534,3 +534,19 @@ member：`id/name/kind/module/width`；instance：`id/name/kind/module/width`。
 - alias 冲突仍返回 ambiguous。
 
 > CONNECTION 是物理网络连接，不等于语义驱动；lookup 只做路径映射，不改变 fanin/fanout 结论。
+
+---
+
+## P43.1 generate 路径/类型（2026-11-01）
+
+- **路径**：graph 使用 pyslang/LRM 的 generate hier path：
+  - 未命名 loop：`top.genblk1[0].x`
+  - 未命名 if：`top.genblk2.y`
+  - 命名 generate：`top.gen_accum[0].prod`
+  `trace lookup` 严格 exact 命中，无需额外别名。
+- **type**：`_build_type_lookup` 现在递归 generate scope（entry/if），
+  `top.genblk1[0].x` 可解析 `type.name=logic`。
+- 生成 scope 本身的节点（如 `top.genblk1[0]`）没有 signal type，保持 unknown。
+
+> 若波形工具对 generate 使用非 LRM 命名（如零填充 `genblk01`），需要该工具
+> 提供样例；当前不猜别名，避免错配。
