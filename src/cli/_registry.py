@@ -791,6 +791,14 @@ JSON_CONTRACT = {
         "target": {"type": "string", "desc": "constraint/member target id"},
         "kind": {"type": "string", "desc": "CONSTRAINS/HAS_* edge"},
     },
+    "class_member_candidate": {
+        "canonical_id": {"type": "string", "desc": "semantic instance member path"},
+        "member": {"type": "string", "desc": "member name"},
+        "class_instance": {"type": "string", "desc": "containing class instance path"},
+        "in_graph": {"type": "boolean", "desc": "node exists in graph"},
+        "kind": {"type": "string", "desc": "type-level member kind"},
+        "width": {"type": "array|null", "desc": "[msb,lsb]"},
+    },
     "class_relations": {
         "class": {"type": "string", "desc": "class name"},
         "extends": {"type": "string|null", "desc": "direct parent"},
@@ -897,6 +905,8 @@ JSON_CONTRACT = {
         "instance_count": {"type": "integer", "desc": "instance count"},
         "instances": {"type": "array<class_instance>", "desc": "instance-level nodes"},
         "member": {"type": "string", "desc": "requested member (member mode)"},
+        "candidate_count": {"type": "integer", "desc": "semantic member candidates"},
+        "candidates": {"type": "array<class_member_candidate>", "desc": "all instance paths"},
         "note": {"type": "string", "desc": "member-mode note"},
         "relations": "class_relations",
     },
