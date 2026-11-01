@@ -586,3 +586,21 @@ mode: scope | trace | verify | locate | state | exp
 
 - 支持实例路径；顶层模块 path（如 `top`）也可作为 scope；
 - scope 只做入口/上下文，不做因果追踪。
+
+---
+
+## P44.5 scope 可发现性（2026-11-01）
+
+`scope` 增加：
+
+| 字段 | 语义 |
+|---|---|
+| `kind` | `instance` / `generate` / `class` |
+| `signals[]` | scope 直接子信号/端口：name/canonical_id/kind/width/is_port/direction |
+| `members[]` | class scope 的类型级成员 |
+| `instances[]` | class scope 的实例 |
+
+- interface 实例：`kind=instance`，`signals` 列出 interface 成员（data/valid 等）；
+- generate scope（如 `top.genblk1[0]`）：`kind=generate`，`signals` 列出直接子信号；
+- class 类型（如 `packet`）：`kind=class`，返回 members/instances，不展开方法体；
+- 普通实例：`signals` 同时列出端口和直接内部信号。

@@ -46,7 +46,7 @@ def test_scope_unknown_is_explicit():
     assert r.returncode == 1
     d = json.loads(r.stdout)
     assert d["ok"] is False
-    assert d["error"] == "instance not found"
+    assert d["error"] == "scope not found"
 
 
 def test_capabilities_mode_groups():
@@ -57,3 +57,30 @@ def test_capabilities_mode_groups():
     assert modes["drivers"] == "trace"
     assert modes["verify claim"] == "verify"
     assert modes["stats"] == "locate"
+
+
+IFACE = ROOT / "sim" / "tests" / "fixtures" / "json_contract" / "iface.sv"
+GEN = ROOT / "sim" / "tests" / "fixtures" / "json_contract" / "generate_paths.sv"
+CLS = ROOT / "sim" / "tests" / "fixtures" / "golden_mini" / "golden_dataflow_35_class_oop.sv"
+
+
+def test_interface_scope_signals():
+    r = _json("scope", "top.u_if", "-f", str(IFACE))["result"]
+    assert r["module_type"] == "bus_if"
+    names = {s["name"] for s in r["signals"]}
+    assert {"clk", "data", "valid"} <= names
+    assert all(s["canonical_id"] for s in r["signals"])
+
+
+def test_generate_scope_signals():
+    r = _json("scope", "top.genblk1[0]", "-f", str(GEN))["result"]
+    assert r["kind"] == "generate"
+    assert [s["name"] for s in r["signals"]] == ["x"]
+    assert r["signals"][0]["canonical_id"] == "top.genblk1[0].x"
+
+
+def test_class_scope_members_instances():
+    r = _json("scope", "packet", "-f", str(CLS))["result"]
+    assert r["kind"] == "class"
+    assert {m["name"] for m in r["members"]} >= {"addr", "data"}
+    assert len(r["instances"]) == 1

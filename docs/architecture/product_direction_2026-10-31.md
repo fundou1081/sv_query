@@ -46,7 +46,7 @@ scope 定位候选与 canonical ID
 - Trace/Verify 是主目标与差异化；scope 做到“ID 稳定、interface/generate/class 可发现”即停止扩张；
 - capabilities 用 `mode` 标注 `scope|trace|verify|locate|state`。
 
-**实现状态（iter_344）**：`mode` 已落地；`scope <path>` 聚合已落地；scope 功能到此冻结，只补 interface/generate/class 可发现性。
+**实现状态（iter_345）**：`mode`、`scope` 聚合、interface/generate/class 可发现性已落地；scope 功能到此冻结。
 
 ## 2. 用户与工作流
 
