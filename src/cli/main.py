@@ -175,7 +175,22 @@ def stats_callback(
                 kind = edge.kind.name if hasattr(edge.kind, "name") else str(edge.kind)
                 edges_count[kind] = edges_count.get(kind, 0) + 1
 
-        modules = list(graph.modules) if hasattr(graph, "modules") else []
+        # [iter_347 / PLAN P46.1] graph 没有 modules 属性；从实例 module_type +
+        # 顶层 module 名构造真实清单，避免 stats.modules 永远为空。
+        modules = set()
+        try:
+            for inst in tracer.get_instances():
+                mt = getattr(inst, "module_type", None)
+                if mt:
+                    modules.add(str(mt))
+            for top in getattr(getattr(tracer._get_adapter(), "_root", None),
+                               "topInstances", []):
+                name = getattr(top, "name", None)
+                if name:
+                    modules.add(str(name))
+        except Exception:
+            modules = set()
+        modules = sorted(modules)
 
         data = {
             "ok": True,
