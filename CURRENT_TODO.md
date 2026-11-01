@@ -11,9 +11,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: 无（P47 完成；等待下一阶段/评审项）
+- **当前 item**: 无（P48 完成；等待下一阶段/评审项）
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **P18~P30** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P31** exp 降级 ✅（iter_327）；**P32** evidence 稳定性 ✅（iter_328）；**P33** ✅；**P34** verify ✅（iter_330）；**P35** include_control ✅（iter_331）；**P38** class 关系 ✅（iter_334）；**P39.1** lookup ✅（iter_335）；**P39.2** profile 语义 ✅（iter_336）；**P39.3** alias ✅（iter_337）；**P40.2** stage/sample ✅（iter_339）；**P41.2** manifest ✅（iter_341）；**P43.1** generate ✅（iter_343）；**P44.5** scope 可发现性 ✅（iter_345）；**P45** waveform e2e ✅（iter_346）；**P46.1** stats.modules ✅（iter_347）；**P47** class member UVM ✅（iter_348）
+- **P18~P30** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P31** exp 降级 ✅（iter_327）；**P32** evidence 稳定性 ✅（iter_328）；**P33** ✅；**P34** verify ✅（iter_330）；**P35** include_control ✅（iter_331）；**P38** class 关系 ✅（iter_334）；**P39.1** lookup ✅（iter_335）；**P39.2** profile 语义 ✅（iter_336）；**P39.3** alias ✅（iter_337）；**P40.2** stage/sample ✅（iter_339）；**P41.2** manifest ✅（iter_341）；**P43.1** generate ✅（iter_343）；**P44.5** scope 可发现性 ✅（iter_345）；**P45** waveform e2e ✅（iter_346）；**P46.1** stats.modules ✅（iter_347）；**P47** class member UVM ✅（iter_348）；**P48** 条件化简/互斥 ✅（iter_349）
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -269,20 +269,20 @@ graph edges / search / stats / trace evidence / controlflow analyze+list 字段�
 
 - interface/generate/class scope；signals/members/instances。
 
+## ✅ 刚完成（P48，条件化简 / 互斥）
+
+- L1 局部布尔化简：原始条件保留，派生 simplified/analysis；
+- 4-state 补元不化简；解析失败显式 unknown；
+- L2 语法级互斥：if/else → proven_exclusive_2state；
+- 5 单元 + 1 CLI 测试；全量 **2712 passed**。
+
 ## ✅ 刚完成（P47，class member / UVM）
 
-- `class --member` 新增 `candidates`：语义推导完整实例路径；
-- `in_graph` 标记是否可继续 fanin/fanout；
-- 覆盖 `top.pkt.data`（未使用）、`top.e.p.addr`（UVM 嵌套）、`top.p.i.val`；
-- 4 个测试 + 契约；全量 **2705 passed**。
-
-## ✅ 刚完成（P46.1，stats.modules）
-
-- modules 真实清单。
+- class --member semantic candidates（不造图节点）。
 
 ## 🔜 下一步候选
 
-- 条件化简/互斥（P25）；
+- L2 branch group/arm + casez/unique；
 - 真实 waveform 样例；
 - manifest 体积/性能。
 

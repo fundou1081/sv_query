@@ -654,3 +654,36 @@ candidate：
 - type-level 成员实例（module 是 class 名）不作为根；
 - 不往图里造节点，保留“未使用成员不臆造”的图语义；
 - `in_graph=false` 表示语义上存在、但 RTL/graph 未使用。
+
+---
+
+## P48 条件化简 / 互斥（2026-11-01）
+
+### L1 局部布尔化简
+
+fanin/fanout 的每个节点/路径新增：
+
+| 字段 | 语义 |
+|---|---|
+| `condition_simplified` | L1 化简后的 OR；原始 `condition` 不变 |
+| `conditions_simplified` | 每个原始条件的化简形式 |
+| `condition_paths[].simplified` | 单路径化简 |
+| `condition_paths[].analysis` | 该路径分析结果 |
+| `condition_analysis` | changed/method/confidence/four_state_safe/tautology/unsat/analysis_incomplete/error |
+| `condition_analysis_incomplete` | 有解析失败，化简不权威 |
+
+支持只含 `! / && / || / 括号` 的布尔 IR；原子整体保留。
+**不假设四态补元律**：`a && !a` 不化简为 false。
+
+### L2 语法级互斥
+
+fanin signal 新增：
+
+| 字段 | 语义 |
+|---|---|
+| `driver_conflict` | `none / possible / proven_exclusive_2state / unknown` |
+| `driver_conflict_analysis` | status/method/confidence/four_state_safe |
+
+- 只证明 `a` vs `!a` 的语法互补；
+- `four_state_safe=false`：四态下 else ≠ !cond；
+- 无分支 group/casez/unique 支持。

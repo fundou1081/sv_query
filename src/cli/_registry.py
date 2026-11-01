@@ -408,8 +408,9 @@ JSON_CONTRACT = {
         },
         "condition_paths": {
             "type": "array<object>",
-            "item": {"condition": "string", "path": "array<string>"},
-            "desc": "each path: combined condition + raw condition sequence",
+            "item": {"condition": "string", "path": "array<string>",
+                     "simplified": "string", "analysis": "object"},
+            "desc": "each path: raw condition + raw sequence + L1 simplified/analysis",
         },
         "condition_unconditional": {
             "type": "boolean",
@@ -419,11 +420,38 @@ JSON_CONTRACT = {
             "type": "boolean",
             "desc": "path enumeration hit caps for this node",
         },
+        "condition_simplified": {
+            "type": "string",
+            "desc": "L1 simplified OR; empty = unconditional; original preserved",
+        },
+        "conditions_simplified": {
+            "type": "array<string>",
+            "desc": "per-condition L1 simplified forms (original still in conditions)",
+        },
+        "condition_analysis": {
+            "type": "object",
+            "desc": "changed/method/confidence/four_state_safe/tautology/unsat/analysis_incomplete",
+        },
+        "condition_analysis_incomplete": {
+            "type": "boolean",
+            "desc": "at least one condition parse failed; simplified not authoritative",
+        },
+    },
+    "condition_analysis": {
+        "changed": {"type": "boolean", "desc": "simplified differs from canonical original"},
+        "method": {"type": "string", "desc": "local_bool_v1|parse_failed|empty"},
+        "confidence": {"type": "string", "desc": "atom_identity|unknown"},
+        "four_state_safe": {"type": "boolean", "desc": "identities sound under X/Z"},
+        "tautology": {"type": "boolean", "desc": "simplified to true"},
+        "unsat": {"type": "boolean", "desc": "simplified to false"},
+        "analysis_incomplete": {"type": "boolean", "desc": "parse failed / incomplete"},
+        "error": {"type": "string|null", "desc": "parse error if any"},
     },
     "commands": {
         "trace fanin": {
             "result_fields": ["drivers"],
-            "signal_fields": ["driver_count", "multi_driver", "conditional_drivers"],
+            "signal_fields": ["driver_count", "multi_driver", "conditional_drivers",
+                              "driver_conflict", "driver_conflict_analysis"],
             "node_array": "drivers",
         },
         "trace fanout": {

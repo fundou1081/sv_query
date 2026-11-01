@@ -137,7 +137,7 @@ scope 定位候选与 canonical ID
 
 ### 中（有用但需标注/补强）
 
-- `controlflow analyze/list`：条件分析，缺化简/互斥
+- `controlflow analyze/list`：条件分析；L1 化简 + 语法级互斥（P48）
 - `impact`：假设验证，risk 是 heuristic
 - `snapshot compare`：回归/debug diff
 - `stats` / `search`：辅助定位（`stats.modules` 仍空）
