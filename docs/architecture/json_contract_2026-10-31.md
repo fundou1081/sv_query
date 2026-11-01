@@ -626,3 +626,31 @@ mode: scope | trace | verify | locate | state | exp
 
 - `resolve_signal` 全局支持 `$root.`；
 - packed struct 成员节点（node.name 只有成员名、parent 指向父总线）可解析 member type。
+
+---
+
+## P47 class member / UVM 可发现性（2026-11-01）
+
+`class <name> --member <member>` 现在返回两组：
+
+| 字段 | 语义 |
+|---|---|
+| `instances[]` | **图内已存在**的实例成员节点（原行为） |
+| `count` | 图内节点数 |
+| `candidates[]` | 语义推导的完整实例路径（不造图节点） |
+| `candidate_count` | 候选数 |
+
+candidate：
+
+| 字段 | 语义 |
+|---|---|
+| `canonical_id` | 实际实例成员路径（如 `top.e.p.addr`） |
+| `member` | 成员名 |
+| `class_instance` | 所属实例路径 |
+| `in_graph` | 图内是否已有节点 |
+| `kind` / `width` | 类型级成员信息 |
+
+- 从真实根 class 实例出发，沿 `CLASS_INSTANCE` 成员递归；
+- type-level 成员实例（module 是 class 名）不作为根；
+- 不往图里造节点，保留“未使用成员不臆造”的图语义；
+- `in_graph=false` 表示语义上存在、但 RTL/graph 未使用。

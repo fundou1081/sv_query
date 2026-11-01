@@ -432,3 +432,13 @@ def test_scope_contract():
     assert set(data["result"]["ports"][0]) == set(c["scope_port"])
     assert set(data["result"]["signals"][0]) == set(c["scope_signal"])
     assert set(data["result"]["parameters"][0]) == set(c["scope_param"])
+
+
+def test_class_member_candidate_contract():
+    _, c = _contract()
+    data = json.loads(_run(["class", "packet", "--member", "data", "-f",
+                            str(PROJECT_ROOT / "sim" / "tests" / "fixtures" /
+                                "golden_mini" / "golden_dataflow_35_class_oop.sv"),
+                            "--json"]).stdout)
+    cand = data["candidates"][0]
+    assert set(cand) == set(c["class_member_candidate"])

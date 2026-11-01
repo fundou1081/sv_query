@@ -125,6 +125,66 @@ def _class_relations(tracer, graph, name: str) -> dict:
     }
 
 
+def _class_member_candidates(tracer, class_name: str, member: str) -> list[dict]:
+    """[iter_348 / PLAN P47] 语义推导 class member 的实际实例路径。
+
+    不往图里造节点：从真实根 class 实例出发，沿 CLASS_INSTANCE 成员递归；
+    输出 candidate + in_graph，让 UVM testbench 能看到未使用的成员路径。
+    """
+    graph = tracer.get_graph()
+    class_types = set(tracer.list_classes())
+    type_members = {}
+    for cid in class_types:
+        members = []
+        for dst in graph.successors(cid):
+            n = graph.get_node(dst)
+            if n is not None and n.kind.name in ("CLASS_PROPERTY", "CLASS_INSTANCE"):
+                members.append((n.name, dst, n))
+        type_members[cid] = sorted(members, key=lambda x: x[0])
+
+    def inst_type(type_member_id: str) -> str | None:
+        for succ in graph.successors(type_member_id):
+            for e in graph.get_edges(type_member_id, succ):
+                if e.kind.name == "IS_INSTANCE_OF":
+                    return succ
+        return None
+
+    roots = []
+    for nid in graph.nodes():
+        n = graph.get_node(nid)
+        if n is None or n.kind.name != "CLASS_INSTANCE":
+            continue
+        # type-level 成员实例的 module 是 class 名；真实根实例的 module 是 RTL scope
+        if n.module in class_types:
+            continue
+        roots.append((nid, inst_type(nid)))
+
+    out = []
+    seen = set()
+
+    def walk(inst_path: str, class_id: str | None, visited: set):
+        if not class_id or (inst_path, class_id) in visited:
+            return
+        visited.add((inst_path, class_id))
+        for mname, mid, mnode in type_members.get(class_id, []):
+            if class_id == class_name and mname == member:
+                cid = f"{inst_path}.{mname}"
+                key = (cid, mid)
+                if key not in seen:
+                    seen.add(key)
+                    out.append({"canonical_id": cid, "member": mname,
+                                "class_instance": inst_path,
+                                "in_graph": cid in graph.nodes(),
+                                "kind": mnode.kind.name,
+                                "width": list(mnode.width) if mnode.width else None})
+            if mnode.kind.name == "CLASS_INSTANCE":
+                walk(f"{inst_path}.{mname}", inst_type(mid), visited)
+
+    for ip, ct in roots:
+        walk(ip, ct, set())
+    return sorted(out, key=lambda x: x["canonical_id"])
+
+
 def class_cmd(
     name: str = typer.Argument(None, help="class 名 (如 packet); 省略则列出所有 class"),
     member: str = typer.Option(None, "--member", help="只看该成员的实例级节点 (如 data → packet.data 的各实例)"),
@@ -166,9 +226,11 @@ def class_cmd(
 
     if member:
         nodes = tracer.trace_member_instances(f"{name}.{member}")
+        candidates = _class_member_candidates(tracer, name, member)
         emit({"ok": True, "class": name, "member": member, "count": len(nodes),
               "instances": [node_dict(n) for n in nodes],
-              "note": "只含图内已存在的实例成员节点"},
+              "candidate_count": len(candidates), "candidates": candidates,
+              "note": "instances 仅含图内已存在节点; candidates 是语义推导的完整实例路径"},
              json_output, pretty)
         return
 
