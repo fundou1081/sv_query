@@ -481,3 +481,21 @@ member：`id/name/kind/module/width`；instance：`id/name/kind/module/width`。
 - stage 只对 REG 且 pipeline 检测命中时给；组合/状态机不猜。
 - 多 clock / 无 edge 时 `sample=null` + reason，不伪造采样时刻。
 - 所有 unknown 都显式，保持 `stage_known=false`。
+
+---
+
+## P41.1 struct member type（2026-11-01）
+
+`profile_signal.type` 对 struct 成员（如 `top.p.a`）：
+
+| 字段 | 值 |
+|---|---|
+| `known` | true |
+| `name` | `pair_t.a`（父类型.成员） |
+| `canonical` | 父 struct canonical type |
+| `bit_width` / `is_signed` | 成员宽度/符号 |
+| `member_of` | 父 struct 类型 |
+| `member_offset` | 成员 LSB offset |
+| `packed_members` | 成员自身不是 aggregate，通常 [] |
+
+> 只对 module/instance 内的 packed struct 成员推导；嵌套/class 成员仍 unknown。

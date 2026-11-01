@@ -141,3 +141,12 @@ def test_combinational_stage_unknown():
     assert s["stage_unknown_reason"] == "combinational"
     assert s["sample"] is None
     assert s["sample_unknown_reason"] == "combinational"
+
+
+def test_struct_member_type_metadata():
+    t = _profile_types("top.p.a")["result"]["signals"][0]["type"]
+    assert t["known"] is True
+    assert t["member_of"] == "pair_t"
+    assert t["member_offset"] == 4
+    assert t["bit_width"] == 4
+    assert t["name"].endswith(".a")
