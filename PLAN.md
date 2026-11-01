@@ -7,7 +7,7 @@
 >
 > 格式（每行一项，子项用 `-- ` 前缀，id 全局唯一）：
 > ```
-> current item : P40.1 type/enum/struct/array 元数据 <待做>
+> current item : P40.2 sequential stage / 时间语义 <待做>
 >
 > P0 建图层与查询层的结构化拆分 <已完成>
 > -- P0.1 图快照基线工具 <待做>
@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P40.1 type/enum/struct/array 元数据 <待做>
+current item : P40.2 sequential stage / 时间语义 <待做>
 
 ## 计划树
 
@@ -163,7 +163,7 @@ P39 波形路径联调 <进行中>
 -- P39.3 测试与契约 <已完成>
 
 P40 波形值语义（type/stage） <待做>
--- P40.1 type/enum/struct/array 元数据 <待做>
+-- P40.1 type/enum/struct/array 元数据 <已完成>
 -- P40.2 sequential stage / 时间语义 <待做>
 -- P11.1 聚合宽度/signedness（var/net/port，含嵌套） <已完成>
 -- P11.2 成员宽度/位偏移（p.a → 4 位 + 在 p 中的位段） <已完成>

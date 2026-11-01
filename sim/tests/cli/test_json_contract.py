@@ -392,3 +392,15 @@ def test_trace_lookup_contract():
     assert set(data) == set(c["top_level"])
     assert set(data["result"]) == set(cmd["result_fields"])
     assert set(data["result"]["paths"][0]) == set(c["lookup_path"])
+
+
+TYPES_FIX = str(PROJECT_ROOT / "sim" / "tests" / "fixtures" / "json_contract" / "types.sv")
+
+
+def test_profile_type_contract():
+    _, c = _contract()
+    data = json.loads(_run(["trace", "profile", "top.st", "-f", TYPES_FIX,
+                            "--json"]).stdout)
+    t = data["result"]["signals"][0]["type"]
+    assert set(t) == set(c["profile_type"])
+    assert set(t["enum_values"][0]) == set(c["enum_value"])

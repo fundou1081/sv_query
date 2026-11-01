@@ -88,3 +88,38 @@ def test_bit_fallback_metadata():
     assert i["bit"]["select"] == "3"
     assert i["bit"]["kind"] == "bit"
     assert i["bit"]["offset"] == 3
+
+
+TYPES = ROOT / "sim" / "tests" / "fixtures" / "json_contract" / "types.sv"
+
+
+def _profile_types(*signals):
+    r = _run("trace", "profile", *signals, "-f", str(TYPES), "--json")
+    assert r.returncode == 0, r.stderr[-300:]
+    return json.loads(r.stdout)
+
+
+def test_enum_type_metadata():
+    t = _profile_types("top.st")["result"]["signals"][0]["type"]
+    assert t["known"] is True
+    assert t["is_enum"] is True
+    assert t["name"] == "state_t"
+    assert [v["name"] for v in t["enum_values"]] == ["IDLE", "RUN", "DONE"]
+
+
+def test_struct_type_metadata():
+    t = _profile_types("top.p")["result"]["signals"][0]["type"]
+    assert t["is_struct"] is True
+    assert t["bit_width"] == 8
+    assert [(m["name"], m["offset"], m["width"]) for m in t["packed_members"]] == [
+        ("a", 4, 4), ("b", 0, 4)]
+
+
+def test_array_and_plain_type_metadata():
+    arr = _profile_types("top.arr")["result"]["signals"][0]["type"]
+    assert arr["known"] is True
+    assert arr["is_array"] is True
+    plain = _profile_types("top.y")["result"]["signals"][0]["type"]
+    assert plain["known"] is True
+    assert plain["name"] == "logic[7:0]"
+    assert plain["packed_members"] == []

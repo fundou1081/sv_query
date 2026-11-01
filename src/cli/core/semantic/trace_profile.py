@@ -100,7 +100,98 @@ def _bit_meta(node, graph, requested: str | None = None) -> dict:
     }
 
 
-def _profile_signal(tracer, graph, sig: str, evidence_resolver=None) -> dict:
+def _build_type_lookup(adapter):
+    """[iter_338 / PLAN P40.1] node -> semantic type metadata.
+
+    只解析 module/instance 内的 Port/Variable；class/constraint 暂不伪装。
+    """
+    modules = {}
+    for m in getattr(adapter, "get_modules", lambda: [])():
+        hp = getattr(m, "hierarchicalPath", None)
+        if hp:
+            modules[hp] = m
+    symbol_cache = {}
+
+    def _symbols(mod):
+        key = id(mod)
+        if key in symbol_cache:
+            return symbol_cache[key]
+        out = {}
+        for member in getattr(mod, "body", []) or []:
+            name = getattr(member, "name", None)
+            if not name:
+                continue
+            out[str(name).strip()] = member
+        symbol_cache[key] = out
+        return out
+
+    def lookup(node):
+        base = (getattr(node, "name", "") or "").split("[")[0].strip()
+        if not base:
+            return None
+        mod = modules.get(getattr(node, "module", "") or "")
+        if mod is None:
+            return None
+        return _symbols(mod).get(base)
+
+    return lookup
+
+
+def _type_meta(node, type_lookup, adapter=None) -> dict:
+    kind = getattr(getattr(node, "kind", None), "name", "")
+    base = {"kind": kind, "known": False, "name": None, "canonical": None,
+            "is_enum": False, "is_struct": False, "is_union": False,
+            "is_unpacked_array": False, "is_array": False, "array_element": None,
+            "bit_width": None, "is_signed": None,
+            "enum_values": [], "packed_members": []}
+    if type_lookup is None:
+        return base
+    sym = type_lookup(node)
+    if sym is None:
+        return base
+    t = getattr(sym, "type", None)
+    if t is None:
+        return base
+    ct = getattr(t, "canonicalType", None) or t
+    name = str(t) if t is not None else None
+    canonical = str(ct) if ct is not None else None
+    values = []
+    if bool(getattr(ct, "isEnum", False)):
+        m = re.search(r"enum\s*\{(.*?)\}", canonical or "")
+        if m:
+            for part in m.group(1).split(","):
+                if "=" in part:
+                    n, v = part.split("=", 1)
+                    values.append({"name": n.strip(), "value": v.strip()})
+    members = []
+    if adapter is not None and (bool(getattr(ct, "isStruct", False))
+                                or bool(getattr(ct, "isPackedUnion", False))):
+        try:
+            members = adapter.get_packed_member_layout(sym) or []
+        except Exception:
+            members = []
+    return {
+        **base,
+        "known": True,
+        "name": name,
+        "canonical": canonical,
+        "is_enum": bool(getattr(ct, "isEnum", False)),
+        "is_struct": bool(getattr(ct, "isStruct", False)),
+        "is_union": bool(getattr(ct, "isPackedUnion", False)),
+        "is_unpacked_array": bool(getattr(ct, "isUnpackedArray", False)),
+        "is_array": bool(getattr(ct, "isArray", False)
+                         or getattr(ct, "isUnpackedArray", False)
+                         or getattr(ct, "isPackedArray", False)),
+        "array_element": (str(getattr(ct, "elementType", None))
+                          if getattr(ct, "elementType", None) is not None else None),
+        "bit_width": getattr(t, "bitWidth", None),
+        "is_signed": bool(getattr(t, "isSigned", False)),
+        "enum_values": values,
+        "packed_members": members,
+    }
+
+
+def _profile_signal(tracer, graph, sig: str, evidence_resolver=None, type_lookup=None, adapter=None) -> dict:
     res = resolve_signal(graph, sig)
     if not res["ok"]:
         raise SignalResolutionError(
@@ -181,8 +272,7 @@ def _profile_signal(tracer, graph, sig: str, evidence_resolver=None) -> dict:
         "is_signed": node.is_signed,
         "kind": getattr(getattr(node, "kind", None), "name", ""),
         "module": node.module,
-        "type": {"kind": getattr(getattr(node, "kind", None), "name", ""),
-                 "known": False},
+        "type": _type_meta(node, type_lookup, adapter),
         "bit": _bit_meta(node, graph, res.get("resolved")),
         "source": {
             "file": getattr(node, "file", ""),
@@ -234,13 +324,15 @@ def profile(
         out = []
         errors = []
         try:
-            evidence_resolver = TraceEvidenceResolver(graph=graph,
-                                                      adapter=tracer._get_adapter())
+            _adapter = tracer._get_adapter()
+            evidence_resolver = TraceEvidenceResolver(graph=graph, adapter=_adapter)
+            type_lookup = _build_type_lookup(_adapter)
         except Exception:
             evidence_resolver = None
+            type_lookup = None
         for i, sig in enumerate(signals):
             try:
-                item = _profile_signal(tracer, graph, sig, evidence_resolver)
+                item = _profile_signal(tracer, graph, sig, evidence_resolver, type_lookup, _adapter)
                 item["index"] = i
                 out.append(item)
             except Exception as e:

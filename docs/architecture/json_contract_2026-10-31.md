@@ -442,3 +442,23 @@ member：`id/name/kind/module/width`；instance：`id/name/kind/module/width`。
 - port/internal aliases 仍来自 MIG。
 
 > interface/modport 与 generate `genblk` 命名别名仍不在本索引内（见 KNOWN）。
+
+---
+
+## P40.1 profile type metadata（2026-11-01）
+
+`profile_signal.type` 从 NodeKind 升级为语义类型（module/instance 内 Port/Variable）：
+
+| 字段 | 语义 |
+|---|---|
+| `known` | 是否解析到 semantic symbol |
+| `name` / `canonical` | 声明类型 / canonical type |
+| `is_enum/is_struct/is_union/is_unpacked_array/is_array` | 类型分类 |
+| `array_element` | 数组元素类型 |
+| `bit_width` / `is_signed` | 语义位宽/符号 |
+| `enum_values[]` | `name/value`（enum） |
+| `packed_members[]` | `name/width/offset/signed`（struct/union） |
+
+- 只解析 module/instance 的 Port/Variable；class/constraint 仍 `known=false`；
+- struct 成员 offset 是 LSB 在聚合中的位置；
+- enum value 保留源码字面量；不做运行期编码转换。
