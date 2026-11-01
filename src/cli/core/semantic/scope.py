@@ -12,6 +12,7 @@ from pathlib import Path
 import typer
 
 from cli._common import _build_tracer, handle_compilation_error
+from cli.core.semantic._common import node_dict
 from cli._output import emit_json
 from trace.core.compiler import CompilationError
 
@@ -41,6 +42,39 @@ def _params_for(tracer, path: str) -> list[dict]:
     return []
 
 
+def _signals_under(tracer, path: str) -> list[dict]:
+    """[iter_345 / PLAN P44.5] scope 的直接子信号/端口（不展开因果）。"""
+    graph = tracer.get_graph()
+    prefix = path + "."
+    out = []
+    for nid in graph.nodes():
+        if not nid.startswith(prefix):
+            continue
+        rest = nid[len(prefix):]
+        if not rest or "." in rest:
+            continue
+        node = graph.get_node(nid)
+        if node is None:
+            continue
+        kind = getattr(getattr(node, "kind", None), "name", "")
+        if kind in ("INSTANTIATED_MODULE", "GENERATE_BLOCK"):
+            continue
+        direction = ""
+        if kind == "PORT_IN":
+            direction = "input"
+        elif kind == "PORT_OUT":
+            direction = "output"
+        elif kind == "PORT_INOUT":
+            direction = "inout"
+        out.append({"name": rest, "canonical_id": nid, "kind": kind,
+                    "width": list(node.width) if node.width else None,
+                    "is_port": bool(getattr(node, "is_port", False))
+                    or kind.startswith("PORT_"),
+                    "direction": direction})
+    out.sort(key=lambda x: x["name"])
+    return out
+
+
 def scope_cmd(
     path: str = typer.Argument(..., help="实例路径 (如 top.u_dut)"),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
@@ -65,17 +99,56 @@ def scope_cmd(
             except Exception:
                 top_sym = None
         if node is None and top_sym is None:
-            data = {"ok": False, "command": "scope",
+            graph = tracer.get_graph()
+            prefix = path + "."
+            under = [n for n in graph.nodes() if n.startswith(prefix)]
+            is_class = path in set(tracer.list_classes())
+            if not under and not is_class:
+                data = {"ok": False, "command": "scope",
+                        "params": {"path": path, "file": str(file) if file else None,
+                                   "filelist": filelist},
+                        "error": "scope not found", "result": None,
+                        "errors": [{"error": "scope not found", "path": path,
+                                    "hint": "用 `svq instances` / `svq class` 列可用 scope"}]}
+                if json_output:
+                    emit_json(data, pretty)
+                else:
+                    print(f"Error: scope not found: {path}")
+                raise typer.Exit(code=1)
+            # class type-level scope 优先于 generate（packet.addr 是成员不是 generate）
+            if is_class:
+                members = [node_dict(n) for n in tracer.trace_class_members(path)]
+                instances = [node_dict(n) for n in tracer.trace_class_instances(path)]
+                data = {"ok": True, "command": "scope",
+                        "params": {"path": path, "file": str(file) if file else None,
+                                   "filelist": filelist},
+                        "result": {"scope": path, "canonical_id": path,
+                                   "kind": "class", "module_type": path, "parent": None,
+                                   "children": [], "ports": [], "parameters": [],
+                                   "signals": [], "members": members,
+                                   "instances": instances},
+                        "errors": []}
+                if json_output:
+                    emit_json(data, pretty)
+                else:
+                    print(f"class scope: {path}, members={len(members)}")
+                return
+            # generate scope 路径：有 <path>. 子节点，但不是 MIG instance
+            data = {"ok": True, "command": "scope",
                     "params": {"path": path, "file": str(file) if file else None,
                                "filelist": filelist},
-                    "error": "instance not found", "result": None,
-                    "errors": [{"error": "instance not found", "path": path,
-                                "hint": "用 `svq instances --json` 列可用实例"}]}
+                    "result": {"scope": path, "canonical_id": path,
+                               "kind": "generate", "module_type": "generate",
+                               "parent": path.rsplit(".", 1)[0] if "." in path else None,
+                               "children": [], "ports": [],
+                               "parameters": [], "signals": _signals_under(tracer, path),
+                               "members": [], "instances": []},
+                    "errors": []}
             if json_output:
                 emit_json(data, pretty)
             else:
-                print(f"Error: instance not found: {path}")
-            raise typer.Exit(code=1)
+                print(f"generate scope: {path}")
+            return
         children = []
         for inst in tracer.get_instances():
             if getattr(inst, "parent", None) == path:
@@ -119,9 +192,13 @@ def scope_cmd(
                 "module_type": (node.module_type if node is not None
                                 else getattr(top_sym, "name", path)),
                 "parent": (node.parent if node is not None else None),
+                "kind": "instance",
                 "children": children,
                 "ports": ports,
                 "parameters": _params_for(tracer, path),
+                "signals": _signals_under(tracer, path),
+                "members": [],
+                "instances": [],
             },
             "errors": [],
         }

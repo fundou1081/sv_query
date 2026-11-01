@@ -430,4 +430,5 @@ def test_scope_contract():
     assert set(data["result"]["children"][0]) == set(c["scope_child"])
     data = json.loads(_run(["scope", "top.u", "-f", fixture, "--json"]).stdout)
     assert set(data["result"]["ports"][0]) == set(c["scope_port"])
+    assert set(data["result"]["signals"][0]) == set(c["scope_signal"])
     assert set(data["result"]["parameters"][0]) == set(c["scope_param"])

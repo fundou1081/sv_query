@@ -183,6 +183,7 @@ P44 Scope 层收敛 <已完成>
 -- P44.2 capabilities mode <已完成>
 -- P44.3 scope 聚合命令 + canonical ID <已完成>
 -- P44.4 测试与文档 <已完成>
+-- P44.5 scope 可发现性（interface/generate/class） <已完成>
 -- P11.1 聚合宽度/signedness（var/net/port，含嵌套） <已完成>
 -- P11.2 成员宽度/位偏移（p.a → 4 位 + 在 p 中的位段） <已完成>
 -- P11.3 测试与文档：聚合/成员矩阵 + 基线 <已完成>
