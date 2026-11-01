@@ -428,3 +428,17 @@ member：`id/name/kind/module/width`；instance：`id/name/kind/module/width`。
 - `active_low` 先从条件（`!rst`/`==0`）推断，再从 `_n` 命名推断；仍无法判断 → null；
 - `type.known=false`：P39.2 只给 NodeKind，不伪装 enum/struct/array 类型；
 - `bit` 对 `bit_base_fallback` 使用请求的 `[3]` 作为 select/offset，parent 是 canonical 总线。
+
+---
+
+## P39.3 path alias index（2026-11-01）
+
+`trace lookup` 现在先查 exact，再查 alias index：
+
+- `resolution=exact|alias|bit_parent|ambiguous|not_found`
+- `matched_via=exact|alias|bit_parent|null`
+- escaped identifier：登记去反斜杠的可读变体；
+  若变体与真实节点冲突 → `ambiguous`（不猜）。
+- port/internal aliases 仍来自 MIG。
+
+> interface/modport 与 generate `genblk` 命名别名仍不在本索引内（见 KNOWN）。
