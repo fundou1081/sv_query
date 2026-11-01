@@ -52,7 +52,8 @@ def test_contract_fields_have_type_and_desc():
             assert "type" in spec, f"{section}.{name} missing type"
             assert "desc" in spec, f"{section}.{name} missing desc"
     item = c["trace_node"]["condition_paths"]["item"]
-    assert item == {"condition": "string", "path": "array<string>"}
+    assert item == {"condition": "string", "path": "array<string>",
+                    "simplified": "string", "analysis": "object"}
     assert "null" in c["trace_signal"]["cycles_detected"]["type"]
 
 
@@ -442,3 +443,17 @@ def test_class_member_candidate_contract():
                             "--json"]).stdout)
     cand = data["candidates"][0]
     assert set(cand) == set(c["class_member_candidate"])
+
+
+def test_condition_analysis_contract(tmp_path):
+    p = tmp_path / "t.sv"
+    p.write_text(FIXTURE)
+    data = json.loads(_run(["trace", "fanin", "top.y", "--file", str(p),
+                            "--json", "--no-cache"]).stdout)
+    _, c = _contract()
+    node = data["result"]["signals"][0]["drivers"][0]
+    assert {"condition_simplified", "conditions_simplified",
+            "condition_analysis", "condition_analysis_incomplete"} <= set(node)
+    assert set(node["condition_analysis"]) == set(c["condition_analysis"])
+    assert set(node["condition_paths"][0]) >= {"condition", "path",
+                                               "simplified", "analysis"}

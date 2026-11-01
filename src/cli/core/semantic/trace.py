@@ -43,6 +43,7 @@ logger = logging.getLogger(__name__)
 
 # JSON 输出格式化函数
 from cli.core.semantic._bit_args import normalize_endpoint, parse_bits  # [iter_309 P15]
+from cli.core.semantic.condition_analysis import driver_conflict_analysis  # [iter_349 P48]
 from cli.core.semantic.trace_common import (
     attach_distances,  # noqa: E402
     _sanitize_trace_dot_id, _format_trace_label, _generate_trace_dot,
@@ -464,6 +465,7 @@ def fanin(
                     truncated_global = True
                 if evidence:
                     attach_edge_evidence(_g, _query_sig, drivers, reverse=True)
+                _conflict = driver_conflict_analysis(drivers)
                 signals_result.append({
                     "signal": sig,
                     "index": i,
@@ -475,6 +477,8 @@ def fanin(
                     "coarse_fallback": coarse_fallback,
                     "driver_count": driver_count,
                     "multi_driver": multi_driver,
+                    "driver_conflict": _conflict["status"],
+                    "driver_conflict_analysis": _conflict,
                     "conditional_drivers": conditional_drivers,
                     "dynamic_index": _dynamic,
                     "function_call": _function,

@@ -33,33 +33,80 @@
         ],
         "count": 1,
         "cycles_detected": true,
+        "driver_conflict": "none",
+        "driver_conflict_analysis": {
+          "confidence": "exact",
+          "four_state_safe": true,
+          "method": "count",
+          "status": "none"
+        },
         "driver_count": 2,
         "drivers": [
           {
             "bit_range": null,
             "condition": "(!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b1) || (!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b10)",
+            "condition_analysis": {
+              "analysis_incomplete": false,
+              "changed": true,
+              "confidence": "atom_identity",
+              "error": null,
+              "four_state_safe": true,
+              "method": "local_bool_v1",
+              "tautology": false,
+              "unsat": false
+            },
+            "condition_analysis_incomplete": false,
             "condition_path": [
               "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b1"
             ],
             "condition_paths": [
               {
+                "analysis": {
+                  "analysis_incomplete": false,
+                  "changed": true,
+                  "confidence": "atom_identity",
+                  "error": null,
+                  "four_state_safe": true,
+                  "method": "local_bool_v1",
+                  "simplified": "rst_ni && {push_i && !full_o, pop_i && !empty_o} == 2'b1",
+                  "tautology": false,
+                  "unsat": false
+                },
                 "condition": "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b1",
                 "path": [
                   "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b1"
-                ]
+                ],
+                "simplified": "rst_ni && {push_i && !full_o, pop_i && !empty_o} == 2'b1"
               },
               {
+                "analysis": {
+                  "analysis_incomplete": false,
+                  "changed": true,
+                  "confidence": "atom_identity",
+                  "error": null,
+                  "four_state_safe": true,
+                  "method": "local_bool_v1",
+                  "simplified": "rst_ni && {push_i && !full_o, pop_i && !empty_o} == 2'b10",
+                  "tautology": false,
+                  "unsat": false
+                },
                 "condition": "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b10",
                 "path": [
                   "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b10"
-                ]
+                ],
+                "simplified": "rst_ni && {push_i && !full_o, pop_i && !empty_o} == 2'b10"
               }
             ],
+            "condition_simplified": "(rst_ni && {push_i && !full_o, pop_i && !empty_o} == 2'b1) || (rst_ni && {push_i && !full_o, pop_i && !empty_o} == 2'b10)",
             "condition_truncated": false,
             "condition_unconditional": false,
             "conditions": [
               "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b1",
               "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b10"
+            ],
+            "conditions_simplified": [
+              "rst_ni && {push_i && !full_o, pop_i && !empty_o} == 2'b1",
+              "rst_ni && {push_i && !full_o, pop_i && !empty_o} == 2'b10"
             ],
             "distance": 0,
             "dynamic_index": false,

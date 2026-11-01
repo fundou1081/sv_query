@@ -12,6 +12,8 @@ from __future__ import annotations
 import json
 import logging
 import re
+
+from cli.core.semantic.condition_analysis import analyze_condition
 from pathlib import Path
 
 import typer
@@ -658,14 +660,39 @@ def _direct_paths(graph, nid: str, eps: list[str], reverse: bool) -> list[dict]:
 
 
 def _apply_paths(item: dict, path_infos: list[dict], truncated: bool) -> list[str]:
-    """把路径结果写进 item；返回其中非空条件（供 signal 级汇总）。"""
-    conds = [x["condition"] for x in path_infos if x["condition"]]
-    uncond = any(not x["condition"] for x in path_infos)
+    """把路径结果写进 item；原始条件保留，附加化简/分析派生字段。"""
+    conds = []
+    simplified = []
+    analyses = []
+    for info in path_infos:
+        raw = info.get("condition", "")
+        ana = analyze_condition(raw)
+        info["simplified"] = ana["simplified"]
+        info["analysis"] = ana
+        if raw:
+            conds.append(raw)
+            simplified.append(ana["simplified"])
+            analyses.append(ana)
+    uncond = any(not x.get("condition") for x in path_infos)
     item["condition_paths"] = path_infos
     item["conditions"] = conds
+    item["conditions_simplified"] = simplified
     item["condition_path"] = path_infos[0]["path"] if path_infos else []
     item["condition_unconditional"] = uncond
     item["condition"] = "" if uncond else _or_conditions(conds)
+    item["condition_simplified"] = "" if uncond else _or_conditions(simplified)
+    item["condition_analysis"] = {
+        "changed": any(a["changed"] for a in analyses),
+        "method": "local_bool_v1",
+        "confidence": ("unknown" if any(a["analysis_incomplete"] for a in analyses)
+                       else "atom_identity"),
+        "four_state_safe": all(a["four_state_safe"] for a in analyses),
+        "tautology": any(a["tautology"] for a in analyses),
+        "unsat": bool(analyses) and all(a["unsat"] for a in analyses),
+        "analysis_incomplete": any(a["analysis_incomplete"] for a in analyses),
+        "error": None,
+    }
+    item["condition_analysis_incomplete"] = item["condition_analysis"]["analysis_incomplete"]
     item["condition_truncated"] = truncated
     return conds
 
@@ -752,6 +779,16 @@ def _node_to_dict(node) -> dict:
         "condition_paths": [],
         "condition_unconditional": False,
         "condition_truncated": False,
+        # [iter_349 / PLAN P48] 派生字段（原始条件不改写）
+        "condition_simplified": "",
+        "conditions_simplified": [],
+        "condition_analysis": {
+            "changed": False, "method": "local_bool_v1",
+            "confidence": "atom_identity", "four_state_safe": True,
+            "tautology": False, "unsat": False, "analysis_incomplete": False,
+            "error": None,
+        },
+        "condition_analysis_incomplete": False,
     }
 
 
