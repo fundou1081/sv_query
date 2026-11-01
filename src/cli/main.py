@@ -68,6 +68,7 @@ from cli.core.semantic.params import params_cmd       # [iter_237]
 from cli.core.semantic.ports import ports_cmd         # [iter_237]
 from cli.core.semantic.paths import paths_cmd         # [iter_237]
 from cli.core.semantic.classes import class_cmd  # [iter_237, iter_247 合并 classes]
+from cli.core.semantic.scope import scope_cmd
 from cli.core.semantic.audit import audit_cmd  # [iter_288] 设计审计 (P3.3)
 from cli.view.visualize import vis_app
 import logging
@@ -93,6 +94,7 @@ app.command("hierarchy", help="[规范入口] 实例层级树 (机器可读版 a
 app.command("params", help="[规范入口] 实例的生效参数值 (含是否被 override)")(params_cmd)
 app.command("ports", help="[规范入口] 模块端口总览 (方向/位宽/驱动数/负载数)")(ports_cmd)
 app.command("paths", help="[规范入口] 图上路径 (跨模块端口可跳转; --all 枚举全部)")(paths_cmd)
+app.command("scope", help="[规范入口] 一个 scope 的类型/父/子/端口/参数（不做因果追踪）")(scope_cmd)
 app.command("class", help="[规范入口] 不给 class 名→列出所有 class; 给了→成员(类型级)+实例(实例级); --member 查成员实例")(class_cmd)
 app.command("audit", hidden=True, help="[exp] 设计审计 (实验性; 默认隐藏)")(audit_cmd)
 

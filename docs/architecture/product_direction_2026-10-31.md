@@ -2,8 +2,8 @@
 
 **日期**: 2026-10-31
 **状态**: 方豆拍板方向（未来工作重心）
-**主目标**: 服务 agent 的 **RTL debug 与 design 理解**：提供可查询、可验证、可追溯的事实，
-避免 agent 靠读源码产生幻觉。
+**主目标**: 服务 agent 的 **RTL debug 与 design 理解**：以 **trace + verify** 为核心，
+提供可查询、可验证、可追溯的事实；Scope inventory 是入口/上下文层。
 
 > 本文是产品定位，不是迭代计划；代码计划仍以 [PLAN.md](../../PLAN.md) 为唯一源。
 
@@ -20,6 +20,33 @@
 2. **校验**：双向一致性、claim 验证、证据定位、显式 unknown/not_found。
 
 ---
+
+## 1.1 Scope 层与 Trace/Verify 层
+
+产品明确分成三层，避免把“目录浏览”和“因果分析”混为一谈：
+
+| 层 | 回答 | 定位 | 典型命令 |
+|---|---|---|---|
+| **Scope / Inventory** | 这个 scope 里有什么？ID 是什么？ | **入口/上下文**，够用即可 | `scope` / `instances` / `hierarchy` / `ports` / `params` / `connections` / `class` |
+| **Trace / Causality** | 它从哪来、到哪去、为什么？ | **核心价值** | `drivers/loads` / `paths` / `dataflow` / `controlflow` / `profile` / `evidence` / `lookup` |
+| **Verify** | 这个结论成立吗？ | **核心价值** | `verify consistency` / `verify claim` |
+
+工作流：
+
+```
+scope 定位候选与 canonical ID
+  → trace 追定义/连接/条件/时间
+  → evidence 钉源码
+  → verify 确认/反驳
+```
+
+原则：
+
+- Scope 是入口，不追因果；`connections` 只给 port↔internal 映射，不替代 fanin/fanout；
+- Trace/Verify 是主目标与差异化；scope 做到“ID 稳定、interface/generate/class 可发现”即停止扩张；
+- capabilities 用 `mode` 标注 `scope|trace|verify|locate|state`。
+
+**实现状态（iter_344）**：`mode` 已落地；`scope <path>` 聚合已落地；scope 功能到此冻结，只补 interface/generate/class 可发现性。
 
 ## 2. 用户与工作流
 

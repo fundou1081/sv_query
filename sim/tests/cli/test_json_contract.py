@@ -417,3 +417,17 @@ def test_trace_manifest_contract():
     assert set(e) == {"waveform_path", "index", "found", "lookup", "profile"}
     assert set(e["lookup"]) == set(c["lookup_path"])
     assert set(e["profile"]) == set(c["profile_signal"])
+
+
+def test_scope_contract():
+    _, c = _contract()
+    fixture = str(PROJECT_ROOT / "sim" / "tests" / "fixtures" / "json_contract" /
+                  "struct.sv")
+    cmd = c["commands"]["scope"]
+    data = json.loads(_run(["scope", "top", "-f", fixture, "--json"]).stdout)
+    assert set(data) == set(c["top_level"])
+    assert set(data["result"]) == set(cmd["result_fields"])
+    assert set(data["result"]["children"][0]) == set(c["scope_child"])
+    data = json.loads(_run(["scope", "top.u", "-f", fixture, "--json"]).stdout)
+    assert set(data["result"]["ports"][0]) == set(c["scope_port"])
+    assert set(data["result"]["parameters"][0]) == set(c["scope_param"])
