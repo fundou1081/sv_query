@@ -185,7 +185,8 @@ def _type_meta(node, type_lookup, adapter=None) -> dict:
     kind = getattr(getattr(node, "kind", None), "name", "")
     base = {"kind": kind, "known": False, "name": None, "canonical": None,
             "is_enum": False, "is_struct": False, "is_union": False,
-            "is_unpacked_array": False, "is_array": False, "array_element": None,
+            "is_unpacked_array": False, "is_packed_array": False,
+            "is_array": False, "array_element": None,
             "bit_width": None, "is_signed": None,
             "member_of": None, "member_offset": None,
             "enum_values": [], "packed_members": []}
@@ -236,9 +237,11 @@ def _type_meta(node, type_lookup, adapter=None) -> dict:
         "is_struct": bool(getattr(ct, "isStruct", False)),
         "is_union": bool(getattr(ct, "isPackedUnion", False)),
         "is_unpacked_array": bool(getattr(ct, "isUnpackedArray", False)),
-        "is_array": bool(getattr(ct, "isArray", False)
-                         or getattr(ct, "isUnpackedArray", False)
-                         or getattr(ct, "isPackedArray", False)),
+        "is_packed_array": bool(getattr(ct, "isPackedArray", False)),
+        "is_array": bool(getattr(ct, "isUnpackedArray", False)
+                         or getattr(ct, "isAssociativeArray", False)
+                         or getattr(ct, "isQueue", False)
+                         or getattr(ct, "isDynamicallySizedArray", False)),
         "array_element": (str(getattr(ct, "elementType", None))
                           if getattr(ct, "elementType", None) is not None else None),
         "bit_width": getattr(t, "bitWidth", None),

@@ -404,3 +404,16 @@ def test_profile_type_contract():
     t = data["result"]["signals"][0]["type"]
     assert set(t) == set(c["profile_type"])
     assert set(t["enum_values"][0]) == set(c["enum_value"])
+
+
+def test_trace_manifest_contract():
+    _, c = _contract()
+    data = json.loads(_run(["trace", "manifest", "--path", "sync_fifo.data_out",
+                            "-f", FIFO, "--json"]).stdout)
+    cmd = c["commands"]["trace manifest"]
+    assert set(data) == set(c["top_level"])
+    assert set(data["result"]) == set(cmd["result_fields"])
+    e = data["result"]["entries"][0]
+    assert set(e) == {"waveform_path", "index", "found", "lookup", "profile"}
+    assert set(e["lookup"]) == set(c["lookup_path"])
+    assert set(e["profile"]) == set(c["profile_signal"])

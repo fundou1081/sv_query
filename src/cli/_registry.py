@@ -140,6 +140,8 @@ COMMANDS: list[CommandSpec] = [
        note="信号 profile: canonical/aliases/位映射/clock/reset/sequential/source (波形关联)"),
     _c("trace lookup", "semantic", recommended=True, cost="cheap",
        note="完整 RTL hier path → canonical id (严格; $root/位父回退/aliases; 不做模糊后缀)"),
+    _c("trace manifest", "semantic", recommended=True, cost="medium",
+       note="批量 waveform manifest: full path → canonical + profile (type/bit/clock/reset/stage)"),
     _c("controlflow analyze", "semantic", cost="medium", recommended=True,
        note="信号的驱动条件分析; --conditions-only 只要扁平条件列表 (原 controlflow conditions)"),
     _c("controlflow list-conditioned", "semantic", cost="expensive",
@@ -456,6 +458,10 @@ JSON_CONTRACT = {
         "trace lookup": {
             "result_fields": ["paths", "total", "found", "failed"],
             "path_fields": "lookup_path",
+        },
+        "trace manifest": {
+            "result_fields": ["entries", "total", "found", "failed"],
+            "entry_fields": "manifest_entry",
         },
         "controlflow analyze": {
             "result_fields": ["signal", "conditioned_drivers", "warnings"],
@@ -864,6 +870,20 @@ JSON_CONTRACT = {
         "target": {"type": "string", "desc": "requested target (connections)"},
         "resolved_as": {"type": "string", "desc": "connection target resolution kind"},
     },
+    "manifest_entry": {
+        "waveform_path": {"type": "string", "desc": "requested waveform path"},
+        "index": {"type": "integer", "desc": "batch position"},
+        "found": {"type": "boolean", "desc": "strict lookup succeeded"},
+        "lookup": "lookup_path",
+        "profile": "profile_signal",
+        "error": {"type": "string", "desc": "profile error (optional)"},
+    },
+    "manifest_result": {
+        "entries": {"type": "array<manifest_entry>", "desc": "per-path manifest"},
+        "total": {"type": "integer", "desc": "requested paths"},
+        "found": {"type": "integer", "desc": "resolved paths"},
+        "failed": {"type": "integer", "desc": "unresolved paths"},
+    },
     "lookup_path": {
         "requested": {"type": "string", "desc": "full waveform path as requested"},
         "found": {"type": "boolean", "desc": "strictly resolved to a graph node"},
@@ -923,7 +943,8 @@ JSON_CONTRACT = {
         "is_struct": {"type": "boolean", "desc": "packed struct"},
         "is_union": {"type": "boolean", "desc": "packed union"},
         "is_unpacked_array": {"type": "boolean", "desc": "unpacked array"},
-        "is_array": {"type": "boolean", "desc": "array type"},
+        "is_packed_array": {"type": "boolean", "desc": "packed vector"},
+        "is_array": {"type": "boolean", "desc": "unpacked/dynamic/assoc array"},
         "array_element": {"type": "string|null", "desc": "array element type"},
         "bit_width": {"type": "integer|null", "desc": "semantic bit width"},
         "is_signed": {"type": "boolean|null", "desc": "semantic signedness"},
