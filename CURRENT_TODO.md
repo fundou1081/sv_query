@@ -11,9 +11,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: P39.2 profile 增强（待做，下一步）
+- **当前 item**: P39.3 联调测试（待做，下一步）
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **P18~P30** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P31** exp 降级 ✅（iter_327）；**P32** evidence 稳定性 ✅（iter_328）；**P33** ✅；**P34** verify ✅（iter_330）；**P35** include_control ✅（iter_331）；**P38** class 关系 ✅（iter_334）；**P39.1** waveform lookup ✅（iter_335）；**P39.2** profile 增强 → 待做
+- **P18~P30** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P31** exp 降级 ✅（iter_327）；**P32** evidence 稳定性 ✅（iter_328）；**P33** ✅；**P34** verify ✅（iter_330）；**P35** include_control ✅（iter_331）；**P38** class 关系 ✅（iter_334）；**P39.1** lookup ✅（iter_335）；**P39.2** profile 语义 ✅（iter_336）；**P39.3** 联调测试 → 待做
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -238,10 +238,16 @@ graph edges / search / stats / trace evidence / controlflow analyze+list 字段�
 - exact / bit_parent / not_found；$root 归一化；port/internal aliases；
 - 3 个测试 + 1 契约；全量 **2676 passed**。
 
-## 🔜 下一步（P39.2，待做）
+## ✅ 刚完成（P39.2，profile 语义）
 
-profile 增强：type/enum/array/struct、clock posedge/negedge、reset active_low/async、stage。
+- clock `edge=posedge/negedge`；reset `edge/async/active_low`；
+- `sequential.always`、`bit.select/kind/offset/parent_width`；
+- `type.kind/known`（known=false）；bit fallback 保留请求 suffix；
+- 2 个新测试；全量 **2678 passed**。
 
+## 🔜 下一步（P39.3，待做）
+
+waveform manifest / interface·generate·escaped 别名 / 联调 fixture。
 ---
 
 ## 🧰 固定设施与门禁

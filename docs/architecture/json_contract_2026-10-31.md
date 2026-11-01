@@ -407,3 +407,24 @@ member：`id/name/kind/module/width`；instance：`id/name/kind/module/width`。
 - escaped identifier 的空白/转义变体（基础 exact 可用）；
 - type/enum/array/struct 解码元数据；
 - clock posedge/negedge、reset active_low/async、sequential stage。
+
+---
+
+## P39.2 profile 增强（clock/reset/bit，2026-11-01）
+
+### 新增字段
+
+| 字段 | 语义 |
+|---|---|
+| `type.kind` / `type.known` | NodeKind；`known=false` 表示未解析语义类型 |
+| `bit.select` / `bit.kind` / `bit.offset` / `bit.parent_width` | 位/切片/动态索引 + LSB offset |
+| `clocks[].edge` | `posedge` / `negedge`（从 enclosing always 解析） |
+| `resets[].edge` / `async` / `active_low` | 异步复位边沿/极性 |
+| `sequential.always` | enclosing always `{file,line}`（可能为 null） |
+
+### 语义边界
+
+- clock/reset 边沿来自 evidence 的 always 文本；没有 always 证据 → `edge=null`；
+- `active_low` 先从条件（`!rst`/`==0`）推断，再从 `_n` 命名推断；仍无法判断 → null；
+- `type.known=false`：P39.2 只给 NodeKind，不伪装 enum/struct/array 类型；
+- `bit` 对 `bit_base_fallback` 使用请求的 `[3]` 作为 select/offset，parent 是 canonical 总线。
