@@ -520,3 +520,17 @@ member：`id/name/kind/module/width`；instance：`id/name/kind/module/width`。
 - 未找到：`found=false, lookup.resolution=not_found, profile=null`；
 - 找到：`lookup` + 完整 `profile`（type/bit/clock/reset/stage/source）；
 - 契约：`manifest_entry` / `manifest_result`。
+
+---
+
+## P42.1 interface/modport connection aliases（2026-11-01）
+
+`lookup_path.aliases` 现在包含 **CONNECTION 边相邻节点**：
+
+- interface 实例成员 ↔ modport 成员：
+  `top.u_if.data` ↔ `top.u_prod.m.data`
+- 模块端口 ↔ 外部网络；
+- 只用于完整 path 的别名发现；exact 仍优先；
+- alias 冲突仍返回 ambiguous。
+
+> CONNECTION 是物理网络连接，不等于语义驱动；lookup 只做路径映射，不改变 fanin/fanout 结论。

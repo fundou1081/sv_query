@@ -56,3 +56,15 @@ def test_matched_via_exact(tmp_path):
     item = d["result"]["paths"][0]
     assert item["matched_via"] == "exact"
     assert item["resolution"] == "exact"
+
+
+IFACE = ROOT / "sim" / "tests" / "fixtures" / "json_contract" / "iface.sv"
+
+
+def test_interface_connection_aliases(tmp_path):
+    d = _lookup(tmp_path, "top.u_prod.m.data", "top.u_if.data", fixture=IFACE)
+    a, b = d["result"]["paths"]
+    assert a["canonical"] == "top.u_prod.m.data"
+    assert "top.u_if.data" in a["aliases"]
+    assert b["canonical"] == "top.u_if.data"
+    assert "top.u_prod.m.data" in b["aliases"]

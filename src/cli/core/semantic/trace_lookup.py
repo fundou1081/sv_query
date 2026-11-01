@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from pathlib import Path
 
@@ -16,6 +17,8 @@ import typer
 
 from cli._common import _build_tracer, handle_compilation_error
 from cli._output import emit_json
+logger = logging.getLogger(__name__)
+
 from trace.core.compiler import CompilationError
 
 
@@ -40,6 +43,16 @@ def _build_aliases(tracer, graph) -> dict[str, set[str]]:
         mig = tracer.get_module_graph()
     except Exception:
         mig = None
+    # [iter_342 / PLAN P42.1] CONNECTION 边连接的实际网络互为别名：
+    # interface 实例成员 ↔ modport 成员、模块端口 ↔ 外部网络。
+    try:
+        for src, dst in graph.edges():
+            for edge in graph.get_edges(src, dst):
+                if getattr(getattr(edge, "kind", None), "name", "") == "CONNECTION":
+                    aliases[src].add(dst)
+                    aliases[dst].add(src)
+    except Exception as exc:
+        logger.debug("connection alias extraction failed: %s", exc)
     if mig is None:
         return aliases
     for inst_path, inst in sorted(getattr(mig, "instances", {}).items()):
