@@ -49,3 +49,10 @@ def test_generate_path(tmp_path):
     item = d["result"]["paths"][0]
     assert item["found"] is True
     assert item["canonical"] == "generate_loop.gen_accum[0].prod"
+
+
+def test_matched_via_exact(tmp_path):
+    d = _lookup(tmp_path, "sync_fifo.data_out")
+    item = d["result"]["paths"][0]
+    assert item["matched_via"] == "exact"
+    assert item["resolution"] == "exact"

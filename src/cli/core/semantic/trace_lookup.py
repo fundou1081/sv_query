@@ -29,8 +29,13 @@ def _norm_path(p: str) -> str:
 
 
 def _build_aliases(tracer, graph) -> dict[str, set[str]]:
-    """canonical -> aliases（port/internal 等）。"""
+    """canonical -> aliases（port/internal/escaped 变体）。"""
     aliases = {n: {n} for n in graph.nodes()}
+    # escaped identifier: graph 保留反斜杠；同时登记去掉反斜杠的可读变体。
+    # 若该变体与真实节点同名，lookup 会因多候选返回 ambiguous，不猜。
+    for n in graph.nodes():
+        if "\\" in n:
+            aliases[n].add(n.replace("\\", ""))
     try:
         mig = tracer.get_module_graph()
     except Exception:
@@ -48,27 +53,49 @@ def _build_aliases(tracer, graph) -> dict[str, set[str]]:
     return aliases
 
 
+def _alias_index(aliases: dict[str, set[str]]) -> dict[str, set[str]]:
+    idx: dict[str, set[str]] = {}
+    for canon, names in aliases.items():
+        for a in names:
+            idx.setdefault(a, set()).add(canon)
+    return idx
+
+
 def _lookup(graph, aliases, requested: str) -> dict:
     norm = _norm_path(requested)
+    index = _alias_index(aliases)
+    canonical = None
+    res = "not_found"
+    bit_suffix = None
+    matched_via = None
     if norm in graph.nodes():
-        canonical = norm
-        res = "exact"
-        bit_suffix = None
+        canonical, res, matched_via = norm, "exact", "exact"
+    elif len(index.get(norm, set())) == 1:
+        canonical, res, matched_via = next(iter(index[norm])), "alias", "alias"
+    elif len(index.get(norm, set())) > 1:
+        cands = sorted(index[norm])[:10]
+        return {"requested": requested, "found": False, "canonical": None,
+                "resolution": "ambiguous", "matched_via": None, "bit_suffix": None,
+                "aliases": [], "suggestions": cands,
+                "width": None, "kind": "", "module": ""}
     else:
-        canonical = None
-        res = "not_found"
-        bit_suffix = None
         m = re.match(r"^(.*)(\[[^\]]+\])$", norm)
         if m:
             base = m.group(1)
+            base_canon = None
             if base in graph.nodes():
-                canonical, res, bit_suffix = base, "bit_parent", m.group(2)
+                base_canon = base
+            elif len(index.get(base, set())) == 1:
+                base_canon = next(iter(index[base]))
+            if base_canon is not None:
+                canonical, res, bit_suffix = base_canon, "bit_parent", m.group(2)
+                matched_via = "bit_parent"
     if canonical is None:
         leaf = norm.split(".")[-1].split("[")[0]
         suggestions = sorted(n for n in graph.nodes()
                              if leaf and leaf in n)[:10]
         return {"requested": requested, "found": False, "canonical": None,
-                "resolution": "not_found", "bit_suffix": None,
+                "resolution": "not_found", "matched_via": None, "bit_suffix": None,
                 "aliases": [], "suggestions": suggestions,
                 "width": None, "kind": "", "module": ""}
     node = graph.get_node(canonical)
@@ -77,6 +104,7 @@ def _lookup(graph, aliases, requested: str) -> dict:
         "found": True,
         "canonical": canonical,
         "resolution": res,
+        "matched_via": matched_via,
         "bit_suffix": bit_suffix,
         "aliases": sorted(aliases.get(canonical, {canonical})),
         "suggestions": [],
@@ -84,7 +112,6 @@ def _lookup(graph, aliases, requested: str) -> dict:
         "kind": getattr(getattr(node, "kind", None), "name", ""),
         "module": getattr(node, "module", "") if node else "",
     }
-
 
 def _collect_paths(paths: list[str], paths_file: str | None) -> list[str]:
     out = list(paths or [])

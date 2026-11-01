@@ -11,9 +11,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: P39.3 联调测试（待做，下一步）
+- **当前 item**: P40.1 type/enum/struct/array（待做，下一步）
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **P18~P30** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P31** exp 降级 ✅（iter_327）；**P32** evidence 稳定性 ✅（iter_328）；**P33** ✅；**P34** verify ✅（iter_330）；**P35** include_control ✅（iter_331）；**P38** class 关系 ✅（iter_334）；**P39.1** lookup ✅（iter_335）；**P39.2** profile 语义 ✅（iter_336）；**P39.3** 联调测试 → 待做
+- **P18~P30** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P31** exp 降级 ✅（iter_327）；**P32** evidence 稳定性 ✅（iter_328）；**P33** ✅；**P34** verify ✅（iter_330）；**P35** include_control ✅（iter_331）；**P38** class 关系 ✅（iter_334）；**P39.1** lookup ✅（iter_335）；**P39.2** profile 语义 ✅（iter_336）；**P39.3** alias index ✅（iter_337）；**P40** type/stage → 待做
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -232,22 +232,20 @@ graph edges / search / stats / trace evidence / controlflow analyze+list 字段�
 - methods + calls（裸调用 owner 解析，receiver 调用 target_class=null）；
 - 4 个测试 + 1 契约；全量 **2672 passed**。
 
-## ✅ 刚完成（P39.1，waveform lookup）
+## ✅ 刚完成（P39.3，path alias index）
 
-- `trace lookup --path/--paths-file`：严格完整路径 → canonical；
-- exact / bit_parent / not_found；$root 归一化；port/internal aliases；
-- 3 个测试 + 1 契约；全量 **2676 passed**。
+- `trace lookup`：exact → alias → ambiguous → bit_parent → not_found；
+- `matched_via`；escaped 去反斜杠别名；冲突返回候选；
+- +1 测试；全量 **2679 passed**。
 
 ## ✅ 刚完成（P39.2，profile 语义）
 
-- clock `edge=posedge/negedge`；reset `edge/async/active_low`；
-- `sequential.always`、`bit.select/kind/offset/parent_width`；
-- `type.kind/known`（known=false）；bit fallback 保留请求 suffix；
-- 2 个新测试；全量 **2678 passed**。
+- clock `edge`/reset `async/active_low`/`sequential.always`/bit select/offset；
+- 全量 2678。
 
-## 🔜 下一步（P39.3，待做）
+## 🔜 下一步（P40，待做）
 
-waveform manifest / interface·generate·escaped 别名 / 联调 fixture。
+type/enum/struct/array 元数据；sequential stage/时间语义。
 ---
 
 ## 🧰 固定设施与门禁
