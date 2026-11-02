@@ -45,6 +45,10 @@ class BitSelectHandler:
         """处理所有模块的位选节点"""
         # Phase 1: 提取所有模块的信号位宽
         self._extract_all_widths()
+        # [iter_353 / PLAN P52.1] module 定义的 width 还要传播到实例节点；
+        # 旧实现只更新 module 定义节点 (axi_vfifo_enc.out_hdr_next)，
+        # 实例节点 (axi_vfifo.axi_vfifo_enc_inst.out_hdr_next) 仍是 (1,0)。
+        self._propagate_instance_widths()
 
         # Phase 2: 处理位选节点
         self._create_hierarchical_bit_nodes()
@@ -75,23 +79,12 @@ class BitSelectHandler:
                     full_name = f"{module_name}.{name}"
                     self.signal_widths[full_name] = width
 
-                    # 确保节点存在 (声明的信号都应该在图中)
-                    if full_name not in self.graph.nodes():
-                        from trace.core.graph.models import NodeKind, TraceNode
-
-                        node = TraceNode(
-                            id=full_name,
-                            name=name,
-                            module=module_name,
-                            kind=NodeKind.SIGNAL,
-                            width=width,
-                        )
-                        self.graph.add_trace_node(node)
-                    else:
-                        # 更新已存在节点的宽度
-                        node = self.graph.get_node(full_name)
-                        if node:
-                            node.width = width
+                    # [iter_353 / PLAN P52.1] 只更新已有节点，不在 module
+                    # 定义命名空间创建节点；instance_scope 契约要求所有节点
+                    # 在实例路径下（旧 names 为空时这条创建路径未触发）。
+                    node = self.graph.get_node(full_name)
+                    if node is not None:
+                        node.width = width
 
         # === 处理 Class 中的属性 ===
         # [FIX 2026-06-26] pyslang binary garbage in cls.name
@@ -186,6 +179,21 @@ class BitSelectHandler:
         Returns: ['a', 'b', 'c']
         """
         names = []
+        # [iter_353 / PLAN P52.1] pyslang 11 的 get_data_declarations 直接返回
+        # VariableSymbol（没有 declarators），旧实现因此对所有内部信号返回空，
+        # signal_widths 缺项 → parent width 回退 (1,0)。优先取 symbol.name。
+        if getattr(data_decl, "declarators", None) is None:
+            name_obj = getattr(data_decl, "name", None)
+            if name_obj is not None:
+                if hasattr(name_obj, "value"):
+                    nm = name_obj.value
+                elif hasattr(name_obj, "text"):
+                    nm = name_obj.text
+                else:
+                    nm = str(name_obj).strip()
+                if nm:
+                    return [nm]
+            return names
         declarators = getattr(data_decl, "declarators", None)
         if not declarators:
             return names
@@ -296,6 +304,38 @@ class BitSelectHandler:
                                 kind=EdgeKind.BIT_SELECT,
                             )
                             self.graph.add_trace_edge(edge)
+
+    def _propagate_instance_widths(self) -> None:
+        """把 module 定义里的 width 传播到实际实例节点。"""
+        try:
+            instances = self.adapter.get_module_instances()
+        except Exception as e:
+            logger.debug("_propagate_instance_widths: 实例枚举失败: %s", e)
+            return
+        for inst in instances:
+            sym = getattr(inst, "_symbol", None)
+            if sym is None:
+                continue
+            hp = safe_str(safe_attr(sym, "hierarchicalPath", "")) or ""
+            if not hp:
+                pm = getattr(inst, "parent_module", None)
+                nm = getattr(inst, "name", None)
+                if pm and nm:
+                    hp = f"{pm}.{nm}"
+            if not hp:
+                continue
+            mod_type = getattr(getattr(inst, "type", None), "value", None)
+            if not mod_type:
+                continue
+            prefix = f"{mod_type}."
+            for key, width in list(self.signal_widths.items()):
+                if not key.startswith(prefix):
+                    continue
+                sig = key[len(prefix):]
+                node_id = f"{hp}.{sig}"
+                node = self.graph.get_node(node_id)
+                if node is not None and width is not None:
+                    node.width = width
 
     def _create_hierarchical_bit_nodes(self):
         """为位选节点创建父子关系和属性

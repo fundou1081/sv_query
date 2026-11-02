@@ -39,3 +39,19 @@ endmodule
     assert "top_b.bus[63:32]" in g.nodes()
     assert g.get_node("top_a.bus[63:32]").parent == "top_a.bus"
     assert g.get_node("top_b.bus[63:32]").parent == "top_b.bus"
+
+
+def test_internal_reg_parent_width_propagates():
+    src = """
+module top(output [7:0] out);
+  reg [7:0] bus;
+  assign bus = 8'hA5;
+  assign out = bus[4 +: 4];
+endmodule
+"""
+    tr = UnifiedTracer(sources={"t.sv": src}, log_level="ERROR")
+    g = tr.build_graph(use_cache=False, target_module="top")
+    parent = g.get_node("top.bus")
+    assert parent is not None and parent.width == (7, 0)
+    child = g.get_node("top.bus[7:4]")
+    assert child is not None and child.parent == "top.bus"
