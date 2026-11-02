@@ -18,7 +18,7 @@
 | 全量 (canonical) | **2734 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; 7 skipped / 152 deselected) | 2026-11-02 实测 (iter_358): 复杂度门禁自检 +9。历史: iter_357 2725 / iter_356 2723 / iter_355 2720 |
 | CLI / integration | **810 passed / 0 failed** (`sim/tests/cli sim/tests/integration`, `-m "not opensource"`) | 2026-09-08 实测 (iter_185 修复后) |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (345 份, 只增不改) | 每次迭代一份 |
+| 迭代记录 | `docs/task_tree/iterations/` (346 份, 只增不改) | 每次迭代一份 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 
@@ -66,6 +66,7 @@
 | [architecture/condition_analysis_plan_2026-10-31.md](architecture/condition_analysis_plan_2026-10-31.md) | **条件化简/互斥设计评估** (2026-10-31, 未排期): L1 局部布尔 / L2 来源互斥 / L3 真值表-BDD |
 | [architecture/json_contract_2026-10-31.md](architecture/json_contract_2026-10-31.md) | **Agent JSON 契约** (schema v1): envelope + trace signal/node 字段/版本策略/示例 |
 | [architecture/product_direction_2026-10-31.md](architecture/product_direction_2026-10-31.md) | **产品方向**: agent RTL 查询+客观校验；debug/design 场景、P0 grounding、波形元数据、非目标 |
+| [architecture/structural_review_plan_2026-11-02.md](architecture/structural_review_plan_2026-11-02.md) | **可视化重定位/结构审查计划** (2026-11-02): 全设计图退役；动态子图 core；finding 局部 review；P59 清理 → P60~P62 |
 | [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) | 已知限制 (含 pyslang 侧限制) |
 | [EXTRACTION_COVERAGE.md](EXTRACTION_COVERAGE.md) | SV 语法抽取覆盖率总表 (逐语法 ✅/⚠️/❌) |
 | [EXTRACTION_FAILURES.md](EXTRACTION_FAILURES.md) | 提取失败路径集中表 |

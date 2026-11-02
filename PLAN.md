@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P57.4 提交与全量回归验证（独立分支，可撤销） <已完成>
+current item : P59.1 资产盘点与冻结 <待做>
 
 ## 计划树
 
@@ -42,6 +42,28 @@ P57 ub-mode 纪律合并：复杂度棘轮门禁 + 术语表 <已完成>
 -- P57.2 术语表 docs/GLOSSARY.md（四组归类，唯一命名处） <已完成>
 -- P57.3 文档登记与检查器接入（WORKFLOW §5 / INDEX / REVIEW_CHECKLIST / CODING_STYLE §12） <已完成>
 -- P57.4 提交与全量回归验证（独立分支，可撤销） <已完成>
+
+P58 可视化重定位：结构审查与动态子图计划 <已完成>
+-- P58.1 决策记录 + P59~P62 完整计划 <已完成>
+
+P59 旧可视化资产清理 <待做>
+-- P59.1 资产盘点与冻结 <待做>
+-- P59.2 删除/归档旧命令与渲染器 <待做>
+-- P59.3 文档/测试/registry 收口 <待做>
+
+P60 graph subgraph 动态子图 <待做>
+-- P60.1 设计与 JSON schema <待做>
+-- P60.2 core 实现 <待做>
+-- P60.3 CLI/测试/文档 <待做>
+
+P61 结构审查 findings（对称性/typo） <待做>
+-- P61.1 结构特征与对称性检查 <待做>
+-- P61.2 finding schema + verify structural <待做>
+-- P61.3 测试/文档 <待做>
+
+P62 局部 review artifact / debug 交互 <待做>
+-- P62.1 finding 局部 SVG/HTML <待做>
+-- P62.2 交互式 debug（gate） <待做>
 
 ## 已完成（保留最近记录，便于核查上一轮）
 
