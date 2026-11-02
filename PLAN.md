@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P56.2 测试与文档 <已完成>
+current item : P57.4 提交与全量回归验证（独立分支，可撤销） <已完成>
 
 ## 计划树
 
@@ -36,6 +36,12 @@ P3 长期 backlog <已完成>
 -- P3.1 `UnifiedTracer` 三个巨型私有方法（173 / 134 / 151 行） <已完成>
 -- P3.2 缓存只有总量 LRU 上限，无"按工程过期" <已完成>
 -- P3.3 [docs/EXP_IDEAS.md](docs/EXP_IDEAS.md) 的 10 条退役想法 —— 未来逐个重做 <已完成>
+
+P57 ub-mode 纪律合并：复杂度棘轮门禁 + 术语表 <已完成>
+-- P57.1 复杂度棘轮门禁 tools/check_crap.py（crapper 为唯一复杂度实现） <已完成>
+-- P57.2 术语表 docs/GLOSSARY.md（四组归类，唯一命名处） <已完成>
+-- P57.3 文档登记与检查器接入（WORKFLOW §5 / INDEX / REVIEW_CHECKLIST / CODING_STYLE §12） <已完成>
+-- P57.4 提交与全量回归验证（独立分支，可撤销） <已完成>
 
 ## 已完成（保留最近记录，便于核查上一轮）
 

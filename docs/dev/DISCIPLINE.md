@@ -19,6 +19,9 @@
 | I4 | **降级必须显式** | 实验性能力放进 `exp/` 并在 `capabilities` 里降级；不得伪装成稳定能力 | 用户以为能用，实际给错答案 |
 | I5 | **登记缺陷必须写清可观察后果** | 写"某个 API 不支持 X" 不够，要写"什么输入 → 什么错误输出" | 后人按错误描述去修，漏掉真正的缺陷 (案例见 §5) |
 
+**术语的唯一命名处**是 [GLOSSARY.md](../GLOSSARY.md) —— 新概念先在那里定名，
+再在代码与文档里使用（同名异义会让 agent 和人各说各话）。
+
 不变量 I2/I4 的落地细节见 [CLI_SURFACE.md](../CLI_SURFACE.md) 与 [EXP_NAMESPACE.md](../EXP_NAMESPACE.md)；
 能力边界见 [KNOWN_LIMITATIONS.md](../KNOWN_LIMITATIONS.md)。
 

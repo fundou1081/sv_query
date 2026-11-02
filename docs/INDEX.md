@@ -15,7 +15,7 @@
 | 源码规模 | 163 文件 / 63,146 行 | `find src -name "*.py"` |
 | 测试规模 | 368 测试文件 / 78,847 行 + 117 SV fixture | `find sim/tests -name "*.py"` |
 | 回归基线 | **2129 passed + 35 subtests** (unit + regression, `-m "not opensource"`) | 2026-09-08 实测 (iter_190 后) |
-| 全量 (canonical) | **2725 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; 7 skipped / 152 deselected) | 2026-11-02 实测 (iter_357): 嵌套 generate +2。历史: iter_356 2723 / iter_355 2720 |
+| 全量 (canonical) | **2734 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; 7 skipped / 152 deselected) | 2026-11-02 实测 (iter_358): 复杂度门禁自检 +9。历史: iter_357 2725 / iter_356 2723 / iter_355 2720 |
 | CLI / integration | **810 passed / 0 failed** (`sim/tests/cli sim/tests/integration`, `-m "not opensource"`) | 2026-09-08 实测 (iter_185 修复后) |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 迭代记录 | `docs/task_tree/iterations/` (345 份, 只增不改) | 每次迭代一份 |
@@ -141,6 +141,7 @@
 | [SIGNAL_TRACING_EXAMPLES.md](SIGNAL_TRACING_EXAMPLES.md) | 信号追踪实战案例 |
 | [FILELIST.md](FILELIST.md) | filelist 格式支持 |
 | [TEST_MAP.md](TEST_MAP.md) | 全量测试地图 |
+| [GLOSSARY.md](GLOSSARY.md) | **术语表** (领域术语的唯一命名处: 分层/查询/门禁/工具四组) |
 | [BENCH_BASELINE.md](BENCH_BASELINE.md) | bench 深结构基准 (pr5_wrap: 真实 Cfg wrapper + 指标表 + 已知限制) |
 | [OPENTITAN_HOWTO.md](OPENTITAN_HOWTO.md) | OpenTitan 跑通 HOWTO |
 | [NAPLESPU_HOWTO.md](NAPLESPU_HOWTO.md) | NaplesPU 跑通 HOWTO |

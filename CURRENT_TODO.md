@@ -4,14 +4,14 @@
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询+客观校验；动态值由外部波形工具提供。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-10-29 GMT+8 (iter_314: P18 可信性与测试入口收尾)
+> **最后更新**: 2026-11-02 GMT+8 (iter_358: P57 纪律合并 — 复杂度门禁 + 术语表)
 
 ---
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: 无（P56 完成；嵌套 generate 已覆盖）
+- **当前 item**: P57.3（ub-mode 纪律合并 — 复杂度门禁 + 术语表）
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
 - **P18~P30** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P31** exp 降级 ✅（iter_327）；**P32** evidence 稳定性 ✅（iter_328）；**P33** ✅；**P34** verify ✅（iter_330）；**P35** include_control ✅（iter_331）；**P38** class 关系 ✅（iter_334）；**P39.1** lookup ✅（iter_335）；**P39.2** profile 语义 ✅（iter_336）；**P39.3** alias ✅（iter_337）；**P40.2** stage/sample ✅（iter_339）；**P41.2** manifest ✅（iter_341）；**P43.1** generate ✅（iter_343）；**P44.5** scope 可发现性 ✅（iter_345）；**P45** waveform e2e ✅（iter_346）；**P46.1** stats.modules ✅（iter_347）；**P50** bit consistency ✅（iter_351）；**P51** 位选越界源头 ✅（iter_352）；**P52** parent width ✅（iter_353）；**P53** 实例 width ✅（iter_354）；**P54** generate width ✅（iter_355）；**P55** if/case ✅（iter_356）；**P56** 嵌套 generate ✅（iter_357）
   → P13.6（多驱动/静态 memory）
@@ -288,6 +288,20 @@ graph edges / search / stats / trace evidence / controlflow analyze+list 字段�
 - verilog-axi 8873 / picorv32 706 非位信号节点通过；
 - 1 个测试；全量 **2713 passed**。
 
+## ✅ 刚完成（P57，ub-mode 纪律合并）
+
+- **P57.1** 复杂度棘轮门禁 `tools/check_crap.py`（R1~R4；crapper 是复杂度**唯一实现**，
+  本工具只做 HEAD vs 当前增量比对）—— 退出码 0/2/3，**3 = 未执行 ≠ 通过**；
+- **P57.2** 术语表 `docs/GLOSSARY.md`（四组归类，领域术语的唯一命名处）；
+- **P57.3** 文档登记：CODING_STYLE §12 / WORKFLOW §5（检查器 4→5）/ REVIEW_CHECKLIST §1 /
+  DISCIPLINE 术语表指针 / AGENTS.md §3 / INDEX.md；
+- **P57.4** 全量回归 **2734 passed / 0 failed**（+9 自检）；分支 `feature/p57-discipline-merge`
+  （可撤销手段：独立分支 + 未 push 的本地 commit）。
+
+> 写门禁时实测抓出 3 个真 bug：`FileNotFoundError`（未 materialize）、crapper 静默回退
+> （假通过）、`git show` 双 `HEAD:` 前缀（baseline 恒空 → 全部当新增）。
+> 详见 [iter_358](docs/task_tree/iterations/iter_358_discipline_merge.md)。
+
 ## ✅ 刚完成（P56，嵌套 generate）
 
 - for 内 if/case 活跃分支 width 与内部 reg；
@@ -297,7 +311,10 @@ graph edges / search / stats / trace evidence / controlflow analyze+list 字段�
 ## 🔜 下一步候选
 
 - 真实 waveform 工具样例；
-- L2 branch group/casez。
+- L2 branch group/casez；
+- **重复度门禁**（dryer，Jaccard ≥ 0.8 判重复）—— ub-mode 纪律项，暂未设门禁；
+- **变异体存活率门禁**（mutator）—— 同上；
+  两者均需先定阈值与棘轮形态，**不与复杂度门禁同时上线**（便于定位失败原因）。
 
 ---
 
@@ -310,6 +327,7 @@ python3 tools/check_plan.py            # 计划树
 python3 tools/check_cli_layers.py      # 分层
 python3 tools/gen_cli_surface.py --check
 python3 tools/check_except_pass.py
+python3 tools/check_crap.py             # 复杂度棘轮 (CC>10)
 ```
 
 | 设施 | 位置 |

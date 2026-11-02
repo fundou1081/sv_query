@@ -54,6 +54,7 @@ python3 tools/check_docs.py                                          # 死链/�
 python3 tools/check_except_pass.py                                   # 禁 except:pass
 python3 tools/check_cli_layers.py                                    # CLI 分层 R1~R8
 python3 tools/gen_cli_surface.py --check                             # CLI 清单一致
+python3 tools/check_crap.py                                          # 复杂度棘轮 (CC>10)
 python3 tools/check_plan.py                                          # PLAN.md 计划树格式
 git status --porcelain                                               # 只含预期改动
 ```
