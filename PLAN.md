@@ -7,7 +7,7 @@
 >
 > 格式（每行一项，子项用 `-- ` 前缀，id 全局唯一）：
 > ```
-> current item : P55.2 测试与文档 <已完成>
+> current item : P56.2 测试与文档 <已完成>
 >
 > P0 建图层与查询层的结构化拆分 <已完成>
 > -- P0.1 图快照基线工具 <待做>
@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P55.2 测试与文档 <已完成>
+current item : P56.2 测试与文档 <已完成>
 
 ## 计划树
 
@@ -230,6 +230,10 @@ P54 generate parameter width 验证 <已完成>
 P55 generate if/case width 强化 <已完成>
 -- P55.1 if/case 活跃分支 fixture <已完成>
 -- P55.2 测试与文档 <已完成>
+
+P56 generate if/case 嵌套 generate-for <已完成>
+-- P56.1 嵌套 fixture/测试 <已完成>
+-- P56.2 测试与文档 <已完成>
 -- P11.1 聚合宽度/signedness（var/net/port，含嵌套） <已完成>
 -- P11.2 成员宽度/位偏移（p.a → 4 位 + 在 p 中的位段） <已完成>
 -- P11.3 测试与文档：聚合/成员矩阵 + 基线 <已完成>
