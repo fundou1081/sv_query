@@ -1,339 +1,57 @@
 # CURRENT_TODO — 当前正在做的事
 
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
-> **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询+客观校验；动态值由外部波形工具提供。
-> **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
-> **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-11-02 GMT+8 (iter_358: P57 纪律合并 — 复杂度门禁 + 术语表)
+> **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
+> **可视化计划**: [structural_review_plan_2026-11-02](docs/architecture/structural_review_plan_2026-11-02.md) — 全设计图退役；动态子图 + 局部 review。
+> **最后更新**: 2026-11-02 GMT+8 (iter_359: P58 计划落地)
 
 ---
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: P57.3（ub-mode 纪律合并 — 复杂度门禁 + 术语表）
-- **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **P18~P30** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P31** exp 降级 ✅（iter_327）；**P32** evidence 稳定性 ✅（iter_328）；**P33** ✅；**P34** verify ✅（iter_330）；**P35** include_control ✅（iter_331）；**P38** class 关系 ✅（iter_334）；**P39.1** lookup ✅（iter_335）；**P39.2** profile 语义 ✅（iter_336）；**P39.3** alias ✅（iter_337）；**P40.2** stage/sample ✅（iter_339）；**P41.2** manifest ✅（iter_341）；**P43.1** generate ✅（iter_343）；**P44.5** scope 可发现性 ✅（iter_345）；**P45** waveform e2e ✅（iter_346）；**P46.1** stats.modules ✅（iter_347）；**P50** bit consistency ✅（iter_351）；**P51** 位选越界源头 ✅（iter_352）；**P52** parent width ✅（iter_353）；**P53** 实例 width ✅（iter_354）；**P54** generate width ✅（iter_355）；**P55** if/case ✅（iter_356）；**P56** 嵌套 generate ✅（iter_357）
-  → P13.6（多驱动/静态 memory）
-- 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
+- **当前 item**: **P59.1 资产盘点与冻结** `<待做>`
+- **P58** 可视化重定位计划 ✅（iter_359）
+- **P59** 旧可视化资产清理：P59.1 盘点/冻结 → P59.2 删除/归档 → P59.3 文档/测试/registry 收口
+- **P60** `graph subgraph` core（P59 完成后开始）
+- **P61** `verify structural` findings（对称性/typo）
+- **P62** 局部 review artifact；交互式 debug 最后做
+
+> **硬门禁**: P59 清理完成前，不开始 P60 实现。
 
 ---
 
-## 📦 仓库状态 (2026-10-27)
+## 📦 仓库状态
 
-- **分支 = `main`**（推送 `backup/main`；本轮文档提交后以 `git log -1` 为准）
-- **全量基线**: **2489 passed / 0 failed**（`sim/tests/`, `-m "not opensource"`；
-  7 skipped / 152 deselected）；35 命令（core 25 / view 10）
-- **图缓存**: `CACHE_VERSION = 1.4`；图基线 6 fixture（`sim/tests/golden/graph_baseline/`）
-- **位精确性**: 显式位/切片/寄存器/总线桥/表达式（位运算、加减乘、常量移位、Slice）/
-  直接拷贝/纯拼接/常量位/`integer` 宽度/signedness/packed struct 聚合+成员+成员位桥
-  全部有模型；比较/逻辑/变量移位/动态选择/函数调用为本质粗粒度（见 KNOWN_LIMITATIONS §3.6）
-- **已登记限制**: `SVQ_BIT_BRIDGE` 默认 `one`（`full` 可选）；深层成员（`o.inner.a`）
-  与非 packed struct 不参与位桥
+- **分支**: `main`；最新提交以 `git log -1` 为准
+- **全量基线**: **2734 passed / 0 failed**（`sim/tests/`, `-m "not opensource"`；
+  7 skipped / 152 deselected；iter_358 记录）
+- **命令面**: 41 命令 = core 29 + exp 12
+- **当前重点**: 先清理旧可视化，再开发动态子图/结构审查
 
 ---
 
-## 📍 最近完成（位精确性系列）
+## ✅ 最近完成（P50~P57）
 
-| 迭代 | 内容 | 关键结果 |
+| 迭代 | 内容 | 结果 |
 |---|---|---|
-| iter_289~292 | 位精度审计 + F1/F2/F3/F5 | 切片/负载按位精确，写污染/断链修复 |
-| iter_293 | F4 总线位桥（`one` 默认/`full` 可选） | 缺位侧合成，纯总线可贯通 |
-| iter_294 | 表达式按运算符逐位映射 | 位运算/加减乘/常量移位/Slice |
-| iter_295 | 直接拷贝 + 纯拼接 | `assign y=a` 位精确；`{a,b}` 分段 |
-| iter_296 | 常量位分解 | `4'hA` → `1'b1`；拼接字面量段 |
-| iter_297 | signedness 建模 | `TraceNode.is_signed`；符号扩展 |
-| iter_298 | 整数类型位宽 | `integer/int/byte/...` 真实宽度 |
-| iter_299 | packed struct/union（聚合+成员布局） | 宽度/signedness/位段 |
-| iter_300 | packed 成员位级查询桥 | `p.a[1]` ↔ `p[5]` |
+| iter_351 | bit-level consistency | parent/range/width/edge 检查 |
+| iter_352 | indexed part-select / multi-top / direct-edge | 越界 269→12 |
+| iter_353 | parent width 元数据 | VariableSymbol width + 实例传播；三项目 pass |
+| iter_354 | 取实例 width | 实例 body/port 优先，parameter 正确 |
+| iter_355 | generate parameter width | generate-for 参数特化验证 |
+| iter_356 | generate if/case | 活跃分支 width / inactive 不建节点 |
+| iter_357 | generate 嵌套 generate-for | 嵌套 if/case 覆盖 |
+| iter_358 | ub-mode 纪律合并 | 复杂度棘轮 + 术语表（非可视化） |
 
 ---
 
-## ✅ 刚完成（P13.1，P0 静默错误）
-
-**现象（实测）**: 默认 `one` 建图后切换 `SVQ_BIT_BRIDGE=full` 再用缓存 → 仍是 5 节点（应 37）。
-**根因**: `UnifiedTracer._graph_cache_key` 未包含 bit-bridge 模式。
-**修法**: key 加 `-bb{one|full}`；补回归测试（两种模式各建一次，节点数不同且互不串）。
-**验收**: 切换模式后必须重建；同模式缓存仍命中；全量 0 failed。
-**结果 (iter_302)**: key 加 `-bb{one|full}`；one→full 5→37、full→one 37→5；同模式命中；
-新增 `test_bit_bridge_cache.py`（5 个）；全量 **2494 passed**。
-
-## ✅ 刚完成（P13.2，粗粒度回退标记）
-
-位查询回落总线时输出与位精确同形 → agent 可能误读。
-**结果 (iter_303)**: 节点 `precision: bit|bus|constant`；signal 级 `precision`（bit/bus/unknown）
-+ `coarse_fallback`（过滤前判定）；顺带修 CLI 位查询"节点不在图"直接报错的 bug
-（`attach_distances` root 缺失）；新增 6 个 CLI 测试，全量 **2500 passed**。
-
-## ✅ 刚完成（P13.3，capabilities + 输出字段）
-
-- `capabilities` 增加 `bit_precision` 段：精确/粗粒度形态、`SVQ_BIT_BRIDGE` 模式、已知边界
-- trace 输出节点补 `is_signed` / `parent` / `bit_range`（位节点继承父 signedness）
-**结果 (iter_304)**: `capabilities --json` 带 12 项 precise / 6 项 coarse / 模式 / markers；
-节点输出三字段；位节点继承 signedness；3 个 CLI golden + scheduler 基线有意重生成；
-全量 **2508 passed**。
-
-## ✅ 刚完成（P13.4，深层 packed 成员）
-
-`o.inner.a` 之前不建节点 → 查询空答。
-**结果 (iter_305)**: 适配器 `get_packed_member_tree`（递归、深度 8）；layout pass 递归建节点
-（上限 5000）；fanout 同时并入聚合总线与位子节点负载。
-`fanin(o.inner.a[1])` → `{x[1]}`，`fanout` → `{y[9]}`；新增 4 测试，全量 **2512 passed**。
-
-## ✅ 刚完成（P13.5，三元/case 分支按位）
-
-`s = c ? a : b; y = s[3]` 之前返回 `{s[3], a, b}`（分支总线级）。
-**结果 (iter_306)**: `TernaryBranch` 同索引（要求等宽）；源位节点存在时
-`fanin(y)={s[3],a[3],b[3]}`、`fanout(a[3])={ta,s[3],y}`；case 同理；宽度不等回落总线。
-新增 7 测试，全量 **2519 passed**。
-
-## ✅ 刚完成（P13.6，多驱动标记 + 静态 memory 位精度）
-
-- 多驱动：`assign y=a; assign y=b` → 无标记；现输出 `driver_count/multi_driver/conditional_drivers`
-- 静态 memory：`mem[1]` 宽度 (1,0) → 8 位；F4 合成 `mem[1][k]`；`fanin(z)={y[3],mem[1][3],d[3]}`
-- 顺带修 `extra=None`（wire_init）与两处 `except: pass`（纪律 2.5）
-**结果 (iter_307)**: 新增 9 测试；全量 **2528 passed**；缓存 1.5。
-
-## ✅ 刚完成（P14.1，动态索引显式 unknown）
-
-`mem[i]` 动态读之前和总线答案同形；现在 `precision=unknown` + `dynamic_index=true`
-（fanin/fanout/节点级），静态 memory 不受影响。新增 5 个 CLI 测试，全量 **2533 passed**。
-
-## ✅ 刚完成（P15，位级 endpoint 便捷入口）
-
-`paths`/`dataflow analyze`/`trace impact` 支持 `--bits`（逗号分隔，按端点顺序/批量对齐）；
-位节点存在 → precision=bit；缺失 → 回落总线 + `coarse_fallback=true`。
-新增 7 个 CLI 测试，全量 **2540 passed**。
-
-## ✅ 刚完成（P16，动态索引递归传播）
-
-动态索引标记改到**图级**（`_mark_dynamic_provenance` + `SignalGraph._dynamic_nodes`）：
-深链、depth=1、fanout、动态写污染静态读都正确 unknown；参数同名切片不再误报；
-标记随缓存序列化（CACHE_VERSION 1.6）。新增 7 测试，全量 **2547 passed**。
-
-## ✅ 刚完成（P18，方豆 1→2→3）
-
-1. **P18.1 层次化条件作用域** ✅（iter_312）：`if (u.q)` / `u.u2.q` / `top.u.q` 都能
-   解析到实例节点，修端口接不同线名时的动态漏标；括号内不做叶名兜底，参数不误报。
-2. **P18.2 函数调用诚实标记** ✅（iter_313）：函数结果节点 `top.f` 不再伪装成 bus；
-   `function_call=true` + `precision=unknown`，下游/位子树传播；不做 inline。
-3. **P18.3 `--bits` 范围/显式映射** ✅（iter_314）：支持 `7:4` 与 `src=1,dst=5`；
-   范围缺失显式回落总线 + `coarse_fallback`。
-4. **P18.4 收尾** ✅：全量 **2572 passed**；检查全绿。
-
-**不做**：函数 inline（第 4 项）、有符号算术逐位（第 5 项）。
-
-## ✅ 刚完成（P19，函数条件诚实标记）
-
-`if (f(a))` / `if (f(a) > 0)` / `f(a) ? b : c` / `case (f(a))` /
-`posedge f(a)` / package 函数：即使图上没有 `top.f` 结果节点，也标
-`function_call=true` + `precision=unknown`。新增 7 测试，全量 **2579 passed**。
-
-## ✅ 刚完成（P20，宏/动态拼接函数）
-
-宏 alias/包装/令牌拼接/ifdef/package/层次函数均已覆盖并加回归测试；
-补上 DPI import（`$unit`）与 interface 函数两个真缺口；系统函数有意不标。
-新增 6 测试，全量 **2585 passed**。
-
-## ✅ 刚完成（P21→P22）
-
-1. **P21 真实工程 smoke** ✅（iter_317）：strict_uart / verilog-axi / picorv32
-   构建+查询+缓存标记验证；新增 smoke 工具与仓库内回归测试。
-2. **P22 条件输出** ✅（iter_318）：fanin/fanout 输出每个结果节点的
-   `condition`/`conditions`，signal 级 `conditions`；无条件字段为空；
-   嵌套条件/ternary 测试覆盖。
-
-全量 **2591 passed**。
-
-## ✅ 刚完成（P23，路径条件组合）
-
-depth>1 深层 driver 沿最短路径组合条件 `(c1) && (c2)`，输出 `condition_path`；
-嵌套 if/ternary 用完整 `condition_chain`。顺带修缺失位节点导致的
-`NetworkXError`（smoke 发现）。全量 **2594 passed**。
-
-> 边界：只走最短路径，不枚举多路径 OR；无图路径的位节点条件可能为空。
-
-## ✅ 刚完成（P24，多路径条件 OR）
-
-同一 driver 多条路径：`condition=(p1) || (p2)`；`conditions` 保留每路径组合，
-`condition_paths` 保留每路径原始序列；无条件路径优先为 `condition=""`；
-枚举上限 8 路径/深度 20/5000 展开，触顶标 `condition_truncated`。
-全量 **2598 passed**。
-
-## ✅ 刚完成（P26，遍历完整性 + 运行期系统函数）
-
-1. **P26.1** ✅ 遍历完整性：`truncated_by_depth`、`cycles_detected`（capped null）。
-2. **P26.2** ✅ 运行期系统调用：`$random/$urandom...` → `runtime_system_call=true` + unknown；
-   修了 `$random` 节点 id 变成对象 repr 的不可复现 bug。
-3. **P26.3** ✅ 6 新测试；3 golden 重生成；真实 smoke 全 PASS；全量 **2609 passed**。
-P25（条件化简/互斥）仍只记录、未排期。
-
-## ✅ 刚完成（P27，Agent JSON 契约）
-
-`capabilities --json` 新增 `json_contract`：envelope + trace signal/node 字段类型/含义、
-v1 版本策略、精度枚举、条件路径结构、null 语义。新增契约测试锁住“真实输出 == 契约字段”。
-全量 **2613 passed**。
-
-## ✅ 刚完成（P28，JSON 契约扩展）
-
-`capabilities.json_contract` 新增 paths / dataflow / impact / graph nodes / error_entry
-字段契约；契约测试 9 个，用真实 CLI JSON 校验。全量 **2618 passed**。
-
-## ✅ 刚完成（P29，契约 batch 2）
-
-graph edges / search / stats / trace evidence / controlflow analyze+list 字段契约；
-契约测试 15 个。发现并标注 envelope 不统一（search direct、evidence/controlflow 额外 top-level）。
-全量 **2624 passed**。
-
-## ✅ 刚完成（P31 + P32）
-
-1. **P31**：audit/diagnose/view 降级 exp；默认 help/capabilities 不提供；
-   `--include-exp` 才列出；老路径兼容。
-2. **P32**：trace evidence 稳定化——always 回退、LHS 赋值行、snippet 关键字、
-   source_location 行号修正；无 driver 端口保持空证据。
-
-全量 **2635 passed**；默认 core 23 命令。
-
-## ✅ 刚完成（P33，canonical identity）
-
-- exact / relative / bit_base_fallback / not_found / ambiguous；
-- fanin/fanout/impact/evidence 统一 `resolved_signal/resolution/candidates/suggestions`；
-- 未知信号 `E_SIGNAL_NOT_FOUND`，歧义 `E_SIGNAL_AMBIGUOUS`；
-- 7 个新测试；全量 **2642 passed**。
-
-## ✅ 刚完成（P34，verify）
-
-- `verify consistency`：reciprocity / bit mapping / connection；
-- `verify claim`：driver / path（含 bidirectional）/ connection / bit；
-- 三态 verified / contradicted / unknown；
-- 9 个新测试；全量 **2653 passed**。
-
-## ✅ 刚完成（P35，include_control）
-
-`--include-control` 不再 AttributeError；显式 unsupported + help 标注；
-错误路径保留 resolution；全量 **2655 passed**。
-
-## ✅ 刚完成（P36，trace profile）
-
-- canonical/aliases/width/bit/source/role/clock/reset/sequential/counts；
-- clock_domains 去重；driver 位置用 evidence 修正；stage 显式未计算；
-- 5 个 profile 测试 + 1 契约测试；全量 **2661 passed**。
-
-## ✅ 刚完成（P37，edge evidence）
-
-- `trace fanin/fanout --evidence`：每 driver/load 边级 `kind/assign_type/condition/expression/file/line`；
-- `paths --evidence`：每 hop `edge_evidence`，无边 hop 为 null；
-- 默认输出不变；4 个测试 + 2 契约测试；全量 **2667 passed**。
-
-## ✅ 刚完成（P38，class 关系）
-
-- `class <name> --relations`：extends/ancestors/subclasses/descendants；
-- members/instances/member_instances/constraints；
-- methods + calls（裸调用 owner 解析，receiver 调用 target_class=null）；
-- 4 个测试 + 1 契约；全量 **2672 passed**。
-
-## ✅ 刚完成（P40.1，profile type）
-
-- profile.type：enum/struct/union/array/signed/width；
-- enum_values + packed_members(offset)；
-- module/instance 的 Port/Variable 可解析；class 保持 unknown。
-
-## ✅ 刚完成（P41.2，waveform manifest）
-
-- `trace manifest`：batch path → lookup + profile；
-- 一次 build；found/not_found 显式；
-- 2 个测试 + 1 契约；全量 **2689 passed**。
-
-## ✅ 刚完成（P41.1，struct member type）
-
-- `top.p.a` type：member_of/member_offset/width。
-
-## ✅ 刚完成（P43.1，generate）
-
-- `top.genblk1[0].x` / `top.genblk2.y` exact lookup；
-- generate scope type 递归解析（logic）；
-- 修正 generate index 被 `split("[")` 截断的 bug；
-- 1 个测试；全量 **2691 passed**。
-
-## ✅ 刚完成（P42.1，interface 别名）
-
-- CONNECTION 边双向别名：interface 实例成员 ↔ modport 成员。
-
-## ✅ 刚完成（P45，waveform 端到端）
-
-- 模拟 8 条完整 path：$root/generate/interface/modport/struct/bit/not_found；
-- 修复 $root 归一化、packed struct 成员类型；
-- 全量 **2700 passed**。
-
-## ✅ 刚完成（P44.5，scope 可发现性）
-
-- interface/generate/class scope；signals/members/instances。
-
-## ✅ 刚完成（P48，条件化简 / 互斥）
-
-- L1 局部布尔化简：原始条件保留，派生 simplified/analysis；
-- 4-state 补元不化简；解析失败显式 unknown；
-- L2 语法级互斥：if/else → proven_exclusive_2state；
-- 5 单元 + 1 CLI 测试；全量 **2712 passed**。
-
-## ✅ 刚完成（P47，class member / UVM）
-
-- class --member semantic candidates（不造图节点）。
-
-## ✅ 刚完成（P49，全图 consistency）
-
-- `verify consistency --full` 遍历所有信号节点，truncated=false；
-- 显式排除 non_signal/bit_like/constant；
-- 全图发现 bit/bus fallback 不对称，不当作逻辑 bug；
-- verilog-axi 8873 / picorv32 706 非位信号节点通过；
-- 1 个测试；全量 **2713 passed**。
-
-## ✅ 刚完成（P57，ub-mode 纪律合并）
-
-- **P57.1** 复杂度棘轮门禁 `tools/check_crap.py`（R1~R4；crapper 是复杂度**唯一实现**，
-  本工具只做 HEAD vs 当前增量比对）—— 退出码 0/2/3，**3 = 未执行 ≠ 通过**；
-- **P57.2** 术语表 `docs/GLOSSARY.md`（四组归类，领域术语的唯一命名处）；
-- **P57.3** 文档登记：CODING_STYLE §12 / WORKFLOW §5（检查器 4→5）/ REVIEW_CHECKLIST §1 /
-  DISCIPLINE 术语表指针 / AGENTS.md §3 / INDEX.md；
-- **P57.4** 全量回归 **2734 passed / 0 failed**（+9 自检）；分支 `feature/p57-discipline-merge`
-  （可撤销手段：独立分支 + 未 push 的本地 commit）。
-
-> 写门禁时实测抓出 3 个真 bug：`FileNotFoundError`（未 materialize）、crapper 静默回退
-> （假通过）、`git show` 双 `HEAD:` 前缀（baseline 恒空 → 全部当新增）。
-> 详见 [iter_358](docs/task_tree/iterations/iter_358_discipline_merge.md)。
-
-## ✅ 刚完成（P56，嵌套 generate）
-
-- for 内 if/case 活跃分支 width 与内部 reg；
-- 非活跃分支节点不存在；
-- 2 个测试；全量 **2725 passed**。
-
-## 🔜 下一步候选
-
-- 真实 waveform 工具样例；
-- L2 branch group/casez；
-- **重复度门禁**（dryer，Jaccard ≥ 0.8 判重复）—— ub-mode 纪律项，暂未设门禁；
-- **变异体存活率门禁**（mutator）—— 同上；
-  两者均需先定阈值与棘轮形态，**不与复杂度门禁同时上线**（便于定位失败原因）。
-
----
-
-## 🧰 固定设施与门禁
-
-```bash
-python3 -m pytest sim/tests/ -m "not opensource" -q -p no:randomly   # 全量
-python3 tools/check_docs.py            # 死链/归档/未登记
-python3 tools/check_plan.py            # 计划树
-python3 tools/check_cli_layers.py      # 分层
-python3 tools/gen_cli_surface.py --check
-python3 tools/check_except_pass.py
-python3 tools/check_crap.py             # 复杂度棘轮 (CC>10)
-```
-
-| 设施 | 位置 |
-|---|---|
-| 计划树 | [PLAN.md](PLAN.md)（唯一） |
-| 迭代记录 | `docs/task_tree/iterations/`（只增不改） |
-| 测试地图 | [TESTING.md](TESTING.md) / [docs/TEST_MAP.md](docs/TEST_MAP.md) |
-| 已知限制 | [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md) |
-| 能力评审 | [docs/architecture/trace_capability_review_2026-10-27.md](docs/architecture/trace_capability_review_2026-10-27.md) |
+## 🔜 P59 清理清单（下一步）
+
+1. 盘点 `visualize` / `arch` / `design` / VizData / ELK / 旧 DOT / 文档 / 测试；
+2. 每项标 keep/archive/delete；
+3. 先冻结全设计图命令，跑全量；
+4. 删除/归档与 review 无关资产；
+5. 更新 registry / capabilities / docs / tests；
+6. 全量 + 真实项目 smoke 0 failed。
+
+详见 [P59 任务](docs/task_tree/tasks/L2_visual_cleanup.md) 与计划 §8。

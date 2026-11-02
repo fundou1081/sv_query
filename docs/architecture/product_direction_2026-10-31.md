@@ -212,6 +212,22 @@ scope 定位候选与 canonical ID
 
 ---
 
+## 7.5 可视化方向调整（2026-11-02）
+
+全设计图不再作为分析入口：
+
+- 简单设计看图不如读代码；复杂设计全图不可读、不可算；
+- `visualize` 全图命令保持 exp/隐藏，并在 P59 清理中退役/归档；
+- 图的保留价值是 **core 数据结构**：fanin/fanout、bit consistency、verify；
+- 新增方向：**`graph subgraph` 动态子图**（P60）+ **`verify structural` findings**（P61）；
+- 图只作为 finding 的**可选局部 review artifact**（P62），必须局部、带证据；
+- 交互式 debug 最后做，且有 gate；
+- CIRCT/MLIR 架构级建模是独立未来 track，不在本计划。
+
+完整计划：[structural_review_plan_2026-11-02.md](structural_review_plan_2026-11-02.md)
+
+---
+
 ## 8. 与现有文档的关系
 
 - 迭代历史与当前计划：[PLAN.md](../../PLAN.md)
