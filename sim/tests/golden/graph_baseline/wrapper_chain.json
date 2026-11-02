@@ -928,7 +928,7 @@
       "module": "wrapper_chain.inner_proc_dut",
       "parent": null,
       "width": [
-        0,
+        1,
         0
       ]
     },
@@ -979,7 +979,7 @@
       "module": "wrapper_chain.inner_proc_dut",
       "parent": null,
       "width": [
-        0,
+        1,
         0
       ]
     },
@@ -996,7 +996,7 @@
       "module": "wrapper_chain.inner_proc_dut",
       "parent": null,
       "width": [
-        0,
+        1,
         0
       ]
     },

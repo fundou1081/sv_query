@@ -655,7 +655,7 @@
       "module": "sm2cluster_arb.arb_inst",
       "parent": null,
       "width": [
-        0,
+        1,
         0
       ]
     },
@@ -740,7 +740,7 @@
       "module": "sm2cluster_arb.arb_inst",
       "parent": null,
       "width": [
-        0,
+        1,
         0
       ]
     },
