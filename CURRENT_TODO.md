@@ -11,9 +11,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: 无（P54 完成；generate parameter width 已验证）
+- **当前 item**: 无（P55 完成；generate if/case 常场景已覆盖）
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **P18~P30** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P31** exp 降级 ✅（iter_327）；**P32** evidence 稳定性 ✅（iter_328）；**P33** ✅；**P34** verify ✅（iter_330）；**P35** include_control ✅（iter_331）；**P38** class 关系 ✅（iter_334）；**P39.1** lookup ✅（iter_335）；**P39.2** profile 语义 ✅（iter_336）；**P39.3** alias ✅（iter_337）；**P40.2** stage/sample ✅（iter_339）；**P41.2** manifest ✅（iter_341）；**P43.1** generate ✅（iter_343）；**P44.5** scope 可发现性 ✅（iter_345）；**P45** waveform e2e ✅（iter_346）；**P46.1** stats.modules ✅（iter_347）；**P50** bit consistency ✅（iter_351）；**P51** 位选越界源头 ✅（iter_352）；**P52** parent width ✅（iter_353）；**P53** 实例 width ✅（iter_354）；**P54** generate width ✅（iter_355）
+- **P18~P30** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P31** exp 降级 ✅（iter_327）；**P32** evidence 稳定性 ✅（iter_328）；**P33** ✅；**P34** verify ✅（iter_330）；**P35** include_control ✅（iter_331）；**P38** class 关系 ✅（iter_334）；**P39.1** lookup ✅（iter_335）；**P39.2** profile 语义 ✅（iter_336）；**P39.3** alias ✅（iter_337）；**P40.2** stage/sample ✅（iter_339）；**P41.2** manifest ✅（iter_341）；**P43.1** generate ✅（iter_343）；**P44.5** scope 可发现性 ✅（iter_345）；**P45** waveform e2e ✅（iter_346）；**P46.1** stats.modules ✅（iter_347）；**P50** bit consistency ✅（iter_351）；**P51** 位选越界源头 ✅（iter_352）；**P52** parent width ✅（iter_353）；**P53** 实例 width ✅（iter_354）；**P54** generate width ✅（iter_355）；**P55** if/case ✅（iter_356）
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -288,15 +288,16 @@ graph edges / search / stats / trace evidence / controlflow analyze+list 字段�
 - verilog-axi 8873 / picorv32 706 非位信号节点通过；
 - 1 个测试；全量 **2713 passed**。
 
-## ✅ 刚完成（P54，generate parameter width）
+## ✅ 刚完成（P55，generate if/case）
 
-- generate-for `leaf #(.W(2*(g+1)))` 各实例 width 正确；
-- P53 的“generate 未建模”边界撤回；
-- 全量 **2720 passed**。
+- 活跃分支 width / 内部 reg 正确；
+- 非活跃分支不建节点；
+- 3 个测试；全量 **2723 passed**。
 
-## ✅ 刚完成（P53，实例 width）
+## 🔜 下一步候选
 
-- 实例 body/port 优先，module 定义 fallback。
+- 真实 waveform 工具样例；
+- L2 branch group/casez。
 
 ---
 
