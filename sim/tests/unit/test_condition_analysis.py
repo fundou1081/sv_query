@@ -45,3 +45,20 @@ def test_syntactic_mutex_and_conflict():
     assert r["status"] == "proven_exclusive_2state"
     assert r["four_state_safe"] is False
     assert driver_conflict_analysis([{"condition": "sel"}, {"condition": "en"}])["status"] == "possible"
+
+
+def test_bit_mapping_detects_out_of_bounds():
+    from cli.core.semantic.verify import _check_bit_mapping
+    from trace.core.graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
+
+    g = SignalGraph()
+    g.add_trace_node(TraceNode(id="top.p", name="p", module="top",
+                               kind=NodeKind.SIGNAL, width=(3, 0)))
+    g.add_trace_node(TraceNode(id="top.p[4:4]", name="p[4:4]", module="top",
+                               kind=NodeKind.SIGNAL, width=(4, 4),
+                               bit_range="[4:4]", parent="top.p",
+                               parent_bit_start=4, parent_bit_end=4))
+    g.add_trace_edge(TraceEdge(src="top.p[4:4]", dst="top.p", kind=EdgeKind.BIT_SELECT))
+    c = _check_bit_mapping(g, None)
+    assert c["status"] == "fail"
+    assert any(v["kind"] == "parent_range_out_of_bounds" for v in c["violations"])

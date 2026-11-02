@@ -107,3 +107,15 @@ def test_consistency_full_mode():
     assert c["truncated"] is False
     assert "bit_level_reciprocity" in c["coverage"]
     assert c["coverage"]["bit_level_reciprocity"] == "not_applicable"
+
+
+BITSLICE = ROOT / "sim" / "tests" / "fixtures" / "json_contract" / "bitslice.sv"
+
+
+def test_bit_level_structural_consistency():
+    d = _json("verify", "consistency", "--checks", "bit", "-f", str(BITSLICE))
+    c = d["result"]["checks"][0]
+    assert c["status"] == "pass"
+    assert c["bit_select_checked"] == 10
+    assert c["index_like"] == 0
+    assert c["coverage"]["scope"] == "all_parent_nodes"
