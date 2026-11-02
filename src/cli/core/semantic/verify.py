@@ -78,12 +78,57 @@ def _claim_result(claim: dict, status: str, *, reason: str = "",
 # ----------------------------------------------------------------------------
 # verify consistency
 # ----------------------------------------------------------------------------
+def _is_literal_id(nid: str) -> bool:
+    import re
+    return bool(re.match(r"^-?\d+'[sS]?[bodhBODH][0-9a-fA-F_]+$", nid or "")
+                or re.match(r"^-?\d+$", nid or ""))
+
+
+def _is_bit_like(node) -> bool:
+    if node is None:
+        return False
+    if getattr(node, "parent", None) or getattr(node, "bit_range", None):
+        return True
+    import re
+    return bool(re.search(r"\[[^\]]+\]$", getattr(node, "id", "") or ""))
+
+
 def _check_reciprocity(tracer, graph, signals: list[str] | None,
-                       max_nodes: int) -> dict:
-    nodes = signals if signals else sorted(graph.nodes())[:max_nodes]
-    truncated = (signals is None and len(graph.nodes()) > max_nodes)
+                       max_nodes: int, full: bool = False) -> dict:
+    """全图/抽样 reciprocity。
+
+    full=True 时遍历所有信号节点（无 truncated）；查询结果缓存，
+    避免同一个节点的 fanin/fanout 被邻居重复计算。
+    """
+    if signals:
+        nodes = signals
+        truncated = False
+        mode = "signal"
+    elif full:
+        nodes = sorted(graph.nodes())
+        truncated = False
+        mode = "full"
+    else:
+        nodes = sorted(graph.nodes())[:max_nodes]
+        truncated = len(graph.nodes()) > max_nodes
+        mode = "sample"
     violations = []
-    checked = 0
+    checked = skipped = 0
+    excluded = {"non_signal": 0, "bit_like": 0, "constant": 0}
+    fanin_cache: dict[str, set[str]] = {}
+    fanout_cache: dict[str, set[str]] = {}
+
+    def _fanin(n):
+        if n not in fanin_cache:
+            fanin_cache[n] = {x.id for x in tracer.trace_fanin(n, depth=1)}
+        return fanin_cache[n]
+
+    def _fanout(n):
+        if n not in fanout_cache:
+            fanout_cache[n] = {x.id for x in tracer.trace_fanout(
+                n, depth=1, include_clock=True, include_reset=True,
+                include_conditional=True)}
+        return fanout_cache[n]
     for n in nodes:
         if n not in graph:
             violations.append({"check": "reciprocity", "kind": "node_missing", "node": n})
@@ -91,12 +136,14 @@ def _check_reciprocity(tracer, graph, signals: list[str] | None,
         node = graph.get_node(n)
         kind_name = getattr(getattr(node, "kind", None), "name", "")
         if kind_name not in ("SIGNAL", "WIRE", "REG", "PORT_IN", "PORT_OUT", "PORT_INOUT"):
-            continue  # 只检查信号节点；实例/常量/class/表达式不参与 fanin/fanout 互逆
+            excluded["non_signal"] += 1
+            continue  # 实例/常量/class/表达式不参与 fanin/fanout 互逆
+        if _is_bit_like(node):
+            excluded["bit_like"] += 1
+            continue  # 位/切片节点使用父总线回退，严格互逆不适用
         try:
-            fanin = {x.id for x in tracer.trace_fanin(n, depth=1)}
-            fanout = {x.id for x in tracer.trace_fanout(
-                n, depth=1, include_clock=True, include_reset=True,
-                include_conditional=True)}
+            fanin = _fanin(n)
+            fanout = _fanout(n)
         except Exception as e:
             violations.append({"check": "reciprocity", "kind": "query_error",
                                "node": n, "error": str(e)})
@@ -105,12 +152,15 @@ def _check_reciprocity(tracer, graph, signals: list[str] | None,
             if d == n:
                 continue
             d_node = graph.get_node(d)
-            # 父总线/位切片是聚合关系，不是 fanin/fanout 的互逆边
-            if getattr(node, "parent", None) == d or getattr(d_node, "parent", None) == n:
+            if _is_literal_id(d):
+                excluded["constant"] += 1
                 continue
-            d_out = {x.id for x in tracer.trace_fanout(
-                d, depth=1, include_clock=True, include_reset=True,
-                include_conditional=True)}
+            # 父总线/位切片是聚合关系，不是 fanin/fanout 的互逆边
+            if (_is_bit_like(d_node) or getattr(node, "parent", None) == d
+                    or getattr(d_node, "parent", None) == n):
+                excluded["bit_like"] += 1
+                continue
+            d_out = _fanout(d)
             if n not in d_out:
                 violations.append({"check": "reciprocity", "kind": "fanin_not_reciprocal",
                                    "node": n, "driver": d,
@@ -119,17 +169,34 @@ def _check_reciprocity(tracer, graph, signals: list[str] | None,
             if l == n:
                 continue
             l_node = graph.get_node(l)
-            if getattr(node, "parent", None) == l or getattr(l_node, "parent", None) == n:
+            if _is_literal_id(l):
+                excluded["constant"] += 1
                 continue
-            l_in = {x.id for x in tracer.trace_fanin(l, depth=1)}
+            if (_is_bit_like(l_node) or getattr(node, "parent", None) == l
+                    or getattr(l_node, "parent", None) == n):
+                excluded["bit_like"] += 1
+                continue
+            l_in = _fanin(l)
             if n not in l_in:
                 violations.append({"check": "reciprocity", "kind": "fanout_not_reciprocal",
                                    "node": n, "load": l,
                                    "message": f"{l} in fanout({n}) but {n} not in fanin({l})"})
         checked += 1
+    # 非信号/父位聚合节点被排除，是显式范围，不当作 checked
+    skipped = max(0, len(nodes) - checked - len([
+        v for v in violations if v.get("kind") == "node_missing"]))
     return {"check": "reciprocity", "status": "fail" if violations else "pass",
-            "checked": checked, "skipped": 0, "violations": violations,
-            "truncated": truncated}
+            "checked": checked, "skipped": skipped, "violations": violations,
+            "truncated": truncated, "mode": mode,
+            "excluded": excluded,
+            "coverage": {
+                "scope": "signal_nodes_excluding_bit_like_and_constants",
+                "checked": checked,
+                "excluded": excluded,
+                "bit_level_reciprocity": "not_applicable",
+                "note": "bit/slice nodes use parent-bus fallback; strict edge reciprocity is not applicable",
+            },
+            "total_nodes": len(graph.nodes())}
 
 
 def _check_bit_mapping(graph, signals: list[str] | None) -> dict:
@@ -208,6 +275,7 @@ def consistency_cmd(
                                help="comma-separated: reciprocity,bit,connection"),
     signal: str = typer.Option(None, "--signal", "-s", help="limit reciprocity/bit check to one signal"),
     max_nodes: int = typer.Option(200, "--max-nodes", help="reciprocity sample cap"),
+    full: bool = typer.Option(False, "--full", help="check all signal nodes (no sampling)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     log_level: str = typer.Option("WARNING", "--log-level"),
@@ -236,7 +304,7 @@ def consistency_cmd(
             raise ValueError("no checks selected (use --checks reciprocity,bit,connection)")
         results = []
         if "reciprocity" in wanted:
-            results.append(_check_reciprocity(tracer, graph, signals, max_nodes))
+            results.append(_check_reciprocity(tracer, graph, signals, max_nodes, full))
         if "bit" in wanted:
             results.append(_check_bit_mapping(graph, signals))
         if "connection" in wanted:
@@ -247,7 +315,8 @@ def consistency_cmd(
             "ok": True,
             "command": "verify_consistency",
             "params": {"file": str(file) if file else None, "filelist": filelist,
-                       "checks": wanted, "signal": signal, "max_nodes": max_nodes},
+                       "checks": wanted, "signal": signal, "max_nodes": max_nodes,
+                       "full": full},
             "result": {
                 "verified": total == 0 and all_known,
                 "total_violations": total,

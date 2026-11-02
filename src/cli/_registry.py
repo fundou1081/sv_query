@@ -1138,6 +1138,9 @@ JSON_CONTRACT = {
         "skipped": {"type": "integer", "desc": "unknown/insufficient metadata"},
         "violations": {"type": "array<object>", "desc": "violation records"},
         "truncated": {"type": "boolean", "desc": "sample cap reached"},
+        "mode": {"type": "string", "desc": "signal|sample|full"},
+        "excluded": {"type": "object", "desc": "non_signal/bit_like/constant counts"},
+        "coverage": {"type": "object", "desc": "scope/checked/excluded/bit_level_reciprocity/note"},
         "error": {"type": "string", "desc": "check unavailable reason"},
     },
     "verify_consistency_result": {
