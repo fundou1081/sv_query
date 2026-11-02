@@ -381,9 +381,43 @@ def _expr_range_select(adapter: "SemanticAdapter", expr, ctx: dict) -> list[str]
             left_val = _fold_select_index(left, ctx)
         if right_val is None:
             right_val = _fold_select_index(right, ctx)
+        syntax_text = safe_str(getattr(expr, "syntax", None)) or ""
+
+        def _as_int(v):
+            if v is None:
+                return None
+            if isinstance(v, int):
+                return v
+            if hasattr(v, "integer"):
+                try:
+                    return int(v.integer)
+                except (TypeError, ValueError):
+                    return None
+            try:
+                return int(str(v))
+            except (TypeError, ValueError):
+                return None
+
         for base in base_signals:
             if left_val is not None and right_val is not None:
-                signals.append(f"{base}[{left_val}:{right_val}]")
+                # [iter_352 / PLAN P51] indexed part-select:
+                # [base +: width] / [base -: width] 的 right 是 width，不是 lsb。
+                if "+:" in syntax_text or "-:" in syntax_text:
+                    lvi = _as_int(left_val)
+                    rvi = _as_int(right_val)
+                    if lvi is None:
+                        lvi = _fold_select_index(left, ctx)
+                    if rvi is None:
+                        rvi = _fold_select_index(right, ctx)
+                    if lvi is not None and rvi is not None:
+                        if "+:" in syntax_text:
+                            signals.append(f"{base}[{lvi + rvi - 1}:{lvi}]")
+                        else:
+                            signals.append(f"{base}[{lvi}:{lvi - rvi + 1}]")
+                    else:
+                        signals.append(f"{base}[?:?]")
+                else:
+                    signals.append(f"{base}[{left_val}:{right_val}]")
             else:
                 signals.append(f"{base}[?:?]")
         return signals

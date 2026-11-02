@@ -346,28 +346,36 @@ def get_signal(
         if base_name:
             return f"{base_name}[{sel_str}]"
         return None
-    # RangeSelect: data[3:0]
+    # RangeSelect: data[3:0] / data[base +: width] / data[base -: width]
     if "RangeSelect" in sk:
         base = getattr(signal, "value", None) or getattr(signal, "base", None)
         left = getattr(signal, "left", None)
         right = getattr(signal, "right", None)
         base_name = get_signal(base, ctx, current_module) if base else None
-        lv = getattr(left, "value", None) if left else None
-        rv = getattr(right, "value", None) if right else None
-        if lv is not None:
+        syn_text = safe_str(getattr(signal, "syntax", None)) or ""
+        lv = fold_constant(left, ctx)
+        rv = fold_constant(right, ctx)
+        if lv is None:
+            raw = getattr(left, "value", None) if left else None
             try:
-                li = int(lv)
+                lv = int(raw) if raw is not None else None
             except (TypeError, ValueError):
-                li = get_signal(left, ctx, current_module) or str(lv)
-        else:
-            li = get_signal(left, ctx, current_module) or "x"
-        if rv is not None:
+                lv = None
+        if rv is None:
+            raw = getattr(right, "value", None) if right else None
             try:
-                ri = int(rv)
+                rv = int(raw) if raw is not None else None
             except (TypeError, ValueError):
-                ri = get_signal(right, ctx, current_module) or str(rv)
+                rv = None
+        if ("+:" in syn_text or "-:" in syn_text) and lv is not None and rv is not None:
+            if "+:" in syn_text:
+                msb, lsb = lv + rv - 1, lv
+            else:
+                msb, lsb = lv, lv - rv + 1
+            li, ri = msb, lsb
         else:
-            ri = get_signal(right, ctx, current_module) or "x"
+            li = lv if lv is not None else (get_signal(left, ctx, current_module) or "x")
+            ri = rv if rv is not None else (get_signal(right, ctx, current_module) or "x")
         if base_name:
             return f"{base_name}[{li}:{ri}]"
         return None
@@ -547,8 +555,25 @@ class _PyslangSelectWalker:
                 prefixed = [f"{self.instance_path}.{c}" if self.instance_path else c for c in chain]
 
                 # msb/lsb 走 pyslang eval (parameter/fn call 也能 handle)
-                msb = _eval_to_int(getattr(node, 'left', None))
-                lsb = _eval_to_int(getattr(node, 'right', None))
+                # [iter_352 / PLAN P51] 区分普通 [msb:lsb] 与 indexed part-select
+                # [base +: width] / [base -: width]：后者 left=base, right=width。
+                syntax_text = safe_str(getattr(node, "syntax", None)) or ""
+                left_val = _eval_to_int(getattr(node, "left", None))
+                right_val = _eval_to_int(getattr(node, "right", None))
+                if "+:" in syntax_text or "-:" in syntax_text:
+                    if left_val is not None and right_val is not None:
+                        if "+:" in syntax_text:
+                            msb = left_val + right_val - 1
+                            lsb = left_val
+                        else:
+                            msb = left_val
+                            lsb = left_val - right_val + 1
+                    else:
+                        msb = None
+                        lsb = None
+                else:
+                    msb = left_val
+                    lsb = right_val
 
                 # [FIX 2026-08-28 07:24] 从 prefixed[-1] 拆 sel 后缀取 immediate
                 # 修复 'full_id=[3:0]' (空 immediate) 和 doubled 拼接 (如 'top.data[3:0][3:0]')
@@ -567,6 +592,12 @@ class _PyslangSelectWalker:
                     syn = getattr(node, 'syntax', None)
                     full_id = (safe_str(syn).strip()
                                if syn is not None else f"{immediate}[?]")
+
+                # [iter_352 / PLAN P51] base_chain 的最后一项必须是规范化后的
+                # full_id（indexed part-select 的 raw syntax 是 [base +: width]，
+                # 不能拿它当节点 id）。
+                if len(prefixed) >= 1:
+                    prefixed[-1] = full_id
 
                 # line/col from sourceRange
                 sr = getattr(node, 'sourceRange', None)

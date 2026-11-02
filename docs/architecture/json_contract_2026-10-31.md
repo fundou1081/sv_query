@@ -722,3 +722,16 @@ fanin signal 新增：
 - 单 bit 展开节点/struct 成员/array element 不会被误判为“缺 edge”；
 - `bit_select_checked` / `index_like` 显式区分；
 - 全量 parent nodes，不抽样。
+
+---
+
+## P51 位选 ID 归一化（2026-11-02）
+
+- `bus[base +: width]` → graph id `bus[base+width-1:base]`；
+- `bus[base -: width]` → `bus[base:base-width+1]`；
+- `base_chain` 末位使用归一化 full_id；
+- multi-top filelist 每个 top 用自己的 namespace；
+- 只对直接拷贝 edge 做 slice 位展开；
+- graph cache v14 强制失效旧位选图。
+
+位级一致性剩余 `parent_range_out_of_bounds` 主要是 parent width 元数据问题。
