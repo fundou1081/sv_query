@@ -192,7 +192,8 @@ scope 定位候选与 canonical ID
 - ✅ 双向一致性 + claim verification（P34，iter_330）
 - ✅ 全图 reciprocity `--full`（P49，iter_350）
 - ✅ bit-level structural consistency（P50，iter_351）
-- ✅ indexed part-select / multi-top 位选 ID 修正（P51，iter_352）：
+- ✅ indexed part-select / multi-top 位选 ID 修正（P51，iter_352）
+- ✅ bit parent width 元数据（P52，iter_353）：
   `verify consistency` / `verify claim`，三态 verified/contradicted/unknown
 - ✅ trace profile / clock/reset/sequential（P36，iter_332）
 - ✅ evidence 粒度到 driver/path（P37，iter_333）
