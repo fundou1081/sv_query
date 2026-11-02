@@ -3374,7 +3374,7 @@
       "module": "Scheduler_minimal.Listbuffer_dut",
       "parent": null,
       "width": [
-        0,
+        1,
         0
       ]
     },
@@ -3408,7 +3408,7 @@
       "module": "Scheduler_minimal.Listbuffer_dut",
       "parent": null,
       "width": [
-        0,
+        1,
         0
       ]
     },
@@ -3442,7 +3442,7 @@
       "module": "Scheduler_minimal.SourceA_dut",
       "parent": null,
       "width": [
-        0,
+        1,
         0
       ]
     },
@@ -3629,7 +3629,7 @@
       "module": "Scheduler_minimal.SourceA_dut",
       "parent": null,
       "width": [
-        0,
+        1,
         0
       ]
     },
@@ -3646,7 +3646,7 @@
       "module": "Scheduler_minimal.SourceA_dut",
       "parent": null,
       "width": [
-        0,
+        1,
         0
       ]
     },
@@ -3714,7 +3714,7 @@
       "module": "Scheduler_minimal.banked_store_dut",
       "parent": null,
       "width": [
-        0,
+        1,
         0
       ]
     },
@@ -3731,7 +3731,7 @@
       "module": "Scheduler_minimal.banked_store_dut",
       "parent": null,
       "width": [
-        0,
+        1,
         0
       ]
     },
@@ -3816,7 +3816,7 @@
       "module": "Scheduler_minimal.directory_test_dut",
       "parent": null,
       "width": [
-        0,
+        1,
         0
       ]
     },
@@ -3850,7 +3850,7 @@
       "module": "Scheduler_minimal.directory_test_dut",
       "parent": null,
       "width": [
-        0,
+        1,
         0
       ]
     },
@@ -4513,7 +4513,7 @@
       "module": "Scheduler_minimal.sinkA_dut",
       "parent": null,
       "width": [
-        0,
+        1,
         0
       ]
     },
@@ -4564,7 +4564,7 @@
       "module": "Scheduler_minimal.sinkA_dut",
       "parent": null,
       "width": [
-        0,
+        1,
         0
       ]
     },
@@ -4581,7 +4581,7 @@
       "module": "Scheduler_minimal.sinkA_dut",
       "parent": null,
       "width": [
-        0,
+        1,
         0
       ]
     },
@@ -4615,7 +4615,7 @@
       "module": "Scheduler_minimal.sinkD_dut",
       "parent": null,
       "width": [
-        0,
+        1,
         0
       ]
     },
@@ -4666,7 +4666,7 @@
       "module": "Scheduler_minimal.sinkD_dut",
       "parent": null,
       "width": [
-        0,
+        1,
         0
       ]
     },
@@ -4700,7 +4700,7 @@
       "module": "Scheduler_minimal.sourceD_dut",
       "parent": null,
       "width": [
-        0,
+        1,
         0
       ]
     },
@@ -4734,7 +4734,7 @@
       "module": "Scheduler_minimal.sourceD_dut",
       "parent": null,
       "width": [
-        0,
+        1,
         0
       ]
     },

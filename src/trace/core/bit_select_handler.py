@@ -306,12 +306,21 @@ class BitSelectHandler:
                             self.graph.add_trace_edge(edge)
 
     def _propagate_instance_widths(self) -> None:
-        """把 module 定义里的 width 传播到实际实例节点。"""
+        """把实例自己的 width 传播到实例节点。
+
+        [iter_354 / PLAN P53] 不能只用 module 定义 width：同一 module type
+        的不同 parameter 实例宽度可能不同。优先从实例 body 的 data/port
+        declarations 取 width；module 定义 map 只作 fallback。
+        """
         try:
             instances = self.adapter.get_module_instances()
         except Exception as e:
             logger.debug("_propagate_instance_widths: 实例枚举失败: %s", e)
             return
+
+        def _usable(w):
+            return w is not None and w != (0, 0)
+
         for inst in instances:
             sym = getattr(inst, "_symbol", None)
             if sym is None:
@@ -324,6 +333,43 @@ class BitSelectHandler:
                     hp = f"{pm}.{nm}"
             if not hp:
                 continue
+
+            applied: set[str] = set()
+            # 1) 实例 body 的变量/线网声明（parameter 已解析）
+            try:
+                decls = self.adapter.get_data_declarations(sym)
+            except Exception as e:
+                decls = []
+                logger.debug("实例 %s data declarations 失败: %s", hp, e)
+            for decl in decls:
+                w = self.adapter.extract_data_width(decl)
+                if not _usable(w):
+                    continue
+                for name in self._get_data_decl_names(decl):
+                    node_id = f"{hp}.{name}"
+                    node = self.graph.get_node(node_id)
+                    if node is not None:
+                        node.width = w
+                        applied.add(node_id)
+            # 2) 实例端口声明（parameter 已解析）
+            try:
+                ports = self.adapter.get_port_declarations(sym)
+            except Exception as e:
+                ports = []
+                logger.debug("实例 %s port declarations 失败: %s", hp, e)
+            for port in ports:
+                name = self.adapter.get_port_name(port)
+                if not name:
+                    continue
+                w = self.adapter.extract_port_width(port)
+                if not _usable(w):
+                    continue
+                node_id = f"{hp}.{name}"
+                node = self.graph.get_node(node_id)
+                if node is not None:
+                    node.width = w
+                    applied.add(node_id)
+            # 3) module 定义 map fallback（只补实例 body 没覆盖的节点）
             mod_type = getattr(getattr(inst, "type", None), "value", None)
             if not mod_type:
                 continue
@@ -333,9 +379,12 @@ class BitSelectHandler:
                     continue
                 sig = key[len(prefix):]
                 node_id = f"{hp}.{sig}"
+                if node_id in applied:
+                    continue
                 node = self.graph.get_node(node_id)
-                if node is not None and width is not None:
+                if node is not None and _usable(width):
                     node.width = width
+
 
     def _create_hierarchical_bit_nodes(self):
         """为位选节点创建父子关系和属性

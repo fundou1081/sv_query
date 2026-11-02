@@ -55,3 +55,21 @@ endmodule
     assert parent is not None and parent.width == (7, 0)
     child = g.get_node("top.bus[7:4]")
     assert child is not None and child.parent == "top.bus"
+
+
+def test_instance_specific_parameter_width():
+    src = """
+module leaf #(parameter W = 4) (input [W-1:0] i, output [W-1:0] o);
+  assign o = i;
+endmodule
+module top(input [7:0] a, input [3:0] b, output [7:0] y8, output [3:0] y4);
+  leaf #(.W(8)) u8(.i(a), .o(y8));
+  leaf #(.W(4)) u4(.i(b), .o(y4));
+endmodule
+"""
+    tr = UnifiedTracer(sources={"t.sv": src}, log_level="ERROR")
+    g = tr.build_graph(use_cache=False, target_module="top")
+    assert g.get_node("top.u8.i").width == (7, 0)
+    assert g.get_node("top.u8.o").width == (7, 0)
+    assert g.get_node("top.u4.i").width == (3, 0)
+    assert g.get_node("top.u4.o").width == (3, 0)
