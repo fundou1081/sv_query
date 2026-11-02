@@ -189,7 +189,8 @@ scope 定位候选与 canonical ID
 ## 6.1 P0 进度（2026-10-31）
 
 - ✅ canonical signal identity / aliases / not_found / ambiguous（P33，iter_329）
-- ✅ 双向一致性 + claim verification（P34，iter_330）：
+- ✅ 双向一致性 + claim verification（P34，iter_330）
+- ✅ 全图 reciprocity `--full`（P49，iter_350）：
   `verify consistency` / `verify claim`，三态 verified/contradicted/unknown
 - ✅ trace profile / clock/reset/sequential（P36，iter_332）
 - ✅ evidence 粒度到 driver/path（P37，iter_333）

@@ -687,3 +687,19 @@ fanin signal 新增：
 - 只证明 `a` vs `!a` 的语法互补；
 - `four_state_safe=false`：四态下 else ≠ !cond；
 - 无分支 group/casez/unique 支持。
+
+---
+
+## P49 全图 reciprocity（2026-11-01）
+
+`verify consistency --full --checks reciprocity`：
+
+- `mode=full`：遍历所有信号节点，不抽样；`truncated=false`；
+- 排除范围显式：
+  - `non_signal`：实例/class/表达式节点；
+  - `bit_like`：位/切片节点（使用父总线 fallback，严格 edge reciprocity 不适用）；
+  - `constant`：字面量驱动/负载；
+- `coverage.bit_level_reciprocity = not_applicable`；
+- 全图完整检查的是**非位信号节点**；位级一致性由 `bit_mapping` 单独检查。
+
+> 全图模式在 verilog-axi 上约 50s；适合验证/CI，不作为默认查询。

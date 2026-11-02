@@ -97,3 +97,13 @@ def test_path_claim_bidirectional_detects_missing_reverse():
     assert d["result"]["status"] == "contradicted"
     assert any(x.get("direction") == "reverse"
                for x in d["result"]["counterevidence"])
+
+
+def test_consistency_full_mode():
+    d = _json("verify", "consistency", "--file", str(STRUCT), "--full",
+              "--checks", "reciprocity")
+    c = d["result"]["checks"][0]
+    assert c["mode"] == "full"
+    assert c["truncated"] is False
+    assert "bit_level_reciprocity" in c["coverage"]
+    assert c["coverage"]["bit_level_reciprocity"] == "not_applicable"
