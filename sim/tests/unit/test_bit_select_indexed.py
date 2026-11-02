@@ -73,3 +73,26 @@ endmodule
     assert g.get_node("top.u8.o").width == (7, 0)
     assert g.get_node("top.u4.i").width == (3, 0)
     assert g.get_node("top.u4.o").width == (3, 0)
+
+
+def test_generate_parameter_instance_width():
+    src = """
+module leaf #(parameter W = 4) (input [W-1:0] i, output [W-1:0] o);
+  assign o = i;
+endmodule
+module top(input [19:0] a, output [19:0] y);
+  genvar g;
+  generate
+    for (g = 0; g < 4; g = g + 1) begin: blk
+      leaf #(.W(2 * (g + 1))) u(.i(a[2*g +: 2]), .o(y[2*g +: 2]));
+    end
+  endgenerate
+endmodule
+"""
+    tr = UnifiedTracer(sources={"t.sv": src}, log_level="ERROR")
+    g = tr.build_graph(use_cache=False, target_module="top")
+    assert g.get_node("top.blk[0].u.i").width == (1, 0)
+    assert g.get_node("top.blk[1].u.i").width == (3, 0)
+    assert g.get_node("top.blk[2].u.i").width == (5, 0)
+    assert g.get_node("top.blk[3].u.i").width == (7, 0)
+    assert g.get_node("top.blk[3].u.o").width == (7, 0)
