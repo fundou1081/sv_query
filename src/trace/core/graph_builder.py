@@ -270,6 +270,21 @@ class GraphBuilder:
             if src_node is None or dst_node is None:
                 continue
 
+            # [iter_352 / PLAN P51.2] 只有“直接拷贝”边才做位展开。
+            # expression 是整条 RHS 表达式；例如 full = (... && wr_ptr_reg[4:0] ...)
+            # 的 leaf edge expression 仍是长表达式，不能把 wr_ptr_reg[4:0]
+            # 当成 full 的 5 位 RHS 展开（否则会造 full[0..4] 假位节点）。
+            def _direct_expr(e) -> bool:
+                expr = (getattr(e, "expression", "") or "").strip()
+                if not expr:
+                    return True
+                short = src.rsplit(".", 1)[-1]
+                return expr in (src, short)
+
+            if not any(_direct_expr(e) for e in edges
+                       if e.kind == EdgeKind.DRIVER):
+                continue
+
             dst_slice = _slice_range(dst)
             src_slice = _slice_range(src)
 
@@ -1616,9 +1631,14 @@ class GraphBuilder:
                 instance_path = tname if tname else ''
 
         # [G3 Option 3] Step 2: 遍历所有 top instance 拿 BitSelectHit
+        # [iter_352 / PLAN P51.2] 每个 top 用自己的 hierarchicalPath/name；
+        # 共用第一个 top 的 instance_path 会把 axi_crossbar 的位选错挂到
+        # axi_adapter 命名空间，制造跨模块 parent 越界。
         top = pyslang_root.topInstances
         for i in range(len(top)):
             mod = top[i]
+            instance_path = (safe_str(safe_attr(mod, "hierarchicalPath", ""))
+                             or safe_str(safe_attr(mod, "name", "")) or "")
 
             for hit in iter_bit_selects(mod, instance_path=instance_path):
                 # [G3 Option 3 2026-08-28] 符号下标 (e.g. for-loop 里 q[i] / generate out[i]):
