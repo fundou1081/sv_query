@@ -3,15 +3,15 @@
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **可视化计划**: [structural_review_plan_2026-11-02](docs/architecture/structural_review_plan_2026-11-02.md) — 全设计图退役；动态子图 + 局部 review。
-> **最后更新**: 2026-11-02 GMT+8 (iter_359: P58 计划落地)
+> **最后更新**: 2026-11-03 GMT+8 (iter_360: P59.1 盘点完成)
 
 ---
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P59.1 资产盘点与冻结** `<待做>`
+- **当前 item**: **P59.2 删除/归档旧命令与渲染器** `<待做>`
 - **P58** 可视化重定位计划 ✅（iter_359）
-- **P59** 旧可视化资产清理：P59.1 盘点/冻结 → P59.2 删除/归档 → P59.3 文档/测试/registry 收口
+- **P59** 旧可视化资产清理：P59.1 盘点/冻结 ✅ → P59.2 删除/归档（下一步）→ P59.3 文档/测试/registry 收口
 - **P60** `graph subgraph` core（P59 完成后开始）
 - **P61** `verify structural` findings（对称性/typo）
 - **P62** 局部 review artifact；交互式 debug 最后做
