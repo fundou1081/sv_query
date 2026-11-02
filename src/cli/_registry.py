@@ -1140,6 +1140,8 @@ JSON_CONTRACT = {
         "truncated": {"type": "boolean", "desc": "sample cap reached"},
         "mode": {"type": "string", "desc": "signal|sample|full"},
         "excluded": {"type": "object", "desc": "non_signal/bit_like/constant counts"},
+        "bit_select_checked": {"type": "integer", "desc": "bit/range selects checked"},
+        "index_like": {"type": "integer", "desc": "array/dynamic element nodes skipped"},
         "coverage": {"type": "object", "desc": "scope/checked/excluded/bit_level_reciprocity/note"},
         "error": {"type": "string", "desc": "check unavailable reason"},
     },

@@ -703,3 +703,22 @@ fanin signal 新增：
 - 全图完整检查的是**非位信号节点**；位级一致性由 `bit_mapping` 单独检查。
 
 > 全图模式在 verilog-axi 上约 50s；适合验证/CI，不作为默认查询。
+
+---
+
+## P50 bit-level consistency（2026-11-02）
+
+`verify consistency --checks bit` 扩展为结构一致性：
+
+| 检查 | 语义 |
+|---|---|
+| `parent_missing` | parent 节点不存在 |
+| `parent_edge_missing` | range-select 主节点缺少到 parent 的 BIT_SELECT/MEMBER_SELECT |
+| `parent_range_out_of_bounds` | parent 位范围越界 |
+| `bit_range_mismatch` | bit_range 与 parent_bit_start/end 不一致 |
+| `width_mismatch` | 子节点宽度与 parent 位宽不一致 |
+| `id_parent_mismatch` | 位选 id 不以 parent[ 开头 |
+
+- 单 bit 展开节点/struct 成员/array element 不会被误判为“缺 edge”；
+- `bit_select_checked` / `index_like` 显式区分；
+- 全量 parent nodes，不抽样。

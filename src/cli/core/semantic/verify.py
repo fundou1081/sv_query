@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import typer
@@ -201,7 +202,7 @@ def _check_reciprocity(tracer, graph, signals: list[str] | None,
 
 def _check_bit_mapping(graph, signals: list[str] | None) -> dict:
     violations = []
-    checked = skipped = 0
+    checked = skipped = index_like = range_checked = 0
     nodes = signals if signals else sorted(graph.nodes())
     for n in nodes:
         node = graph.get_node(n)
@@ -213,25 +214,71 @@ def _check_bit_mapping(graph, signals: list[str] | None) -> dict:
             violations.append({"check": "bit_mapping", "kind": "parent_missing",
                                "node": n, "parent": node.parent})
             continue
-        if node.parent_bit_start is None or node.parent_bit_end is None:
-            skipped += 1
+        # Range-select primary node should have an edge to its parent.
+        # Individual bit nodes expanded from a slice need not; struct members use
+        # member naming and are checked by bit_range/width instead.
+        is_range_primary = (node.bit_range is not None and ":" in node.bit_range
+                            and n == f"{node.parent}[{node.bit_range}]")
+        if is_range_primary and not any(
+                e.kind.name in ("BIT_SELECT", "MEMBER_SELECT")
+                for e in graph.get_edges(n, node.parent)):
+            violations.append({"check": "bit_mapping", "kind": "parent_edge_missing",
+                               "node": n, "parent": node.parent})
+        has_bits = (node.parent_bit_start is not None
+                    or node.parent_bit_end is not None
+                    or node.bit_range is not None)
+        if not has_bits:
+            # unpacked array element / dynamic index: not a bit-select
+            index_like += 1
             continue
-        if node.parent_bit_start > node.parent_bit_end:
-            violations.append({"check": "bit_mapping", "kind": "parent_range_reversed",
-                               "node": n, "start": node.parent_bit_start,
-                               "end": node.parent_bit_end})
-        if node.width and node.width[0] is not None and node.width[1] is not None:
-            nbits = abs(int(node.width[0]) - int(node.width[1])) + 1
-            want = node.parent_bit_end - node.parent_bit_start + 1
-            if nbits != want:
-                violations.append({"check": "bit_mapping", "kind": "width_mismatch",
-                                   "node": n, "node_bits": nbits, "parent_bits": want})
-        if not n.startswith(node.parent + "["):
+        range_checked += 1
+        if node.parent_bit_start is not None and node.parent_bit_end is not None:
+            if node.parent_bit_start > node.parent_bit_end:
+                # allow descending ranges (SV [7:4]); reverse is not itself a bug,
+                # but record if width disagrees below.
+                pass
+            if node.width and node.width[0] is not None and node.width[1] is not None:
+                nbits = abs(int(node.width[0]) - int(node.width[1])) + 1
+                want = abs(node.parent_bit_end - node.parent_bit_start) + 1
+                if nbits != want:
+                    violations.append({"check": "bit_mapping", "kind": "width_mismatch",
+                                       "node": n, "node_bits": nbits,
+                                       "parent_bits": want})
+            if parent.width and parent.width[0] is not None and parent.width[1] is not None:
+                lo = min(int(parent.width[0]), int(parent.width[1]))
+                hi = max(int(parent.width[0]), int(parent.width[1]))
+                for v in (node.parent_bit_start, node.parent_bit_end):
+                    if v < lo or v > hi:
+                        violations.append({"check": "bit_mapping",
+                                           "kind": "parent_range_out_of_bounds",
+                                           "node": n, "bit": v,
+                                           "parent_range": [lo, hi]})
+                        break
+        if node.bit_range:
+            m = re.match(r"^\[(\d+)(?::(\d+))?\]$", node.bit_range.strip())
+            if m:
+                b_hi = int(m.group(1)); b_lo = int(m.group(2) or m.group(1))
+                if (node.parent_bit_start is not None
+                        and node.parent_bit_end is not None
+                        and {b_hi, b_lo} != {node.parent_bit_start,
+                                             node.parent_bit_end}):
+                    violations.append({"check": "bit_mapping",
+                                       "kind": "bit_range_mismatch",
+                                       "node": n, "bit_range": node.bit_range,
+                                       "parent_bits": [node.parent_bit_start,
+                                                       node.parent_bit_end]})
+        if n.startswith("[") or ("[" in n and not n.startswith(node.parent + "[")):
             violations.append({"check": "bit_mapping", "kind": "id_parent_mismatch",
                                "node": n, "parent": node.parent})
     return {"check": "bit_mapping", "status": "fail" if violations else "pass",
-            "checked": checked, "skipped": skipped, "violations": violations,
-            "truncated": False}
+            "checked": checked, "skipped": skipped,
+            "bit_select_checked": range_checked, "index_like": index_like,
+            "violations": violations, "truncated": False,
+            "coverage": {"scope": "all_parent_nodes",
+                         "bit_select_checked": range_checked,
+                         "index_like": index_like}}
+
+
 
 
 def _check_connections(tracer, graph) -> dict:
