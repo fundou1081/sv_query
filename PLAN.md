@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P60.1 设计与 JSON schema <待做>
+current item : P61.1 结构特征与对称性检查 <待做>
 
 ## 计划树
 
@@ -51,10 +51,10 @@ P59 旧可视化资产清理 <已完成>
 -- P59.2 删除/归档旧命令与渲染器 <已完成>
 -- P59.3 文档/测试/registry 收口 <已完成>
 
-P60 graph subgraph 动态子图 <待做>
--- P60.1 设计与 JSON schema <待做>
--- P60.2 core 实现 <待做>
--- P60.3 CLI/测试/文档 <待做>
+P60 graph subgraph 动态子图 <已完成>
+-- P60.1 设计与 JSON schema <已完成>
+-- P60.2 core 实现 <已完成>
+-- P60.3 CLI/测试/文档 <已完成>
 
 P61 结构审查 findings（对称性/typo） <待做>
 -- P61.1 结构特征与对称性检查 <待做>

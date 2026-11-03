@@ -457,3 +457,20 @@ def test_condition_analysis_contract(tmp_path):
     assert set(node["condition_analysis"]) == set(c["condition_analysis"])
     assert set(node["condition_paths"][0]) >= {"condition", "path",
                                                "simplified", "analysis"}
+
+
+def test_graph_subgraph_contract(tmp_path):
+    p = tmp_path / "t.sv"
+    p.write_text("""
+module top(input a, output reg y);
+  always_ff @(posedge a) y <= a;
+endmodule
+""")
+    data = json.loads(_run(["graph", "subgraph", "top.y", "-f", str(p),
+                            "--depth", "1", "--edge-kinds", "clock",
+                            "--json"]).stdout)
+    _, c = _contract()
+    assert {"nodes", "edges", "boundary", "truncated", "stats"} <= set(data["result"])
+    assert data["seeds"][0]["requested"] == "top.y"
+    assert set(data["result"]["nodes"][0]) >= set(c["subgraph_node"]) - {"file", "line"}
+    assert set(data["result"]["edges"][0]) >= set(c["subgraph_edge"]) - {"file", "line"}
