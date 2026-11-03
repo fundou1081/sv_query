@@ -13,8 +13,9 @@
 - `review render findings.json --finding-id ... --svg/--html`
 - 消费 finding.subgraph，调 core `build_subgraph`
 - seed 高亮；missing port 用红色虚线 synthetic stub
-- 简单分层布局；无 ELK/Graphviz 依赖
-- SVG 确定性（seed 排序）
+- 简单拓扑分层布局；无 ELK/Graphviz 依赖
+- missing port 到 sibling 的红虚线（review-only）
+- SVG 确定性（seed/布局排序）
 
 ## 🧪 测试
 

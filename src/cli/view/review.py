@@ -82,39 +82,26 @@ def _missing_nodes(finding: dict) -> list[dict]:
     } for inst in missing]
 
 
-def _adjacency(nodes: list[dict], edges: list[dict]) -> dict[str, set[str]]:
-    ids = [n["id"] for n in nodes]
-    adj: dict[str, set[str]] = {n: set() for n in ids}
-    for e in edges:
-        if e["src"] in adj and e["dst"] in adj:
-            adj[e["src"]].add(e["dst"])
-            adj[e["dst"]].add(e["src"])
-    return adj
-
-
-def _bfs_rank(root: str, adj: dict[str, set[str]], rank: dict[str, int]) -> None:
-    rank[root] = 0
-    queue = [(root, 0)]
-    while queue:
-        cur, d = queue.pop(0)
-        for nxt in sorted(adj.get(cur, ())):
-            if nxt in rank:
-                continue
-            rank[nxt] = d + 1
-            queue.append((nxt, d + 1))
-
-
 def _rank_groups(nodes: list[dict], edges: list[dict], seeds: list[str]):
     ids = [n["id"] for n in nodes]
-    adj = _adjacency(nodes, edges)
-    rank: dict[str, int] = {}
-    roots = [s for s in seeds if s in adj] or ids
-    for root in roots:
-        if root not in rank:
-            _bfs_rank(root, adj, rank)
-    for nid in ids:
-        if nid not in rank:
-            rank[nid] = 0
+    adj: dict[str, list[str]] = {n: [] for n in ids}
+    indeg: dict[str, int] = {n: 0 for n in ids}
+    for e in edges:
+        if e["src"] in adj and e["dst"] in indeg:
+            adj[e["src"]].append(e["dst"])
+            indeg[e["dst"]] += 1
+    for nid in adj:
+        adj[nid] = sorted(set(adj[nid]))
+    rank = {n: 0 for n in ids}
+    queue = sorted(n for n in ids if indeg[n] == 0)
+    while queue:
+        cur = queue.pop(0)
+        for nxt in adj[cur]:
+            rank[nxt] = max(rank[nxt], rank[cur] + 1)
+            indeg[nxt] -= 1
+            if indeg[nxt] == 0:
+                queue.append(nxt)
+        queue.sort()
     groups: dict[int, list[str]] = {}
     for nid in ids:
         groups.setdefault(rank[nid], []).append(nid)
@@ -125,8 +112,7 @@ def _rank_groups(nodes: list[dict], edges: list[dict], seeds: list[str]):
 def _svg_header(finding: dict) -> list[str]:
     return [
         f'<text x="20" y="28" font-family="monospace" font-size="15" fill="#111">'
-        f'{html.escape(finding.get("check", "finding"))}: '
-        f'{html.escape(finding.get("id", ""))}</text>',
+        f'{html.escape(finding.get("id", "finding"))}</text>',
         f'<text x="20" y="50" font-family="monospace" font-size="12" fill="#444">'
         f'{html.escape(finding.get("message", ""))}</text>',
     ]
@@ -141,6 +127,16 @@ def _edge_svg(edge: dict, pos: dict) -> str | None:
             f'stroke="#777" stroke-width="1.2" marker-end="url(#arrow)">'
             f'<title>{html.escape(edge.get("condition") or edge.get("expression") or edge["kind"])}'
             f'</title></line>')
+
+
+def _missing_edge_svg(instance: str, missing_id: str, pos: dict) -> str | None:
+    if instance not in pos or missing_id not in pos:
+        return None
+    x1, y1 = pos[instance]
+    x2, y2 = pos[missing_id]
+    return (f'<line x1="{x1 + 180}" y1="{y1 + 18}" x2="{x2}" y2="{y2 + 18}" '
+            f'stroke="#d33" stroke-width="1.4" stroke-dasharray="5,3" '
+            f'marker-end="url(#arrow)"><title>missing port</title></line>')
 
 
 def _node_svg(nid: str, node: dict, pos: dict, seeds: set[str]) -> list[str]:
@@ -161,16 +157,46 @@ def _node_svg(nid: str, node: dict, pos: dict, seeds: set[str]) -> list[str]:
     ]
 
 
-def _svg(finding: dict, result: dict) -> str:
-    seed_list = sorted(finding.get("seeds") or [])
-    seeds = set(seed_list)
-    nodes = list(result["nodes"]) + _missing_nodes(finding)
-    by_id = {n["id"]: n for n in nodes}
-    groups = _rank_groups(nodes, result["edges"], seed_list)
+def _layout_data(finding: dict, result: dict, seed_list: list[str]):
+    missing = _missing_nodes(finding)
+    nodes = list(result["nodes"]) + missing
+    edges = list(result["edges"])
+    missing_insts = (finding.get("actual") or {}).get("missing_instances") or []
+    for inst, miss in zip(missing_insts, missing):
+        edges.append({"src": inst, "dst": miss["id"]})
+    return nodes, edges, _rank_groups(nodes, edges, seed_list)
+
+
+def _positions(groups) -> dict[str, tuple[int, int]]:
     pos: dict[str, tuple[int, int]] = {}
     for col, group in enumerate(groups):
         for row, nid in enumerate(group):
             pos[nid] = (40 + col * 250, 90 + row * 80)
+    return pos
+
+
+def _edges_svg(result: dict, missing: list[dict], missing_insts: list[str],
+               pos: dict) -> list[str]:
+    out = []
+    for e in result["edges"]:
+        line = _edge_svg(e, pos)
+        if line:
+            out.append(line)
+    for inst, miss in zip(missing_insts, missing):
+        line = _missing_edge_svg(inst, miss["id"], pos)
+        if line:
+            out.append(line)
+    return out
+
+
+def _svg(finding: dict, result: dict) -> str:
+    seed_list = sorted(finding.get("seeds") or [])
+    seeds = set(seed_list)
+    nodes, layout_edges, groups = _layout_data(finding, result, seed_list)
+    by_id = {n["id"]: n for n in nodes}
+    missing = _missing_nodes(finding)
+    missing_insts = (finding.get("actual") or {}).get("missing_instances") or []
+    pos = _positions(groups)
     max_rows = max((len(g) for g in groups), default=1)
     width = 80 + max(1, len(groups)) * 250
     height = 120 + max_rows * 80
@@ -182,10 +208,7 @@ def _svg(finding: dict, result: dict) -> str:
         '<rect width="100%" height="100%" fill="white"/>',
     ]
     out.extend(_svg_header(finding))
-    for e in result["edges"]:
-        line = _edge_svg(e, pos)
-        if line:
-            out.append(line)
+    out.extend(_edges_svg(result, missing, missing_insts, pos))
     for nid in pos:
         out.extend(_node_svg(nid, by_id[nid], pos, seeds))
     out.append("</svg>")
