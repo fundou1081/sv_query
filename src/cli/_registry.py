@@ -153,6 +153,8 @@ COMMANDS: list[CommandSpec] = [
        note="双向一致性: fanin/fanout、bit parent/bit_range、connection port↔internal"),
     _c("verify claim", "verify", kind="fact", cost="medium", recommended=True,
        note="验证 claim: driver/path/connection/bit → verified|contradicted|unknown"),
+    _c("verify structural", "verify", kind="fact", cost="medium",
+       note="[P61] 结构审查: sibling 端口集合对称性 → findings + evidence + subgraph spec"),
     # [iter_236 1a] 实例/层级查询 (补 agent 理解架构的第一步; 复用 get_instances/MIG)
     _c("scope", "scope", kind="fact", cost="cheap", recommended=True,
        note="[规范入口] scope 聚合: 类型/父/子/端口/参数 (入口层, 不做因果追踪)"),
@@ -244,7 +246,7 @@ _TRACE_KEYS = {
     "trace evidence", "trace profile", "trace lookup", "trace manifest",
     "paths", "dataflow analyze", "controlflow analyze", "controlflow list-conditioned",
 }
-_VERIFY_KEYS = {"verify consistency", "verify claim"}
+_VERIFY_KEYS = {"verify consistency", "verify claim", "verify structural"}
 _STATE_KEYS = {"snapshot save", "snapshot list", "snapshot compare", "snapshot delete"}
 
 
@@ -535,6 +537,10 @@ JSON_CONTRACT = {
         },
         "verify claim": {
             "result_fields": ["claim", "status", "reason", "evidence", "counterevidence"],
+        },
+        "verify structural": {
+            "result_fields": ["findings", "total", "truncated", "checks"],
+            "finding_fields": "structural_finding",
         },
         "scope": {
             "result_fields": ["scope", "canonical_id", "kind", "module_type", "parent",
@@ -1182,6 +1188,32 @@ JSON_CONTRACT = {
         "unknown_checks": {"type": "array<string>", "desc": "checks that could not run"},
         "checks": {"type": "array<verify_check>", "desc": "per-check results"},
     },
+    "structural_finding": {
+        "id": {"type": "string", "desc": "stable finding id"},
+        "check": {"type": "string", "desc": "symmetry.port_set"},
+        "severity": {"type": "string", "desc": "warning|error"},
+        "confidence": {"type": "string", "desc": "high|medium|low"},
+        "message": {"type": "string", "desc": "human summary"},
+        "seeds": {"type": "array<string>", "desc": "instance seeds"},
+        "expected": {"type": "object", "desc": "expected structure"},
+        "actual": {"type": "object", "desc": "actual deviation"},
+        "evidence": {"type": "array<object>", "desc": "edge evidence"},
+        "subgraph": {"type": "object", "desc": "seeds/depth/direction/edge_kinds"},
+    },
+
+    "structural_finding": {
+        "id": {"type": "string", "desc": "stable finding id"},
+        "check": {"type": "string", "desc": "symmetry.port_set"},
+        "severity": {"type": "string", "desc": "warning|error"},
+        "confidence": {"type": "string", "desc": "high|medium|low"},
+        "message": {"type": "string", "desc": "human summary"},
+        "seeds": {"type": "array<string>", "desc": "instance seeds"},
+        "expected": {"type": "object", "desc": "expected structure"},
+        "actual": {"type": "object", "desc": "actual deviation"},
+        "evidence": {"type": "array<object>", "desc": "edge evidence"},
+        "subgraph": {"type": "object", "desc": "seeds/depth/direction/edge_kinds"},
+    },
+
     "verify_claim_result": {
         "claim": {"type": "object", "desc": "original claim object"},
         "status": {"type": "string", "enum": ["verified", "contradicted", "unknown"],

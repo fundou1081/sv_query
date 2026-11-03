@@ -5,7 +5,7 @@
 > agent 面向的 RTL **查询 + 客观校验层**：服务动态 debug（波形值由外部工具提供）与 design 理解；
 > 核心是 canonical identity、evidence、双向验证，而不是自然语言解释。
 
-> 2502 passed (canonical 主回归) | Python 3.11+ | pyslang 语义 AST | NetworkX graph | 真实项目验证
+> 2507 passed (canonical 主回归) | Python 3.11+ | pyslang 语义 AST | NetworkX graph | 真实项目验证
 
 > 更新日期: 2026-11-03
 
@@ -76,7 +76,7 @@ sv_query trace manifest --path top.data -f top.sv --json
 |---|---|
 | **Scope** | `scope` / `instances` / `hierarchy` / `ports` / `params` / `connections` / `class` |
 | **Trace** | `drivers` / `loads` / `paths` / `dataflow` / `controlflow` / `trace evidence/profile/lookup/manifest` |
-| **Verify** | `verify consistency` / `verify claim` |
+| **Verify** | `verify consistency` / `verify claim` / `verify structural` |
 | **Locate** | `stats` / `search` / `graph nodes/edges` / `capabilities` |
 | **State** | `snapshot save/list/compare/delete` |
 | **exp** | `audit` / `diagnose` / `trace overview`（默认隐藏，不承诺契约） |
