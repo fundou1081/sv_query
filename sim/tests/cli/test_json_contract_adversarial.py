@@ -17,7 +17,6 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[3]
 CORDIC = REPO / "sim" / "tests" / "fixtures" / "golden_mini" / "golden_dataflow_39_cordic_pipeline.v"
-BINARY = REPO / "sim" / "tests" / "fixtures" / "hostile_input" / "binary.sv"
 MISSING = REPO / "sim" / "tests" / "fixtures" / "hostile_input" / "fl_missing_entry.f"
 
 
@@ -37,9 +36,8 @@ def _json_or_none(out: str):
 
 # ── F1: 错误路径的结构化信封 ────────────────────────────────────────────────
 @pytest.mark.parametrize("name,args", [
-    ("二进制文件", ["visualize", "pipeline", "-f", str(BINARY), "--json"]),
     ("文件不存在", ["dataflow", "analyze", "a", "b", "-f", str(REPO / "no_such.sv"), "--json"]),
-    ("filelist 缺条目", ["visualize", "pipeline", "--filelist", str(MISSING), "--json"]),
+    ("filelist 缺条目", ["stats", "--filelist", str(MISSING), "--json"]),
 ])
 def test_f1_error_path_emits_json_envelope(name, args):
     """F1: 请求了 --json 时, 错误也必须打结构化信封到 stdout。"""
@@ -54,57 +52,13 @@ def test_f1_error_path_emits_json_envelope(name, args):
 
 def test_f1_success_envelope_unchanged():
     """F1 反向: 成功路径信封不受影响 (ok=True + result)。"""
-    r = _run(["visualize", "pipeline", "-f", str(CORDIC), "--json"])
+    r = _run(["stats", "-f", str(CORDIC), "--json"])
     assert r.returncode == 0, r.stderr[-300:]
     payload = _json_or_none(r.stdout)
     assert payload and payload["ok"] is True and "result" in payload
 
 
-# ── F2/F3: 被 --json 忽略的 flag 必须显式告警 ───────────────────────────────
-@pytest.mark.parametrize("flag", ["--svg", "--timing"])
-def test_f2_f3_ignored_flag_warns(flag, tmp_path):
-    """F2/F3: --json 与输出/模式 flag 组合时必须告警 (不静默丢弃)。"""
-    args = ["visualize", "pipeline", "-f", str(CORDIC), "--json"]
-    if flag == "--svg":
-        args += [flag, str(tmp_path / "out.svg")]
-    else:
-        args += [flag]
-    r = _run(args)
-    assert r.returncode == 0, r.stderr[-300:]
-    assert "被忽略" in r.stderr, f"{flag}: 应显式告警, stderr={r.stderr[-300:]!r}"
-    assert flag in r.stderr, r.stderr[-300:]
-    if flag == "--svg":
-        assert not (tmp_path / "out.svg").exists(), "被忽略时不应产出文件"
-
-
 # ── F4: 参数校验 ────────────────────────────────────────────────────────────
-
-# ── F5 (iter_202): --quiet 契约必须真的安静 ─────────────────────────────────
-def test_f5_quiet_suppresses_all_stderr():
-    """F5: `--quiet` 的契约是抑制所有 stderr (给 LLM 消费方)。
-
-    iter_202 对抗测试发现: 实测仍泄漏 6 行 (Phase 3/4 进度 + pipeline 摘要)。
-    """
-    r = _run(["visualize", "pipeline", "-f", str(CORDIC), "--quiet"])
-    assert r.returncode == 0, r.stderr[-300:]
-    assert r.stderr.strip() == "", f"--quiet 下 stderr 必须为空, 实际: {r.stderr[:300]!r}"
-
-
-def test_f5_quiet_keeps_errors_visible():
-    """F5 反向: --quiet 不能把**错误**也吞掉 (失败仍要可见)。"""
-    r = _run(["visualize", "pipeline", "-f", str(BINARY), "--quiet"])
-    assert r.returncode != 0
-    assert r.stderr.strip(), "错误信息不应被 --quiet 吞掉"
-
-
-def test_f5_quiet_with_json_keeps_stdout_pure():
-    """F5: --quiet + -j → stderr 全空, stdout 仍是纯 JSON。"""
-    r = _run(["visualize", "pipeline", "-f", str(CORDIC), "--quiet", "-j"])
-    assert r.returncode == 0, r.stderr[-300:]
-    assert r.stderr.strip() == "", r.stderr[:300]
-    payload = _json_or_none(r.stdout)
-    assert payload is not None and payload["ok"] is True, r.stdout[:200]
-
 
 # ── F6 (iter_203): `--format json` 必须给结构化 JSON ───────────────────────
 ADV = REPO / "sim" / "tests" / "fixtures" / "hostile_input" / "macro_inst.sv"
@@ -142,7 +96,7 @@ def test_f6_format_json_matches_json_flag():
 INCDIR_CASE = REPO / "sim" / "tests" / "fixtures" / "hostile_input" / "incdir_case"
 
 
-@pytest.mark.parametrize("cmd", [["stats"], ["visualize", "graph"]])
+@pytest.mark.parametrize("cmd", [["stats"]])
 def test_r4_3_filelist_incdir_applied(cmd):
     """R4-3: `--filelist` 的 `+incdir+` 过去被丢弃 → `include 失败 → 宏不展开。
 

@@ -13,7 +13,6 @@ TDD: 所有 CLI 命令 --file vs --filelist 行为一致 (Req-9 任务2)
 - sva extract / coverage / timing
 - timing analyze
 - verify gap
-- visualize graph
 
 每个命令测试 4 个场景:
 1. --file 模式跑通
@@ -210,29 +209,6 @@ def test_verify_file_vs_filelist_parity():
 # Visualize graph (HTML 输出)
 # ----------------------------------------------------------------------------
 
-def test_visualize_file_vs_filelist_parity():
-    tmpdir = tempfile.mkdtemp()
-    sv = Path(tmpdir) / "test.sv"
-    sv.write_text(SAMPLE_SV)
-    fl = Path(tmpdir) / "test.f"
-    fl.write_text("test.sv\n")
-    html_f = Path(tmpdir) / "out_f.html"
-    html_fl = Path(tmpdir) / "out_fl.html"
-    # [V6.9 2026-07-29] V6.7 重构后 visualize graph 不再生成独立 HTML 文件,
-    # --html 参数改为输出 HTML-wrapped DOT。改为比较 DOT 输出一致性。
-    r1 = _run("visualize", "graph", "-f", str(sv), "--svg", str(html_f), cwd=tmpdir)
-    r2 = _run("visualize", "graph", "--filelist", str(fl), "--svg", str(html_fl), cwd=tmpdir)
-    assert r1.returncode == 0
-    assert r2.returncode == 0
-    assert html_f.exists(), f"DOT not generated: {html_f}"
-    assert html_fl.exists(), f"DOT not generated: {html_fl}"
-    # 比较 DOT 字节级一致 (跑得很快, 应一致)
-    sz_f = html_f.stat().st_size
-    sz_fl = html_fl.stat().st_size
-    assert sz_f == sz_fl, f"DOT size differs: {sz_f} vs {sz_fl}"
-    print(f"✅ visualize graph: --file == --filelist (HTML, both {sz_f} bytes)")
-
-
 def diff(a, b):
     """返回 a,b 的 unified diff (最多 5 行)"""
     import difflib
@@ -259,7 +235,6 @@ if __name__ == "__main__":
         test_sva_timing_file_vs_filelist_parity,
         test_timing_file_vs_filelist_parity,
         test_verify_file_vs_filelist_parity,
-        test_visualize_file_vs_filelist_parity,
     ]
     for t in tests:
         try:

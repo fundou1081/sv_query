@@ -53,8 +53,7 @@ D5 锁定: 以后仅支持 v11 API, 不再考虑 v9/v10 兼容.
 **正确用法**: `-f` / `--file` 只接受 SystemVerilog **源码**; filelist 一律用 `--filelist`。
 
 ```bash
-sv_query visualize module -f project.f          # ❌ 禁止 (用法错)
-sv_query visualize module --filelist project.f --target top   # ✅
+全设计图命令已于 2026-11-03 退役；请使用 `graph nodes/edges` 或 `scope`/`hierarchy`。
 sv_query stats -f design.sv                     # ✅ 单文件源码
 ```
 
@@ -332,7 +331,6 @@ signal 级 `precision` + `coarse_fallback`）；`capabilities.bit_precision` 契
 |------|---------|
 | Binary operator 分解无法检测 op | V6.5 (DriverSource→SignalSource) |
 | expression/bit_slice 用纯字符串存储 | V6.5 (SignalSource 结构化) |
-| 可视化 6 个渲染器分散 | V6.7 (VizData 统一管线) |
 | DriverInfo 不含位精确信息 | V6.6 (source: SignalSource) |
 | pipeline 图 5 种变体混乱 | V6.6/V6.7 (deprecated load_dot) |
 | NodeKind/EdgeKind 混乱 | V6.6 (命名空间分区) |
@@ -349,7 +347,6 @@ signal 级 `precision` + `coarse_fallback`）；`capabilities.bit_precision` 契
 |---|---|---|
 | **case27 Gap 1** — `acc[i]` 显示模板 label `[i]` 而非 `[0..4]` | Semantic API 不展开 genvar 替换 | D2 |
 | **case27 Gap 2** — generate-block 内 `prod[0..3]` 4 个 `*` op 节点缺失 | Semantic API 不 walk generate-block body | D2 |
-| **generate-block 整体展平** | 可视化彻底展平到 module 顶层 | D3 |
 
 ### 仍待修 (核心约束: 信号图信息完整)
 

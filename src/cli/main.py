@@ -47,11 +47,9 @@ from src.cli._common import (
     _build_tracer,
     handle_compilation_error,
 )
-from cli.view.arch import arch_app
 from cli.core.semantic.verify import verify_app
 from cli.core.semantic.controlflow import controlflow_app
 from cli.core.semantic.dataflow import dataflow_app
-from cli.view.design import design_app
 from cli.core.state.diff import diff_app
 # [iter_248 T2] 诊断: 4 个子命令合并为 1 个 `diagnose <check>` (fix 老路径已删除)
 from cli.core.diagnose.dispatch import diagnose_cmd
@@ -70,7 +68,6 @@ from cli.core.semantic.paths import paths_cmd         # [iter_237]
 from cli.core.semantic.classes import class_cmd  # [iter_237, iter_247 合并 classes]
 from cli.core.semantic.scope import scope_cmd
 from cli.core.semantic.audit import audit_cmd  # [iter_288] 设计审计 (P3.3)
-from cli.view.visualize import vis_app
 import logging
 
 logger = logging.getLogger(__name__)
@@ -109,9 +106,8 @@ app.add_typer(controlflow_app, name="controlflow")
 # [iter_259] 10 个历史顶层组已**删除** (iter_251 先隐藏, 本次彻底移除):
 # 规范入口只有 `svq exp <组> <子>`。测试调用点已同步改写 (~151 处)。
 # 如需恢复, 见 git 历史与 docs/EXP_NAMESPACE.md。
-app.add_typer(vis_app, name="visualize", hidden=True)
-app.add_typer(arch_app, name="arch", hidden=True)
-app.add_typer(design_app, name="design", hidden=True)
+# [iter_361 / PLAN P59.2] 全设计图可视化退役；旧 visualize/arch/design
+# 命令与渲染器已删除。局部 review artifact 将在 P62 重新实现。
 
 # [iter_252] 删除 `expression` (dev 层 3 命令): 内部调试用, 0 测试, `--file` 路径未实现;
 # 模块已归档到 docs/archive/2026-10-19-src-archived/cli_dev/。构造 expression 节点请用

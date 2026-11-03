@@ -294,7 +294,6 @@ def test_strict_default_core_commands_exits_zero():
     fl_path = _setup_strict_uart_fixture()
 
     # 核心命令 + 它们的预期行为 (iter_263: exp 已退役, 只剩 core)
-    # 注意: visualize 用 --html 需要特定参数顺序, 单独跑 (不能加 --log-level)
     commands = [
         (["stats"],                              ["--log-level", "ERROR"]),
         (["controlflow", "analyze", "synchronizer.sync0_o"],   ["--log-level", "ERROR"]),
@@ -319,13 +318,7 @@ def test_strict_default_core_commands_exits_zero():
         f"strict 默认有 {len(failed)} 个命令失败: {failed}"
     )
 
-    # Visualize 单独跑 (用 --html 不允许在 --log-level 之前位置)
-    r = _run("visualize", "graph", "--html", str(FIXTURE_DIR / "viz.html"),
-             "--filelist", fl_path)
-    assert r.returncode == 0, f"visualize EXIT {r.returncode}, stderr={r.stderr[:300]}"
-    print(f"  ✅ visualize graph: EXIT 0")
-
-    print(f"\n✅ 12+1 个命令 strict 默认全 EXIT 0 (自洽 fixture)")
+    print(f"\n✅ 核心命令 strict 默认全 EXIT 0 (自洽 fixture)")
 
 
 # ============================================================================

@@ -203,15 +203,6 @@ COMMANDS: list[CommandSpec] = [
     # ---- core / diagnose (原 fix 只读部分) ----
 
     # ---- view (人眼面, 默认含于 capabilities) ----
-    _v("visualize graph", cost="expensive"),
-    _v("visualize dataflow"),
-    _v("visualize pipeline", cost="medium"),
-    _v("visualize chain"),
-    _v("visualize module"),
-    _v("visualize teach"),
-    _v("visualize datapath", note="定点计算架构图; 0 个测试文件 (只有 fixture 名引用, 覆盖缺口)"),
-    _v("arch show", note="项目架构总览 (L1 模块 + L2 端口)"),
-    _v("design show", cost="expensive", note="IP 级设计理解; 仅 1 个测试文件 (覆盖缺口)"),
     _v("trace overview", kind="presentation", cost="expensive",
        note="两个信号之间的综合叙述 (dataflow + controlflow + evidence)"),
     # ---- dev (内部调试) ----
