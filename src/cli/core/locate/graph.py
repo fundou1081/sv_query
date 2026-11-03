@@ -11,6 +11,8 @@ from cli._paths import ensure_on_path, PROJECT_ROOT  # noqa: E402
 ensure_on_path(PROJECT_ROOT)
 
 from cli._common import _build_tracer, handle_compilation_error  # [iter_236 1a]
+from cli.core.semantic.trace_common import resolve_signal  # [iter_362 P60]
+from trace.core.query.subgraph import SubgraphError, SubgraphOptions, build_subgraph  # [iter_362 P60]
 from trace.core.compiler import CompilationError
 from cli._output import emit_json
 
@@ -160,4 +162,120 @@ def list_edges(
             emit_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
+        raise typer.Exit(code=1) from None
+
+
+def _resolve_subgraph_seeds(graph, seeds):
+    rows = []
+    valid = []
+    errors = []
+    for raw in seeds:
+        r = resolve_signal(graph, raw)
+        rows.append({
+            "requested": raw,
+            "resolved": r.get("resolved"),
+            "status": r.get("status"),
+        })
+        if r.get("ok") and r.get("resolved") in graph:
+            valid.append(r["resolved"])
+        else:
+            errors.append({
+                "requested": raw,
+                "status": r.get("status"),
+                "candidates": r.get("candidates", []),
+                "suggestions": r.get("suggestions", []),
+            })
+    return valid, rows, errors
+
+
+def _emit_subgraph_failure(message: str, json_output: bool) -> None:
+    data = {"ok": False, "command": "graph_subgraph",
+            "error": message, "errors": [message]}
+    if json_output:
+        emit_json(data)
+    else:
+        print(f"Error: {message}", file=sys.stderr)
+
+
+def _print_subgraph(result: dict) -> None:
+    print(f"Subgraph: {len(result['nodes'])} nodes, "
+          f"{len(result['edges'])} edges")
+    print(f"  boundary: {len(result['boundary'])}, "
+          f"truncated: {result['truncated']}")
+    for n in result["nodes"]:
+        print(f"  [{n['kind']}] {n['id']} ({n['module']})")
+
+
+@graph_app.command("subgraph")
+def subgraph_cmd(
+    seeds: list[str] = typer.Argument(..., help="Canonical/relative seed signal(s)"),
+    file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
+    filelist: str = typer.Option(None, "--filelist", help="filelist (.f/.fl) 多文件项目"),
+    depth: int = typer.Option(2, "--depth", help="k-hop depth (0 = seeds only)"),
+    direction: str = typer.Option("both", "--direction", help="in / out / both (relative to seeds)"),
+    edge_kinds: str = typer.Option("driver,connection", "--edge-kinds",
+                                   help="comma list: driver,connection,control,clock,reset,bit_select,member_select,branch"),
+    max_nodes: int = typer.Option(80, "--max-nodes", help="hard node budget (includes seeds)"),
+    max_edges: int = typer.Option(160, "--max-edges", help="hard edge budget"),
+    evidence: bool = typer.Option(False, "--evidence", help="include file:line evidence"),
+    json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON"),
+) -> None:
+    """局部子图：从 seed 出发的 k-hop 邻域（有预算，不做全图 BFS）。"""
+    try:
+        tracer = _build_tracer(file=file, filelist=filelist)
+        graph = tracer.build_graph()
+        valid, seed_rows, seed_errors = _resolve_subgraph_seeds(graph, seeds)
+        if not valid:
+            data = {
+                "ok": False,
+                "command": "graph_subgraph",
+                "error": "no resolvable seed",
+                "seeds": seed_rows,
+                "errors": seed_errors,
+            }
+            if json_output:
+                emit_json(data)
+            else:
+                print(f"Error: no resolvable seed: {seed_errors}", file=sys.stderr)
+            raise typer.Exit(code=1)
+
+        opts = SubgraphOptions(
+            depth=depth,
+            direction=direction,
+            edge_kinds=tuple(edge_kinds.split(",")),
+            max_nodes=max_nodes,
+            max_edges=max_edges,
+            include_evidence=evidence,
+        )
+        result = build_subgraph(graph, valid, options=opts)
+        data = {
+            "ok": True,
+            "command": "graph_subgraph",
+            "params": {
+                "file": str(file) if file else None,
+                "filelist": filelist,
+                "depth": depth,
+                "direction": direction,
+                "edge_kinds": list(opts.edge_kinds),
+                "max_nodes": max_nodes,
+                "max_edges": max_edges,
+                "evidence": evidence,
+            },
+            "seeds": seed_rows,
+            "result": result,
+            "errors": seed_errors,
+        }
+        if json_output:
+            emit_json(data)
+        else:
+            _print_subgraph(result)
+    except typer.Exit:
+        raise
+    except SubgraphError as e:
+        _emit_subgraph_failure(str(e), json_output)
+        raise typer.Exit(code=1) from None
+    except CompilationError as e:
+        handle_compilation_error(e)
+    except Exception as e:
+        _emit_subgraph_failure(str(e), json_output)
         raise typer.Exit(code=1) from None

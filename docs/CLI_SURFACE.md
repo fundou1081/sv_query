@@ -6,9 +6,9 @@
 
 ## 总览
 
-- 叶子命令总数: **32**
-- 按层: `core`=29, `exp`=3
-- core 内分组: `semantic`=17, `verify`=2, `scope`=1, `locate`=5, `state`=4
+- 叶子命令总数: **33**
+- 按层: `core`=30, `exp`=3
+- core 内分组: `semantic`=17, `verify`=2, `scope`=1, `locate`=6, `state`=4
 
 | 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | schema | 说明 |
 |---|---|---|---|---|---|---|
@@ -18,13 +18,14 @@
 | `dev` | dev | none | ✅ | — | — | 开发者内部调试 (当前无命令; expression 已于 iter_252 归档) |
 | `out` | none | none | ✅ | — | — | 移出 CLI (会写 RTL/项目文件) → tools/; 不算产品命令 |
 
-## `core` (29 个)
+## `core` (30 个)
 
 | 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
 |---|---|---|---|---|---|---|---|---|---|
 | `capabilities` | — | — | locate | primitive | cheap | ✅ | — | ✅ | 本清单自身 (agent 应先读它再决定调什么) |
 | `graph edges` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | 列出图边; 支持 --file / --filelist (iter_236 补) |
 | `graph nodes` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | 列图节点 (kind/module/--match 过滤; --detail 给表达式等富字段); 支持 --file / --filelist |
+| `graph subgraph` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | [P60] seed 的 k-hop 局部子图; depth/direction/edge-kinds/budget; JSON boundary/truncated |
 | `search` | — | — | locate | primitive | cheap | ✅ | — | ✅ | 文本/正则搜索; [iter_231] 已补 --json |
 | `stats` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ |  |
 | `scope` | — | — | scope | fact | cheap | ✅ | ✅ | ✅ | [规范入口] scope 聚合: 类型/父/子/端口/参数 (入口层, 不做因果追踪) |
