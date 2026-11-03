@@ -71,6 +71,48 @@ def _class_methods(adapter, cls, class_name: str) -> list[dict]:
     return methods
 
 
+def _constraint_info(info) -> dict:
+    return {
+        "id": info.block_id,
+        "vars": list(info.vars),
+        "conditions": list(info.conditions),
+        "expr_count": info.expr_count,
+    }
+
+
+def _class_constraint_blocks(tracer, members) -> list[dict]:
+    seen = set()
+    out = []
+    for member in members:
+        for info in tracer.trace_constraints(member.id):
+            if info.block_id in seen:
+                continue
+            seen.add(info.block_id)
+            out.append(_constraint_info(info))
+    return sorted(out, key=lambda x: x["id"])
+
+
+def _class_covergroups(tracer, name: str, hierarchy) -> list[dict]:
+    owners = [name]
+    if hierarchy is not None:
+        owners.extend(hierarchy.get_ancestors(name))
+    out = []
+    for cg in tracer.list_covergroups():
+        if cg.in_class not in owners:
+            continue
+        out.append({
+            "name": cg.name,
+            "in_class": cg.in_class,
+            "clock": cg.clock,
+            "coverpoints": [cp.name or cp.signal for cp in cg.coverpoints],
+            "crosses": [cross.name for cross in cg.crosses],
+            "instance_rule": cg.instance_rule,
+            "file": cg.source_file,
+            "line": cg.source_line,
+        })
+    return sorted(out, key=lambda x: x["name"])
+
+
 def _class_relations(tracer, graph, name: str) -> dict:
     """[iter_334 / PLAN P38] class 关系：继承/成员/实例/约束/方法调用。"""
     hierarchy = tracer.get_class_hierarchy()
@@ -120,6 +162,8 @@ def _class_relations(tracer, graph, name: str) -> dict:
         "members": [node_dict(n) for n in members],
         "instances": [node_dict(n) for n in instances],
         "member_instances": member_instances,
+        "constraint_blocks": _class_constraint_blocks(tracer, members),
+        "covergroups": _class_covergroups(tracer, name, hierarchy),
         "constraints": constraints,
         "methods": methods,
     }

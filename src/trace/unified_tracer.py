@@ -959,6 +959,11 @@ class UnifiedTracer:
                 out.append(nd)
         return out
 
+    def list_covergroups(self) -> list:
+        """[iter_365 / PLAN P63] covergroup 定义列表（独立语义域）。"""
+        self.build_graph()
+        return list(self._get_covergroup_cgs())
+
     def trace_constraints(self, prop_id: str) -> list:
         """[iter_153 C3] 属性受哪些约束 (ConstraintTracer, 架构决策 D4).
 

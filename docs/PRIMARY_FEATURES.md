@@ -20,7 +20,7 @@
 | `trace profile` / `manifest` | 波形 path → canonical + 类型/时序元数据 |
 | `verify consistency` / `claim` / `structural` | 结构一致性 + 可反驳 claim + 对称性 findings |
 | `scope` / `instances` / `hierarchy` / `ports` / `params` | 设计入口与上下文 |
-| `class` | class 关系 / 成员实例候选 |
+| `class` / `trace constraints` / `trace covergroup*` | class 关系、constraint 约束、covergroup 采样/rand |
 
 ---
 
