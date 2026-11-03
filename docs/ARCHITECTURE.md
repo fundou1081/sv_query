@@ -1,5 +1,9 @@
 # sv_query 架构文档 v2.0
 
+> ⚠️ **2026-11-03 更新**: 全设计图可视化层（VizData/ELK/visualize/arch/design）已退役；
+> 本文 §2.4 与 VizData 相关段落为历史记录。当前方向见
+> [structural_review_plan_2026-11-02](architecture/structural_review_plan_2026-11-02.md)。
+
 > 更新日期: 2026-08-26
 > 项目路径: ~/my_dv_proj/sv_query
 

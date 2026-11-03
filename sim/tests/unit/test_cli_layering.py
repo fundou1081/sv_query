@@ -129,7 +129,7 @@ class TestCapabilities:
         """[iter_327] 低完成度能力 (audit/diagnose/view) 降级 exp, 默认不提供。"""
         from cli._registry import COMMANDS
         exp_keys = {c.key for c in COMMANDS if c.layer == "exp"}
-        assert {"audit", "diagnose", "visualize graph", "trace overview"} <= exp_keys
+        assert {"audit", "diagnose", "trace overview"} <= exp_keys
         default = _json("capabilities", "--json")
         assert not any(c["layer"] == "exp" for c in default["commands"])
         full = _json("capabilities", "--json", "--include-exp")

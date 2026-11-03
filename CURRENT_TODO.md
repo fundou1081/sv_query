@@ -3,29 +3,29 @@
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **可视化计划**: [structural_review_plan_2026-11-02](docs/architecture/structural_review_plan_2026-11-02.md) — 全设计图退役；动态子图 + 局部 review。
-> **最后更新**: 2026-11-03 GMT+8 (iter_360: P59.1 盘点完成)
+> **最后更新**: 2026-11-03 GMT+8 (iter_361: P59 清理完成)
 
 ---
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P59.2 删除/归档旧命令与渲染器** `<待做>`
+- **当前 item**: **P60.1 graph subgraph 设计与 JSON schema** `<待做>`
 - **P58** 可视化重定位计划 ✅（iter_359）
-- **P59** 旧可视化资产清理：P59.1 盘点/冻结 ✅ → P59.2 删除/归档（下一步）→ P59.3 文档/测试/registry 收口
+- **P59** 旧可视化资产清理：✅ 盘点/冻结 → ✅ 删除/归档 → ✅ 文档/测试/registry 收口
 - **P60** `graph subgraph` core（P59 完成后开始）
 - **P61** `verify structural` findings（对称性/typo）
 - **P62** 局部 review artifact；交互式 debug 最后做
 
-> **硬门禁**: P59 清理完成前，不开始 P60 实现。
+> **P59 已完成**；P60 可以开始（先设计与 schema，不写实现）。
 
 ---
 
 ## 📦 仓库状态
 
 - **分支**: `main`；最新提交以 `git log -1` 为准
-- **全量基线**: **2734 passed / 0 failed**（`sim/tests/`, `-m "not opensource"`；
-  7 skipped / 152 deselected；iter_358 记录）
-- **命令面**: 41 命令 = core 29 + exp 12
+- **全量基线**: **2492 passed / 0 failed**（`sim/tests/`, `-m "not opensource"`；
+  7 skipped / 119 deselected；iter_361 实测）
+- **命令面**: 32 命令 = core 29 + exp 3（旧可视化命令已删除）
 - **当前重点**: 先清理旧可视化，再开发动态子图/结构审查
 
 ---

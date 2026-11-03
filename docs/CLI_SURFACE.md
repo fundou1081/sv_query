@@ -1,13 +1,13 @@
 # CLI 能力清单 (生成物 — 请勿手改)
 
 > **生成方式**: `python3 tools/gen_cli_surface.py`  (数据源: `src/cli/_registry.py` + typer introspection)
-> **生成日期**: 2026-11-01  |  **漂移校验**: `python3 tools/gen_cli_surface.py --check`
+> **生成日期**: 2026-11-03  |  **漂移校验**: `python3 tools/gen_cli_surface.py --check`
 > **分层检查**: `python3 tools/check_cli_layers.py` (R1~R6)
 
 ## 总览
 
-- 叶子命令总数: **41**
-- 按层: `core`=29, `exp`=12
+- 叶子命令总数: **32**
+- 按层: `core`=29, `exp`=3
 - core 内分组: `semantic`=17, `verify`=2, `scope`=1, `locate`=5, `state`=4
 
 | 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | schema | 说明 |
@@ -52,21 +52,12 @@
 | `verify claim` | — | — | verify | fact | medium | ✅ | ✅ | ✅ | 验证 claim: driver/path/connection/bit → verified|contradicted|unknown |
 | `verify consistency` | — | — | verify | fact | medium | ✅ | ✅ | ✅ | 双向一致性: fanin/fanout、bit parent/bit_range、connection port↔internal |
 
-## `exp` (12 个)
+## `exp` (3 个)
 
 | 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
 |---|---|---|---|---|---|---|---|---|---|
 | `diagnose` | — | — | diagnose | experimental | cheap | ✅ | ✅ | ✅ | [exp] 只读诊断; --json 干净路径不稳定, 默认不提供, 仅 --include-exp 列出 |
-| `arch show` | — | — | render | experimental | expensive | — | ✅ | ✅ | 项目架构总览 (L1 模块 + L2 端口) ; [exp] experimental, hidden by default |
-| `design show` | — | — | render | experimental | expensive | — | ✅ | ✅ | IP 级设计理解; 仅 1 个测试文件 (覆盖缺口) ; [exp] experimental, hidden by default |
 | `trace overview` | — | — | render | experimental | expensive | ✅ | ✅ | ✅ | 两个信号之间的综合叙述 (dataflow + controlflow + evidence) ; [exp] experimental, hidden by default |
-| `visualize chain` | — | — | render | experimental | expensive | — | ✅ | ✅ |  ; [exp] experimental, hidden by default |
-| `visualize dataflow` | — | — | render | experimental | expensive | — | ✅ | ✅ |  ; [exp] experimental, hidden by default |
-| `visualize datapath` | — | — | render | experimental | expensive | — | ✅ | ✅ | 定点计算架构图; 0 个测试文件 (只有 fixture 名引用, 覆盖缺口) ; [exp] experimental, hidden by default |
-| `visualize graph` | — | — | render | experimental | expensive | — | ✅ | ✅ |  ; [exp] experimental, hidden by default |
-| `visualize module` | — | — | render | experimental | expensive | — | ✅ | ✅ |  ; [exp] experimental, hidden by default |
-| `visualize pipeline` | — | — | render | experimental | medium | ✅ | ✅ | ✅ |  ; [exp] experimental, hidden by default |
-| `visualize teach` | — | — | render | experimental | expensive | — | ✅ | ✅ |  ; [exp] experimental, hidden by default |
 | `audit` | — | — | semantic | experimental | medium | ✅ | ✅ | ✅ | [exp] 设计审计; 启发式/完成度低, 默认不提供, 仅 --include-exp 列出 |
 
 ## 兼容别名 (老名保留, 同一实现)

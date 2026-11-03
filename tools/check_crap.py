@@ -170,6 +170,10 @@ def run(repo: Path, threshold: int, crapper: Path) -> dict:
     with tempfile.TemporaryDirectory(prefix="check_crap_") as td:
         tmp = Path(td)
         for rel in files:
+            # [iter_361 / PLAN P59.2] 删除的文件仍会出现在 changed_src_files;
+            # 没有当前内容就没有“新增复杂度”可检查，直接跳过。
+            if not (repo / rel).exists():
+                continue
             cur_content = (repo / rel).read_text(encoding="utf-8")
             head_text = git_show(repo, rel)
             if head_text is None:

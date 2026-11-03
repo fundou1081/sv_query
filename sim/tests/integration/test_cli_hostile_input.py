@@ -45,8 +45,7 @@ GOOD_INPUTS = {
 }
 
 COMMANDS = {
-    "visualize graph": ["visualize", "graph"],
-    "visualize module": ["visualize", "module"],
+    "graph nodes": ["graph", "nodes"],
     "stats": ["stats"],
 }
 
@@ -100,7 +99,7 @@ def test_svq_debug_env_restores_traceback():
 
     env = dict(os.environ, SVQ_DEBUG="1")
     result = subprocess.run(
-        [sys.executable, str(REPO / "run_cli.py"), "visualize", "graph",
+        [sys.executable, str(REPO / "run_cli.py"), "stats",
          "-f", str(FIXTURES / "no_such_file.sv")],
         capture_output=True, text=True, timeout=300, cwd=REPO, env=env,
     )

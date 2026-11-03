@@ -27,8 +27,6 @@
   backpressure  Bus backpressure topology analysis: AXI/TL-UL ready/valid
   handshake     Bus handshake semantic analysis: AXI/TL-UL ready/valid
   protocol      Bus protocol detection (Phase A)
-  visualize     Signal graph visualization: DOT, Mermaid, HTML with data flow
-  arch          Project architecture visualization (L1 + L2 overview)
   randomize     [Phase 1 2026-07-07] Randomize 分析 (rand vars + randomize calls + inline constraint)
   graph         Inspect signal graph
 
@@ -137,26 +135,11 @@
     分析 rand var reachability (检测 dead randomize)
 
 ──────────────────────────────────────────────────────────────────────
-## ⟨7⟩ 可视化
+## ⟨7⟩ 可视化（已退役）
 
-  * `sv_query visualize teach -f F -t T [--html H.html]`
-    **V6.0+ 推荐** — 教学视图, 4 个 use case (速懂 / 查信号 / 控制 / 覆盖缺口). 完整参考 [VIZ_COMMANDS.md](VIZ_COMMANDS.md).
-  * `sv_query visualize graph --file F [--show-source]`
-    DOT graph (单视图, V6.2.1+ 支持 `--show-source` 加 file:line)
-  * `sv_query visualize dataflow --file F [--show-source]`
-    数据流 + Mermaid (.mmd + .dot, V6.2.1+ 支持 `--show-source`)
-  * `sv_query visualize pipeline --file F`
-    时序管道 (寄存器串联链) 图
-  * `sv_query visualize module --file F`
-    module 结构图 (1 box = 1 sub-instance)
-  * `sv_query visualize chain --file F`
-    input → output 全链路 data path
-  * `sv_query arch show --file F --depth N [--format mermaid|dot|html]`
-    项目架构视图 (L1 modules + L2 sub-modules)
-  * **V6.3+ 新**: `teach --focus SIG --upstream` 边带 `label="sel"`, `"op == 2'd0"` 等 guard condition
-  * **V6.2+ 新**: 3 个 viz 命令 (`teach`/`graph`/`dataflow`) 支持 `--show-source`, 节点带 file:line + 可点击 URL
+> 2026-11-03: `visualize` / `arch show` / `design show` 已删除；
+> 动态子图/局部 review 见 [structural_review_plan_2026-11-02](architecture/structural_review_plan_2026-11-02.md)。
 
-──────────────────────────────────────────────────────────────────────
 ## ⟨8⟩ 自动修复 / 工具
 
   * `sv_query diagnose <check> --filelist F`  (check = imports | report | timescale | widths)
