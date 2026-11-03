@@ -234,8 +234,19 @@ class ClassGraphBuilder:
                         prop_name = node_id[len(ancestor) + 1 :]
                         child_prop_id = f"{cls_name}.{prop_name}"
 
-                        # 跳过：子类已有同名属性
-                        if graph.get_node(child_prop_id) is not None:
+                        existing = graph.get_node(child_prop_id)
+                        if existing is not None:
+                            # 约束变量可能先以 SIGNAL placeholder 建出；继承时升级为
+                            # CLASS_PROPERTY，并带上 rand/type 元数据。
+                            if existing.kind == NodeKind.SIGNAL:
+                                existing.kind = NodeKind.CLASS_PROPERTY
+                                existing.width = node.width
+                                existing.extra = dict(node.extra or {})
+                                edge = graph.get_edge(cls_name, child_prop_id)
+                                if edge is None:
+                                    graph.add_trace_edge(TraceEdge(
+                                        src=cls_name, dst=child_prop_id,
+                                        kind=EdgeKind.CONSTRAINS))
                             continue
 
                         # 跳过：如果属性名含 :: 说明是约束子节点，不复制
@@ -249,6 +260,7 @@ class ClassGraphBuilder:
                             module=cls_name,
                             kind=NodeKind.CLASS_PROPERTY,
                             width=node.width,
+                            extra=dict(node.extra or {}),
                         )
                         graph.add_trace_node(child_prop)
                         result.nodes.append(child_prop)
@@ -410,6 +422,19 @@ class ClassGraphBuilder:
         walk(node, depth)
         return results
 
+    @staticmethod
+    def _class_prop_meta(prop) -> dict:
+        try:
+            mode = str(getattr(prop, "randMode", "") or "").split(".")[-1]
+        except (TypeError, ValueError):
+            mode = ""
+        try:
+            type_text = str(getattr(prop, "type", "") or "")
+        except (TypeError, ValueError):
+            type_text = ""
+        return {"rand": mode.startswith("Rand"), "rand_mode": mode or "None",
+                "type": type_text}
+
     def _build_class_property(self, graph, prop, cls_name: str, result: ClassBuilderResult):
         """ "[铁律15] 处理 ClassPropertyDeclaration → CLASS_PROPERTY 节点
 
@@ -429,6 +454,7 @@ class ClassGraphBuilder:
             module=cls_name,
             kind=NodeKind.CLASS_PROPERTY,
             width=width,
+            extra=self._class_prop_meta(prop),
         )
         graph.add_trace_node(node)
         result.nodes.append(node)
@@ -1471,12 +1497,16 @@ class ClassGraphBuilder:
             return
 
         # 创建目标节点
+        extra = dict(src_node.extra or {})
+        if src_node.kind == NodeKind.CONSTRAINT_BLOCK:
+            extra["inherited_from"] = src_cls
         dst_node = TraceNode(
             id=dst_id,
             name=src_node.name,
             module=dst_cls,
             kind=src_node.kind,
             width=src_node.width,
+            extra=extra,
         )
         graph.add_trace_node(dst_node)
         result.nodes.append(dst_node)

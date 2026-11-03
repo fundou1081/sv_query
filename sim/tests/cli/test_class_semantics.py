@@ -81,3 +81,29 @@ def test_trace_covergroup_unknown_is_error():
     r = _run("trace", "covergroup", "nope", "-f", str(FIX))
     assert r.returncode != 0
     assert json.loads(r.stdout)["ok"] is False
+
+
+INHERIT = ROOT / "sim" / "tests" / "fixtures" / "json_contract" / "constraint_inherit.sv"
+
+
+def test_inherited_constraint_and_rand_marking():
+    rel = _json("class", "child", "--relations", "-f", str(INHERIT))["relations"]
+    members = {m["name"]: m for m in rel["members"]}
+    assert members["x"]["is_rand"] is True
+    assert members["x"]["rand_mode"] == "Rand"
+    assert members["x"]["type"] == "int"
+
+    blocks = {b["id"]: b for b in rel["constraint_blocks"]}
+    assert blocks["child.c_base"]["defined_in"] == "base"
+    assert blocks["child.c_base"]["inherited"] is True
+    assert blocks["child.c_base"]["rand_vars"] == ["child.x"]
+    assert blocks["child.c_child"]["defined_in"] == "child"
+    assert blocks["child.c_child"]["inherited"] is False
+
+
+def test_inherited_constraint_instance_query():
+    d = _json("trace", "constraints", "top.c.x", "-f", str(INHERIT))
+    blocks = {b["block"]: b for b in d["result"]["constraints"]}
+    assert blocks["child.c_base"]["defined_in"] == "base"
+    assert blocks["child.c_base"]["rand_vars"] == ["child.x"]
+    assert blocks["child.c_child"]["defined_in"] == "child"

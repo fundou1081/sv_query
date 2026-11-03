@@ -891,12 +891,18 @@ JSON_CONTRACT = {
         "in_graph": {"type": "boolean", "desc": "node exists in graph"},
         "kind": {"type": "string", "desc": "type-level member kind"},
         "width": {"type": "array|null", "desc": "[msb,lsb]"},
+        "is_rand": {"type": "boolean", "desc": "rand/randc property"},
+        "rand_mode": {"type": "string|null", "desc": "Rand|RandC|None"},
+        "type": {"type": "string|null", "desc": "declared data type"},
     },
     "constraint_block": {
         "id": {"type": "string", "desc": "constraint block node id"},
         "vars": {"type": "array<string>", "desc": "constrained properties"},
         "conditions": {"type": "array<string>", "desc": "if/cover conditions"},
         "expr_count": {"type": "integer", "desc": "expressions in block"},
+        "defined_in": {"type": "string", "desc": "defining class (base for inherited)"},
+        "inherited": {"type": "boolean", "desc": "block comes from an ancestor"},
+        "rand_vars": {"type": "array<string>", "desc": "constrained rand properties"},
     },
     "class_covergroup": {
         "name": {"type": "string", "desc": "covergroup name"},
@@ -1020,6 +1026,9 @@ JSON_CONTRACT = {
         "kind": {"type": "string", "desc": "node kind"},
         "module": {"type": "string", "desc": "class/module path"},
         "width": {"type": "array", "desc": "[msb, lsb]"},
+        "is_rand": {"type": "boolean", "desc": "rand/randc property"},
+        "rand_mode": {"type": "string|null", "desc": "Rand|RandC|None"},
+        "type": {"type": "string|null", "desc": "declared data type"},
     },
     "class_instance": {
         "id": {"type": "string", "desc": "instance node id"},

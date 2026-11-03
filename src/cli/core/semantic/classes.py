@@ -71,16 +71,33 @@ def _class_methods(adapter, cls, class_name: str) -> list[dict]:
     return methods
 
 
-def _constraint_info(info) -> dict:
+def _member_dict(node) -> dict:
+    item = node_dict(node)
+    extra = node.extra or {}
+    item["is_rand"] = bool(extra.get("rand", False))
+    item["rand_mode"] = extra.get("rand_mode")
+    item["type"] = extra.get("type")
+    return item
+
+
+def _constraint_info(info, graph) -> dict:
+    rand_vars = []
+    for var in info.vars:
+        node = graph.get_node(var)
+        if node is not None and (node.extra or {}).get("rand"):
+            rand_vars.append(var)
     return {
         "id": info.block_id,
         "vars": list(info.vars),
         "conditions": list(info.conditions),
         "expr_count": info.expr_count,
+        "defined_in": info.defined_in,
+        "inherited": info.inherited,
+        "rand_vars": rand_vars,
     }
 
 
-def _class_constraint_blocks(tracer, members) -> list[dict]:
+def _class_constraint_blocks(tracer, graph, members) -> list[dict]:
     seen = set()
     out = []
     for member in members:
@@ -88,7 +105,7 @@ def _class_constraint_blocks(tracer, members) -> list[dict]:
             if info.block_id in seen:
                 continue
             seen.add(info.block_id)
-            out.append(_constraint_info(info))
+            out.append(_constraint_info(info, graph))
     return sorted(out, key=lambda x: x["id"])
 
 
@@ -159,10 +176,10 @@ def _class_relations(tracer, graph, name: str) -> dict:
         "ancestors": hierarchy.get_ancestors(name) if hierarchy is not None else [],
         "subclasses": hierarchy.get_subclasses(name) if hierarchy is not None else [],
         "descendants": hierarchy.get_all_descendants(name) if hierarchy is not None else [],
-        "members": [node_dict(n) for n in members],
+        "members": [_member_dict(n) for n in members],
         "instances": [node_dict(n) for n in instances],
         "member_instances": member_instances,
-        "constraint_blocks": _class_constraint_blocks(tracer, members),
+        "constraint_blocks": _class_constraint_blocks(tracer, graph, members),
         "covergroups": _class_covergroups(tracer, name, hierarchy),
         "constraints": constraints,
         "methods": methods,
@@ -216,11 +233,15 @@ def _class_member_candidates(tracer, class_name: str, member: str) -> list[dict]
                 key = (cid, mid)
                 if key not in seen:
                     seen.add(key)
+                    extra = mnode.extra or {}
                     out.append({"canonical_id": cid, "member": mname,
                                 "class_instance": inst_path,
                                 "in_graph": cid in graph.nodes(),
                                 "kind": mnode.kind.name,
-                                "width": list(mnode.width) if mnode.width else None})
+                                "width": list(mnode.width) if mnode.width else None,
+                                "is_rand": bool(extra.get("rand", False)),
+                                "rand_mode": extra.get("rand_mode"),
+                                "type": extra.get("type")})
             if mnode.kind.name == "CLASS_INSTANCE":
                 walk(f"{inst_path}.{mname}", inst_type(mid), visited)
 
@@ -284,6 +305,6 @@ def class_cmd(
         fail("class not found (no members/instances in graph)", json_output, pretty,
              name=name, hint="用 `svq class --json` (不带 class 名) 列可用 class")
     emit({"ok": True, "class": name,
-          "member_count": len(members), "members": [node_dict(n) for n in members],
+          "member_count": len(members), "members": [_member_dict(n) for n in members],
           "instance_count": len(instances), "instances": [node_dict(n) for n in instances]},
          json_output, pretty)

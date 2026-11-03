@@ -71,6 +71,11 @@ P63 class / constraint / covergroup 语义增强 <已完成>
 -- P63.3 trace covergroups/coverpoints/covergroup <已完成>
 -- P63.4 测试与文档 <已完成>
 
+P64 constraint 继承链 + rand 标记 <已完成>
+-- P64.1 继承成员 CLASS_PROPERTY 升级 <已完成>
+-- P64.2 constraint defined_in/inherited <已完成>
+-- P64.3 rand 标记 + 测试/文档 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

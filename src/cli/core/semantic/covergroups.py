@@ -58,14 +58,18 @@ def _coverpoint_ref(item) -> dict:
     }
 
 
-def _rand_dict(item) -> dict:
+def _rand_dict(item, graph) -> dict:
     return {
         "covergroup": item.cg_name,
         "coverpoint": item.cp_name,
         "property": item.prop_id,
         "constraints": [
             {"block": c.block_id, "vars": list(c.vars),
-             "conditions": list(c.conditions), "expr_count": c.expr_count}
+             "conditions": list(c.conditions), "expr_count": c.expr_count,
+             "defined_in": c.defined_in, "inherited": c.inherited,
+             "rand_vars": [v for v in c.vars
+                           if graph.get_node(v) is not None
+                           and (graph.get_node(v).extra or {}).get("rand")]}
             for c in item.constraints
         ],
     }
@@ -161,7 +165,7 @@ def covergroup_cmd(
         if not cgs:
             _fail(f"covergroup not found: {covergroup!r}", json_output, pretty)
         if rand:
-            items = [_rand_dict(x) for x in tracer.trace_covergroup_rand_linkage(
+            items = [_rand_dict(x, tracer.get_graph()) for x in tracer.trace_covergroup_rand_linkage(
                 covergroup, coverpoint, instance)]
             result = {"mode": "rand", "covergroup": _cg_summary(cgs[0]),
                       "count": len(items), "links": items}

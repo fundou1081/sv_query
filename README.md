@@ -5,7 +5,7 @@
 > agent 面向的 RTL **查询 + 客观校验层**：服务动态 debug（波形值由外部工具提供）与 design 理解；
 > 核心是 canonical identity、evidence、双向验证，而不是自然语言解释。
 
-> 2518 passed (canonical 主回归) | Python 3.11+ | pyslang 语义 AST | NetworkX graph | 真实项目验证
+> 2520 passed (canonical 主回归) | Python 3.11+ | pyslang 语义 AST | NetworkX graph | 真实项目验证
 
 > 更新日期: 2026-11-03
 
