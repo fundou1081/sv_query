@@ -68,6 +68,7 @@ from cli.core.semantic.paths import paths_cmd         # [iter_237]
 from cli.core.semantic.classes import class_cmd  # [iter_237, iter_247 合并 classes]
 from cli.core.semantic.scope import scope_cmd
 from cli.core.semantic.audit import audit_cmd  # [iter_288] 设计审计 (P3.3)
+from cli.view.review import review_app  # [iter_364 P62] 局部 review artifact
 import logging
 
 logger = logging.getLogger(__name__)
@@ -106,8 +107,9 @@ app.add_typer(controlflow_app, name="controlflow")
 # [iter_259] 10 个历史顶层组已**删除** (iter_251 先隐藏, 本次彻底移除):
 # 规范入口只有 `svq exp <组> <子>`。测试调用点已同步改写 (~151 处)。
 # 如需恢复, 见 git 历史与 docs/EXP_NAMESPACE.md。
-# [iter_361 / PLAN P59.2] 全设计图可视化退役；旧 visualize/arch/design
-# 命令与渲染器已删除。局部 review artifact 将在 P62 重新实现。
+# [iter_361 / PLAN P59.2] 全设计图可视化退役；旧 visualize/arch/design 已删除。
+# [iter_364 / P62] 局部 finding review artifact（不是全图）:
+app.add_typer(review_app, name="review", hidden=True)
 
 # [iter_252] 删除 `expression` (dev 层 3 命令): 内部调试用, 0 测试, `--file` 路径未实现;
 # 模块已归档到 docs/archive/2026-10-19-src-archived/cli_dev/。构造 expression 节点请用

@@ -3,18 +3,18 @@
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **可视化计划**: [structural_review_plan_2026-11-02](docs/architecture/structural_review_plan_2026-11-02.md) — 全设计图退役；动态子图 + 局部 review。
-> **最后更新**: 2026-11-03 GMT+8 (iter_363: P61 structural 完成)
+> **最后更新**: 2026-11-03 GMT+8 (iter_364: P62.1 review artifact 完成)
 
 ---
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P62.1 finding 局部 SVG/HTML** `<待做>`
+- **当前 item**: **P62.2 交互式 debug（gate）** `<待做>`
 - **P58** 可视化重定位计划 ✅（iter_359）
 - **P59** 旧可视化资产清理：✅ 盘点/冻结 → ✅ 删除/归档 → ✅ 文档/测试/registry 收口
 - **P60** `graph subgraph` core ✅（iter_362）
 - **P61** `verify structural` findings（symmetry.port_set）✅（iter_363）
-- **P62** 局部 review artifact；交互式 debug 最后做
+- **P62.1** 局部 review artifact ✅（iter_364）；**P62.2** 交互式 debug gate（待评估）
 
 > **P61 已完成**；下一步 P62 局部 review artifact。
 
@@ -23,9 +23,9 @@
 ## 📦 仓库状态
 
 - **分支**: `main`；最新提交以 `git log -1` 为准
-- **全量基线**: **2507 passed / 0 failed**（`sim/tests/`, `-m "not opensource"`；
-  7 skipped / 119 deselected；iter_363 实测）
-- **命令面**: 34 命令 = core 31 + exp 3（verify structural）
+- **全量基线**: **2510 passed / 0 failed**（`sim/tests/`, `-m "not opensource"`；
+  7 skipped / 119 deselected；iter_364 实测）
+- **命令面**: 35 命令 = core 31 + exp 4（review render）
 - **当前重点**: 先清理旧可视化，再开发动态子图/结构审查
 
 ---

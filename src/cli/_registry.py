@@ -209,6 +209,8 @@ COMMANDS: list[CommandSpec] = [
     # ---- view (人眼面, 默认含于 capabilities) ----
     _v("trace overview", kind="presentation", cost="expensive",
        note="两个信号之间的综合叙述 (dataflow + controlflow + evidence)"),
+    _v("review render", cost="cheap",
+       note="[P62] 单个 structural finding 的局部 SVG/HTML; 只消费 subgraph"),
     # ---- dev (内部调试) ----
 
 

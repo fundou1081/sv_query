@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P62.1 finding 局部 SVG/HTML <待做>
+current item : P62.2 交互式 debug（gate） <待做>
 
 ## 计划树
 
@@ -61,8 +61,8 @@ P61 结构审查 findings（对称性/typo） <已完成>
 -- P61.2 finding schema + verify structural <已完成>
 -- P61.3 测试/文档 <已完成>
 
-P62 局部 review artifact / debug 交互 <待做>
--- P62.1 finding 局部 SVG/HTML <待做>
+P62 局部 review artifact / debug 交互 <进行中>
+-- P62.1 finding 局部 SVG/HTML <已完成>
 -- P62.2 交互式 debug（gate） <待做>
 
 ## 已完成（保留最近记录，便于核查上一轮）

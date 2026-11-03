@@ -57,7 +57,8 @@ def _port_map(graph: SignalGraph, inst: str) -> dict[str, list]:
 
 def _finding(insts: list[str], port: str, missing: list[str],
              present: list[str], edges: list) -> dict:
-    seeds = sorted(insts)
+    endpoints = {x for e in edges for x in (e.src, e.dst)}
+    seeds = sorted(set(insts) | endpoints)
     return {
         "id": f"symmetry.port_set:{port}:{insts[0]}",
         "check": "symmetry.port_set",
