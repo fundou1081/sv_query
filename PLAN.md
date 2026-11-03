@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P61.1 结构特征与对称性检查 <待做>
+current item : P62.1 finding 局部 SVG/HTML <待做>
 
 ## 计划树
 
@@ -56,10 +56,10 @@ P60 graph subgraph 动态子图 <已完成>
 -- P60.2 core 实现 <已完成>
 -- P60.3 CLI/测试/文档 <已完成>
 
-P61 结构审查 findings（对称性/typo） <待做>
--- P61.1 结构特征与对称性检查 <待做>
--- P61.2 finding schema + verify structural <待做>
--- P61.3 测试/文档 <待做>
+P61 结构审查 findings（对称性/typo） <已完成>
+-- P61.1 结构特征与对称性检查 <已完成>
+-- P61.2 finding schema + verify structural <已完成>
+-- P61.3 测试/文档 <已完成>
 
 P62 局部 review artifact / debug 交互 <待做>
 -- P62.1 finding 局部 SVG/HTML <待做>

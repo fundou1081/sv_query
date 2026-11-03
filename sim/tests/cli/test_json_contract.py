@@ -474,3 +474,21 @@ endmodule
     assert data["seeds"][0]["requested"] == "top.y"
     assert set(data["result"]["nodes"][0]) >= set(c["subgraph_node"]) - {"file", "line"}
     assert set(data["result"]["edges"][0]) >= set(c["subgraph_edge"]) - {"file", "line"}
+
+
+def test_verify_structural_contract(tmp_path):
+    p = tmp_path / "t.sv"
+    p.write_text("""
+module leaf(input a, output y); assign y = a; endmodule
+module top(input a, b, output y0, y1);
+  leaf u0(.a(a), .y(y0));
+  leaf u1(.y(y1));
+endmodule
+""")
+    data = json.loads(_run(["verify", "structural", "-f", str(p),
+                            "--json"]).stdout)
+    _, c = _contract()
+    assert set(data["result"]) >= {"findings", "total", "truncated", "checks"}
+    finding = data["result"]["findings"][0]
+    assert set(finding) == set(c["structural_finding"])
+    assert finding["subgraph"]["seeds"] == finding["seeds"]

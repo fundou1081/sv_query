@@ -21,6 +21,7 @@ from cli._common import _build_tracer, handle_compilation_error
 from cli._output import emit_json
 from cli.core.semantic.trace_common import resolve_signal
 from trace.core.compiler import CompilationError
+from trace.core.query.structural import StructuralError, symmetry_findings
 
 verify_app = typer.Typer(help="客观检查：双向一致性 + claim verification (只读, JSON-first)")
 
@@ -39,6 +40,13 @@ def _emit(data: dict, json_output: bool, pretty: bool) -> None:
         emit_json(data, pretty)
         return
     # 简短人类输出
+    if data.get("command") == "verify_structural":
+        r = data.get("result", {})
+        print(f"structural findings: {r.get('total', 0)}")
+        for f in r.get("findings", [])[:20]:
+            print(f"  [{f.get('check')}] {f.get('message')}")
+            print(f"    seeds: {', '.join(f.get('seeds', []))}")
+        return
     if data.get("command") == "verify_claim":
         r = data.get("result", {})
         print(f"claim: {r.get('claim')}")
@@ -546,5 +554,49 @@ def claim_cmd(
         raise typer.Exit(code=1) from None
 
 
+def structural_cmd(
+    file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
+    filelist: str = typer.Option(None, "--filelist", help="filelist (.f/.fl) multi-file project"),
+    checks: str = typer.Option("symmetry", "--checks",
+                               help="comma-separated: symmetry"),
+    max_findings: int = typer.Option(100, "--max-findings", help="hard finding cap"),
+    json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON"),
+    pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
+    log_level: str = typer.Option("WARNING", "--log-level"),
+) -> None:
+    """结构审查：sibling 端口集合对称性；只输出候选 + 证据。"""
+    try:
+        wanted = [c.strip() for c in checks.split(",") if c.strip()]
+        unknown = [c for c in wanted if c != "symmetry"]
+        if unknown:
+            raise ValueError(f"unknown check(s): {', '.join(unknown)}")
+        tracer = _build(file, filelist, log_level)
+        graph = tracer.get_graph()
+        result = symmetry_findings(graph, max_findings=max_findings)
+        data = {
+            "ok": True,
+            "command": "verify_structural",
+            "params": {"file": str(file) if file else None,
+                        "filelist": filelist, "checks": wanted,
+                        "max_findings": max_findings},
+            "result": result,
+            "errors": [],
+        }
+        _emit(data, json_output, pretty)
+    except CompilationError as e:
+        handle_compilation_error(e)
+    except StructuralError as e:
+        data = {"ok": False, "command": "verify_structural", "error": str(e),
+                "errors": [str(e)]}
+        _emit(data, json_output, pretty)
+        raise typer.Exit(code=1) from None
+    except Exception as e:
+        data = {"ok": False, "command": "verify_structural", "error": str(e),
+                "errors": [str(e)]}
+        _emit(data, json_output, pretty)
+        raise typer.Exit(code=1) from None
+
+
 verify_app.command("consistency")(consistency_cmd)
 verify_app.command("claim")(claim_cmd)
+verify_app.command("structural")(structural_cmd)

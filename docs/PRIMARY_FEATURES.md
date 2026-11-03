@@ -18,7 +18,7 @@
 | `controlflow analyze` | if/case 条件树 |
 | `trace evidence` | 源码 + enclosing always/if |
 | `trace profile` / `manifest` | 波形 path → canonical + 类型/时序元数据 |
-| `verify consistency` / `claim` | 结构一致性 + 可反驳 claim |
+| `verify consistency` / `claim` / `structural` | 结构一致性 + 可反驳 claim + 对称性 findings |
 | `scope` / `instances` / `hierarchy` / `ports` / `params` | 设计入口与上下文 |
 | `class` | class 关系 / 成员实例候选 |
 
