@@ -1300,12 +1300,20 @@ trace_app.command("fanout")(fanout)
 # [iter_253 T3-3] evidence / overview 拆到独立模块; 命令仍注册在 trace_app 上
 from cli.core.semantic.trace_evidence import evidence, _output_evidence_text  # noqa: E402
 from cli.core.semantic.trace_overview import overview, _output_overview_text  # noqa: E402
+from cli.core.semantic.constraints import constraints_cmd  # noqa: E402
+from cli.core.semantic.covergroups import (  # noqa: E402
+    covergroups_cmd, coverpoints_cmd, covergroup_cmd,
+)
 from cli.core.semantic.trace_profile import profile  # noqa: E402
 from cli.core.semantic.trace_lookup import lookup  # noqa: E402
 from cli.core.semantic.trace_manifest import manifest  # noqa: E402
 
 trace_app.command("evidence")(evidence)
 trace_app.command("overview", hidden=True)(overview)
+trace_app.command("constraints")(constraints_cmd)
+trace_app.command("covergroups")(covergroups_cmd)
+trace_app.command("coverpoints")(coverpoints_cmd)
+trace_app.command("covergroup")(covergroup_cmd)
 trace_app.command("profile")(profile)
 trace_app.command("lookup")(lookup)
 trace_app.command("manifest")(manifest)

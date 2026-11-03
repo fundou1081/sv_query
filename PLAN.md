@@ -65,6 +65,12 @@ P62 局部 review artifact / debug 交互 <进行中>
 -- P62.1 finding 局部 SVG/HTML <已完成>
 -- P62.2 交互式 debug（gate） <待做>
 
+P63 class / constraint / covergroup 语义增强 <已完成>
+-- P63.1 class relations 增强（约束块/covergroup 摘要） <已完成>
+-- P63.2 trace constraints <已完成>
+-- P63.3 trace covergroups/coverpoints/covergroup <已完成>
+-- P63.4 测试与文档 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

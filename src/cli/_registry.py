@@ -142,6 +142,14 @@ COMMANDS: list[CommandSpec] = [
        note="完整 RTL hier path → canonical id (严格; $root/位父回退/aliases; 不做模糊后缀)"),
     _c("trace manifest", "semantic", recommended=True, cost="medium",
        note="批量 waveform manifest: full path → canonical + profile (type/bit/clock/reset/stage)"),
+    _c("trace constraints", "semantic", cost="cheap",
+       note="[P63] 属性受哪些 constraint 约束 (类型/实例; 独立语义域, 不走 fanin)"),
+    _c("trace covergroups", "semantic", cost="cheap",
+       note="[P63] 列出 covergroup 定义 (可按 class 过滤)"),
+    _c("trace coverpoints", "semantic", cost="cheap",
+       note="[P63] 反向查询: 信号被哪些 covergroup/coverpoint 采样"),
+    _c("trace covergroup", "semantic", cost="medium",
+       note="[P63] covergroup 采样链; --rand 查属性→约束链"),
     _c("controlflow analyze", "semantic", cost="medium", recommended=True,
        note="信号的驱动条件分析; --conditions-only 只要扁平条件列表 (原 controlflow conditions)"),
     _c("controlflow list-conditioned", "semantic", cost="expensive",
@@ -246,6 +254,7 @@ _SCOPE_KEYS = {
 _TRACE_KEYS = {
     "drivers", "loads", "trace fanin", "trace fanout", "trace impact",
     "trace evidence", "trace profile", "trace lookup", "trace manifest",
+    "trace constraints", "trace covergroups", "trace coverpoints", "trace covergroup",
     "paths", "dataflow analyze", "controlflow analyze", "controlflow list-conditioned",
 }
 _VERIFY_KEYS = {"verify consistency", "verify claim", "verify structural"}
@@ -522,6 +531,23 @@ JSON_CONTRACT = {
         "trace manifest": {
             "result_fields": ["entries", "total", "found", "failed"],
             "entry_fields": "manifest_entry",
+        },
+        "trace constraints": {
+            "result_fields": ["property", "resolved", "count", "constraints"],
+            "constraint_fields": "constraint_block",
+        },
+        "trace covergroups": {
+            "result_fields": ["count", "covergroups"],
+            "covergroup_fields": "class_covergroup",
+        },
+        "trace coverpoints": {
+            "result_fields": ["signal", "count", "matches"],
+            "match_fields": "coverpoint_ref",
+        },
+        "trace covergroup": {
+            "result_fields": ["mode", "covergroup", "count", "samples", "links"],
+            "sample_fields": "covergroup_sampling",
+            "link_fields": "covergroup_rand",
         },
         "controlflow analyze": {
             "result_fields": ["signal", "conditioned_drivers", "warnings"],
@@ -866,6 +892,44 @@ JSON_CONTRACT = {
         "kind": {"type": "string", "desc": "type-level member kind"},
         "width": {"type": "array|null", "desc": "[msb,lsb]"},
     },
+    "constraint_block": {
+        "id": {"type": "string", "desc": "constraint block node id"},
+        "vars": {"type": "array<string>", "desc": "constrained properties"},
+        "conditions": {"type": "array<string>", "desc": "if/cover conditions"},
+        "expr_count": {"type": "integer", "desc": "expressions in block"},
+    },
+    "class_covergroup": {
+        "name": {"type": "string", "desc": "covergroup name"},
+        "in_class": {"type": "string", "desc": "defining class"},
+        "clock": {"type": "string", "desc": "sampling clock"},
+        "coverpoints": {"type": "array<string>", "desc": "coverpoint names"},
+        "crosses": {"type": "array<string>", "desc": "cross names"},
+        "instance_rule": {"type": "string", "desc": "ctor_new|uninstantiated|module_scope"},
+        "file": {"type": "string", "desc": "source file"},
+        "line": {"type": "integer", "desc": "source line"},
+    },
+    "coverpoint_ref": {
+        "covergroup": {"type": "string", "desc": "covergroup name"},
+        "coverpoint": {"type": "string", "desc": "coverpoint name"},
+        "in_class": {"type": "string", "desc": "defining class"},
+        "host_module": {"type": "string", "desc": "module host"},
+        "ref_name": {"type": "string", "desc": "sampled reference"},
+        "select": {"type": "string", "desc": "bit select"},
+        "instance": {"type": "string", "desc": "class instance path"},
+    },
+    "covergroup_sampling": {
+        "coverpoint": {"type": "string", "desc": "coverpoint name"},
+        "signal_raw": {"type": "string", "desc": "raw sampled signal"},
+        "sampled": {"type": "array<string>", "desc": "graph signal ids"},
+        "drivers": {"type": "array<string>", "desc": "fanin drivers"},
+        "missing": {"type": "array<string>", "desc": "unresolved refs"},
+    },
+    "covergroup_rand": {
+        "covergroup": {"type": "string", "desc": "covergroup name"},
+        "coverpoint": {"type": "string", "desc": "coverpoint name"},
+        "property": {"type": "string", "desc": "sampled property id"},
+        "constraints": {"type": "array<constraint_block>", "desc": "constraints on property"},
+    },
     "class_relations": {
         "class": {"type": "string", "desc": "class name"},
         "extends": {"type": "string|null", "desc": "direct parent"},
@@ -876,6 +940,8 @@ JSON_CONTRACT = {
         "instances": {"type": "array<class_instance>", "desc": "class instances"},
         "member_instances": {"type": "array<class_member_instances>", "desc": "per-member instances"},
         "constraints": {"type": "array<class_constraint>", "desc": "graph constraint edges"},
+        "constraint_blocks": {"type": "array<constraint_block>", "desc": "constraint block details"},
+        "covergroups": {"type": "array<class_covergroup>", "desc": "covergroups owned by class/ancestors"},
         "methods": {"type": "array<class_method>", "desc": "method definitions + calls"},
     },
     "instance_item": {

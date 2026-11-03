@@ -492,3 +492,21 @@ endmodule
     finding = data["result"]["findings"][0]
     assert set(finding) == set(c["structural_finding"])
     assert finding["subgraph"]["seeds"] == finding["seeds"]
+
+
+def test_class_semantics_contract():
+    fix = PROJECT_ROOT / "sim" / "tests" / "fixtures" / "mixed_corpus" / "env_nested_constraint.sv"
+    rel = json.loads(_run(["class", "packet", "--relations", "-f", str(fix),
+                           "--json"]).stdout)["relations"]
+    _, c = _contract()
+    assert set(rel["constraint_blocks"][0]) == set(c["constraint_block"])
+    env = json.loads(_run(["class", "tb_env", "--relations", "-f", str(fix),
+                           "--json"]).stdout)["relations"]
+    assert set(env["covergroups"][0]) == set(c["class_covergroup"])
+
+    samples = json.loads(_run(["trace", "covergroup", "cg_env", "--instance", "top.e",
+                               "-f", str(fix), "--json"]).stdout)
+    assert set(samples["result"]["samples"][0]) == set(c["covergroup_sampling"])
+    refs = json.loads(_run(["trace", "coverpoints", "top.e.p.addr",
+                            "-f", str(fix), "--json"]).stdout)
+    assert set(refs["result"]["matches"][0]) == set(c["coverpoint_ref"])
