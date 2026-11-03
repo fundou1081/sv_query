@@ -973,7 +973,7 @@ class UnifiedTracer:
         """
         self.build_graph()
         from .core.query.constraint import ConstraintTracer
-        return ConstraintTracer(self._graph).trace(prop_id)
+        return ConstraintTracer(self._graph, self.get_class_hierarchy()).trace(prop_id)
 
     # =========================================================================
     # Covergroup 联系查询 (G3 iter_165, 方案 B / D4 范式)

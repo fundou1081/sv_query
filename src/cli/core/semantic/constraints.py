@@ -17,21 +17,35 @@ from cli.core.semantic.trace_common import resolve_signal
 from trace.core.compiler import CompilationError
 
 
-def _constraint_dict(info) -> dict:
+def _constraint_dict(info, graph) -> dict:
+    rand_vars = []
+    for var in info.vars:
+        node = graph.get_node(var)
+        if node is not None and (node.extra or {}).get("rand"):
+            rand_vars.append(var)
     return {
         "block": info.block_id,
         "vars": list(info.vars),
         "conditions": list(info.conditions),
         "expr_count": info.expr_count,
+        "defined_in": info.defined_in,
+        "inherited": info.inherited,
+        "rand_vars": rand_vars,
     }
 
 
 def _query(tracer, graph, property: str):
     r = resolve_signal(graph, property)
-    if not r.get("ok") or r.get("resolved") not in graph:
-        raise ValueError(f"property {property!r} {r.get('status')}")
-    resolved = r["resolved"]
-    return resolved, [_constraint_dict(x) for x in tracer.trace_constraints(resolved)]
+    if r.get("ok") and r.get("resolved") in graph:
+        resolved = r["resolved"]
+    else:
+        # 实例成员节点可能未建 (未被 RTL 使用)；ConstraintTracer 仍可按
+        # 实例前缀 + class 类型解析。无约束则仍是 not_found。
+        if not tracer.trace_constraints(property):
+            raise ValueError(f"property {property!r} not_found")
+        resolved = property
+    return resolved, [_constraint_dict(x, graph)
+                       for x in tracer.trace_constraints(resolved)]
 
 
 def _print_constraints(resolved: str, items: list[dict]) -> None:

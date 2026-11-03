@@ -23,8 +23,8 @@
 ## 📦 仓库状态
 
 - **分支**: `main`；最新提交以 `git log -1` 为准
-- **全量基线**: **2518 passed / 0 failed**（`sim/tests/`, `-m "not opensource"`；
-  7 skipped / 119 deselected；iter_365 实测）
+- **全量基线**: **2520 passed / 0 failed**（`sim/tests/`, `-m "not opensource"`；
+  7 skipped / 119 deselected；iter_366 实测）
 - **命令面**: 39 命令 = core 35 + exp 4（class/constraint/covergroup）
 - **当前重点**: 先清理旧可视化，再开发动态子图/结构审查
 

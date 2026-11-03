@@ -19,13 +19,16 @@ class ConstraintInfo:
     vars: list[str] = field(default_factory=list)      # 被约束变量 (HAS_LHS 目标)
     conditions: list[str] = field(default_factory=list)  # 条件变量 (if 约束 HAS_CONDITION)
     expr_count: int = 0      # 块内表达式数
+    defined_in: str = ""     # 定义类 (继承块 = 父类)
+    inherited: bool = False  # 是否来自父类
 
 
 class ConstraintTracer:
     """约束关系追踪 — 遍历 CONSTRAINS / HAS_* 边 (图内 class_graph_builder 建)."""
 
-    def __init__(self, graph: SignalGraph):
+    def __init__(self, graph: SignalGraph, hierarchy=None):
         self.graph = graph
+        self.hierarchy = hierarchy
 
     def trace(self, prop_id: str) -> list[ConstraintInfo]:
         """查属性受哪些约束.
@@ -146,6 +149,18 @@ class ConstraintTracer:
                 if en and en.kind.name in ("CONSTRAINT_EXPR", "CONSTRAINT_IF", "CONSTRAINT_ELSE"):
                     expr_ids.append(d)
         info.expr_count = len(expr_ids)
+        prefix, _, cname = block_id.rpartition(".")
+        inherited_from = (nd.extra or {}).get("inherited_from") if nd else None
+        if inherited_from:
+            info.defined_in = inherited_from
+        elif self.hierarchy is not None and prefix:
+            owners = [prefix] + list(self.hierarchy.get_ancestors(prefix))
+            for owner in owners:
+                if owner != prefix and self.graph.get_node(f"{owner}.{cname}") is not None:
+                    info.defined_in = owner
+                    break
+        info.defined_in = info.defined_in or prefix
+        info.inherited = bool(prefix and info.defined_in != prefix)
 
         # 表达式 → 变量 (HAS_LHS) / 条件 (HAS_CONDITION); if → consequent/alternate
         for eid in expr_ids:
