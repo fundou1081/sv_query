@@ -195,3 +195,52 @@ placeholder，继承传播会升级为 CLASS_PROPERTY。
 - `super.c1` 调用仍只有 SUPER_CALL 边，不做执行语义；
 - `rand_mode()` 运行时开关不建模；
 - `randc` 只标 `rand_mode=RandC`，不建模周期状态。
+
+---
+
+## P65：UVM sequence/factory 静态关系（2026-11-04）
+
+`class <name> --relations` 新增 `uvm` 字段：
+
+```json
+{
+  "role": "sequence|sequence_item|component|object|null",
+  "base_kind": "uvm_sequence",
+  "is_uvm": true,
+  "factory_registration": {
+    "registered": true,
+    "macro": "uvm_object_utils",
+    "type": "my_seq",
+    "line": 28,
+    "confidence": "syntactic"
+  },
+  "factory_creates": [
+    {
+      "kind": "type_id_create",
+      "target": "my_item",
+      "instance_name": "req",
+      "line": 11,
+      "confidence": "syntactic"
+    }
+  ],
+  "sequence_calls": [
+    {"kind": "macro", "macro": "`uvm_do", "argument": "req",
+     "line": 32, "confidence": "syntactic"}
+  ],
+  "p_sequencer": "my_sequencer",
+  "source": {"file": "uvm_relations.sv", "line": 27}
+}
+```
+
+### 语义
+
+- role 由 class 祖先匹配 UVM 基类；
+- registration / calls 从 **类源码文本** 提取（preprocessor 会把宏从 semantic syntax 去掉）；
+- 所有 call/registration 都是 `syntactic`，不证明运行时实际执行。
+
+### 不做
+
+- factory override / config_db；
+- phase/sequence 调度执行；
+- UVM package 依赖分析；
+- 动态 factory 字符串解析。

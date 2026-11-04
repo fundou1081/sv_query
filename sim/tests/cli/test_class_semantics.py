@@ -107,3 +107,30 @@ def test_inherited_constraint_instance_query():
     assert blocks["child.c_base"]["defined_in"] == "base"
     assert blocks["child.c_base"]["rand_vars"] == ["child.x"]
     assert blocks["child.c_child"]["defined_in"] == "child"
+
+
+UVM = ROOT / "sim" / "tests" / "fixtures" / "json_contract" / "uvm_relations.sv"
+
+
+def test_uvm_sequence_role_registration_and_macro():
+    u = _json("class", "my_seq", "--relations", "-f", str(UVM))["relations"]["uvm"]
+    assert u["role"] == "sequence" and u["base_kind"] == "uvm_sequence"
+    assert u["factory_registration"]["macro"] == "uvm_object_utils"
+    assert u["factory_registration"]["type"] == "my_seq"
+    assert u["p_sequencer"] == "my_sequencer"
+    assert [c["macro"] for c in u["sequence_calls"]] == ["`uvm_do"]
+
+
+def test_uvm_component_role_and_factory_create():
+    drv = _json("class", "my_driver", "--relations", "-f", str(UVM))["relations"]["uvm"]
+    assert drv["role"] == "component" and drv["base_kind"] == "uvm_driver"
+    assert drv["factory_registration"]["macro"] == "uvm_component_utils"
+    build = _json("class", "my_builder", "--relations", "-f", str(UVM))["relations"]["uvm"]
+    assert build["factory_creates"][0]["target"] == "my_item"
+    assert build["factory_creates"][0]["instance_name"] == "req"
+
+
+def test_uvm_sequence_item_role_and_rand():
+    u = _json("class", "my_item", "--relations", "-f", str(UVM))["relations"]
+    assert u["uvm"]["role"] == "sequence_item"
+    assert u["members"][0]["is_rand"] is True
