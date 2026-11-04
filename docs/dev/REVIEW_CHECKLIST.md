@@ -13,6 +13,7 @@
 python3 -m pytest sim/tests/ -m "not opensource" -q -p no:randomly   # 全量门禁
 python3 tools/check_docs.py                                          # 文档卫生
 python3 tools/check_except_pass.py                                   # 禁 except:pass
+python3 tools/check_semantic_regex.py                                # 语义 regex 纪律
 python3 tools/check_cli_layers.py                                    # CLI 分层 R1~R8
 python3 tools/gen_cli_surface.py --check                             # CLI 清单一致性
 python3 tools/check_crap.py                                          # 复杂度棘轮 (CC>10)

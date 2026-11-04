@@ -2,7 +2,7 @@
 
 > **本文是 `AGENTS.md` 的细则文件之一。** 入口/索引见 [AGENTS.md](../../AGENTS.md)。
 > 硬性禁止项在 [DISCIPLINE.md](DISCIPLINE.md)；提交前检查在 [REVIEW_CHECKLIST.md](REVIEW_CHECKLIST.md)。
-> **最后修订**: 2026-10-19
+> **最后修订**: 2026-11-04
 
 写代码前先想清楚"**该怎么做**"，而不是"能不能跑通"。
 
@@ -202,3 +202,19 @@ max 142，CC>10 占 25.8% —— 存量债不该阻塞每次提交。棘轮只�
 
 **复杂度不是唯一指标**: 本门禁只管 CC。重复度 / 变异体存活率等
 （见 [GLOSSARY.md](../GLOSSARY.md)）暂不设门禁，未设不等于不需要。
+
+---
+
+## 13. 语义提取与 regex
+
+**class / constraint / covergroup / UVM 的语义事实**优先从 pyslang semantic AST 取；
+不要用源码 regex 反推结构。
+
+**唯一例外**: UVM 宏相关文本（`uvm_*_utils` / `uvm_do*` /
+`uvm_declare_p_sequencer` / `type_id::create` / factory create）。
+原因：预处理器把宏从 semantic syntax 中去掉，当前 pyslang 版本不提供宏节点。
+
+- 例外代码只允许在 `src/trace/core/query/uvm.py`；
+- 输出必须标 `confidence: "syntactic"`；
+- 机械检查：`python3 tools/check_semantic_regex.py`；
+- 详细规则见 [DISCIPLINE §3.5](DISCIPLINE.md)。

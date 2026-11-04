@@ -223,8 +223,6 @@ class ClassesMixin:
         if not sources:
             return
 
-        import re
-
         for cls in classes:
             try:
                 str(_safe_attr(cls, "name", ""))
@@ -245,8 +243,12 @@ class ClassesMixin:
 
             for _fname, src in sources.items():
                 if offset < len(src):
-                    snippet = src[offset : offset + 100]
-                    match = re.match(r"class\s+(\w+)", snippet)
-                    if match:
-                        self._fixed_names[id(cls)] = match.group(1)
+                    snippet = src[offset : offset + 100].lstrip()
+                    if not snippet.startswith("class "):
+                        continue
+                    rest = snippet[len("class "):].lstrip()
+                    name = rest.split(None, 1)[0] if rest else ""
+                    name = name.split("#", 1)[0].split(";", 1)[0]
+                    if name and name.isidentifier():
+                        self._fixed_names[id(cls)] = name
                         break

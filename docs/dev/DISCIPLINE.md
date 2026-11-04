@@ -3,7 +3,7 @@
 > **本文是 `AGENTS.md` 的细则文件之一。** 入口/索引见 [AGENTS.md](../../AGENTS.md)。
 > **状态**: 强制执行 — 违反任何一条 = 立即停止、回滚、向方豆报告。
 > **适用**: 所有在本仓库工作的 AI 助手 (QClaw / Claude Code / Copilot / DeepSeek Harness 等) 与人类开发者。
-> **最后修订**: 2026-10-19 (v2.0, 从 AGENTS.md 拆出并按近半年教训补强)
+> **最后修订**: 2026-11-04 (新增 §3.5 语义提取 regex 纪律)
 
 ---
 
@@ -88,6 +88,41 @@ python3 tools/check_except_pass.py     # 必须 ✅ (计数 = 0)
 **这条规则本身就是教训**: 曾经在文档里声称"已全仓清零"，实测 `src/` 仍有 52 处
 (其中 25 处 `except Exception: pass`) —— **没有机械检查的声明会重新长回来**。
 回归测试 `sim/tests/unit/test_discipline_except_pass.py` 含"检查器能检出违规"的自检。
+
+---
+
+## 🚫 3.5 语义提取禁用 regex（UVM 宏唯一例外）
+
+**方豆决定 (2026-11-04)**: class / constraint / covergroup / UVM 的**语义事实**必须走
+pyslang semantic AST；源码文本 regex **仅允许 UVM 宏相关部分**。
+
+| 范围 | 允许的实现 |
+|---|---|
+| class 层级 / 成员 / rand / type | `ClassType` / `ClassPropertySymbol` semantic |
+| constraint block / vars / 继承 | `ConstraintBlockSymbol` + class graph semantic |
+| covergroup / coverpoint / sampled | `CovergroupExtractor` semantic |
+| method calls | semantic `SubroutineSymbol.body` 遍历 |
+| UVM role（继承链） | semantic `ClassHierarchy` |
+| UVM `uvm_*_utils` / `uvm_do*` / `uvm_declare_p_sequencer` / `type_id::create` / factory create | **源码 regex（唯一例外）** |
+
+**为什么 UVM 例外**：pyslang 预处理后 macro invocation 不在 semantic syntax 中。
+实测 `str(class.syntax)` 在 `uvm_object_utils` / `uvm_do` 位置为空；`SyntaxTree`
+遍历也没有 `MacroUsage` 节点。因此只能读类源码文本。
+
+**强制约束**:
+
+- UVM regex 只放在 `src/trace/core/query/uvm.py`；
+- 所有结果标 `confidence: "syntactic"`，**不得**当作 verify 证明；
+- 其他 class/constraint/covergroup/UVM 语义模块出现 `import re` / `re.*` = 违规；
+- 已有 ID / literal / search 的字符串解析不属于“语义提取”，不在本规则范围。
+
+**机械保障**:
+
+```bash
+python3 tools/check_semantic_regex.py     # 必须 ✅
+```
+
+检查器自带“能检出违规”的测试；新增检查器本身不做静默跳过。
 
 ---
 

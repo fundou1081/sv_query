@@ -155,12 +155,13 @@
 ## 5. 机械保障 (Mechanical Guards)
 
 原则：**能用脚本判定的规则，就不要只写在文档里。**
-本项目已有 5 个检查器，提交前全跑：
+本项目已有 6 个检查器，提交前全跑：
 
 | 检查 | 作用 | 失败含义 |
 |---|---|---|
 | `tools/check_docs.py` | 死链 / 归档越界 / 未登记 | 文档卫生被破坏 |
 | `tools/check_except_pass.py` | `except ...: pass` 计数 | 有静默吞异常 |
+| `tools/check_semantic_regex.py` | 语义提取 regex 纪律（仅 UVM 宏例外） | 非 UVM 语义被 regex 反推 |
 | `tools/check_cli_layers.py` | CLI 分层规则 R1~R8 | 层归属/反向依赖/隐式写文件等违规 |
 | `tools/gen_cli_surface.py --check` | `docs/CLI_SURFACE.md` 与代码一致性 | 清单过期 |
 | `tools/check_crap.py` | 复杂度棘轮 (新增/跨阈值的 CC) | 改动把函数复杂度推过阈值 |
