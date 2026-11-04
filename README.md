@@ -5,7 +5,7 @@
 > agent 面向的 RTL **查询 + 客观校验层**：服务动态 debug（波形值由外部工具提供）与 design 理解；
 > 核心是 canonical identity、evidence、双向验证，而不是自然语言解释。
 
-> 2527 passed (canonical 主回归) | Python 3.11+ | pyslang 语义 AST | NetworkX graph | 真实项目验证
+> 2529 passed (canonical 主回归) | Python 3.11+ | pyslang 语义 AST | NetworkX graph | 真实项目验证
 
 > 更新日期: 2026-11-03
 
@@ -68,6 +68,27 @@ sv_query trace profile top.data -f top.sv --json
 sv_query trace manifest --path top.data -f top.sv --json
 ```
 
+### 5 分钟反幻觉 walkthrough：单级 CDC
+
+一个常见错误结论：
+
+> “`dst_valid` 在 `dst_clk` 域寄存过，所以有两级同步器，CDC 安全。”
+
+```bash
+sv_query trace profile cdc_bug.dst_valid   -f examples/anti_hallucination_cdc/cdc_bug.sv --json
+# clock_domains = ["dst_clk"]  ← 只能说明域，不证明同步链
+
+sv_query trace fanin cdc_bug.dst_valid   -f examples/anti_hallucination_cdc/cdc_bug.sv --json
+# drivers: src_valid (distance=1), 1'b0  ← 没有 meta 中间级
+```
+
+结构证据直接反驳“两级同步器”：`src_valid → dst_valid` 只有一拍。  
+完整命令、输出与 ground truth：  
+[examples/anti_hallucination_cdc/README.md](examples/anti_hallucination_cdc/README.md)。
+
+性能数据（单机实测、构图 vs 图内查询拆分）：  
+[docs/validation/QUERY_PERF_2026-11-04.md](docs/validation/QUERY_PERF_2026-11-04.md)。
+
 ---
 
 ## 功能分层
@@ -116,8 +137,9 @@ sv_query/
 │   │   └── visitors/
 ├── src/cli/                # CLI (core/exp)
 ├── sim/tests/              # 测试
-├── docs/                   # 文档
-└── tools/                  # 独立工具
+├── examples/               # 可复现 walkthrough（反幻觉 CDC）
+├── docs/                   # 文档 / 性能数据
+└── tools/                  # 独立工具（含 benchmark/query_perf.py）
 ```
 
 ---

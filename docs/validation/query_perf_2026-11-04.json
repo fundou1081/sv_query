@@ -1,0 +1,108 @@
+{
+  "ok": true,
+  "skipped": [],
+  "generated_at": "2026-11-04T18:55:06+0800",
+  "environment": {
+    "platform": "macOS-26.3.1-arm64-arm-64bit",
+    "python": "3.11.4",
+    "cpu": "arm"
+  },
+  "cases": [
+    {
+      "name": "picorv32",
+      "status": "ok",
+      "build_ms": 1834.7,
+      "nodes": 1842,
+      "edges": 3763,
+      "queries": [
+        {
+          "cmd": "fanin",
+          "signal": "picorv32_axi.axi_adapter.mem_rdata[16]",
+          "ms": 2.1,
+          "count": 2
+        },
+        {
+          "cmd": "fanout",
+          "signal": "picorv32_axi.mem_valid",
+          "ms": 4.4,
+          "count": 12
+        }
+      ],
+      "peak_rss_mb": 72.2,
+      "cold_cli": [
+        {
+          "cmd": "fanin",
+          "signal": "picorv32_axi.axi_adapter.mem_rdata[16]",
+          "ms": 1983.2,
+          "ok": true,
+          "count": 2,
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "verilog-axi",
+      "status": "ok",
+      "build_ms": 25824.3,
+      "nodes": 13808,
+      "edges": 27862,
+      "queries": [
+        {
+          "cmd": "fanin",
+          "signal": "axi_adapter.axi_adapter_rd_inst.m_axi_araddr[0]",
+          "ms": 15.0,
+          "count": 2
+        },
+        {
+          "cmd": "fanout",
+          "signal": "axi_adapter.axi_adapter_rd_inst.m_axi_arvalid",
+          "ms": 5.1,
+          "count": 1
+        }
+      ],
+      "peak_rss_mb": 169.2,
+      "cold_cli": [
+        {
+          "cmd": "fanin",
+          "signal": "axi_adapter.axi_adapter_rd_inst.m_axi_araddr[0]",
+          "ms": 26294.6,
+          "ok": true,
+          "count": 2,
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "serv",
+      "status": "ok",
+      "build_ms": 3099.5,
+      "nodes": 4305,
+      "edges": 7443,
+      "queries": [
+        {
+          "cmd": "fanin",
+          "signal": "serv_rf_top.clk",
+          "ms": 3.2,
+          "count": 0
+        },
+        {
+          "cmd": "fanout",
+          "signal": "serv_rf_top.clk",
+          "ms": 8.5,
+          "count": 11
+        }
+      ],
+      "peak_rss_mb": 80.1,
+      "cold_cli": [
+        {
+          "cmd": "fanin",
+          "signal": "serv_rf_top.clk",
+          "ms": 3327.7,
+          "ok": true,
+          "count": 0,
+          "error": null
+        }
+      ]
+    }
+  ]
+}
