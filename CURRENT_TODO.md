@@ -3,20 +3,21 @@
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **可视化计划**: [structural_review_plan_2026-11-02](docs/architecture/structural_review_plan_2026-11-02.md) — 全设计图退役；动态子图 + 局部 review。
-> **最后更新**: 2026-11-03 GMT+8 (iter_364: P62.1 review artifact 完成)
+> **最后更新**: 2026-11-04 GMT+8 (iter_370: README 项目描述校准)
 
 ---
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **当前 item**: **P62.2 交互式 debug（gate）** `<待做>`
-- **P58** 可视化重定位计划 ✅（iter_359）
-- **P59** 旧可视化资产清理：✅ 盘点/冻结 → ✅ 删除/归档 → ✅ 文档/测试/registry 收口
-- **P60** `graph subgraph` core ✅（iter_362）
-- **P61** `verify structural` findings（symmetry.port_set）✅（iter_363）
-- **P62.1** 局部 review artifact ✅（iter_364）；**P62.2** 交互式 debug gate（待评估）
+- **P63** class / constraint / covergroup 语义增强 ✅（iter_365）
+- **P64** constraint 继承链 + rand 标记 ✅（iter_366）
+- **P65** UVM sequence/factory 静态关系 ✅（iter_367）
+- **P66** 语义提取 regex 纪律（仅 UVM 宏例外）✅（iter_368）
+- **P67** 可用性验证包：性能 + 反幻觉 walkthrough ✅（iter_369）
+- **P68** README 项目描述校准 ✅（iter_370）
 
-> **P61 已完成**；下一步 P62 局部 review artifact。
+> P67/P68 已完成；P62.2 交互式 debug 保持 gate。
 
 ---
 
@@ -26,7 +27,7 @@
 - **全量基线**: **2529 passed / 0 failed**（`sim/tests/`, `-m "not opensource"`；
   7 skipped / 119 deselected；iter_369 实测）
 - **命令面**: 39 命令 = core 35 + exp 4（class/constraint/covergroup）
-- **当前重点**: 先清理旧可视化，再开发动态子图/结构审查
+- **当前重点**: README 已校准；P67 性能/walkthrough 已交付；下一步再评估 HWE/VeriBug 对照环境
 
 ---
 
