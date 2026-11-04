@@ -22,6 +22,7 @@ AXI = OPENRTL / "axi"
 COMMON_CELLS = OPENRTL / "common_cells"
 VERILOG_AXI = OPENRTL / "verilog-axi"
 PICORV32 = OPENRTL / "picorv32" / "picorv32.v"
+SERV = OPENRTL / "serv"
 
 # benchmark 仓库内的 fixture (wrapper)
 REPO = Path(__file__).resolve().parents[2]
@@ -75,6 +76,19 @@ def ensure_verilog_axi_filelist() -> str | None:
     if not files:
         return None
     return _write(INPUT_DIR / "verilog-axi.f", files)
+
+
+def ensure_serv_filelist() -> str | None:
+    """SERV bit-serial core：rtl/ + servile/ + serving/ 的 .v 集合。"""
+    dirs = [SERV / "rtl", SERV / "servile", SERV / "serving"]
+    if not all(d.exists() for d in dirs):
+        return None
+    files = []
+    for d in dirs:
+        files.extend(sorted(str(p) for p in d.glob("*.v")))
+    if not files:
+        return None
+    return _write(INPUT_DIR / "serv.f", files)
 
 
 def picorv32_file() -> str | None:
