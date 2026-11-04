@@ -74,6 +74,7 @@
 | [architecture/review_artifact_2026-11-03.md](architecture/review_artifact_2026-11-03.md) | **finding 局部 review artifact**: review render SVG/HTML、missing stub、确定性、边界 |
 | [architecture/class_constraint_covergroup_contract_2026-11-03.md](architecture/class_constraint_covergroup_contract_2026-11-03.md) | **class/constraint/covergroup 契约**: relations 增强、constraint blocks、covergroup Q1/Q2/Q3 |
 | [validation/QUERY_PERF_2026-11-04.md](validation/QUERY_PERF_2026-11-04.md) | **查询性能基准**: picorv32 / verilog-axi / SERV 的 build、warm query、cold CLI、峰值内存 |
+| [architecture/long_range_structural_benchmark_2026-11-05.md](architecture/long_range_structural_benchmark_2026-11-05.md) | **长程结构查询对照基准**: B0/B1/T1/T2 对照、任务族、ground truth 冻结与准确度/成本指标 |
 | [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) | 已知限制 (含 pyslang 侧限制) |
 | [EXTRACTION_COVERAGE.md](EXTRACTION_COVERAGE.md) | SV 语法抽取覆盖率总表 (逐语法 ✅/⚠️/❌) |
 | [EXTRACTION_FAILURES.md](EXTRACTION_FAILURES.md) | 提取失败路径集中表 |

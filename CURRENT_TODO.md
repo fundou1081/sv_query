@@ -9,13 +9,14 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P62.2 交互式 debug（gate）** `<待做>`
+- **当前 item**: **P69.2 pilot 任务 + ground truth** `<待做>`
 - **P63** class / constraint / covergroup 语义增强 ✅（iter_365）
 - **P64** constraint 继承链 + rand 标记 ✅（iter_366）
 - **P65** UVM sequence/factory 静态关系 ✅（iter_367）
 - **P66** 语义提取 regex 纪律（仅 UVM 宏例外）✅（iter_368）
 - **P67** 可用性验证包：性能 + 反幻觉 walkthrough ✅（iter_369）
 - **P68** README 项目描述校准 ✅（iter_370）
+- **P69** 长程结构查询对照基准（设计中）
 
 > P67/P68 已完成；P62.2 交互式 debug 保持 gate。
 
