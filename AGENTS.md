@@ -30,6 +30,8 @@
 8. **同一语义只允许一份实现** — 发现两份就合并或删除，不要"分别对齐"
 9. **降级必须显式** — 实验能力进 `exp/` 并在 `capabilities` 降级，不伪装稳定
 10. **登记缺陷写可观察后果** — 什么输入 → 什么错误输出，按输入形态枚举
+11. **语义提取必须 slang** — class/constraint/covergroup/UVM 语义走 pyslang semantic AST；
+    仅 UVM 宏相关允许源码 regex（预处理会去掉宏），见 [DISCIPLINE §3.5](docs/dev/DISCIPLINE.md)
 
 ## 2. 任务流程
 
@@ -52,6 +54,7 @@
 python3 -m pytest sim/tests/ -m "not opensource" -q -p no:randomly   # 全量门禁
 python3 tools/check_docs.py                                          # 死链/归档/未登记
 python3 tools/check_except_pass.py                                   # 禁 except:pass
+python3 tools/check_semantic_regex.py                                # 语义提取 regex 纪律 (仅 UVM 宏)
 python3 tools/check_cli_layers.py                                    # CLI 分层 R1~R8
 python3 tools/gen_cli_surface.py --check                             # CLI 清单一致
 python3 tools/check_crap.py                                          # 复杂度棘轮 (CC>10)
@@ -77,6 +80,7 @@ git status --porcelain                                               # 只含预
 
 ## 6. 版本
 
+- **v2.4 (2026-11-04)** — 新增铁律 11：语义提取必须 slang，仅 UVM 宏允许 regex；提交前增加 `check_semantic_regex.py`
 - **v2.3 (2026-10-31)** — 新增 [产品方向](docs/architecture/product_direction_2026-10-31.md)：
   agent RTL 查询 + 客观校验；恢复上下文先读产品方向再读 PLAN；低完成度能力降级 exp
 - **v2.2 (2026-10-25)** — 新增 [PLAN.md](PLAN.md) **全局唯一计划树**：所有代码修改计划先登记、

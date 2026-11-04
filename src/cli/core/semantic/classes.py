@@ -11,7 +11,6 @@ core/semantic/classes.py — [iter_237] class 查询 (`svq classes` / `svq class
 """
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 import typer
@@ -22,53 +21,65 @@ from trace.core.query.uvm import uvm_class_info
 _CALL_KW = {"if", "for", "while", "case", "return", "sizeof", "new", "function", "task"}
 
 
-def _method_calls(body: str, method_name: str) -> list[dict]:
-    """[iter_334 / PLAN P38] 从方法体文本提取调用（receiver.method / bare method）。"""
-    calls = []
-    seen = set()
-    lines = body.splitlines()[1:]  # 去掉声明头
-    for line in lines:
-        for m in re.finditer(r"\b([A-Za-z_]\w*)\s*\.\s*([A-Za-z_]\w*)\s*\(", line):
-            recv, meth = m.group(1), m.group(2)
-            key = (recv, meth)
-            if key not in seen:
-                seen.add(key)
-                calls.append({"receiver": recv, "method": meth, "target_class": None})
-        for m in re.finditer(r"(?<![.\w])([A-Za-z_]\w*)\s*\(", line):
-            meth = m.group(1)
-            if meth in _CALL_KW or meth == method_name:
-                continue
-            key = (None, meth)
-            if key not in seen:
-                seen.add(key)
-                calls.append({"receiver": None, "method": meth, "target_class": None})
-    return calls
+def _call_receiver(adapter, node):
+    this_class = getattr(node, "thisClass", None)
+    if this_class is None:
+        return None
+    sigs = adapter._extract_signals_from_expr(this_class) or []
+    return sigs[0] if sigs else None
+
+
+def _call_record(adapter, node, method_name: str) -> dict | None:
+    kind = str(getattr(node, "kind", ""))
+    if "Call" not in kind and "Invocation" not in kind:
+        return None
+    sub = getattr(node, "subroutine", None)
+    name = str(getattr(sub, "name", "") or "").strip()
+    if not name or name in _CALL_KW or name == method_name:
+        return None
+    return {"receiver": _call_receiver(adapter, node), "method": name,
+            "target_class": None}
+
+
+def _walk_calls(adapter, node, method_name: str, out: list[dict],
+                seen: set, depth: int = 0) -> None:
+    if node is None or depth > 8:
+        return
+    record = _call_record(adapter, node, method_name)
+    if record is not None:
+        key = (record["receiver"], record["method"])
+        if key not in seen:
+            seen.add(key)
+            out.append(record)
+    for child in adapter._iter_children(node):
+        _walk_calls(adapter, child, method_name, out, seen, depth + 1)
+
+
+def _semantic_calls(adapter, body, method_name: str) -> list[dict]:
+    out: list[dict] = []
+    _walk_calls(adapter, body, method_name, out, set())
+    return out
 
 
 def _class_methods(adapter, cls, class_name: str) -> list[dict]:
-    """[iter_334 / PLAN P38] class 方法定义 + 方法体调用（不展开内部实现）。"""
+    """class 方法定义 + 方法体调用（semantic AST，不展开内部实现）。"""
     methods = []
-    syntax = getattr(cls, "syntax", None)
-    if syntax is None:
-        return methods
-    for item in getattr(syntax, "items", []):
-        if "ClassMethod" not in str(getattr(item, "kind", "")):
+    for member in adapter.get_class_members(cls):
+        if "Subroutine" not in str(getattr(member, "kind", "")):
             continue
-        decl = getattr(item, "declaration", None)
-        if decl is None:
+        if getattr(member, "syntax", None) is None:
+            continue  # built-in methods (randomize 等) 不是类声明
+        name = str(getattr(member, "name", "") or "").strip()
+        if not name:
             continue
-        proto = str(getattr(decl, "prototype", ""))
-        m = re.search(r"\b(function|task)\s+(?:[\w:]+\s+)*(\w+)\s*\(", proto)
-        if not m:
-            continue
-        kind, name = m.group(1), m.group(2)
+        sub_kind = str(getattr(member, "subroutineKind", ""))
+        kind = "task" if "Task" in sub_kind else "function"
         try:
-            file, line, _, _ = adapter.get_source_location(item)
+            file, line, _, _ = adapter.get_source_location(member)
         except Exception:
             file, line = "", 0
-        body = str(decl)
         methods.append({"name": name, "kind": kind, "file": file, "line": line,
-                        "calls": _method_calls(body, name)})
+                        "calls": _semantic_calls(adapter, getattr(member, "body", None), name)})
     return methods
 
 

@@ -81,6 +81,10 @@ P65 UVM sequence/factory 静态关系 <已完成>
 -- P65.2 factory_create/sequence_calls/p_sequencer <已完成>
 -- P65.3 测试与文档 <已完成>
 
+P66 语义提取 regex 纪律（仅 UVM 宏例外） <已完成>
+-- P66.1 规则/检查器/方法调用 semantization <已完成>
+-- P66.2 测试/文档/全量回归 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>
