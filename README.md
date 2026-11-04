@@ -1,13 +1,13 @@
-# sv_query — SystemVerilog 信号追踪查询引擎
+# sv_query — 面向 agent 的 SystemVerilog 语义查询 + 客观校验引擎
 
 **让 agent 查询并验证 RTL 事实，而不是靠读源码猜。**
 
 > agent 面向的 RTL **查询 + 客观校验层**：服务动态 debug（波形值由外部工具提供）与 design 理解；
 > 核心是 canonical identity、evidence、双向验证，而不是自然语言解释。
 
-> 2529 passed (canonical 主回归) | Python 3.11+ | pyslang 语义 AST | NetworkX graph | 真实项目验证
+> 2529 passed (canonical 主回归) | Python 3.11+ | pyslang 语义 AST | NetworkX graph | 真实项目 + 性能基准
 
-> 更新日期: 2026-11-03
+> 更新日期: 2026-11-04
 
 ---
 
@@ -15,23 +15,28 @@
 
 - **位精确追踪**: `SignalSource` 结构化存储 bit_range + op + casts，知道信号 `[7:0]` 的确切来源；位对位跨模块贯通
 - **穿透子模块**: wrapper port passthrough + bus 位桥（同构直连 / 切片偏移）
-- **数据可信**: pyslang 语义 AST，不是正则匹配；失败显式可见，不静默出假数据
-- **class/constraint 追踪**: 实例属性数据流含方法调用链、实例↔类型级关系、约束查询
-- **客观校验**: 全图 / bit-level 结构一致性 + claim 验证
-- **真实项目验证**: strict_uart / verilog-axi / picorv32 smoke；bit consistency 三项目 0 violation
+- **语义优先**: class / constraint / covergroup / UVM role 走 pyslang semantic AST；
+  UVM 宏/调用因预处理器会丢宏，是唯一 `syntactic` regex 例外（显式标 confidence，不作为 verify 证明）
+- **class/constraint/covergroup/UVM**: 继承约束链、rand/randc 标记、covergroup 采样/反向查询、
+  UVM sequence/factory 静态关系
+- **客观校验**: 全图 / bit-level 结构一致性 + claim 验证 + finding 局部证据
+- **可复现验证**: strict_uart / verilog-axi / picorv32 / SERV smoke；3 设计性能基准；
+  单级 CDC 反幻觉 walkthrough。**尚未跑 HWE-Bench/VeriBugBench 对照实验**，不宣称 agent 命中率收益。
 
-> 可视化方向已调整：全设计图退出产品面，动态子图/finding 局部 review 是下一阶段方向。
-> 详见 [structural_review_plan_2026-11-02](docs/architecture/structural_review_plan_2026-11-02.md)。
+> 全设计图已退役；局部 finding review 仍为 `exp`（`review render`），不是核心能力。
+> 语义纪律见 [DISCIPLINE §3.5](docs/dev/DISCIPLINE.md)。
 
 ---
 
-## 项目定位（2026-11-02）
+## 项目定位（2026-11-04）
 
 完整方向见 [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md)。
 
 - **主场景**：agent 的 RTL debug / design 理解；迭代查询、多批脚本、按结论继续追问。
 - **动态 debug 分工**：波形值由外部工具提取；sv_query 提供 canonical id/别名、层级、位映射、clock/reset、sequential stage、源码 evidence。
-- **函数/class**：RTL 函数名 + 源码足够（不 inline）；class 关注调用链/继承/对象关系。
+- **函数/class**：RTL 函数名 + 源码足够（不 inline）；class 关注调用链/继承/对象关系、
+  constraint/covergroup 与 UVM 静态关系。
+- **证据分级**：semantic 结果优先；UVM 宏相关的 `confidence=syntactic` 只作线索，不作证明。
 - **核心原则**：事实与证据优先；未知/空/歧义显式；双向一致性 + claim verification。
 
 ---
@@ -98,12 +103,29 @@ sv_query trace fanin cdc_bug.dst_valid   -f examples/anti_hallucination_cdc/cdc_
 | **Scope** | `scope` / `instances` / `hierarchy` / `ports` / `params` / `connections` / `class` |
 | **Trace** | `drivers` / `loads` / `paths` / `dataflow` / `controlflow` / `trace evidence/profile/lookup/manifest` |
 | **Verify** | `verify consistency` / `verify claim` / `verify structural` |
-| **Class/约束/覆盖** | `class --relations` / `trace constraints` / `trace covergroups` / `trace coverpoints` / `trace covergroup` |
-| **Locate** | `stats` / `search` / `graph nodes/edges` / `capabilities` |
+| **Class/约束/覆盖** | `class --relations`（含 UVM 静态） / `trace constraints` / `trace covergroups` / `trace coverpoints` / `trace covergroup` |
+| **Locate** | `stats` / `search` / `graph nodes/edges` / `graph subgraph` / `capabilities` |
 | **State** | `snapshot save/list/compare/delete` |
 | **exp** | `audit` / `diagnose` / `trace overview` / `review render`（默认隐藏，不承诺契约） |
 
-> `visualize` / `arch` / `design` 全设计图命令已于 2026-11-03 退役。
+> `visualize` / `arch` / `design` 全设计图命令已于 2026-11-03 退役；`review render` 仍是 exp。
+
+---
+
+## 验证状态（2026-11-04）
+
+| 项 | 状态 |
+|---|---|
+| 全量回归 | **2529 passed / 0 failed**（7 skipped / 119 deselected） |
+| 开源 smoke | strict_uart / verilog-axi / picorv32 / SERV |
+| 性能基准 | picorv32 / verilog-axi / SERV；build、warm query、cold CLI、peak RSS |
+| 反幻觉 | 单级 CDC walkthrough：profile + fanin/fanout 反驳“两级同步器” |
+| 未做 | HWE-Bench / VeriBugBench 对照、agent 根因命中率、多线程/门级性能 |
+
+性能：构图是 cold CLI 主导成本（本机 verilog-axi 约 26 s / 13.8k nodes），
+图内查询为毫秒级。不要把 warm query 的毫秒数字误读成冷启动查询。
+详见 [性能基准](docs/validation/QUERY_PERF_2026-11-04.md) 与
+[反幻觉 walkthrough](examples/anti_hallucination_cdc/README.md)。
 
 ---
 
@@ -164,9 +186,10 @@ python -m pytest sim/tests/ -m opensource -v
 
 - [产品方向](docs/architecture/product_direction_2026-10-31.md)
 - [结构审查/动态子图计划](docs/architecture/structural_review_plan_2026-11-02.md)
+- [查询性能基准](docs/validation/QUERY_PERF_2026-11-04.md) · [反幻觉 CDC walkthrough](examples/anti_hallucination_cdc/README.md)
 - [架构文档](docs/ARCHITECTURE.md)
 - [准确性审计](docs/architecture/signal_graph_accuracy_audit.md)
-- [开发纪律](AGENTS.md) · [当前任务](CURRENT_TODO.md)
+- [语义 regex 纪律](docs/dev/DISCIPLINE.md) · [开发纪律](AGENTS.md) · [当前任务](CURRENT_TODO.md)
 - [文档索引](docs/INDEX.md)
 - [已知限制](docs/KNOWN_LIMITATIONS.md)
 
