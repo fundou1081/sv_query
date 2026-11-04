@@ -17,6 +17,7 @@ from pathlib import Path
 import typer
 
 from cli.core.semantic._common import build_tracer, emit, fail, node_dict
+from trace.core.query.uvm import uvm_class_info
 
 _CALL_KW = {"if", "for", "while", "case", "return", "sizeof", "new", "function", "task"}
 
@@ -181,6 +182,7 @@ def _class_relations(tracer, graph, name: str) -> dict:
         "member_instances": member_instances,
         "constraint_blocks": _class_constraint_blocks(tracer, graph, members),
         "covergroups": _class_covergroups(tracer, name, hierarchy),
+        "uvm": uvm_class_info(adapter, cls, name, hierarchy) if cls is not None else None,
         "constraints": constraints,
         "methods": methods,
     }

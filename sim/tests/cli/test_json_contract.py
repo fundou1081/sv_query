@@ -510,3 +510,12 @@ def test_class_semantics_contract():
     refs = json.loads(_run(["trace", "coverpoints", "top.e.p.addr",
                             "-f", str(fix), "--json"]).stdout)
     assert set(refs["result"]["matches"][0]) == set(c["coverpoint_ref"])
+
+
+def test_uvm_relations_contract():
+    fix = PROJECT_ROOT / "sim" / "tests" / "fixtures" / "json_contract" / "uvm_relations.sv"
+    rel = json.loads(_run(["class", "my_seq", "--relations", "-f", str(fix),
+                           "--json"]).stdout)["relations"]
+    _, c = _contract()
+    assert set(rel["uvm"]) == set(c["class_uvm"])
+    assert set(rel["uvm"]["factory_registration"]) >= {"registered", "macro", "type"}

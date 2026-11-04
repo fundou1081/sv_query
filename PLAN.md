@@ -76,6 +76,11 @@ P64 constraint 继承链 + rand 标记 <已完成>
 -- P64.2 constraint defined_in/inherited <已完成>
 -- P64.3 rand 标记 + 测试/文档 <已完成>
 
+P65 UVM sequence/factory 静态关系 <已完成>
+-- P65.1 role + factory registration <已完成>
+-- P65.2 factory_create/sequence_calls/p_sequencer <已完成>
+-- P65.3 测试与文档 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

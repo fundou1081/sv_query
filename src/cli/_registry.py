@@ -904,6 +904,16 @@ JSON_CONTRACT = {
         "inherited": {"type": "boolean", "desc": "block comes from an ancestor"},
         "rand_vars": {"type": "array<string>", "desc": "constrained rand properties"},
     },
+    "class_uvm": {
+        "role": {"type": "string|null", "desc": "sequence|sequence_item|component|object|null"},
+        "base_kind": {"type": "string|null", "desc": "matched UVM base class"},
+        "is_uvm": {"type": "boolean", "desc": "has a UVM ancestor"},
+        "factory_registration": {"type": "object|null", "desc": "registration macro/type/line"},
+        "factory_creates": {"type": "array<object>", "desc": "type_id/create_by_name calls"},
+        "sequence_calls": {"type": "array<object>", "desc": "uvm_do/start_item/finish_item"},
+        "p_sequencer": {"type": "string|null", "desc": "uvm_declare_p_sequencer type"},
+        "source": {"type": "object", "desc": "class source file/line"},
+    },
     "class_covergroup": {
         "name": {"type": "string", "desc": "covergroup name"},
         "in_class": {"type": "string", "desc": "defining class"},
@@ -948,6 +958,7 @@ JSON_CONTRACT = {
         "constraints": {"type": "array<class_constraint>", "desc": "graph constraint edges"},
         "constraint_blocks": {"type": "array<constraint_block>", "desc": "constraint block details"},
         "covergroups": {"type": "array<class_covergroup>", "desc": "covergroups owned by class/ancestors"},
+        "uvm": "class_uvm",
         "methods": {"type": "array<class_method>", "desc": "method definitions + calls"},
     },
     "instance_item": {
