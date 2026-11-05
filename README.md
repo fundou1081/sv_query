@@ -5,9 +5,9 @@
 > agent 面向的 RTL **查询 + 客观校验层**：服务动态 debug（波形值由外部工具提供）与 design 理解；
 > 核心是 canonical identity、evidence、双向验证，而不是自然语言解释。
 
-> 2529 passed (canonical 主回归) | Python 3.11+ | pyslang 语义 AST | NetworkX graph | 真实项目 + 性能基准
+> 2529 passed (canonical 主回归) | Python 3.11+ | pyslang 语义 AST | NetworkX graph | 真实项目 + 性能基准 + agent 对照（内部）
 
-> 更新日期: 2026-11-04
+> 更新日期: 2026-11-05
 
 ---
 
@@ -21,14 +21,15 @@
   UVM sequence/factory 静态关系
 - **客观校验**: 全图 / bit-level 结构一致性 + claim 验证 + finding 局部证据
 - **可复现验证**: strict_uart / verilog-axi / picorv32 / SERV smoke；3 设计性能基准；
-  单级 CDC 反幻觉 walkthrough。**尚未跑 HWE-Bench/VeriBugBench 对照实验**，不宣称 agent 命中率收益。
+  单级 CDC 反幻觉 walkthrough；12 题双模型 source-only vs sv_query 对照（内部）。
+  **尚未跑 HWE-Bench/VeriBugBench**，不宣称对外准确率/成本收益。
 
 > 全设计图已退役；局部 finding review 仍为 `exp`（`review render`），不是核心能力。
 > 语义纪律见 [DISCIPLINE §3.5](docs/dev/DISCIPLINE.md)。
 
 ---
 
-## 项目定位（2026-11-04）
+## 项目定位（2026-11-05）
 
 完整方向见 [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md)。
 
@@ -112,7 +113,7 @@ sv_query trace fanin cdc_bug.dst_valid   -f examples/anti_hallucination_cdc/cdc_
 
 ---
 
-## 验证状态（2026-11-04）
+## 验证状态（2026-11-05）
 
 | 项 | 状态 |
 |---|---|
@@ -120,12 +121,43 @@ sv_query trace fanin cdc_bug.dst_valid   -f examples/anti_hallucination_cdc/cdc_
 | 开源 smoke | strict_uart / verilog-axi / picorv32 / SERV |
 | 性能基准 | picorv32 / verilog-axi / SERV；build、warm query、cold CLI、peak RSS |
 | 反幻觉 | 单级 CDC walkthrough：profile + fanin/fanout 反驳“两级同步器” |
+| Agent 对照（内部） | 12 题 × 2 模型 × source/svq；T2 两个 seed 均 12/12，source 6–10/12；见下方 |
+| 硬隔离 PoC | macOS sandbox-exec 拒绝 repo/CLI；两模型单题通过；12×3 全矩阵未跑 |
 | 未做 | HWE-Bench / VeriBugBench 对照、agent 根因命中率、多线程/门级性能 |
 
 性能：构图是 cold CLI 主导成本（本机 verilog-axi 约 26 s / 13.8k nodes），
 图内查询为毫秒级。不要把 warm query 的毫秒数字误读成冷启动查询。
 详见 [性能基准](docs/validation/QUERY_PERF_2026-11-04.md) 与
 [反幻觉 walkthrough](examples/anti_hallucination_cdc/README.md)。
+
+### Agent 对照（内部，2026-11-05）
+
+12 个“源码远、结构近”任务（AXI / SERV / PicoRV32），
+同一模型分别跑 source-only 与 sv_query：
+
+| 模型 / 臂 | seed 1 | seed 2 |
+|---|---:|---:|
+| MiniMax-M3 / source | 7/12 | 6/12 |
+| MiniMax-M3 / svq | **12/12** | **12/12** |
+| DeepSeek-Flash / source | 6/12 | 10/12 |
+| DeepSeek-Flash / svq | **12/12** | **12/12** |
+
+观察：
+
+- sv_query 臂跨两个 seed 稳定 12/12；source 臂方差明显（6–10/12）；
+- 总 token 更高（见 [usage](docs/validation/long_range_12_usage_2026-11-05.json)），
+  不能声称成本更低；
+- ground truth 双来源冻结，结果由 [verify_long_range.py](tools/benchmark/verify_long_range.py)
+  独立复验；
+- 这是内部 pilot，不是 HWE-Bench/VeriBugBench，不声称对外准确率百分比。
+
+硬隔离：source 臂用 macOS `sandbox-exec` 拒绝 repo 和 `sv_query` 可执行；
+审计发现并修复了 `/tmp → /private/tmp` canonical path 泄漏。
+当前只有单题 4 cells 通过，12×3 硬隔离矩阵尚未运行。
+
+详见 [12-task 报告](docs/validation/LONG_RANGE_12_2026-11-05.md)、
+[seed2 报告](docs/validation/LONG_RANGE_SEED2_2026-11-05.md)、
+[硬隔离审计](docs/validation/HARD_ISOLATION_2026-11-05.md)。
 
 ---
 
@@ -187,6 +219,7 @@ python -m pytest sim/tests/ -m opensource -v
 - [产品方向](docs/architecture/product_direction_2026-10-31.md)
 - [结构审查/动态子图计划](docs/architecture/structural_review_plan_2026-11-02.md)
 - [查询性能基准](docs/validation/QUERY_PERF_2026-11-04.md) · [反幻觉 CDC walkthrough](examples/anti_hallucination_cdc/README.md)
+- [12-task 对照](docs/validation/LONG_RANGE_12_2026-11-05.md) · [seed2](docs/validation/LONG_RANGE_SEED2_2026-11-05.md) · [硬隔离审计](docs/validation/HARD_ISOLATION_2026-11-05.md)
 - [架构文档](docs/ARCHITECTURE.md)
 - [准确性审计](docs/architecture/signal_graph_accuracy_audit.md)
 - [语义 regex 纪律](docs/dev/DISCIPLINE.md) · [开发纪律](AGENTS.md) · [当前任务](CURRENT_TODO.md)
