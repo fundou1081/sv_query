@@ -32,11 +32,13 @@ DeepSeek-Flash 单题 AXI fanin：
 | source hard | drivers/loads correct |
 | svq hard | drivers/loads correct |
 
-## ⚠️ 阻塞
+## ⚠️ 额度恢复后的重试
 
-MiniMax-M3 headless 返回 HTTP 429：Token Plan 用量上限。  
-因此 2 模型 × 12 题 × 3 seed 全矩阵没有完成；这只能算隔离机制 PoC。
+- MiniMax-M3 quota 恢复；source/T2 单题通过；
+- 仍只完成单题 PoC，12×3 全矩阵未跑；
+- MiniMax source 输出声称读过 `/tmp/lr_pilot` artifact，但 sandbox 已 deny，
+  需审计是否臆造/泄漏。
 
 ## 🔜 下一步
 
-P69.7.2：额度恢复后跑全矩阵；source 硬隔离 profile 已就绪。
+P69.7：跑全矩阵；先审计 source 的 artifact 声明。
