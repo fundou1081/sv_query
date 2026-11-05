@@ -35,5 +35,5 @@ bash sandbox backend is not available on this host; the **external**
 - source profile: executing `sv_query` → denied;
 - source/T2 DeepSeek on AXI fanin task → correct canonical IDs.
 
-MiniMax headless was blocked by provider quota (HTTP 429), so the two-model
-hard-isolated matrix is **not** complete.
+MiniMax quota recovered; a single-task source/T2 retry passed. The full
+two-model 12x3 hard-isolated matrix is still **not** run.

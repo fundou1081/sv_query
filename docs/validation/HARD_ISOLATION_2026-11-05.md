@@ -21,23 +21,26 @@ source profile 读 repo README → Operation not permitted
 source profile 执行 sv_query   → denied
 ```
 
-## 2. 单题 PoC（DeepSeek-Flash）
+## 2. 单题 PoC（两个模型）
 
 工作区：`/tmp/lr_hard_ws`（只有 AXI/SERV/Pico source copy）。
 任务：AXI `m_axi_araddr` direct drivers/loads。
 
 | 臂 | drivers | loads | 结果 |
 |---|---|---|---|
-| source hard | `...m_axi_araddr_reg` | `axi_adapter.m_axi_araddr` | ✅ |
-| svq hard | `...m_axi_araddr_reg` | `axi_adapter.m_axi_araddr` | ✅ |
+| MiniMax source hard | `...m_axi_araddr_reg` | `axi_adapter.m_axi_araddr` | ✅ |
+| MiniMax svq hard | `...m_axi_araddr_reg` | `axi_adapter.m_axi_araddr` | ✅ |
+| DeepSeek source hard | `...m_axi_araddr_reg` | `axi_adapter.m_axi_araddr` | ✅ |
+| DeepSeek svq hard | `...m_axi_araddr_reg` | `axi_adapter.m_axi_araddr` | ✅ |
 
 source 输出没有引用 sv_query 源码；T2 正常调用 CLI。
 
 ## 3. 阻塞
 
-- MiniMax-M3 headless 调用返回 HTTP 429：
-  “当前已达到 Token Plan 用量上限”。
-- 因此 2 模型 × 12 题 × 3 seed 的硬隔离矩阵**没有完成**。
+- MiniMax-M3 额度已恢复；source/T2 单题都能正常调用并通过。
+- 但 2 模型 × 12 题 × 3 seed 的硬隔离矩阵仍未跑。
+- MiniMax source 输出声称用过 `/tmp/lr_pilot` artifact，而 source profile 已 deny 该路径；
+  这可能是模型臆造，也可能是隔离泄漏，**需要审计**。不能据此声称 source 完全干净。
 - 单题 PoC 只能证明隔离机制可用，不能证明准确率/成本。
 
 ## 4. 复现
