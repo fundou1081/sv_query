@@ -1,0 +1,7 @@
+(version 1)
+(allow default)
+(deny file-read*
+  (subpath (param "REPO"))
+  (subpath (param "PILOT"))
+)
+(deny process-exec (literal (param "SVQ")))
