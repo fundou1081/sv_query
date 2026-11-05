@@ -21,7 +21,29 @@ source profile 读 repo README → Operation not permitted
 source profile 执行 sv_query   → denied
 ```
 
-## 2. 单题 PoC（两个模型）
+## 2. 隔离审计（2026-11-05）
+
+首次“硬隔离”有一个真实泄漏：
+
+- profile 只 deny `/tmp/lr_pilot`；
+- macOS `/tmp` 是 `/private/tmp` 的 symlink；
+- `sandbox-exec` 按 canonical path 匹配，`/tmp/lr_pilot` 规则没有覆盖 `/private/tmp/lr_pilot`。
+
+探针：
+
+```text
+cat /private/tmp/lr_pilot/axi.f  → 允许（修复前）
+cat /private/tmp/lr_pilot/axi.f  → Operation not permitted（修复后）
+```
+
+所以 MiniMax source 之前声称“用了 /tmp/lr_pilot artifact”**不是臆造**，而是泄漏。  
+修复：`source.sb` / `t2.sb` 同时 deny canonical `/private/tmp/lr_pilot`。
+
+另一个问题：hard workspace 的 `axi.f` 仍指向 `/tmp/lr_pilot/axi`，T2 被迫在 workspace
+里重写 filelist。新增 `rewrite_filelists.py`，生成指向 `/private/tmp/lr_hard_ws` 的
+filelist；source/T2 都能直接使用。
+
+## 3. 单题 PoC（修复后，两个模型）
 
 工作区：`/tmp/lr_hard_ws`（只有 AXI/SERV/Pico source copy）。
 任务：AXI `m_axi_araddr` direct drivers/loads。
@@ -35,19 +57,31 @@ source profile 执行 sv_query   → denied
 
 source 输出没有引用 sv_query 源码；T2 正常调用 CLI。
 
-## 3. 阻塞
+## 4. 稳定性评估
 
-- MiniMax-M3 额度已恢复；source/T2 单题都能正常调用并通过。
-- 但 2 模型 × 12 题 × 3 seed 的硬隔离矩阵仍未跑。
-- MiniMax source 输出声称用过 `/tmp/lr_pilot` artifact，而 source profile 已 deny 该路径；
-  这可能是模型臆造，也可能是隔离泄漏，**需要审计**。不能据此声称 source 完全干净。
-- 单题 PoC 只能证明隔离机制可用，不能证明准确率/成本。
+### 硬隔离
 
-## 4. 复现
+- 修复后 4 个 cell（两模型 × source/T2）在同一个 AXI 任务上全部正确；
+- 没有重复 seed，因此**不能评估硬隔离方差**；
+- 单题 PoC 只证明隔离机制可用。
+
+### 软隔离（已有 12 题 × 2 seed）
+
+- T2：两 seed 都 12/12，稳定；
+- source：MiniMax 7→6，DeepSeek 6→10，方差明显；
+- 这支持“T2 稳定”，不支持“source 一定差/模型排名”。
+
+### 仍不能声称
+
+- 硬隔离 12×3 准确率/成本；
+- source 完全干净的准确率；
+- 模型能力排名。
+
+## 5. 复现
 
 见 [tools/benchmark/hard_isolated/README.md](../../tools/benchmark/hard_isolated/README.md)。
 
-## 5. 结论
+## 6. 结论
 
 - 硬隔离已从“prompt 约束”推进到 OS 层 deny（source 臂）；
 - 剩余问题是 **模型额度 + 12×3 运行成本**，不是 sandbox 机制本身；

@@ -77,7 +77,7 @@
 | [validation/LONG_RANGE_PILOT_2026-11-05.md](validation/LONG_RANGE_PILOT_2026-11-05.md) | **长程结构查询 pilot**: MiniMax-M3 / DeepSeek-Flash 的 source-only vs sv_query；4 题、含隔离缺陷 |
 | [validation/LONG_RANGE_12_2026-11-05.md](validation/LONG_RANGE_12_2026-11-05.md) | **长程结构查询 12-task 对照**: 48 agents；exact 6–7/12 → 12/12；wall time 未下降；输入污染已审计 |
 | [validation/LONG_RANGE_SEED2_2026-11-05.md](validation/LONG_RANGE_SEED2_2026-11-05.md) | **seed-2 全 12 题**: T2 两 seed 12/12；source 6–10/12；软隔离但仍有 artifact 污染 |
-| [validation/HARD_ISOLATION_2026-11-05.md](validation/HARD_ISOLATION_2026-11-05.md) | **硬隔离 PoC**: sandbox-exec 拒绝 repo/CLI；两模型单题 source/T2 正确；全矩阵未跑 |
+| [validation/HARD_ISOLATION_2026-11-05.md](validation/HARD_ISOLATION_2026-11-05.md) | **硬隔离 PoC + 审计**: canonical path 泄漏已修；两模型单题正确；硬隔离方差未评估 |
 | [validation/COMPARISON_RECORD_2026-11-05.md](validation/COMPARISON_RECORD_2026-11-05.md) | **对比结果冻结记录**: 哈希、模型、指标、单独复验脚本与已知缺陷 |
 | [validation/long_range_12_usage_2026-11-05.json](validation/long_range_12_usage_2026-11-05.json) | **token/tool-call 汇总**: 四臂 token、tool calls、tokens/correct |
 | [architecture/long_range_structural_benchmark_2026-11-05.md](architecture/long_range_structural_benchmark_2026-11-05.md) | **长程结构查询对照基准**: B0/B1/T1/T2 对照、任务族、ground truth 冻结与准确度/成本指标 |

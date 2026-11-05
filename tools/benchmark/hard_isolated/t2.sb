@@ -1,3 +1,6 @@
 (version 1)
 (allow default)
-(deny file-read* (subpath (param "PILOT")))
+(deny file-read*
+  (subpath (param "PILOT"))
+  (subpath "/private/tmp/lr_pilot")
+)
