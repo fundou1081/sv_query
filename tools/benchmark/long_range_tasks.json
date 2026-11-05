@@ -1,54 +1,308 @@
 {
   "tasks": [
-    {"id": "axi_araddr_neighbors", "cwd": "/tmp/lr_pilot/axi", "input": "/tmp/lr_pilot/axi.f",
-     "question": "For bus `axi_adapter.axi_adapter_rd_inst.m_axi_araddr`, list ALL direct (distance=1) driver node IDs and ALL direct load node IDs. Return exact canonical IDs.",
-     "required": ["drivers", "loads"],
-     "ground_truth": {"drivers": ["axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"], "loads": ["axi_adapter.m_axi_araddr"]}},
-    {"id": "axi_awvalid_fanout", "cwd": "/tmp/lr_pilot/axi", "input": "/tmp/lr_pilot/axi.f",
-     "question": "List ALL direct (distance=1) loads of `axi_adapter.s_axi_awvalid`, exact canonical IDs and count.",
-     "required": ["loads", "count"],
-     "ground_truth": {"loads": ["axi_adapter.axi_adapter_wr_inst.s_axi_awvalid"], "count": 1}},
-    {"id": "axi_arvalid_fanin", "cwd": "/tmp/lr_pilot/axi", "input": "/tmp/lr_pilot/axi.f",
-     "question": "List ALL direct (distance=1) drivers of `axi_adapter.axi_adapter_rd_inst.m_axi_arvalid`, exact canonical IDs and count.",
-     "required": ["drivers", "count"],
-     "ground_truth": {"drivers": ["axi_adapter.axi_adapter_rd_inst.m_axi_arvalid_reg"], "count": 1}},
-    {"id": "axi_awvalid_fanin", "cwd": "/tmp/lr_pilot/axi", "input": "/tmp/lr_pilot/axi.f",
-     "question": "List ALL direct (distance=1) drivers of `axi_adapter.axi_adapter_wr_inst.m_axi_awvalid`, exact canonical IDs and count.",
-     "required": ["drivers", "count"],
-     "ground_truth": {"drivers": ["axi_adapter.axi_adapter_wr_inst.m_axi_awvalid_reg"], "count": 1}},
-
-    {"id": "serv_clk_fanout", "cwd": "/tmp/lr_pilot/serv", "input": "/tmp/lr_pilot/serv.f",
-     "question": "List ALL direct (distance=1) loads of `serv_rf_top.clk`, exact canonical IDs and count.",
-     "required": ["loads", "count"],
-     "ground_truth": {"loads": ["serv_rf_top.rf_ram_if.i_clk", "serv_rf_top.rf_ram.i_clk", "serv_rf_top.cpu.clk"], "count": 3}},
-    {"id": "serv_alu_clk_fanin", "cwd": "/tmp/lr_pilot/serv", "input": "/tmp/lr_pilot/serv.f",
-     "question": "List ALL direct (distance=1) drivers of `serv_rf_top.cpu.alu.clk`, exact canonical IDs and count.",
-     "required": ["drivers", "count"],
-     "ground_truth": {"drivers": ["serv_rf_top.cpu.clk"], "count": 1}},
-    {"id": "serv_cpu_clk_fanout", "cwd": "/tmp/lr_pilot/serv", "input": "/tmp/lr_pilot/serv.f",
-     "question": "List ALL direct (distance=1) loads of `serv_rf_top.cpu.clk`, exact canonical IDs and count.",
-     "required": ["loads", "count"],
-     "ground_truth": {"loads": ["serv_rf_top.cpu.state.i_clk", "serv_rf_top.cpu.decode.clk", "serv_rf_top.cpu.immdec.i_clk", "serv_rf_top.cpu.bufreg.i_clk", "serv_rf_top.cpu.bufreg2.i_clk", "serv_rf_top.cpu.ctrl.clk", "serv_rf_top.cpu.alu.clk", "serv_rf_top.cpu.mem_if.i_clk"], "count": 8}},
-    {"id": "serv_clk_path", "cwd": "/tmp/lr_pilot/serv", "input": "/tmp/lr_pilot/serv.f",
-     "question": "Find the shortest structural path from `serv_rf_top.clk` to `serv_rf_top.cpu.alu.clk`; return exact path and hop count.",
-     "required": ["path", "count"],
-     "ground_truth": {"path": ["serv_rf_top.clk", "serv_rf_top.cpu.clk", "serv_rf_top.cpu.alu.clk"], "count": 2}},
-
-    {"id": "pico_mem_valid_fanout", "cwd": "/tmp/lr_pilot/pico", "input": "/tmp/lr_pilot/pico/picorv32.v",
-     "question": "List ALL direct (distance=1) loads of `picorv32_axi.mem_valid`, exact canonical IDs and count.",
-     "required": ["loads", "count"],
-     "ground_truth": {"loads": ["picorv32_axi.axi_adapter.mem_valid"], "count": 1}},
-    {"id": "pico_adapter_mem_valid_fanin", "cwd": "/tmp/lr_pilot/pico", "input": "/tmp/lr_pilot/pico/picorv32.v",
-     "question": "List ALL direct (distance=1) drivers of `picorv32_axi.axi_adapter.mem_valid`, exact canonical IDs and count.",
-     "required": ["drivers", "count"],
-     "ground_truth": {"drivers": ["picorv32_axi.mem_valid"], "count": 1}},
-    {"id": "pico_adapter_mem_valid_fanout", "cwd": "/tmp/lr_pilot/pico", "input": "/tmp/lr_pilot/pico/picorv32.v",
-     "question": "List ALL direct (distance=1) loads of `picorv32_axi.axi_adapter.mem_valid`, exact canonical IDs and count.",
-     "required": ["loads", "count"],
-     "ground_truth": {"loads": ["picorv32_axi.axi_adapter.mem_axi_awvalid", "picorv32_axi.axi_adapter.mem_axi_arvalid", "picorv32_axi.axi_adapter.mem_axi_wvalid", "picorv32_axi.axi_adapter.mem_axi_bready", "picorv32_axi.axi_adapter.mem_axi_rready", "picorv32_axi.axi_adapter.xfer_done"], "count": 6}},
-    {"id": "pico_adapter_rdata_fanin", "cwd": "/tmp/lr_pilot/pico", "input": "/tmp/lr_pilot/pico/picorv32.v",
-     "question": "List ALL direct (distance=1) drivers of `picorv32_axi.axi_adapter.mem_rdata[16]`, exact canonical IDs and count.",
-     "required": ["drivers", "count"],
-     "ground_truth": {"drivers": ["picorv32_axi.axi_adapter.mem_axi_rdata[16]"], "count": 1}}
+    {
+      "id": "axi_araddr_neighbors",
+      "cwd": "/tmp/lr_pilot/axi",
+      "input": "/tmp/lr_pilot/axi.f",
+      "question": "For bus `axi_adapter.axi_adapter_rd_inst.m_axi_araddr`, list ALL direct (distance=1) driver node IDs and ALL direct load node IDs. Return exact canonical IDs.",
+      "required": [
+        "drivers",
+        "loads"
+      ],
+      "ground_truth": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ]
+      },
+      "source": {
+        "kind": "filelist",
+        "path": "sim/tests/fixtures/verilog-axi/filelist.f"
+      },
+      "query": {
+        "cmd": "fanin",
+        "signal": "axi_adapter.axi_adapter_rd_inst.m_axi_araddr",
+        "also_loads": true
+      }
+    },
+    {
+      "id": "axi_awvalid_fanout",
+      "cwd": "/tmp/lr_pilot/axi",
+      "input": "/tmp/lr_pilot/axi.f",
+      "question": "List ALL direct (distance=1) loads of `axi_adapter.s_axi_awvalid`, exact canonical IDs and count.",
+      "required": [
+        "loads",
+        "count"
+      ],
+      "ground_truth": {
+        "loads": [
+          "axi_adapter.axi_adapter_wr_inst.s_axi_awvalid"
+        ],
+        "count": 1
+      },
+      "source": {
+        "kind": "filelist",
+        "path": "sim/tests/fixtures/verilog-axi/filelist.f"
+      },
+      "query": {
+        "cmd": "fanout",
+        "signal": "axi_adapter.s_axi_awvalid"
+      }
+    },
+    {
+      "id": "axi_arvalid_fanin",
+      "cwd": "/tmp/lr_pilot/axi",
+      "input": "/tmp/lr_pilot/axi.f",
+      "question": "List ALL direct (distance=1) drivers of `axi_adapter.axi_adapter_rd_inst.m_axi_arvalid`, exact canonical IDs and count.",
+      "required": [
+        "drivers",
+        "count"
+      ],
+      "ground_truth": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_arvalid_reg"
+        ],
+        "count": 1
+      },
+      "source": {
+        "kind": "filelist",
+        "path": "sim/tests/fixtures/verilog-axi/filelist.f"
+      },
+      "query": {
+        "cmd": "fanin",
+        "signal": "axi_adapter.axi_adapter_rd_inst.m_axi_arvalid"
+      }
+    },
+    {
+      "id": "axi_awvalid_fanin",
+      "cwd": "/tmp/lr_pilot/axi",
+      "input": "/tmp/lr_pilot/axi.f",
+      "question": "List ALL direct (distance=1) drivers of `axi_adapter.axi_adapter_wr_inst.m_axi_awvalid`, exact canonical IDs and count.",
+      "required": [
+        "drivers",
+        "count"
+      ],
+      "ground_truth": {
+        "drivers": [
+          "axi_adapter.axi_adapter_wr_inst.m_axi_awvalid_reg"
+        ],
+        "count": 1
+      },
+      "source": {
+        "kind": "filelist",
+        "path": "sim/tests/fixtures/verilog-axi/filelist.f"
+      },
+      "query": {
+        "cmd": "fanin",
+        "signal": "axi_adapter.axi_adapter_wr_inst.m_axi_awvalid"
+      }
+    },
+    {
+      "id": "serv_clk_fanout",
+      "cwd": "/tmp/lr_pilot/serv",
+      "input": "/tmp/lr_pilot/serv.f",
+      "question": "List ALL direct (distance=1) loads of `serv_rf_top.clk`, exact canonical IDs and count.",
+      "required": [
+        "loads",
+        "count"
+      ],
+      "ground_truth": {
+        "loads": [
+          "serv_rf_top.rf_ram_if.i_clk",
+          "serv_rf_top.rf_ram.i_clk",
+          "serv_rf_top.cpu.clk"
+        ],
+        "count": 3
+      },
+      "source": {
+        "kind": "serv"
+      },
+      "query": {
+        "cmd": "fanout",
+        "signal": "serv_rf_top.clk"
+      }
+    },
+    {
+      "id": "serv_alu_clk_fanin",
+      "cwd": "/tmp/lr_pilot/serv",
+      "input": "/tmp/lr_pilot/serv.f",
+      "question": "List ALL direct (distance=1) drivers of `serv_rf_top.cpu.alu.clk`, exact canonical IDs and count.",
+      "required": [
+        "drivers",
+        "count"
+      ],
+      "ground_truth": {
+        "drivers": [
+          "serv_rf_top.cpu.clk"
+        ],
+        "count": 1
+      },
+      "source": {
+        "kind": "serv"
+      },
+      "query": {
+        "cmd": "fanin",
+        "signal": "serv_rf_top.cpu.alu.clk"
+      }
+    },
+    {
+      "id": "serv_cpu_clk_fanout",
+      "cwd": "/tmp/lr_pilot/serv",
+      "input": "/tmp/lr_pilot/serv.f",
+      "question": "List ALL direct (distance=1) loads of `serv_rf_top.cpu.clk`, exact canonical IDs and count.",
+      "required": [
+        "loads",
+        "count"
+      ],
+      "ground_truth": {
+        "loads": [
+          "serv_rf_top.cpu.state.i_clk",
+          "serv_rf_top.cpu.decode.clk",
+          "serv_rf_top.cpu.immdec.i_clk",
+          "serv_rf_top.cpu.bufreg.i_clk",
+          "serv_rf_top.cpu.bufreg2.i_clk",
+          "serv_rf_top.cpu.ctrl.clk",
+          "serv_rf_top.cpu.alu.clk",
+          "serv_rf_top.cpu.mem_if.i_clk"
+        ],
+        "count": 8
+      },
+      "source": {
+        "kind": "serv"
+      },
+      "query": {
+        "cmd": "fanout",
+        "signal": "serv_rf_top.cpu.clk"
+      }
+    },
+    {
+      "id": "serv_clk_path",
+      "cwd": "/tmp/lr_pilot/serv",
+      "input": "/tmp/lr_pilot/serv.f",
+      "question": "Find the shortest structural path from `serv_rf_top.clk` to `serv_rf_top.cpu.alu.clk`; return exact path and hop count.",
+      "required": [
+        "path",
+        "count"
+      ],
+      "ground_truth": {
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      },
+      "source": {
+        "kind": "serv"
+      },
+      "query": {
+        "cmd": "path",
+        "src": "serv_rf_top.clk",
+        "dst": "serv_rf_top.cpu.alu.clk"
+      }
+    },
+    {
+      "id": "pico_mem_valid_fanout",
+      "cwd": "/tmp/lr_pilot/pico",
+      "input": "/tmp/lr_pilot/pico/picorv32.v",
+      "question": "List ALL direct (distance=1) loads of `picorv32_axi.mem_valid`, exact canonical IDs and count.",
+      "required": [
+        "loads",
+        "count"
+      ],
+      "ground_truth": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_valid"
+        ],
+        "count": 1
+      },
+      "source": {
+        "kind": "file",
+        "path": "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v"
+      },
+      "query": {
+        "cmd": "fanout",
+        "signal": "picorv32_axi.mem_valid"
+      }
+    },
+    {
+      "id": "pico_adapter_mem_valid_fanin",
+      "cwd": "/tmp/lr_pilot/pico",
+      "input": "/tmp/lr_pilot/pico/picorv32.v",
+      "question": "List ALL direct (distance=1) drivers of `picorv32_axi.axi_adapter.mem_valid`, exact canonical IDs and count.",
+      "required": [
+        "drivers",
+        "count"
+      ],
+      "ground_truth": {
+        "drivers": [
+          "picorv32_axi.mem_valid"
+        ],
+        "count": 1
+      },
+      "source": {
+        "kind": "file",
+        "path": "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v"
+      },
+      "query": {
+        "cmd": "fanin",
+        "signal": "picorv32_axi.axi_adapter.mem_valid"
+      }
+    },
+    {
+      "id": "pico_adapter_mem_valid_fanout",
+      "cwd": "/tmp/lr_pilot/pico",
+      "input": "/tmp/lr_pilot/pico/picorv32.v",
+      "question": "List ALL direct (distance=1) loads of `picorv32_axi.axi_adapter.mem_valid`, exact canonical IDs and count.",
+      "required": [
+        "loads",
+        "count"
+      ],
+      "ground_truth": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_axi_rready",
+          "picorv32_axi.axi_adapter.xfer_done"
+        ],
+        "count": 6
+      },
+      "source": {
+        "kind": "file",
+        "path": "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v"
+      },
+      "query": {
+        "cmd": "fanout",
+        "signal": "picorv32_axi.axi_adapter.mem_valid"
+      }
+    },
+    {
+      "id": "pico_adapter_rdata_fanin",
+      "cwd": "/tmp/lr_pilot/pico",
+      "input": "/tmp/lr_pilot/pico/picorv32.v",
+      "question": "List ALL direct (distance=1) drivers of `picorv32_axi.axi_adapter.mem_rdata[16]`, exact canonical IDs and count.",
+      "required": [
+        "drivers",
+        "count"
+      ],
+      "ground_truth": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
+        ],
+        "count": 1
+      },
+      "source": {
+        "kind": "file",
+        "path": "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v"
+      },
+      "query": {
+        "cmd": "fanin",
+        "signal": "picorv32_axi.axi_adapter.mem_rdata[16]"
+      }
+    }
   ]
 }

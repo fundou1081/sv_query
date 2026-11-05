@@ -1,5 +1,5 @@
 {
-  "protocol": "12-task isolated pilot; tasks from copies under /tmp/lr_pilot; source arm rerun with sv_query binary disabled; T2 with CLI enabled",
+  "protocol": "12-task isolated pilot; tasks from copies under /tmp/lr_pilot; source arm rerun with sv_query binary disabled; T2 with CLI enabled; pico bit task rerun with isolated --file after audit",
   "tasks": [
     {
       "id": "axi_araddr_neighbors",
@@ -809,27 +809,29 @@
       "task_id": "pico_adapter_rdata_fanin",
       "model": "MiniMax-M3",
       "arm": "svq",
-      "duration_ms": 249910,
+      "duration_ms": 72970,
       "confidence": "high",
       "answer": {
         "drivers": [
-          "picorv32_axi.axi_adapter.mem_axi_rdata"
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
         ],
         "count": 1
-      }
+      },
+      "note": "rerun with single --file input; combined filelist was the source of bit fallback"
     },
     {
       "task_id": "pico_adapter_rdata_fanin",
       "model": "DeepSeek-Flash",
       "arm": "svq",
-      "duration_ms": 145938,
-      "confidence": "medium",
+      "duration_ms": 146932,
+      "confidence": "high",
       "answer": {
         "drivers": [
-          "picorv32_axi.axi_adapter.mem_axi_rdata"
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
         ],
         "count": 1
-      }
+      },
+      "note": "rerun with single --file input; combined filelist was the source of bit fallback"
     }
   ]
 }

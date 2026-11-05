@@ -75,7 +75,8 @@
 | [architecture/class_constraint_covergroup_contract_2026-11-03.md](architecture/class_constraint_covergroup_contract_2026-11-03.md) | **class/constraint/covergroup 契约**: relations 增强、constraint blocks、covergroup Q1/Q2/Q3 |
 | [validation/QUERY_PERF_2026-11-04.md](validation/QUERY_PERF_2026-11-04.md) | **查询性能基准**: picorv32 / verilog-axi / SERV 的 build、warm query、cold CLI、峰值内存 |
 | [validation/LONG_RANGE_PILOT_2026-11-05.md](validation/LONG_RANGE_PILOT_2026-11-05.md) | **长程结构查询 pilot**: MiniMax-M3 / DeepSeek-Flash 的 source-only vs sv_query；4 题、含隔离缺陷 |
-| [validation/LONG_RANGE_12_2026-11-05.md](validation/LONG_RANGE_12_2026-11-05.md) | **长程结构查询 12-task 对照**: 48 agents；exact 6–7/12 → 11/12；wall time 未下降；bit fallback 缺口 |
+| [validation/LONG_RANGE_12_2026-11-05.md](validation/LONG_RANGE_12_2026-11-05.md) | **长程结构查询 12-task 对照**: 48 agents；exact 6–7/12 → 12/12；wall time 未下降；输入污染已审计 |
+| [validation/COMPARISON_RECORD_2026-11-05.md](validation/COMPARISON_RECORD_2026-11-05.md) | **对比结果冻结记录**: 哈希、模型、指标、单独复验脚本与已知缺陷 |
 | [architecture/long_range_structural_benchmark_2026-11-05.md](architecture/long_range_structural_benchmark_2026-11-05.md) | **长程结构查询对照基准**: B0/B1/T1/T2 对照、任务族、ground truth 冻结与准确度/成本指标 |
 | [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) | 已知限制 (含 pyslang 侧限制) |
 | [EXTRACTION_COVERAGE.md](EXTRACTION_COVERAGE.md) | SV 语法抽取覆盖率总表 (逐语法 ✅/⚠️/❌) |
