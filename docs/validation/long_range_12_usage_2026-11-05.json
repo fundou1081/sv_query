@@ -1,0 +1,14 @@
+{
+  "protocol": "token/tool-call extracted from DSH child session logs; total input = uncachedInputTokens + cacheReadTokens; wall time from the same runs",
+  "summary": {
+    "MiniMax-M3 / source": {"n": 12, "exact": 7, "mean_input_tokens": 232720.6, "mean_output_tokens": 4902.9, "mean_total_tokens": 237623.5, "mean_tool_calls": 15.2, "tokens_per_correct": 407354.6, "mean_wall_s": 51.4},
+    "MiniMax-M3 / svq": {"n": 12, "exact": 12, "mean_input_tokens": 325850.2, "mean_output_tokens": 3897.8, "mean_total_tokens": 329748.0, "mean_tool_calls": 18.4, "tokens_per_correct": 329748.0, "mean_wall_s": 130.6},
+    "DeepSeek-Flash / source": {"n": 12, "exact": 6, "mean_input_tokens": 115659.2, "mean_output_tokens": 7552.7, "mean_total_tokens": 123211.8, "mean_tool_calls": 8.3, "tokens_per_correct": 246423.7, "mean_wall_s": 57.2},
+    "DeepSeek-Flash / svq": {"n": 12, "exact": 12, "mean_input_tokens": 238383.3, "mean_output_tokens": 5805.9, "mean_total_tokens": 244189.2, "mean_tool_calls": 12.0, "tokens_per_correct": 244189.2, "mean_wall_s": 74.9}
+  },
+  "notes": [
+    "cacheReadTokens included: they are context tokens, not cached free work",
+    "no price conversion; provider pricing may differ",
+    "source arm is still contaminated by sv_query source reads; see comparison record"
+  ]
+}

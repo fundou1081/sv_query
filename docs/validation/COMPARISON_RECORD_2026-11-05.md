@@ -12,6 +12,7 @@
 | `tools/benchmark/long_range_tasks.json` | `8ba60bf70a9aaca361778ced4d55751442aafeab434b0588244e7f00232e3a61` |
 | `tools/benchmark/score_long_range.py` | `50fbfd6d2e01f21da6d0e58427b272429bd5c303da7113c71a22377b21693eba` |
 | `tools/benchmark/verify_long_range.py` | `a9b995891356b0ed22ebdc28f9f226cc11b02a0f24b541bcda69ced03ea615f6` |
+| `docs/validation/long_range_12_usage_2026-11-05.json` | `d240acb35105d8d94d0d2e79a794f7702e1f3181f702ec03f2bb80760fc2f9de` |
 
 模型：
 
@@ -33,7 +34,18 @@ Ground truth：源码人工追踪 + sv_query 双来源，冻结在 tasks JSON。
 | DeepSeek-Flash / svq | 12/12 | 0/12 | 74.9 s |
 
 解释：见 [LONG_RANGE_12_2026-11-05.md](LONG_RANGE_12_2026-11-05.md)。
-**不要**把 wall time 当 token 成本；本轮没有 token/tool-call 统计。
+
+**Token/tool-call**（DSH 子 session 日志；total input = uncached + cacheRead）：
+
+| 模型 / 臂 | mean tokens | tool calls | tokens/correct |
+|---|---:|---:|---:|
+| MiniMax source | 237.6k | 15.2 | 407.4k |
+| MiniMax svq | 329.7k | 18.4 | 329.7k |
+| DeepSeek source | 123.2k | 8.3 | 246.4k |
+| DeepSeek svq | 244.2k | 12.0 | 244.2k |
+
+原始汇总：[long_range_12_usage_2026-11-05.json](long_range_12_usage_2026-11-05.json)。
+不要把 wall time 或 token 总量单独当成本；没有价格换算。
 
 ## 3. 单独复验脚本
 
@@ -69,10 +81,10 @@ DeepSeek source 6/12; DeepSeek svq 12/12
   `source` + `query` 约束，复验脚本拒绝依赖临时混合 filelist。
 - source 臂仍不干净：MiniMax 输出引用了 sv_query 源码的 ID 规则；
   因此 source 准确率是“受污染下界”，不能当作纯源码对照。
-- 无 token/tool-call；单 seed；任务手工挑选。
+- 已有 token/tool-call 汇总（未做价格换算/cold-warm 拆分）；单 seed；任务手工挑选。
 - 结论：工具主要改善 exact 正确性与模型间一致性；本轮没有成本优势。
 
 ## 5. 外部可用性
 
-在完成真正隔离、token 计量、多 seed 前，不将本记录写成 README 的
+在完成真正隔离、多 seed、cold/warm 成本拆分前，不将本记录写成 README 的
 性能/准确率承诺，也不对外声称 HWE-Bench/VeriBugBench 效果。
