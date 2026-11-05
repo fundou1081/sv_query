@@ -12,6 +12,7 @@
 |------|------|
 | `run_benchmark.py` | 主入口 — 跑单个项目, 收集 4 维数据 |
 | `query_perf.py` | [P67] 查询性能 — build / warm query / cold CLI / peak RSS |
+| `verify_long_range.py` | [P69] 12-task 结果覆盖 + ground truth 独立复验 |
 | `inputs.py` | [iter_187] **唯一输入构建点** (从 `~/my_dv_proj/openrtl/` 现场生成 filelist) |
 | `regen_baselines.py` | [iter_187] 重新生成 baseline + `--check` 漂移检测 |
 | `baselines/` | baseline 数据 (PR6 regression check 用) |

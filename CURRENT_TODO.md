@@ -9,7 +9,7 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P69.5 token/tool-call + 多 seed** `<待做>`
+- **当前 item**: **P69.5 token/tool-call + 多 seed + 隔离复验** `<待做>`
 - **P63** class / constraint / covergroup 语义增强 ✅（iter_365）
 - **P64** constraint 继承链 + rand 标记 ✅（iter_366）
 - **P65** UVM sequence/factory 静态关系 ✅（iter_367）
