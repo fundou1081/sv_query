@@ -916,6 +916,24 @@ class UnifiedTracer:
                         out.append(nd)
         return out
 
+    def list_top_modules(self) -> list:
+        """当前编译的顶层模块名（排序，去重）。"""
+        self.build_graph()
+        try:
+            root = self._get_compiler().get_root()
+            names = set()
+            for top in getattr(root, "topInstances", []):
+                try:
+                    name = str(getattr(top, "name", "")).strip()
+                except (UnicodeDecodeError, TypeError):
+                    continue
+                if name:
+                    names.add(name)
+            return sorted(names)
+        except Exception as e:
+            _main_logger.warning("顶层模块枚举失败: %s", e)
+            return []
+
     def list_classes(self) -> list:
         """[iter_167] 编译域 class 名列表 (查询层槽展开判定用).
 

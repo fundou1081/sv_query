@@ -339,7 +339,7 @@ def driver_stats(graph, node_id: str | None) -> tuple[int, bool, bool]:
     """[iter_307 / PLAN P13.6] 直接驱动统计。
 
     返回 `(driver_count, multi_driver, conditional_drivers)`：
-      - driver_count: 直接 DRIVER 边的**不同源**数量（含条件分支）
+      - driver_count: 直接 DRIVER 边的**不同源**数量（含条件分支；排除 self/port artifact）
       - multi_driver: 有 >=2 个**无条件**直接源（潜在冲突；条件 mux 不算）
       - conditional_drivers: 存在带条件的直接驱动（ternary/case/if）
     """
@@ -351,6 +351,8 @@ def driver_stats(graph, node_id: str | None) -> tuple[int, bool, bool]:
     for src, dst in graph.edges():
         if dst != node_id:
             continue
+        if src == node_id:
+            continue  # [P71] output-port self edge is a graph artifact, not a driver
         for e in graph.get_edges(src, dst):
             if getattr(e.kind, "name", "") != "DRIVER":
                 continue

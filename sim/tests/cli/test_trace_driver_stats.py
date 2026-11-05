@@ -8,7 +8,12 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
+from cli.core.semantic.trace_common import driver_stats
+from trace.core.graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
@@ -74,3 +79,13 @@ endmodule"""
         s = _run("top.y[3]", src, tmp_path)
         assert s["driver_count"] == 2
         assert s["multi_driver"] is True
+
+
+def test_self_port_edge_not_counted_as_driver():
+    g = SignalGraph()
+    for nid in ("top.y", "top.a"):
+        g.add_trace_node(TraceNode(id=nid, name=nid.split(".")[-1], module="top",
+                                   kind=NodeKind.SIGNAL, width=(7, 0)))
+    g.add_trace_edge(TraceEdge(src="top.a", dst="top.y", kind=EdgeKind.DRIVER))
+    g.add_trace_edge(TraceEdge(src="top.y", dst="top.y", kind=EdgeKind.DRIVER))
+    assert driver_stats(g, "top.y")[:2] == (1, False)

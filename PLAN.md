@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P69.7 硬隔离 PoC（全矩阵待额度） <进行中>
+current item : P62.2 交互式 debug（gate） <待做>
 
 ## 计划树
 
@@ -100,7 +100,13 @@ P69 长程结构查询对照基准 <进行中>
 -- P69.4 12-task 准确率/成本报告 <已完成>
 -- P69.5 token/tool-call 统计 <已完成>
 -- P69.6 12-task seed2 + 软隔离 <已完成>
--- P69.7 硬隔离 PoC（全矩阵待额度） <进行中>
+-- P69.7 硬隔离 PoC（全矩阵待额度） <待做>
+
+P71 agent 查询可靠性修复 <已完成>
+-- P71.1 --top + top_modules/top_ambiguous <已完成>
+-- P71.2 driver_count 与 self-edge 对齐 <已完成>
+-- P71.3 bit_fallback / top 字段显式化 <已完成>
+-- P71.4 测试/契约/文档 <已完成>
 
 ## 已完成（保留最近记录，便于核查上一轮）
 

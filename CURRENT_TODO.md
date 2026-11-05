@@ -9,14 +9,15 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P69.7 硬隔离 PoC（全矩阵待额度）** `<进行中>`
+- **当前 item**: **P62.2 交互式 debug（gate）** `<待做>`
 - **P63** class / constraint / covergroup 语义增强 ✅（iter_365）
 - **P64** constraint 继承链 + rand 标记 ✅（iter_366）
 - **P65** UVM sequence/factory 静态关系 ✅（iter_367）
 - **P66** 语义提取 regex 纪律（仅 UVM 宏例外）✅（iter_368）
 - **P67** 可用性验证包：性能 + 反幻觉 walkthrough ✅（iter_369）
 - **P68** README 项目描述校准 ✅（iter_370）
-- **P69** 长程结构查询对照基准：12 题 + token + seed2 + 硬隔离 PoC；待全矩阵
+- **P69** 长程结构查询对照基准 ✅（P69.7 全矩阵待环境）
+- **P71** agent 查询可靠性修复 ✅（iter_376）
 
 > P67/P68 已完成；P62.2 交互式 debug 保持 gate。
 
@@ -25,8 +26,8 @@
 ## 📦 仓库状态
 
 - **分支**: `main`；最新提交以 `git log -1` 为准
-- **全量基线**: **2529 passed / 0 failed**（`sim/tests/`, `-m "not opensource"`；
-  7 skipped / 119 deselected；iter_369 实测）
+- **全量基线**: **2532 passed / 0 failed**（`sim/tests/`, `-m "not opensource"`；
+  7 skipped / 119 deselected；iter_376 实测）
 - **命令面**: 39 命令 = core 35 + exp 4（class/constraint/covergroup）
 - **当前重点**: README 已校准；P67 性能/walkthrough 已交付；下一步再评估 HWE/VeriBug 对照环境
 
