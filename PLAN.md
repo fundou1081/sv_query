@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P69.3 隔离 + 12–15 题 + token 统计 <待做>
+current item : P69.5 token/tool-call + 多 seed <待做>
 
 ## 计划树
 
@@ -96,8 +96,9 @@ P68 README 项目描述校准 <已完成>
 P69 长程结构查询对照基准 <进行中>
 -- P69.1 对比矩阵/任务/评分协议 <已完成>
 -- P69.2 4-task pilot + ground truth <已完成>
--- P69.3 隔离 + 12–15 题 + token 统计 <待做>
--- P69.4 pilot 准确率/成本报告 <已完成>
+-- P69.3 12 题 + source 隔离 <已完成>
+-- P69.4 12-task 准确率/成本报告 <已完成>
+-- P69.5 token/tool-call + 多 seed <待做>
 
 ## 已完成（保留最近记录，便于核查上一轮）
 

@@ -9,14 +9,14 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P69.3 隔离 + 12–15 题 + token 统计** `<待做>`
+- **当前 item**: **P69.5 token/tool-call + 多 seed** `<待做>`
 - **P63** class / constraint / covergroup 语义增强 ✅（iter_365）
 - **P64** constraint 继承链 + rand 标记 ✅（iter_366）
 - **P65** UVM sequence/factory 静态关系 ✅（iter_367）
 - **P66** 语义提取 regex 纪律（仅 UVM 宏例外）✅（iter_368）
 - **P67** 可用性验证包：性能 + 反幻觉 walkthrough ✅（iter_369）
 - **P68** README 项目描述校准 ✅（iter_370）
-- **P69** 长程结构查询对照基准：4 题 pilot 完成，协议待加固
+- **P69** 长程结构查询对照基准：12 题完成；准确率有信号，成本未降
 
 > P67/P68 已完成；P62.2 交互式 debug 保持 gate。
 

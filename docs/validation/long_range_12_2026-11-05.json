@@ -1,0 +1,835 @@
+{
+  "protocol": "12-task isolated pilot; tasks from copies under /tmp/lr_pilot; source arm rerun with sv_query binary disabled; T2 with CLI enabled",
+  "tasks": [
+    {
+      "id": "axi_araddr_neighbors",
+      "ground_truth": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ]
+      }
+    },
+    {
+      "id": "axi_awvalid_fanout",
+      "ground_truth": {
+        "loads": [
+          "axi_adapter.axi_adapter_wr_inst.s_axi_awvalid"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "id": "axi_arvalid_fanin",
+      "ground_truth": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_arvalid_reg"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "id": "axi_awvalid_fanin",
+      "ground_truth": {
+        "drivers": [
+          "axi_adapter.axi_adapter_wr_inst.m_axi_awvalid_reg"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "id": "serv_clk_fanout",
+      "ground_truth": {
+        "loads": [
+          "serv_rf_top.rf_ram_if.i_clk",
+          "serv_rf_top.rf_ram.i_clk",
+          "serv_rf_top.cpu.clk"
+        ],
+        "count": 3
+      }
+    },
+    {
+      "id": "serv_alu_clk_fanin",
+      "ground_truth": {
+        "drivers": [
+          "serv_rf_top.cpu.clk"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "id": "serv_cpu_clk_fanout",
+      "ground_truth": {
+        "loads": [
+          "serv_rf_top.cpu.state.i_clk",
+          "serv_rf_top.cpu.decode.clk",
+          "serv_rf_top.cpu.immdec.i_clk",
+          "serv_rf_top.cpu.bufreg.i_clk",
+          "serv_rf_top.cpu.bufreg2.i_clk",
+          "serv_rf_top.cpu.ctrl.clk",
+          "serv_rf_top.cpu.alu.clk",
+          "serv_rf_top.cpu.mem_if.i_clk"
+        ],
+        "count": 8
+      }
+    },
+    {
+      "id": "serv_clk_path",
+      "ground_truth": {
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      }
+    },
+    {
+      "id": "pico_mem_valid_fanout",
+      "ground_truth": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_valid"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "id": "pico_adapter_mem_valid_fanin",
+      "ground_truth": {
+        "drivers": [
+          "picorv32_axi.mem_valid"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "id": "pico_adapter_mem_valid_fanout",
+      "ground_truth": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_axi_rready",
+          "picorv32_axi.axi_adapter.xfer_done"
+        ],
+        "count": 6
+      }
+    },
+    {
+      "id": "pico_adapter_rdata_fanin",
+      "ground_truth": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
+        ],
+        "count": 1
+      }
+    }
+  ],
+  "results": [
+    {
+      "task_id": "axi_araddr_neighbors",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "duration_ms": 36841,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ]
+      }
+    },
+    {
+      "task_id": "axi_araddr_neighbors",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "duration_ms": 74253,
+      "confidence": "medium",
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": []
+      }
+    },
+    {
+      "task_id": "axi_awvalid_fanout",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "duration_ms": 18473,
+      "confidence": "high",
+      "answer": {
+        "loads": [
+          "axi_adapter.axi_adapter_wr_inst.s_axi_awvalid"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "axi_awvalid_fanout",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "duration_ms": 25729,
+      "confidence": "high",
+      "answer": {
+        "loads": [
+          "axi/axi_adapter.v:211:20"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "axi_arvalid_fanin",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "duration_ms": 35907,
+      "confidence": "medium",
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_arvalid_reg"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "axi_arvalid_fanin",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "duration_ms": 35724,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_arvalid_reg"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "axi_awvalid_fanin",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "duration_ms": 49536,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_wr_inst.m_axi_awvalid_reg"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "axi_awvalid_fanin",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "duration_ms": 45623,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_wr_inst.m_axi_awvalid_reg"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "serv_clk_fanout",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "duration_ms": 66931,
+      "confidence": "high",
+      "answer": {
+        "loads": [
+          "serv_rf_top.rf_ram_if.i_clk",
+          "serv_rf_top.rf_ram.i_clk",
+          "serv_rf_top.cpu.clk"
+        ],
+        "count": 3
+      }
+    },
+    {
+      "task_id": "serv_clk_fanout",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "duration_ms": 18171,
+      "confidence": "medium",
+      "answer": {
+        "loads": [
+          "serv/serv_rf_top.v::serv_rf_top.rf_ram_if.i_clk",
+          "serv/serv_rf_top.v::serv_rf_top.rf_ram.i_clk",
+          "serv/serv_rf_top.v::serv_rf_top.cpu.clk"
+        ],
+        "count": 3
+      }
+    },
+    {
+      "task_id": "serv_alu_clk_fanin",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "duration_ms": 28926,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "serv_rf_top.clk"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "serv_alu_clk_fanin",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "duration_ms": 56700,
+      "confidence": "medium",
+      "answer": {
+        "drivers": [
+          "serv_rf_top.cpu.clk"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "serv_cpu_clk_fanout",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "duration_ms": 160075,
+      "confidence": "medium",
+      "answer": {
+        "loads": [
+          "serv_rf_top.cpu.gen_align.align.clk",
+          "serv_rf_top.cpu.gen_compressed.compdec.i_clk",
+          "serv_rf_top.cpu.state.i_clk",
+          "serv_rf_top.cpu.decode.clk",
+          "serv_rf_top.cpu.immdec.i_clk",
+          "serv_rf_top.cpu.bufreg.i_clk",
+          "serv_rf_top.cpu.bufreg2.i_clk",
+          "serv_rf_top.cpu.ctrl.clk",
+          "serv_rf_top.cpu.alu.clk",
+          "serv_rf_top.cpu.mem_if.i_clk",
+          "serv_rf_top.cpu.gen_csr.csr.i_clk",
+          "serv_rf_top.cpu.gen_debug.debug.i_clk"
+        ],
+        "count": 12
+      }
+    },
+    {
+      "task_id": "serv_cpu_clk_fanout",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "duration_ms": 65510,
+      "confidence": "medium",
+      "answer": {
+        "loads": [
+          "serv_rf_top.cpu.state.i_clk",
+          "serv_rf_top.cpu.decode.clk",
+          "serv_rf_top.cpu.immdec.i_clk",
+          "serv_rf_top.cpu.bufreg.i_clk",
+          "serv_rf_top.cpu.bufreg2.i_clk",
+          "serv_rf_top.cpu.ctrl.clk",
+          "serv_rf_top.cpu.alu.clk",
+          "serv_rf_top.cpu.mem_if.i_clk",
+          "serv_rf_top.cpu.csr.i_clk"
+        ],
+        "count": 9
+      }
+    },
+    {
+      "task_id": "serv_clk_path",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "duration_ms": 33911,
+      "confidence": "high",
+      "answer": {
+        "path": [
+          "serv_rf_top",
+          "serv_rf_top.cpu",
+          "serv_rf_top.cpu.alu",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 3
+      }
+    },
+    {
+      "task_id": "serv_clk_path",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "duration_ms": 50960,
+      "confidence": "high",
+      "answer": {
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      }
+    },
+    {
+      "task_id": "pico_mem_valid_fanout",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "duration_ms": 34420,
+      "confidence": "medium",
+      "answer": {
+        "loads": [
+          "/tmp/lr_pilot/pico/picorv32.v:2639:20",
+          "/tmp/lr_pilot/pico/picorv32.v:2679:14"
+        ],
+        "count": 2
+      }
+    },
+    {
+      "task_id": "pico_mem_valid_fanout",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "duration_ms": 56580,
+      "confidence": "medium",
+      "answer": {
+        "loads": [
+          "pico/picorv32.v:2639"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanin",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "duration_ms": 43468,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "picorv32_axi.mem_valid"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanin",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "duration_ms": 58639,
+      "confidence": "medium",
+      "answer": {
+        "drivers": [
+          "picorv32_axi.picorv32_core.mem_valid"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanout",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "duration_ms": 35679,
+      "confidence": "medium",
+      "answer": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_valid:2773",
+          "picorv32_axi.axi_adapter.mem_valid:2777",
+          "picorv32_axi.axi_adapter.mem_valid:2781",
+          "picorv32_axi.axi_adapter.mem_valid:2786",
+          "picorv32_axi.axi_adapter.mem_valid:2787",
+          "picorv32_axi.axi_adapter.mem_valid:2794",
+          "picorv32_axi.axi_adapter.mem_valid:2801"
+        ],
+        "count": 7
+      }
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanout",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "duration_ms": 124021,
+      "confidence": "medium",
+      "answer": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_axi_rready",
+          "picorv32_axi.axi_adapter.xfer_done"
+        ],
+        "count": 6
+      }
+    },
+    {
+      "task_id": "pico_adapter_rdata_fanin",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "duration_ms": 72172,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "pico_adapter_rdata_fanin",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "duration_ms": 74582,
+      "confidence": "medium",
+      "answer": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "axi_araddr_neighbors",
+      "model": "MiniMax-M3",
+      "arm": "svq",
+      "duration_ms": 59429,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ]
+      }
+    },
+    {
+      "task_id": "axi_araddr_neighbors",
+      "model": "DeepSeek-Flash",
+      "arm": "svq",
+      "duration_ms": 42760,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ]
+      }
+    },
+    {
+      "task_id": "axi_awvalid_fanout",
+      "model": "MiniMax-M3",
+      "arm": "svq",
+      "duration_ms": 194313,
+      "confidence": "high",
+      "answer": {
+        "loads": [
+          "axi_adapter.axi_adapter_wr_inst.s_axi_awvalid"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "axi_awvalid_fanout",
+      "model": "DeepSeek-Flash",
+      "arm": "svq",
+      "duration_ms": 16704,
+      "confidence": "high",
+      "answer": {
+        "loads": [
+          "axi_adapter.axi_adapter_wr_inst.s_axi_awvalid"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "axi_arvalid_fanin",
+      "model": "MiniMax-M3",
+      "arm": "svq",
+      "duration_ms": 263482,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_arvalid_reg"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "axi_arvalid_fanin",
+      "model": "DeepSeek-Flash",
+      "arm": "svq",
+      "duration_ms": 122458,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_arvalid_reg"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "axi_awvalid_fanin",
+      "model": "MiniMax-M3",
+      "arm": "svq",
+      "duration_ms": 322181,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_wr_inst.m_axi_awvalid_reg"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "axi_awvalid_fanin",
+      "model": "DeepSeek-Flash",
+      "arm": "svq",
+      "duration_ms": 210323,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_wr_inst.m_axi_awvalid_reg"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "serv_clk_fanout",
+      "model": "MiniMax-M3",
+      "arm": "svq",
+      "duration_ms": 29547,
+      "confidence": "high",
+      "answer": {
+        "loads": [
+          "serv_rf_top.rf_ram_if.i_clk",
+          "serv_rf_top.rf_ram.i_clk",
+          "serv_rf_top.cpu.clk"
+        ],
+        "count": 3
+      }
+    },
+    {
+      "task_id": "serv_clk_fanout",
+      "model": "DeepSeek-Flash",
+      "arm": "svq",
+      "duration_ms": 26948,
+      "confidence": "high",
+      "answer": {
+        "loads": [
+          "serv_rf_top.rf_ram_if.i_clk",
+          "serv_rf_top.rf_ram.i_clk",
+          "serv_rf_top.cpu.clk"
+        ],
+        "count": 3
+      }
+    },
+    {
+      "task_id": "serv_alu_clk_fanin",
+      "model": "MiniMax-M3",
+      "arm": "svq",
+      "duration_ms": 92177,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "serv_rf_top.cpu.clk"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "serv_alu_clk_fanin",
+      "model": "DeepSeek-Flash",
+      "arm": "svq",
+      "duration_ms": 78994,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "serv_rf_top.cpu.clk"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "serv_cpu_clk_fanout",
+      "model": "MiniMax-M3",
+      "arm": "svq",
+      "duration_ms": 115802,
+      "confidence": "medium",
+      "answer": {
+        "loads": [
+          "serv_rf_top.cpu.state.i_clk",
+          "serv_rf_top.cpu.decode.clk",
+          "serv_rf_top.cpu.immdec.i_clk",
+          "serv_rf_top.cpu.bufreg.i_clk",
+          "serv_rf_top.cpu.bufreg2.i_clk",
+          "serv_rf_top.cpu.ctrl.clk",
+          "serv_rf_top.cpu.alu.clk",
+          "serv_rf_top.cpu.mem_if.i_clk"
+        ],
+        "count": 8
+      }
+    },
+    {
+      "task_id": "serv_cpu_clk_fanout",
+      "model": "DeepSeek-Flash",
+      "arm": "svq",
+      "duration_ms": 57154,
+      "confidence": "medium",
+      "answer": {
+        "loads": [
+          "serv_rf_top.cpu.state.i_clk",
+          "serv_rf_top.cpu.decode.clk",
+          "serv_rf_top.cpu.immdec.i_clk",
+          "serv_rf_top.cpu.bufreg.i_clk",
+          "serv_rf_top.cpu.bufreg2.i_clk",
+          "serv_rf_top.cpu.ctrl.clk",
+          "serv_rf_top.cpu.alu.clk",
+          "serv_rf_top.cpu.mem_if.i_clk"
+        ],
+        "count": 8
+      }
+    },
+    {
+      "task_id": "serv_clk_path",
+      "model": "MiniMax-M3",
+      "arm": "svq",
+      "duration_ms": 69625,
+      "confidence": "high",
+      "answer": {
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      }
+    },
+    {
+      "task_id": "serv_clk_path",
+      "model": "DeepSeek-Flash",
+      "arm": "svq",
+      "duration_ms": 69268,
+      "confidence": "high",
+      "answer": {
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      }
+    },
+    {
+      "task_id": "pico_mem_valid_fanout",
+      "model": "MiniMax-M3",
+      "arm": "svq",
+      "duration_ms": 115826,
+      "confidence": "high",
+      "answer": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_valid"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "pico_mem_valid_fanout",
+      "model": "DeepSeek-Flash",
+      "arm": "svq",
+      "duration_ms": 50805,
+      "confidence": "high",
+      "answer": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_valid"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanin",
+      "model": "MiniMax-M3",
+      "arm": "svq",
+      "duration_ms": 60157,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "picorv32_axi.mem_valid"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanin",
+      "model": "DeepSeek-Flash",
+      "arm": "svq",
+      "duration_ms": 43675,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "picorv32_axi.mem_valid"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanout",
+      "model": "MiniMax-M3",
+      "arm": "svq",
+      "duration_ms": 171643,
+      "confidence": "high",
+      "answer": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_axi_rready",
+          "picorv32_axi.axi_adapter.xfer_done"
+        ],
+        "count": 6
+      }
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanout",
+      "model": "DeepSeek-Flash",
+      "arm": "svq",
+      "duration_ms": 33025,
+      "confidence": "high",
+      "answer": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_axi_rready",
+          "picorv32_axi.axi_adapter.xfer_done"
+        ],
+        "count": 6
+      }
+    },
+    {
+      "task_id": "pico_adapter_rdata_fanin",
+      "model": "MiniMax-M3",
+      "arm": "svq",
+      "duration_ms": 249910,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata"
+        ],
+        "count": 1
+      }
+    },
+    {
+      "task_id": "pico_adapter_rdata_fanin",
+      "model": "DeepSeek-Flash",
+      "arm": "svq",
+      "duration_ms": 145938,
+      "confidence": "medium",
+      "answer": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata"
+        ],
+        "count": 1
+      }
+    }
+  ]
+}
