@@ -29,11 +29,17 @@ sandbox-exec \
 bash sandbox backend is not available on this host; the **external**
 `sandbox-exec` profile is the actual isolation boundary.
 
+## Canonical-path audit
+
+`/tmp` is a symlink to `/private/tmp`. Denying only `/tmp/lr_pilot` does not
+deny `/private/tmp/lr_pilot` in `sandbox-exec`. Profiles deny both paths.
+
 ## Verified probes
 
 - source profile: reading repo `README.md` → `Operation not permitted`;
 - source profile: executing `sv_query` → denied;
 - source/T2 DeepSeek on AXI fanin task → correct canonical IDs.
 
-MiniMax quota recovered; a single-task source/T2 retry passed. The full
-two-model 12x3 hard-isolated matrix is still **not** run.
+MiniMax quota recovered; after fixing canonical-path denial, both models'
+source/T2 single-task probes passed. The full two-model 12x3 hard-isolated
+matrix is still **not** run.

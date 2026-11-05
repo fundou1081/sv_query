@@ -32,12 +32,19 @@ DeepSeek-Flash 单题 AXI fanin：
 | source hard | drivers/loads correct |
 | svq hard | drivers/loads correct |
 
-## ⚠️ 额度恢复后的重试
+## 🔎 审计结果
 
-- MiniMax-M3 quota 恢复；source/T2 单题通过；
-- 仍只完成单题 PoC，12×3 全矩阵未跑；
-- MiniMax source 输出声称读过 `/tmp/lr_pilot` artifact，但 sandbox 已 deny，
-  需审计是否臆造/泄漏。
+- 首次 profile deny `/tmp/lr_pilot` 未覆盖 canonical `/private/tmp/lr_pilot`；
+- MiniMax 声称读取 artifact 是**真实泄漏**，不是臆造；
+- 修复 profile（deny canonical path）；
+- 修复 hard workspace filelist（`rewrite_filelists.py`）；
+- 修复后两模型 source/T2 单题都正确。
+
+## ⚠️ 稳定性
+
+- 硬隔离只有单题 4 cells，不能评估方差；
+- 软隔离 T2 两 seed 12/12，source 6–10/12；
+- 12×3 硬隔离仍未跑。
 
 ## 🔜 下一步
 
