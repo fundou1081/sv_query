@@ -1,0 +1,66 @@
+{
+  "protocol": "pilot-v2; 4 tasks; source-only vs sv_query; MiniMax-M3 / DeepSeek-Flash",
+  "tasks": [
+    {
+      "id": "axi_fanin",
+      "question": "direct drivers/loads of axi_adapter.axi_adapter_rd_inst.m_axi_araddr",
+      "ground_truth": {
+        "drivers": ["axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"],
+        "loads": ["axi_adapter.m_axi_araddr"]
+      }
+    },
+    {
+      "id": "serv_fanout",
+      "question": "direct loads of serv_rf_top.clk",
+      "ground_truth": {
+        "loads": [
+          "serv_rf_top.rf_ram_if.i_clk",
+          "serv_rf_top.rf_ram.i_clk",
+          "serv_rf_top.cpu.clk"
+        ],
+        "count": 3
+      }
+    },
+    {
+      "id": "pico_fanout",
+      "question": "direct loads of picorv32_axi.mem_valid",
+      "ground_truth": {
+        "loads": ["picorv32_axi.axi_adapter.mem_valid"],
+        "count": 1
+      }
+    },
+    {
+      "id": "serv_path",
+      "question": "shortest structural path serv_rf_top.clk -> serv_rf_top.cpu.alu.clk",
+      "ground_truth": {
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      }
+    }
+  ],
+  "results": [
+    {"task_id": "axi_fanin", "model": "MiniMax-M3", "arm": "source", "duration_ms": 77967, "confidence": null, "answer": {}},
+    {"task_id": "serv_fanout", "model": "MiniMax-M3", "arm": "source", "duration_ms": 117005, "confidence": "high", "answer": {"loads": ["serv_rf_top.rf_ram_if.i_clk", "serv_rf_top.rf_ram.i_clk", "serv_rf_top.cpu.clk"], "count": 3}},
+    {"task_id": "pico_fanout", "model": "MiniMax-M3", "arm": "source", "duration_ms": 25455, "confidence": "high", "answer": {"loads": ["picorv32_axi.mem_valid", "picorv32_axi.mem_valid"], "count": 2}},
+    {"task_id": "serv_path", "model": "MiniMax-M3", "arm": "source", "duration_ms": 54554, "confidence": "high", "answer": {"path": ["serv_rf_top.clk", "serv_rf_top.cpu", "serv_rf_top.cpu.alu.clk"], "count": 2}},
+
+    {"task_id": "axi_fanin", "model": "MiniMax-M3", "arm": "svq", "duration_ms": 14185, "confidence": "high", "answer": {"drivers": ["axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"], "loads": ["axi_adapter.m_axi_araddr"]}},
+    {"task_id": "serv_fanout", "model": "MiniMax-M3", "arm": "svq", "duration_ms": 34805, "confidence": "high", "answer": {"loads": ["serv_rf_top.rf_ram_if.i_clk", "serv_rf_top.rf_ram.i_clk", "serv_rf_top.cpu.clk"], "count": 3}},
+    {"task_id": "pico_fanout", "model": "MiniMax-M3", "arm": "svq", "duration_ms": 30835, "confidence": "high", "answer": {"loads": ["picorv32_axi.axi_adapter.mem_valid"], "count": 1}},
+    {"task_id": "serv_path", "model": "MiniMax-M3", "arm": "svq", "duration_ms": 33219, "confidence": "high", "answer": {"path": ["serv_rf_top.clk", "serv_rf_top.cpu.clk", "serv_rf_top.cpu.alu.clk"], "count": 2}},
+
+    {"task_id": "axi_fanin", "model": "DeepSeek-Flash", "arm": "source", "duration_ms": 58793, "confidence": "low", "answer": {"drivers": ["axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"], "loads": []}},
+    {"task_id": "serv_fanout", "model": "DeepSeek-Flash", "arm": "source", "duration_ms": 30690, "confidence": "medium", "answer": {"loads": ["serv_rf_top.rf_ram_if.i_clk", "serv_rf_top.rf_ram.i_clk", "serv_rf_top.cpu.clk"], "count": 3}},
+    {"task_id": "pico_fanout", "model": "DeepSeek-Flash", "arm": "source", "duration_ms": 106916, "confidence": "medium", "answer": {"loads": ["picorv32_axi.axi_adapter.mem_valid@picorv32.v:2639:20"], "count": 1}},
+    {"task_id": "serv_path", "model": "DeepSeek-Flash", "arm": "source", "duration_ms": 54147, "confidence": "high", "answer": {"path": ["serv_rf_top.clk", "serv_rf_top.cpu.clk", "serv_rf_top.cpu.alu.clk"], "count": 2}},
+
+    {"task_id": "axi_fanin", "model": "DeepSeek-Flash", "arm": "svq", "duration_ms": 15098, "confidence": "high", "answer": {"drivers": ["axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"], "loads": ["axi_adapter.m_axi_araddr"]}},
+    {"task_id": "serv_fanout", "model": "DeepSeek-Flash", "arm": "svq", "duration_ms": 12624, "confidence": "high", "answer": {"loads": ["serv_rf_top.rf_ram_if.i_clk", "serv_rf_top.rf_ram.i_clk", "serv_rf_top.cpu.clk"], "count": 3}},
+    {"task_id": "pico_fanout", "model": "DeepSeek-Flash", "arm": "svq", "duration_ms": 12803, "confidence": null, "answer": {}},
+    {"task_id": "serv_path", "model": "DeepSeek-Flash", "arm": "svq", "duration_ms": 47033, "confidence": "high", "answer": {"path": ["serv_rf_top.clk", "serv_rf_top.cpu.clk", "serv_rf_top.cpu.alu.clk"], "count": 2}}
+  ]
+}
