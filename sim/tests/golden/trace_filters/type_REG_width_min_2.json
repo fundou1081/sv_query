@@ -22,6 +22,7 @@
     "failed_signals": 0,
     "signals": [
       {
+        "bit_fallback": false,
         "candidates": [],
         "coarse_fallback": false,
         "condition_truncated": false,
@@ -40,7 +41,7 @@
           "method": "count",
           "status": "none"
         },
-        "driver_count": 2,
+        "driver_count": 1,
         "drivers": [
           {
             "bit_range": null,
@@ -135,6 +136,11 @@
         "runtime_system_call": false,
         "signal": "uart_top.rx_fifo.count_q",
         "suggestions": [],
+        "top_ambiguous": true,
+        "top_modules": [
+          "synchronizer",
+          "uart_top"
+        ],
         "truncated": false,
         "truncated_by_depth": false
       }

@@ -350,6 +350,18 @@ JSON_CONTRACT = {
             "type": "boolean",
             "desc": "bit query mixed with bus/constant fallback; downgrade to bus",
         },
+        "top_modules": {
+            "type": "array<string>",
+            "desc": "compiled top modules (requires --top if multiple for bit fallback)",
+        },
+        "top_ambiguous": {
+            "type": "boolean",
+            "desc": "multiple tops and no --top; use --top for an explicit scope",
+        },
+        "bit_fallback": {
+            "type": "boolean",
+            "desc": "requested bit had no node; answer uses parent bus",
+        },
         "dynamic_index": {
             "type": "boolean",
             "desc": "runtime index (mem[i]) affects this query -> precision=unknown",
