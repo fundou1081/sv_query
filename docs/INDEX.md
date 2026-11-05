@@ -18,7 +18,7 @@
 | 全量 (canonical) | **2529 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; 7 skipped / 119 deselected) | 2026-11-04 实测 (iter_369): 性能/walkthrough +2。历史: iter_368 2527 / iter_367 2524 |
 | CLI / integration | **810 passed / 0 failed** (`sim/tests/cli sim/tests/integration`, `-m "not opensource"`) | 2026-09-08 实测 (iter_185 修复后) |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (360 份, 只增不改) | 每次迭代一份 |
+| 迭代记录 | `docs/task_tree/iterations/` (361 份, 只增不改) | 每次迭代一份 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 | 语义 regex 纪律 | `python3 tools/check_semantic_regex.py` 必须 ✅ | 仅 UVM 宏例外；class/constraint/covergroup 语义走 slang (iter_368) |
@@ -76,6 +76,7 @@
 | [validation/QUERY_PERF_2026-11-04.md](validation/QUERY_PERF_2026-11-04.md) | **查询性能基准**: picorv32 / verilog-axi / SERV 的 build、warm query、cold CLI、峰值内存 |
 | [validation/LONG_RANGE_PILOT_2026-11-05.md](validation/LONG_RANGE_PILOT_2026-11-05.md) | **长程结构查询 pilot**: MiniMax-M3 / DeepSeek-Flash 的 source-only vs sv_query；4 题、含隔离缺陷 |
 | [validation/LONG_RANGE_12_2026-11-05.md](validation/LONG_RANGE_12_2026-11-05.md) | **长程结构查询 12-task 对照**: 48 agents；exact 6–7/12 → 12/12；wall time 未下降；输入污染已审计 |
+| [validation/LONG_RANGE_SEED2_2026-11-05.md](validation/LONG_RANGE_SEED2_2026-11-05.md) | **seed-2 小样本**: 4 题；T2 两 seed 4/4；source 臂方差大；部分隔离 |
 | [validation/COMPARISON_RECORD_2026-11-05.md](validation/COMPARISON_RECORD_2026-11-05.md) | **对比结果冻结记录**: 哈希、模型、指标、单独复验脚本与已知缺陷 |
 | [validation/long_range_12_usage_2026-11-05.json](validation/long_range_12_usage_2026-11-05.json) | **token/tool-call 汇总**: 四臂 token、tool calls、tokens/correct |
 | [architecture/long_range_structural_benchmark_2026-11-05.md](architecture/long_range_structural_benchmark_2026-11-05.md) | **长程结构查询对照基准**: B0/B1/T1/T2 对照、任务族、ground truth 冻结与准确度/成本指标 |
