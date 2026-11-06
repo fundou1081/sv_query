@@ -1,0 +1,133 @@
+{
+  "scenarios": [
+    {
+      "id": "deep_drive_chain",
+      "fixture": "examples/interactive_debug/deep_chain.sv",
+      "prompt": "Find the most granular directed structural drive chain from `top.din` to `top.dout`. Use at least 4 iterative queries: path, register/profile, XOR, mux control. Return the ordered canonical path (including instance-qualified ports), hop_count, register node, XOR node, mux control node (source or intra-stage canonical), and whether the chain is purely combinational.",
+      "ground_truth": {
+        "path": [
+          "top.din",
+          "top.u_mid.d",
+          "top.u_mid.u_stage.d",
+          "top.u_mid.u_stage.u_leaf.d",
+          "top.u_mid.u_stage.u_leaf.q",
+          "top.u_mid.u_stage.leaf_q",
+          "top.u_mid.u_stage.mixed",
+          "top.u_mid.u_stage.q",
+          "top.u_mid.q",
+          "top.mid_q",
+          "top.dout"
+        ],
+        "hop_count": 10,
+        "register": "top.u_mid.u_stage.u_leaf.q",
+        "xor": "top.u_mid.u_stage.mixed",
+        "mux_control": "top.u_mid.u_stage.sel",
+        "combinational": false,
+        "path_variant_short": [
+          "top.din",
+          "top.u_mid.d",
+          "top.u_mid",
+          "top.u_mid.q",
+          "top.mid_q",
+          "top.dout"
+        ],
+        "accepted_path_variants": [
+          [
+            "top.din",
+            "top.u_mid.d",
+            "top.u_mid.u_stage.d",
+            "top.u_mid.u_stage.u_leaf.d",
+            "top.u_mid.u_stage.u_leaf.q",
+            "top.u_mid.u_stage.leaf_q",
+            "top.u_mid.u_stage.mixed",
+            "top.u_mid.u_stage.q",
+            "top.u_mid.q",
+            "top.mid_q",
+            "top.dout"
+          ],
+          [
+            "top.din",
+            "top.u_mid.d",
+            "top.u_mid.u_stage.u_leaf.d",
+            "top.u_mid.u_stage.u_leaf.q",
+            "top.u_mid.u_stage.leaf_q",
+            "top.u_mid.u_stage.mixed",
+            "top.u_mid.u_stage.q",
+            "top.u_mid.q",
+            "top.mid_q",
+            "top.dout"
+          ]
+        ],
+        "mux_control_source": "top.sel"
+      }
+    },
+    {
+      "id": "rand_constraints",
+      "fixture": "examples/interactive_debug/rand_coverage.sv",
+      "prompt": "For `top.e.p.addr` and `top.e.p.len`, determine rand mode, declared type, all constraints (including inherited), which defined_in class each constraint has, and which single **constraint block** references both variables. Use at least 4 iterative queries (class -> members -> constraints -> instance check). Return exact constraint block IDs + defined_in/inherited.",
+      "ground_truth": {
+        "vars": {
+          "top.e.p.addr": {
+            "rand": true,
+            "rand_mode": "Rand",
+            "type": "int",
+            "constraints": [
+              "packet.c_base",
+              "packet.c_packet"
+            ]
+          },
+          "top.e.p.len": {
+            "rand": true,
+            "rand_mode": "Rand",
+            "type": "bit[7:0]",
+            "constraints": [
+              "packet.c_packet"
+            ]
+          }
+        },
+        "defined_in": {
+          "packet.c_base": "base",
+          "packet.c_packet": "packet"
+        },
+        "inherited": {
+          "packet.c_base": true,
+          "packet.c_packet": false
+        },
+        "both_vars_block": "packet.c_packet"
+      }
+    },
+    {
+      "id": "rand_coverage_mapping",
+      "fixture": "examples/interactive_debug/rand_coverage.sv",
+      "prompt": "Build the random-variable to coverage mapping for instance `top.e`, covergroup `cg` in rand_coverage.sv. For every rand var, map it to coverpoint(s), bins, and cross; include the constraints attached to the sampled property. Use at least 4 iterative queries. State explicitly if any rand variable has no coverage.",
+      "ground_truth": {
+        "instance": "top.e",
+        "covergroup": "cg",
+        "mapping": {
+          "top.e.p.addr": {
+            "coverpoint": "cp_addr",
+            "bins": [
+              "low",
+              "high"
+            ]
+          },
+          "top.e.p.len": {
+            "coverpoint": "cp_len",
+            "bins": [
+              "len_small",
+              "len_large"
+            ]
+          }
+        },
+        "cross": {
+          "name": "cross_cp_addr_cp_len",
+          "items": [
+            "cp_addr",
+            "cp_len"
+          ]
+        },
+        "uncovered_rand_vars": []
+      }
+    }
+  ]
+}

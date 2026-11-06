@@ -115,6 +115,14 @@ P72 filelist 编译失败显式分类 <已完成>
 P73 项目目标/计划/测试缺口审计 <已完成>
 -- P73.1 审计文档与下一步排序 <已完成>
 
+P74 交互式 debug 场景 pilot <已完成>
+-- P74.1 三场景 fixture + ground truth <已完成>
+-- P74.2 连续追问 harness / 模型运行 <已完成>
+-- P74.3 结果与场景评估 <已完成>
+
+P75 covergroup bin_details 暴露 <已完成>
+-- P75.1 CLI bin name/kind/values + contract/test <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>
