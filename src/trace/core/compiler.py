@@ -69,9 +69,11 @@ from pyslang import DiagnosticEngine
 
 
 class CompilationError(Exception):
-    """编译错误异常"""
+    """编译错误异常；显式分类供 CLI/agent 区分 filelist 与 elaboration。"""
 
-    pass
+    def __init__(self, message: str, error_code: str = "E_ELABORATION_FAILED"):
+        super().__init__(message)
+        self.error_code = error_code
 
 
 # ---------------------------------------------------------------------------
@@ -167,7 +169,8 @@ def _reject_non_design_unit(tree: object, fname: str, source: str = "") -> None:
         raise CompilationError(
             f"{fname}: 解析结果的根节点是 {kind} (SystemVerilog 表达式), 不是设计"
             f"单元 — pyslang 在此情况会原生 SIGTRAP (addSyntaxTree)。"
-            f"常见原因: 把 filelist/文本文件当源码传入 (请用 --filelist 传 .f)。"
+            f"常见原因: 把 filelist/文本文件当源码传入 (请用 --filelist 传 .f)。",
+            error_code="E_FILELIST_INVALID",
         )
 
     # [iter_209 R4-1] filelist 内容识别: 非 .f 扩展名的 filelist 经 `-f` 传入时,
@@ -190,7 +193,8 @@ def _reject_non_design_unit(tree: object, fname: str, source: str = "") -> None:
         if line.startswith(_MARKERS) or _is_bare_path:
             raise CompilationError(
                 f"{fname}: 内容看起来是 filelist (特征行 {line[:60]!r}), "
-                f"不是 SystemVerilog 源码 — 请用 --filelist 传入该文件"
+                f"不是 SystemVerilog 源码 — 请用 --filelist 传入该文件",
+                error_code="E_FILELIST_INVALID",
             )
         if checked >= 20:
             break
@@ -318,7 +322,8 @@ class SVCompiler:
         if not spec.files:
             raise CompilationError(
                 f"filelist {filelist_path} 没有解析到任何源文件 "
-                f"({len(spec.missing)} 个条目缺失/不可解析) — 请检查路径与基准目录"
+                f"({len(spec.missing)} 个条目缺失/不可解析) — 请检查路径与基准目录",
+                error_code="E_FILELIST_INCOMPLETE",
             )
         for d in spec.include_dirs:
             # 一个 +incdir+ 行可能含逗号分隔的多目录 (parse_filelist 已展开为逗号串)

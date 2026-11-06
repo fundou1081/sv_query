@@ -108,6 +108,10 @@ P71 agent 查询可靠性修复 <已完成>
 -- P71.3 bit_fallback / top 字段显式化 <已完成>
 -- P71.4 测试/契约/文档 <已完成>
 
+P72 filelist 编译失败显式分类 <已完成>
+-- P72.1 E_FILELIST_INCOMPLETE/INVALID + E_ELABORATION_FAILED <已完成>
+-- P72.2 测试/文档 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>
