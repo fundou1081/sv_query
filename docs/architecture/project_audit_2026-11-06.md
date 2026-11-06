@@ -32,7 +32,7 @@
 
 ## 2. 当前实现状态
 
-- 2535 passed / 0 failed（7 skipped / 119 deselected）；
+- 2538 passed / 0 failed（7 skipped / 119 deselected）；
 - 39 命令 = core 35 + exp 4；
 - 真实项目 smoke：strict_uart / verilog-axi / picorv32 / SERV；
 - 查询性能：build 1.8–26 s；warm query 2–15 ms（本机三设计）；

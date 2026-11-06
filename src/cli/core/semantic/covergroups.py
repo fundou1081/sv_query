@@ -134,10 +134,16 @@ def coverpoints_cmd(
         tracer = _build_tracer(file=file, filelist=filelist)
         tracer.build_graph()
         items = [_coverpoint_ref(x) for x in tracer.trace_coverpoints(signal)]
+        result = {"signal": signal, "count": len(items), "matches": items}
+        if not items:
+            result["hint"] = (
+                "use an instance-qualified property path (e.g. top.e.p.addr) "
+                "for class coverpoints; `trace covergroups` lists definition refs"
+            )
         data = {"ok": True, "command": "trace_coverpoints",
                 "params": {"file": str(file) if file else None, "filelist": filelist,
                            "signal": signal},
-                "result": {"signal": signal, "count": len(items), "matches": items},
+                "result": result,
                 "errors": []}
         if json_output:
             emit_json(data, pretty)
