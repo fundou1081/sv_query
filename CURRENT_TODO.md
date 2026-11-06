@@ -3,7 +3,7 @@
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **可视化计划**: [structural_review_plan_2026-11-02](docs/architecture/structural_review_plan_2026-11-02.md) — 全设计图退役；动态子图 + 局部 review。
-> **最后更新**: 2026-11-04 GMT+8 (iter_370: README 项目描述校准)
+> **最后更新**: 2026-11-06 GMT+8 (iter_377: filelist 编译错误分类)
 
 ---
 
@@ -18,6 +18,7 @@
 - **P68** README 项目描述校准 ✅（iter_370）
 - **P69** 长程结构查询对照基准 ✅（P69.7 全矩阵待环境）
 - **P71** agent 查询可靠性修复 ✅（iter_376）
+- **P72** filelist 编译失败分类 ✅（iter_377）
 
 > P67/P68 已完成；P62.2 交互式 debug 保持 gate。
 
@@ -26,10 +27,10 @@
 ## 📦 仓库状态
 
 - **分支**: `main`；最新提交以 `git log -1` 为准
-- **全量基线**: **2532 passed / 0 failed**（`sim/tests/`, `-m "not opensource"`；
-  7 skipped / 119 deselected；iter_376 实测）
+- **全量基线**: **2534 passed / 0 failed**（`sim/tests/`, `-m "not opensource"`；
+  7 skipped / 119 deselected；iter_377 实测）
 - **命令面**: 39 命令 = core 35 + exp 4（class/constraint/covergroup）
-- **当前重点**: README 已校准；P67 性能/walkthrough 已交付；下一步再评估 HWE/VeriBug 对照环境
+- **当前重点**: P71 可靠性 + P72 filelist 错误分类已完成；下一步外部 benchmark 或 warm service
 
 ---
 

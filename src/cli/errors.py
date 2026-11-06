@@ -37,6 +37,8 @@ class ErrorCode(StrEnum):
     # 输入类
     E_FILE_NOT_FOUND = "E_FILE_NOT_FOUND"  # 源文件不存在
     E_FILELIST_NOT_FOUND = "E_FILELIST_NOT_FOUND"  # filelist 不存在
+    E_FILELIST_INCOMPLETE = "E_FILELIST_INCOMPLETE"  # filelist 无有效源文件
+    E_FILELIST_INVALID = "E_FILELIST_INVALID"  # filelist 被当源码/格式错误
     E_INVALID_INPUT = "E_INVALID_INPUT"  # 输入格式错误
 
     # 解析/elaboration 类
