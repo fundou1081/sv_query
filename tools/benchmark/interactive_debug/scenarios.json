@@ -3,7 +3,7 @@
     {
       "id": "deep_drive_chain",
       "fixture": "examples/interactive_debug/deep_chain.sv",
-      "prompt": "Find the most granular directed structural drive chain from `top.din` to `top.dout`, including the ternary mux expression node if present. Use at least 4 iterative queries: path, register/profile, XOR, mux control. Return ordered canonical path, hop_count, register node, XOR node, mux control node, and whether the chain is purely combinational.",
+      "prompt": "Find the most granular directed structural drive chain from `top.din` to `top.dout`. Use at least 4 iterative queries. Return: ordered canonical path (including any OP_TERNARY), hop_count (edges), register (canonical REG node id), xor_node (canonical signal id), mux_control (canonical select signal id at the mux site), mux_node (canonical OP_TERNARY id), and combinational (true ONLY if the full path contains no sequential element).",
       "ground_truth": {
         "path": [
           "top.din",
