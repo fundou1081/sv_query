@@ -33,6 +33,27 @@
 11. **语义提取必须 slang** — class/constraint/covergroup/UVM 语义走 pyslang semantic AST；
     仅 UVM 宏相关允许源码 regex（预处理会去掉宏），见 [DISCIPLINE §3.5](docs/dev/DISCIPLINE.md)
 
+## 1.1 复杂决策参考：ub-mode
+
+遇到架构/重构/“两个补丁都修不好”的问题，先把 [ub-mode](https://github.com/unclebob/ub-mode)
+当决策纪律，而不是当风格建议：
+
+- **先 Make it Work，再 Make it Right**：先交付可验证的最小行为，再做结构；
+- **Attack the Premise**：两个修法共享一个前提且都失败时，写下该前提，删除这个 assignment，
+  不要继续叠第三个补丁；
+- **Foundational Thinking**：先定数据形状，再写逻辑；边界处 parse 一次，内部信任它；
+- **Model the Domain**：让非法状态无法表示；mux 是表达式节点，不是边上随手加的字符串；
+- **Fix Root Causes**：guard 只止血，不算修复；先复现，再改根因；
+- **Subtract Before You Add**：先删重复/复杂度，再新增；一个决定只放一处；
+- **TDD + Test Behavior**：先看失败测试按预期失败，再写最小实现；测试调用用户路径，
+  不测私有实现；
+- **Sequence work**：一次一个可验证单元；每个单元代码/测试/文档一起收口；
+- **Crapper / Dryer / Mutator**：CC<10、消除重复、用变异测试检查“测试是否真的会失败”；
+- **Practice**：记录决策日志，小步提交，最后 push。
+
+> 复杂决策的默认检查：前提是什么？数据形状对吗？根因在哪？能不能复用已有领域模型？
+> 如果两个补丁都失败，先回到前提，不要继续加边/加字段。
+
 ## 2. 任务流程
 
 - **开工**（缺一步不动手）：**先在 [PLAN.md](PLAN.md) 登记**（新工作挂到对应 `P*` 下，
@@ -80,6 +101,7 @@ git status --porcelain                                               # 只含预
 
 ## 6. 版本
 
+- **v2.5 (2026-11-06)** — 新增 §1.1 ub-mode 复杂决策参考（前提/数据形状/根因/减法/TDD）
 - **v2.4 (2026-11-04)** — 新增铁律 11：语义提取必须 slang，仅 UVM 宏允许 regex；提交前增加 `check_semantic_regex.py`
 - **v2.3 (2026-10-31)** — 新增 [产品方向](docs/architecture/product_direction_2026-10-31.md)：
   agent RTL 查询 + 客观校验；恢复上下文先读产品方向再读 PLAN；低完成度能力降级 exp
