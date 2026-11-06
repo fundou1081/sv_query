@@ -135,6 +135,10 @@ P77 port-map ternary expression 子图 <已完成>
 -- P77.3 trace/controlflow 读分支边 <已完成>
 -- P77.4 文档/全量门禁 <已完成>
 
+P78 P0：post-P77 deep_chain 行为验证 <已完成>
+-- P78.1 3 模型 × 1 seed 重跑 <已完成>
+-- P78.2 结果/失败点/下一步 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>
