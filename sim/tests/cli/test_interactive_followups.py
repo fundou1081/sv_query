@@ -23,16 +23,27 @@ def test_paths_canonical_chooses_maximal_variant():
     assert d["canonical"] is True
     assert d["canonical_policy"] == "max_nodes_then_lexicographic"
     assert d["candidate_count"] == 2
-    assert d["hop_count"] == 10
+    assert d["hop_count"] == 11
     assert d["path"][2] == "top.u_mid.u_stage.d"
+    assert d["path"][3] == "top.u_mid.u_stage.u_leaf.d.ternary_sel"
 
 
-def test_controlflow_marks_wrapper_ternary_unknown():
+def test_controlflow_reads_port_ternary():
     r = _run("controlflow", "analyze", "top.u_mid.u_stage.u_leaf.d", "-f", DEEP)
     assert r.returncode == 0, r.stderr[-300:]
     res = json.loads(r.stdout)["result"]
+    assert res["condition_status"] == "complete"
+    assert any(c["expr"] == "sel" for d in res["conditioned_drivers"]
+               for c in d["conditions"])
+
+
+def test_controlflow_without_edges_is_unknown(tmp_path):
+    p = tmp_path / "t.sv"
+    p.write_text("module top(input a, b, output y); assign y = a; endmodule\n")
+    r = _run("controlflow", "analyze", "top.nope", "-f", str(p))
+    assert r.returncode == 0
+    res = json.loads(r.stdout)["result"]
     assert res["condition_status"] == "unknown"
-    assert any("unmodeled_control" in w for w in res["warnings"])
 
 
 def test_class_relative_name_and_instance_scope_hints():
