@@ -43,3 +43,15 @@ deny `/private/tmp/lr_pilot` in `sandbox-exec`. Profiles deny both paths.
 MiniMax quota recovered; after fixing canonical-path denial, both models'
 source/T2 single-task probes passed. The full two-model 12x3 hard-isolated
 matrix is still **not** run.
+
+## Long-range runner (P81)
+
+`tools/benchmark/run_long_range.py` stages only RTL + local filelists and uses:
+
+- `source.sb` for source arm;
+- `t2_long.sb` for T2, additionally denying repo benchmark/task JSON and docs.
+
+```bash
+python3 tools/benchmark/run_long_range.py \
+  --tasks axi_araddr_neighbors --models DeepSeek-Flash --seed 1
+```
