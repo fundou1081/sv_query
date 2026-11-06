@@ -73,6 +73,8 @@ class ControlFlowAnalysis:
 
     # 分析警告
     warnings: list[str] = field(default_factory=list)
+    # [P77] complete = 有数据边且 control 已知；unknown = 无边/未建模
+    condition_status: str = "unknown"
 
 
 class ControlFlowAnalyzer:
@@ -103,6 +105,7 @@ class ControlFlowAnalyzer:
 
         if not incoming_edges:
             return result
+        result.condition_status = "complete"
 
         # 2. 按源节点分组，找条件驱动
         by_source: dict[str, list[TraceEdge]] = defaultdict(list)
@@ -210,6 +213,7 @@ class ControlFlowAnalyzer:
         for edge in incoming_edges:
             if (getattr(edge, "assign_type", "") == "wrapper_passthrough"
                     and not getattr(edge, "condition", "")):
+                result.condition_status = "unknown"
                 result.warnings.append(
                     "unmodeled_control: wrapper_passthrough edge has no condition; "
                     "port-expression ternary/CONTROL may be flattened (source check required)"

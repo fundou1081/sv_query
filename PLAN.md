@@ -129,6 +129,12 @@ P76 interactive debug 后续修复 <已完成>
 -- P76.3 class relative name/scope 提示 <已完成>
 -- P76.4 测试/契约/文档 <已完成>
 
+P77 port-map ternary expression 子图 <已完成>
+-- P77.1 AGENTS ub-mode + failing tests <已完成>
+-- P77.2 PortBinding/lowering -> OP_TERNARY + BRANCH_* <已完成>
+-- P77.3 trace/controlflow 读分支边 <已完成>
+-- P77.4 文档/全量门禁 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

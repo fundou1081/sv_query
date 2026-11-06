@@ -132,6 +132,13 @@ class GraphBuilder:
                 note="必须在 bit_nodes 之后",
             ),
             Stage(
+                "port_ternary",
+                self._lower_port_ternaries,
+                requires={"nodes", "edges"},
+                provides={"port_ternary"},
+                note="[P77] input port 的简单 ternary -> OP_TERNARY + BRANCH_* + 条件 DRIVER",
+            ),
+            Stage(
                 "wrapper_passthrough",
                 self._elaborate_wrapper_passthroughs,
                 requires={"nodes", "bit_nodes"},
@@ -2090,6 +2097,124 @@ class GraphBuilder:
                 mode, new_nodes, new_edges,
             )
 
+    def _lower_port_ternaries(self):
+        """[P77] 把 input port 上的简单 ternary lower 成表达式子图。
+
+        根因: ConnectionExtractor 只保留 port->signal_name，丢掉 ConditionalOp。
+        这里从 semantic AST 取回 expression，生成:
+          cond -> OP_TERNARY (BRANCH_CONDITION)
+          true/false branch -> OP_TERNARY (BRANCH_TRUE/FALSE)
+          OP_TERNARY -> target (BRANCH_RESULT)
+        同时给真实数据分支加 conditional DRIVER，保持 fanin/controlflow 一致。
+        """
+        from .graph.models import EdgeKind, NodeKind, TraceEdge, TraceNode
+
+        lowered = 0
+        for wrapper in self.adapter.get_module_instances():
+            inst = getattr(wrapper, "_symbol", wrapper)
+            try:
+                hp = str(inst.hierarchicalPath)
+            except (AttributeError, UnicodeDecodeError, TypeError):
+                continue
+            host = hp.rsplit(".", 1)[0] if "." in hp else "top"
+            for pc in getattr(inst, "portConnections", []):
+                lowered += self._lower_one_port_ternary(
+                    pc, hp, host, EdgeKind, NodeKind, TraceEdge, TraceNode)
+        if lowered:
+            logger.debug("_lower_port_ternaries: lowered %d", lowered)
+
+    def _lower_one_port_ternary(self, pc, hp, host, EdgeKind, NodeKind,
+                                TraceEdge, TraceNode) -> int:
+        target, expr, cond = self._port_ternary_info(pc, hp)
+        if target is None:
+            return 0
+        branches = self._port_ternary_branches(expr, host, cond)
+        if branches is None:
+            return 0
+        self._emit_port_ternary(target, host, cond, expr, branches,
+                                EdgeKind, NodeKind, TraceEdge, TraceNode)
+        return 1
+
+    @staticmethod
+    def _port_ternary_signal(expr) -> str | None:
+        """简单 signal ref：NamedValue / Conversion / Unary(~d) -> d。"""
+        if expr is None:
+            return None
+        if getattr(expr, "symbol", None) is not None:
+            try:
+                return str(expr.symbol.name)
+            except (UnicodeDecodeError, TypeError):
+                return None
+        if "Conversion" in str(getattr(expr, "kind", "")):
+            return GraphBuilder._port_ternary_signal(getattr(expr, "operand", None))
+        if "Unary" in str(getattr(expr, "kind", "")):
+            return GraphBuilder._port_ternary_signal(getattr(expr, "operand", None))
+        return None
+
+    def _port_ternary_info(self, pc, hp):
+        """返回 (target, expr, cond)，不满足简单 ternary 则 target=None。"""
+        try:
+            port = str(pc.port.name)
+        except (AttributeError, UnicodeDecodeError, TypeError):
+            return None, None, None
+        target = f"{hp}.{port}"
+        tnode = self.graph.get_node(target)
+        if tnode is None or getattr(tnode.kind, "name", "") != "PORT_IN":
+            return None, None, None
+        expr = getattr(pc, "expression", None)
+        if "Conditional" not in str(getattr(expr, "kind", "")):
+            return None, None, None
+        conds = getattr(expr, "conditions", None) or []
+        cond = self._port_ternary_signal(conds[0].expr) if conds else None
+        return (target, expr, cond) if cond else (None, None, None)
+
+    def _port_ternary_branches(self, expr, host, cond):
+        """简单分支 -> (true_id, false_id)；不支持返回 None。"""
+        true_sig = self._port_ternary_signal(expr.left)
+        false_sig = self._port_ternary_signal(expr.right)
+        if not true_sig or not false_sig:
+            return None
+        ids = (f"{host}.{true_sig}", f"{host}.{false_sig}")
+        if any(i not in self.graph for i in ids):
+            return None
+        return ids
+
+    def _emit_port_ternary(self, target, host, cond, expr, branches,
+                           EdgeKind, NodeKind, TraceEdge, TraceNode) -> None:
+        true_id, false_id = branches
+        op_id = f"{target}.ternary_{cond}"
+        if op_id in self.graph:
+            return
+        cond_id = f"{host}.{cond}"
+        tnode = self.graph.get_node(target)
+        if not hasattr(self.graph, "_port_ternary_targets"):
+            self.graph._port_ternary_targets = set()
+        self.graph._port_ternary_targets.add(target)
+        self.graph.add_trace_node(TraceNode(
+            id=op_id, name=f"?: ({cond})", module=host,
+            kind=NodeKind.OP_TERNARY, width=getattr(tnode, "width", (0, 0)),
+            extra={"op": "Ternary", "sel_label": cond},
+        ))
+        for src, kind in ((cond_id, EdgeKind.BRANCH_CONDITION),
+                          (true_id, EdgeKind.BRANCH_TRUE),
+                          (false_id, EdgeKind.BRANCH_FALSE)):
+            self.graph.add_trace_edge(TraceEdge(src=src, dst=op_id, kind=kind))
+        self.graph.add_trace_edge(TraceEdge(
+            src=op_id, dst=target, kind=EdgeKind.BRANCH_RESULT))
+        self._add_port_ternary_driver(true_id, target, cond, str(expr.left), TraceEdge, EdgeKind)
+        self._add_port_ternary_driver(false_id, target, f"!({cond})", str(expr.right), TraceEdge, EdgeKind)
+
+    def _add_port_ternary_driver(self, src: str, dst: str, cond: str,
+                                 text: str, TraceEdge, EdgeKind) -> None:
+        if any(e.kind == EdgeKind.DRIVER and e.assign_type != "port_ternary"
+               for e in self.graph.get_edges(src, dst)):
+            return
+        self.graph.add_trace_edge(TraceEdge(
+            src=src, dst=dst, kind=EdgeKind.DRIVER,
+            assign_type="port_ternary", condition=cond,
+            condition_chain=[cond], expression=text,
+        ))
+
     def _elaborate_wrapper_passthroughs(self):
         """[iter_276] wrapper 直通边 —— **纯图 + 实例路径**实现。
 
@@ -2122,6 +2247,8 @@ class GraphBuilder:
             kind = node.kind.name
             if kind not in ("PORT_OUT", "PORT_IN"):
                 continue
+            if port_id in getattr(self.graph, "_port_ternary_targets", set()):
+                continue
 
             inst_path, port_name = port_id.rsplit(".", 1)
             prefix = inst_path + "."
@@ -2133,6 +2260,8 @@ class GraphBuilder:
                     continue
                 deep_node = self.graph._node_data.get(deep_id)
                 if deep_node is None or deep_node.kind.name not in ("PORT_OUT", "PORT_IN"):
+                    continue
+                if deep_id in getattr(self.graph, "_port_ternary_targets", set()):
                     continue
                 edge_src, edge_dst = (
                     (port_id, deep_id) if kind == "PORT_IN" else (deep_id, port_id)

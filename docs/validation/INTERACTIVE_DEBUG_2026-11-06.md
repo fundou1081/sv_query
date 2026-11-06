@@ -147,25 +147,24 @@ sv_query paths top.din top.dout --directed --canonical --json
 max_nodes_then_lexicographic
 ```
 
-- 在 10/11 节点变体中选节点数最多的；
+- 在结构变体中选节点数最多的；
 - 输出 `canonical=true`、`canonical_policy`、`candidate_count`、`candidate_truncated`；
 - `--canonical` 与 `--all` 互斥。
 
-对 deep_chain fixture：
+P76 时 deep_chain 固定为 **11 节点 / 10 hops**。P77 加入
+`OP_TERNARY` 后，规范路径变为 **12 节点 / 11 hops**，并显式包含 mux 节点：
 
 ```text
-canonical path: 11 nodes / 10 hops
-candidate_count: 2
+...u_stage.u_leaf.d.ternary_sel
 ```
 
 ### 5.2 未建模 control 显式 unknown
 
-`sel ? d : ~d` 仍未被建模成完整 mux 边，但不再静默空：
+P76 时 `sel ? d : ~d` 只标 unknown。P77 已把**简单 input-port ternary**
+lower 成 `OP_TERNARY + BRANCH_CONDITION/TRUE/FALSE/RESULT`，并生成条件 DRIVER：
 
-- `controlflow analyze` 对 wrapper_passthrough 且无 condition 的边返回：
-  - `condition_status: "unknown"`
-  - `warnings: ["unmodeled_control: ... source check required"]`
-- 这是诚实的 unknown，不是“无条件”。
+- `controlflow analyze` → `condition_status="complete"`，条件含 `sel` / `!(sel)`；
+- 复杂/不支持表达式仍返回 `unknown`，不猜测。
 
 ### 5.3 class relative name / class instance scope 提示
 
@@ -181,11 +180,47 @@ candidate_count: 2
 
 新增 `sim/tests/cli/test_interactive_followups.py`：
 
-- canonical 11 节点 /10 hops；
-- controlflow `unknown`；
+- canonical 路径（P77 后 12 节点 /11 hops）；
+- controlflow 读 port ternary；
 - class relative/scope/coverpoint hints。
 
-全量 **2538 passed / 0 failed**。
+P77 新增 `sim/tests/cli/test_port_ternary.py`：
+
+- `OP_TERNARY` 节点存在；
+- `controlflow` complete；
+- fanin 条件驱动。
+
+全量 **2542 passed / 0 failed**。
+
+---
+
+### 5.5 P77：port-map ternary 已 lower
+
+实现：
+
+```text
+semantic PortConnection.expression (ConditionalOp)
+  -> OP_TERNARY
+  -> BRANCH_CONDITION / TRUE / FALSE / RESULT
+  -> conditional DRIVER
+```
+
+对 deep_chain：
+
+```text
+top.u_mid.u_stage.sel --BRANCH_CONDITION-->
+top.u_mid.u_stage.u_leaf.d.ternary_sel
+top.u_mid.u_stage.d --BRANCH_TRUE/FALSE-->
+top.u_mid.u_stage.u_leaf.d.ternary_sel
+top.u_mid.u_stage.u_leaf.d.ternary_sel --BRANCH_RESULT-->
+top.u_mid.u_stage.u_leaf.d
+```
+
+边界：
+
+- 只支持 input port 的简单 ternary；
+- 不支持 concat/function/复杂表达式，继续 `unknown`；
+- 不新增 `EdgeKind.CONTROL`。
 
 ---
 

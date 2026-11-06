@@ -204,10 +204,7 @@ def analyze(
         "result": {
             "signal": result.signal,
             "conditioned_drivers": drivers_data,
-            "condition_status": (
-                "unknown" if any("unmodeled_control" in w for w in result.warnings)
-                else "complete"
-            ),
+            "condition_status": result.condition_status,
             "warnings": result.warnings,
         },
         "errors": [],

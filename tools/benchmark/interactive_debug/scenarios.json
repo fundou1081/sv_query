@@ -3,12 +3,13 @@
     {
       "id": "deep_drive_chain",
       "fixture": "examples/interactive_debug/deep_chain.sv",
-      "prompt": "Find the most granular directed structural drive chain from `top.din` to `top.dout`. Use at least 4 iterative queries: path, register/profile, XOR, mux control. Return the ordered canonical path (including instance-qualified ports), hop_count, register node, XOR node, mux control node (source or intra-stage canonical), and whether the chain is purely combinational.",
+      "prompt": "Find the most granular directed structural drive chain from `top.din` to `top.dout`, including the ternary mux expression node if present. Use at least 4 iterative queries: path, register/profile, XOR, mux control. Return ordered canonical path, hop_count, register node, XOR node, mux control node, and whether the chain is purely combinational.",
       "ground_truth": {
         "path": [
           "top.din",
           "top.u_mid.d",
           "top.u_mid.u_stage.d",
+          "top.u_mid.u_stage.u_leaf.d.ternary_sel",
           "top.u_mid.u_stage.u_leaf.d",
           "top.u_mid.u_stage.u_leaf.q",
           "top.u_mid.u_stage.leaf_q",
@@ -18,7 +19,7 @@
           "top.mid_q",
           "top.dout"
         ],
-        "hop_count": 10,
+        "hop_count": 11,
         "register": "top.u_mid.u_stage.u_leaf.q",
         "xor": "top.u_mid.u_stage.mixed",
         "mux_control": "top.u_mid.u_stage.sel",
@@ -32,6 +33,20 @@
           "top.dout"
         ],
         "accepted_path_variants": [
+          [
+            "top.din",
+            "top.u_mid.d",
+            "top.u_mid.u_stage.d",
+            "top.u_mid.u_stage.u_leaf.d.ternary_sel",
+            "top.u_mid.u_stage.u_leaf.d",
+            "top.u_mid.u_stage.u_leaf.q",
+            "top.u_mid.u_stage.leaf_q",
+            "top.u_mid.u_stage.mixed",
+            "top.u_mid.u_stage.q",
+            "top.u_mid.q",
+            "top.mid_q",
+            "top.dout"
+          ],
           [
             "top.din",
             "top.u_mid.d",
@@ -58,7 +73,8 @@
             "top.dout"
           ]
         ],
-        "mux_control_source": "top.sel"
+        "mux_control_source": "top.sel",
+        "mux_node": "top.u_mid.u_stage.u_leaf.d.ternary_sel"
       }
     },
     {
