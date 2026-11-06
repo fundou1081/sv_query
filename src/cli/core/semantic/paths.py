@@ -24,6 +24,10 @@ def paths_cmd(
     src: str = typer.Argument(..., help="起点信号 id (如 inst_demo.in_a)"),
     dst: str = typer.Argument(..., help="终点信号 id (如 inst_demo.add_out)"),
     all_paths: bool = typer.Option(False, "--all", "-a", help="枚举全部简单路径 (默认只给一条)"),
+    canonical: bool = typer.Option(
+        False, "--canonical",
+        help="[P76] 在多个结构变体中选确定路径: 节点数最多, 再按字典序; "
+             "用于消除 wrapper port 折叠/保留的 9 vs 10 hop 歧义"),
     directed: bool = typer.Option(
         False, "--directed", "-d",
         help="[iter_268] 只沿数据流方向搜索 (与 `dataflow analyze` 同一张有向图); "
@@ -45,9 +49,12 @@ def paths_cmd(
 
     默认**无向** (结构连通性: 逆着数据流也能找到)；
     `--directed` 只沿数据流方向 (与 `dataflow analyze` 一致, iter_268 起两者结论一致)。
+    `--canonical` 在多个结构变体中选节点数最多的路径（tie-break 字典序），
+    输出 `canonical_policy/candidate_count`，避免 10 vs 11 节点歧义。
 
     例: svq paths inst_demo.in_a inst_demo.add_out --filelist project.f --json
         svq paths in_a add_out --directed --filelist project.f --json
+        svq paths top.din top.dout --directed --canonical --json
     """
     tracer = build_tracer(file, filelist, log_level)
     if tracer is None:
@@ -86,6 +93,10 @@ def paths_cmd(
             out.append(edge_evidence_dict(edges[0]) if edges else None)
         return out
 
+    if canonical and all_paths:
+        fail("--canonical is mutually exclusive with --all", json_output, pretty)
+        return
+
     if all_paths:
         found = resolver.find_all_paths(src_id, dst_id, max_paths=max_paths, directed=directed)
         data = {"ok": True, "src": src, "dst": dst, "src_resolved": src_id,
@@ -94,6 +105,27 @@ def paths_cmd(
                 "all_paths": found}
         if evidence:
             data["edge_evidence"] = [_edge_ev(p) for p in found]
+        emit(data, json_output, pretty)
+        return
+
+    if canonical:
+        candidates = resolver.find_all_paths(
+            src_id, dst_id, max_paths=max_paths, directed=directed)
+        # 确定性: 节点数最多, tie-break 用字典序最大; 不依赖图遍历顺序。
+        best = max(candidates, key=lambda p: (len(p), tuple(p))) if candidates else None
+        data = {
+            "ok": True, "src": src, "dst": dst, "src_resolved": src_id,
+            "dst_resolved": dst_id, "bits": bit_info, "directed": directed,
+            "canonical": True,
+            "canonical_policy": "max_nodes_then_lexicographic",
+            "candidate_count": len(candidates),
+            "candidate_truncated": len(candidates) >= max_paths,
+            "found": best is not None,
+            "hop_count": (len(best) - 1) if best else None,
+            "path": best,
+        }
+        if evidence and best:
+            data["edge_evidence"] = _edge_ev(best)
         emit(data, json_output, pretty)
         return
 

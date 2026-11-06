@@ -116,6 +116,9 @@ class ControlFlowAnalyzer:
             if conditional_edges:
                 result.conditioned_drivers.append(ConditionedDriver(to_node=signal, edges=conditional_edges))
 
+        # [P76] 端口连接里的 ternary 可能被折叠成无 condition 的 wrapper edge。
+        self._mark_unmodeled_control(incoming_edges, result)
+
         # 4. 检查警告
         self._check_warnings(result)
 
@@ -200,6 +203,18 @@ class ControlFlowAnalyzer:
                         conditions.append(edge.condition)
 
         return conditions
+
+    @staticmethod
+    def _mark_unmodeled_control(incoming_edges, result) -> None:
+        """[P76] 无 condition 的 wrapper edge 不能当成“无条件”。"""
+        for edge in incoming_edges:
+            if (getattr(edge, "assign_type", "") == "wrapper_passthrough"
+                    and not getattr(edge, "condition", "")):
+                result.warnings.append(
+                    "unmodeled_control: wrapper_passthrough edge has no condition; "
+                    "port-expression ternary/CONTROL may be flattened (source check required)"
+                )
+                return
 
     def _get_incoming_edges(self, graph, signal: str) -> list[TraceEdge]:
         """获取所有指向信号的边"""

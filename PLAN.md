@@ -123,6 +123,12 @@ P74 交互式 debug 场景 pilot <已完成>
 P75 covergroup bin_details 暴露 <已完成>
 -- P75.1 CLI bin name/kind/values + contract/test <已完成>
 
+P76 interactive debug 后续修复 <已完成>
+-- P76.1 paths --canonical <已完成>
+-- P76.2 未建模 control 显式 unknown <已完成>
+-- P76.3 class relative name/scope 提示 <已完成>
+-- P76.4 测试/契约/文档 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

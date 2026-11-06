@@ -129,14 +129,74 @@ Fixture 在 [examples/interactive_debug/](../../examples/interactive_debug/)，g
 
 ---
 
-## 5. 建议
+## 5. 后续修复（P76，2026-11-06）
+
+针对 pilot 发现的问题，先修了 3 项：
+
+### 5.1 `paths --canonical`
+
+新增：
+
+```bash
+sv_query paths top.din top.dout --directed --canonical --json
+```
+
+策略：
+
+```text
+max_nodes_then_lexicographic
+```
+
+- 在 10/11 节点变体中选节点数最多的；
+- 输出 `canonical=true`、`canonical_policy`、`candidate_count`、`candidate_truncated`；
+- `--canonical` 与 `--all` 互斥。
+
+对 deep_chain fixture：
+
+```text
+canonical path: 11 nodes / 10 hops
+candidate_count: 2
+```
+
+### 5.2 未建模 control 显式 unknown
+
+`sel ? d : ~d` 仍未被建模成完整 mux 边，但不再静默空：
+
+- `controlflow analyze` 对 wrapper_passthrough 且无 condition 的边返回：
+  - `condition_status: "unknown"`
+  - `warnings: ["unmodeled_control: ... source check required"]`
+- 这是诚实的 unknown，不是“无条件”。
+
+### 5.3 class relative name / class instance scope 提示
+
+- `trace constraints p.addr` 失败时返回：
+  - `hint`：使用 `top.e.p.addr` / `packet.addr`；
+  - `suggestions`：`class <type> --member addr`。
+- `scope top.e` 失败时明确提示：
+  - RTL scope 只支持 module/instance；
+  - class instance 用 `class <type>` 或 `trace covergroup <cg> --instance top.e`。
+- `trace coverpoints` 0 match 时给 instance-qualified 提示。
+
+### 5.4 测试
+
+新增 `sim/tests/cli/test_interactive_followups.py`：
+
+- canonical 11 节点 /10 hops；
+- controlflow `unknown`；
+- class relative/scope/coverpoint hints。
+
+全量 **2538 passed / 0 failed**。
+
+---
+
+## 6. 建议
 
 - 把这三题固定为 **interactive debug protocol**，但不冒充准确率 benchmark；
 - 先补 `paths --canonical` 和 mux/control 的显式语义，再做 2 模型 × 3 题 × 2 seed；
 - `bin_details` 已落地，补契约/测试；
 - 下一轮再看 warm query service，而不是先做全量。
 
-## 6. 边界
+## 7. 边界
 
 - 6 个 agent，单 seed，T2 only；
 - 不是 HWE/VeriBug，不声称真实 bug 修复率；

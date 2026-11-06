@@ -562,7 +562,7 @@ JSON_CONTRACT = {
             "link_fields": "covergroup_rand",
         },
         "controlflow analyze": {
-            "result_fields": ["signal", "conditioned_drivers", "warnings"],
+            "result_fields": ["signal", "conditioned_drivers", "condition_status", "warnings"],
             "driver_fields": "controlflow_driver",
             "condition_fields": "controlflow_condition",
             "edge_fields": "controlflow_edge",

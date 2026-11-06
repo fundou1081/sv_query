@@ -34,6 +34,26 @@ def _constraint_dict(info, graph) -> dict:
     }
 
 
+def _relative_hint(property: str, graph) -> dict:
+    """[P76] 相对 class property -> 可行动提示。"""
+    suffix = "." + property
+    matches = [n for n in graph.nodes() if n.endswith(suffix)]
+    if matches:
+        return {
+            "hint": "相对名已匹配到实例级候选；请用 canonical id",
+            "suggestions": sorted(matches)[:5],
+        }
+    return {
+        "hint": (
+            "class-relative property is not a graph id; use an instance-level "
+            "canonical id (e.g. top.e.p.addr) or a type-level id (packet.addr). "
+            "Discover instances with `svq class <type> --relations` / "
+            "`svq class <type> --member <name>`."
+        ),
+        "suggestions": [f"class <type> --member {property.rsplit('.', 1)[-1]}"],
+    }
+
+
 def _query(tracer, graph, property: str):
     r = resolve_signal(graph, property)
     if r.get("ok") and r.get("resolved") in graph:
@@ -85,6 +105,16 @@ def constraints_cmd(
         raise
     except CompilationError as e:
         handle_compilation_error(e)
+    except ValueError as e:
+        hint = _relative_hint(property, tracer.get_graph())
+        data = {"ok": False, "command": "trace_constraints", "error": str(e),
+                "errors": [str(e)], **hint}
+        if json_output:
+            emit_json(data, pretty)
+        else:
+            print(f"Error: {e}", file=sys.stderr)
+            print(f"Hint: {hint['hint']}", file=sys.stderr)
+        raise typer.Exit(code=1) from None
     except Exception as e:
         data = {"ok": False, "command": "trace_constraints", "error": str(e),
                 "errors": [str(e)]}
