@@ -5,7 +5,7 @@
 > agent 面向的 RTL **查询 + 客观校验层**：服务动态 debug（波形值由外部工具提供）与 design 理解；
 > 核心是 canonical identity、evidence、双向验证，而不是自然语言解释。
 
-> 2548 passed (canonical 主回归) | Python 3.11+ | pyslang 语义 AST | NetworkX graph | 真实项目 + 性能基准 + agent 对照（内部）
+> 2550 passed (canonical 主回归) | Python 3.11+ | pyslang 语义 AST | NetworkX graph | 真实项目 + 性能基准 + agent 对照（内部）
 
 > 更新日期: 2026-11-05
 
@@ -117,7 +117,7 @@ sv_query trace fanin cdc_bug.dst_valid   -f examples/anti_hallucination_cdc/cdc_
 
 | 项 | 状态 |
 |---|---|
-| 全量回归 | **2548 passed / 0 failed**（7 skipped / 119 deselected） |
+| 全量回归 | **2550 passed / 0 failed**（7 skipped / 119 deselected） |
 | 开源 smoke | strict_uart / verilog-axi / picorv32 / SERV |
 | 性能基准 | picorv32 / verilog-axi / SERV；build、warm query、cold CLI、peak RSS |
 | 反幻觉 | 单级 CDC walkthrough：profile + fanin/fanout 反驳“两级同步器” |

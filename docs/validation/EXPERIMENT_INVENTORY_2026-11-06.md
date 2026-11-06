@@ -11,7 +11,7 @@
 
 | 资产 | 路径 | 状态 |
 |---|---|---|
-| 场景 | `tools/benchmark/interactive_debug/scenarios.json` | 3 个：deep drive / rand constraints / coverage |
+| 场景 | `tools/benchmark/interactive_debug/scenarios.json` | 5 个：deep drive / rand constraints / coverage / complex constraints / nested mux |
 | fixture | `examples/interactive_debug/` | deep_chain.sv / rand_coverage.sv |
 | runner | `tools/benchmark/interactive_debug/run_seed.py` | 可跑 3 模型 × 3 场景 × seed |
 | 模型配置 | `tools/benchmark/interactive_debug/patches/` | M3 / M3.1 / DeepSeek |

@@ -42,6 +42,8 @@ SHAPES = {
  "defined_in": {"packet.c_base": "base", "packet.c_packet": "packet"},
  "inherited": {"packet.c_base": true, "packet.c_packet": false},
  "both_vars_block": "packet.c_packet"}""",
+    "complex_constraints": """{"property": "top.e.p.len", "rand_vars": ["packet.addr", "packet.len", "packet.mode", "packet.payload"], "constraints": ["packet.c_len", "packet.c_mode", "packet.c_order"], "condition_vars": ["packet.mode"], "both_addr_len_block": "packet.c_order", "inherited": ["packet.c_len"]}""",
+    "mux_neighborhood": """{"seed": "top.q", "register": "top.q", "mux_nodes": ["top.u.lo.ternary_sel[0]", "top.u.hi.ternary_sel[0]", "top.u.y.ternary_sel[1]"], "selects": ["top.u.sel[0]", "top.u.sel[1]"], "data_sources": ["top.u.a", "top.u.b", "top.u.c", "top.u.d"], "conditions": ["sel[0]", "sel[1]"]}""",
     "rand_coverage_mapping": """{"instance": "top.e", "covergroup": "cg",
  "mapping": {"top.e.p.addr": {"coverpoint": "cp_addr", "bins": ["low", "high"]},
              "top.e.p.len": {"coverpoint": "cp_len", "bins": ["len_small", "len_large"]}},
@@ -122,6 +124,23 @@ def _check(task: str, d: dict | None) -> dict:
             "mux_control": a.get("mux_control") == exp["mux_control"],
             "mux_node": a.get("mux_node") == exp["mux_node"],
             "combinational": a.get("combinational") is False,
+        }}
+    if task == "complex_constraints":
+        return {"parsed": True, "checks": {
+            "c_mode": "packet.c_mode" in a.get("constraints", []),
+            "c_order": "packet.c_order" in a.get("constraints", []),
+            "mode_condition": "packet.mode" in a.get("condition_vars", []),
+            "both_addr_len": a.get("both_addr_len_block") == "packet.c_order",
+        }}
+    if task == "mux_neighborhood":
+        return {"parsed": True, "checks": {
+            "mux_nodes": set(a.get("mux_nodes", [])) == {
+                "top.u.lo.ternary_sel[0]", "top.u.hi.ternary_sel[0]",
+                "top.u.y.ternary_sel[1]"},
+            "selects": set(a.get("selects", [])) == {"top.u.sel[0]", "top.u.sel[1]"},
+            "sources": set(a.get("data_sources", [])) == {
+                "top.u.a", "top.u.b", "top.u.c", "top.u.d"},
+            "register": a.get("register") == "top.q",
         }}
     blob = json.dumps(a, ensure_ascii=False).lower()
     if task == "rand_constraints":

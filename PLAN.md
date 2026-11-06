@@ -158,6 +158,11 @@ P83 long-range 查询协议修复 <已完成>
 -- P83.1 --depth 1 / queries / fact check <已完成>
 -- P83.2 4 题 ×2 seed 复跑 <已完成>
 
+P84 constraint/mux 邻域场景 <已完成>
+-- P84.1 邻域 fixture + deterministic truth <已完成>
+-- P84.2 agent pilot <已完成>
+-- P84.3 结果/边界 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>
