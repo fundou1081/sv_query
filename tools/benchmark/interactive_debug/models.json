@@ -1,7 +1,22 @@
 {
   "models": [
-    {"label": "MiniMax-M3", "provider": "minimax-cn", "model": "MiniMax-M3"},
-    {"label": "MiniMax-M3.1-Flash", "provider": "minimax-cn", "model": "MiniMax-M3.1-Flash"},
-    {"label": "DeepSeek-Flash", "provider": "deepseek-official", "model": "deepseek-v4-flash"}
+    {
+      "label": "MiniMax-M3",
+      "provider": "minimax-cn",
+      "model": "MiniMax-M3",
+      "patch": "patches/minimax_m3.yml"
+    },
+    {
+      "label": "MiniMax-M3.1-Flash",
+      "provider": "minimax-cn",
+      "model": "MiniMax-M3.1-Flash",
+      "patch": "patches/minimax_m31.yml"
+    },
+    {
+      "label": "DeepSeek-Flash",
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "patch": "patches/deepseek.yml"
+    }
   ]
 }
