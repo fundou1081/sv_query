@@ -23,7 +23,12 @@ def _cg_summary(cg) -> dict:
         "instance_rule": cg.instance_rule,
         "coverpoints": [
             {"name": cp.name, "signal": cp.signal, "iff": cp.iff,
-             "bins": len(cp.bins), "sampled": len(cp.sampled)}
+             "bins": len(cp.bins), "sampled": len(cp.sampled),
+             "bin_details": [
+                 {"name": b.name, "kind": b.kind, "values": b.values,
+                  "bin_type": b.bin_type}
+                 for b in cp.bins
+             ]}
             for cp in cg.coverpoints
         ],
         "crosses": [

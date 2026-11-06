@@ -45,3 +45,14 @@ def test_bit_fallback_with_top_is_explicit(tmp_path):
     assert s["bit_fallback"] is True
     assert s["top_modules"] == ["top_a"]
     assert s["top_ambiguous"] is False
+
+
+def test_covergroup_exposes_bin_names():
+    r = subprocess.run(
+        ["sv_query", "trace", "covergroups", "-f",
+         "examples/interactive_debug/rand_coverage.sv", "--json"],
+        capture_output=True, text=True, timeout=60, cwd=str(ROOT))
+    assert r.returncode == 0, r.stderr[-300:]
+    cg = json.loads(r.stdout)["result"]["covergroups"][0]
+    bins = {b["name"] for cp in cg["coverpoints"] for b in cp["bin_details"]}
+    assert bins == {"low", "high", "len_small", "len_large"}
