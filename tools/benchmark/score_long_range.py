@@ -10,7 +10,9 @@ from pathlib import Path
 def _match(field, got, want) -> bool:
     if field in ("path", "count"):
         return got == want
-    return set(got or []) == set(want or [])
+    if not isinstance(got, (list, tuple, set)) or not isinstance(want, (list, tuple, set)):
+        return False
+    return set(got) == set(want)
 
 
 def score(data: dict) -> dict:

@@ -1,0 +1,1000 @@
+{
+  "protocol": "P83 fixed direct-query protocol (T2 --depth 1, fact check), 4 tasks x 2 models x 2 arms x 2 seeds",
+  "tasks": [
+    {
+      "id": "axi_araddr_neighbors",
+      "ground_truth": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ]
+      }
+    },
+    {
+      "id": "serv_clk_path",
+      "ground_truth": {
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      }
+    },
+    {
+      "id": "pico_adapter_mem_valid_fanout",
+      "ground_truth": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_axi_rready",
+          "picorv32_axi.axi_adapter.xfer_done"
+        ],
+        "count": 6
+      }
+    },
+    {
+      "id": "pico_adapter_rdata_fanin",
+      "ground_truth": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
+        ],
+        "count": 1
+      }
+    }
+  ],
+  "results": [
+    {
+      "task_id": "axi_araddr_neighbors",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "seed": 1,
+      "duration_ms": 157428,
+      "confidence": null,
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ],
+        "path": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg",
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr",
+          "axi_adapter.m_axi_araddr"
+        ],
+        "count": 2
+      },
+      "queries": [],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "axi_araddr_neighbors",
+      "model": "DeepSeek-Flash",
+      "arm": "t2",
+      "seed": 1,
+      "duration_ms": 21640,
+      "confidence": null,
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ],
+        "path": [],
+        "count": 2
+      },
+      "queries": [],
+      "depth1_ok": false,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "axi_araddr_neighbors",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "seed": 1,
+      "duration_ms": 22280,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ],
+        "path": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr"
+        ],
+        "count": 2
+      },
+      "queries": [
+        "ls -la /tmp/lr_long_hard/MiniMax-M3/axi_araddr_neighbors/source-s1/ && wc -l .../axi.f",
+        "read axi.f",
+        "grep m_axi_araddr in axi/*.v",
+        "read axi/axi_adapter_rd.v",
+        "read axi/axi_adapter.v (lines 140-319)",
+        "grep axi_adapter_rd|m_axi_araddr in axi_adapter.v",
+        "find .cache + cat model.patch.yml",
+        "grep m_axi_araddr in axi_adapter_wr.v",
+        "grep axi_adapter in axi/*.v",
+        "bash: grep m_axi_araddr decls/assigns + sed tail of axi_adapter.v",
+        "bash: grep -c m_axi_araddr + no-parent-instantiation check",
+        "grep axi_adapter_rd_inst in axi/"
+      ],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "axi_araddr_neighbors",
+      "model": "MiniMax-M3",
+      "arm": "t2",
+      "seed": 1,
+      "duration_ms": 86875,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ],
+        "path": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg",
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr",
+          "axi_adapter.m_axi_araddr"
+        ],
+        "count": 2
+      },
+      "queries": [
+        "sv_query drivers \"axi_adapter.axi_adapter_rd_inst.m_axi_araddr\" --filelist axi.f --depth 1 --json --pretty",
+        "sv_query loads \"axi_adapter.axi_adapter_rd_inst.m_axi_araddr\" --filelist axi.f --depth 1 --json --pretty",
+        "sv_query trace lookup --path \"axi_adapter.axi_adapter_rd_inst.m_axi_araddr\" --path \"axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg\" --path \"axi_adapter.m_axi_araddr\" --filelist axi.f --json --pretty"
+      ],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanout",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "seed": 1,
+      "duration_ms": 105953,
+      "confidence": null,
+      "answer": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_axi_rready",
+          "picorv32_axi.axi_adapter.xfer_done",
+          "picorv32_axi.axi_adapter.ack_awvalid",
+          "picorv32_axi.axi_adapter.ack_arvalid",
+          "picorv32_axi.axi_adapter.ack_wvalid"
+        ],
+        "count": 9
+      },
+      "queries": [],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": false
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanout",
+      "model": "DeepSeek-Flash",
+      "arm": "t2",
+      "seed": 1,
+      "duration_ms": 54442,
+      "confidence": "high",
+      "answer": {
+        "drivers": [],
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_axi_rready",
+          "picorv32_axi.axi_adapter.xfer_done"
+        ],
+        "path": [],
+        "count": 6
+      },
+      "queries": [
+        "sv_query loads picorv32_axi.axi_adapter.mem_valid --file picorv32.v --depth 1 --json --pretty --evidence",
+        "sv_query loads picorv32_axi.axi_adapter.mem_valid --file picorv32.v --depth 1 --json | jq -r '[.result.signals[0].loads[] | {id,kind,module,distance}] | \"COUNT=\\(length)\", (.[]|@json)'",
+        "sv_query loads picorv32_axi.axi_adapter.mem_valid --file picorv32.v --depth 1 --json --evidence | jq -r '.result.signals[0].loads'"
+      ],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanout",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "seed": 1,
+      "duration_ms": 34788,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_valid"
+        ],
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_axi_rready",
+          "picorv32_axi.axi_adapter.xfer_done",
+          "picorv32_axi.axi_adapter.ack_awvalid",
+          "picorv32_axi.axi_adapter.ack_arvalid",
+          "picorv32_axi.axi_adapter.ack_wvalid"
+        ],
+        "path": [],
+        "count": 7
+      },
+      "queries": [
+        "grep -n 'mem_valid' picorv32.v",
+        "grep -n 'mem_valid' source-s1/",
+        "read picorv32.v:2595-2714",
+        "read picorv32.v:2745-2824",
+        "read picorv32.v:2885-3024",
+        "read picorv32.v:2725-2754",
+        "grep -n 'mem_valid|module |endmodule' picorv32.v"
+      ],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": false
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanout",
+      "model": "MiniMax-M3",
+      "arm": "t2",
+      "seed": 1,
+      "duration_ms": 54039,
+      "confidence": "high",
+      "answer": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_axi_rready",
+          "picorv32_axi.axi_adapter.xfer_done"
+        ],
+        "count": 6
+      },
+      "queries": [
+        "sv_query trace lookup --path \"picorv32_axi.axi_adapter.mem_valid\" -f picorv32.v --json",
+        "sv_query loads \"picorv32_axi.axi_adapter.mem_valid\" -f picorv32.v --depth 1 --json --evidence",
+        "sv_query loads \"picorv32_axi.axi_adapter.mem_valid\" -f picorv32.v --depth 1 --tree",
+        "sv_query verify consistency -f picorv32.v --json",
+        "sv_query drivers \"picorv32_axi.axi_adapter.mem_valid\" -f picorv32.v --depth 1 --json",
+        "sv_query graph edges -f picorv32.v --json --src \"picorv32_axi.axi_adapter.mem_valid\""
+      ],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "pico_adapter_rdata_fanin",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "seed": 1,
+      "duration_ms": 86207,
+      "confidence": null,
+      "answer": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
+        ],
+        "count": 1
+      },
+      "queries": [],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "pico_adapter_rdata_fanin",
+      "model": "DeepSeek-Flash",
+      "arm": "t2",
+      "seed": 1,
+      "duration_ms": 18704,
+      "confidence": null,
+      "answer": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
+        ],
+        "count": 1
+      },
+      "queries": [],
+      "depth1_ok": false,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "pico_adapter_rdata_fanin",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "seed": 1,
+      "duration_ms": 41977,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
+        ],
+        "count": 1
+      },
+      "queries": [
+        "grep -n \"mem_rdata\" /tmp/lr_long_hard/MiniMax-M3/pico_adapter_rdata_fanin/source-s1/picorv32.v | head -80",
+        "grep -n \"axi_adapter\" /tmp/lr_long_hard/MiniMax-M3/pico_adapter_rdata_fanin/source-s1/picorv32.v | head -60",
+        "sed -n '2728,2900p' /tmp/lr_long_hard/MiniMax-M3/pico_adapter_rdata_fanin/source-s1/picorv32.v",
+        "sed -n '2600,2728p' /tmp/lr_long_hard/MiniMax-M3/pico_adapter_rdata_fanin/source-s1/picorv32.v",
+        "awk 'NR>=2731 && NR<=2810' /tmp/lr_long_hard/MiniMax-M3/pico_adapter_rdata_fanin/source-s1/picorv32.v | grep -n \"mem_rdata\\|mem_axi_rdata\\|assign\\|always\\|output\"",
+        "grep -n \"module picorv32_axi_adapter\\|^endmodule\\|assign mem_rdata\\|mem_axi_rdata\" /tmp/lr_long_hard/MiniMax-M3/pico_adapter_rdata_fanin/source-s1/picorv32.v | sed -n '1,80p'",
+        "sed -n '2560,2575p' /tmp/lr_long_hard/MiniMax-M3/pico_adapter_rdata_fanin/source-s1/picorv32.v; grep -n \"module picorv32_axi\" /tmp/lr_long_hard/MiniMax-M3/pico_adapter_rdata_fanin/source-s1/picorv32.v",
+        "grep -n \"mem_rdata\" /tmp/lr_long_hard/MiniMax-M3/pico_adapter_rdata_fanin/source-s1/picorv32.v | awk -F: '$1>2731 && $1<2809'; grep -rn \"assign mem_rdata\\|mem_rdata <=\" /tmp/lr_long_hard/MiniMax-M3/pico_adapter_rdata_fanin/source-s1/picorv32.v | awk -F: '$1>2731 && $1<2809'"
+      ],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "pico_adapter_rdata_fanin",
+      "model": "MiniMax-M3",
+      "arm": "t2",
+      "seed": 1,
+      "duration_ms": 18690,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
+        ],
+        "count": 1
+      },
+      "queries": [
+        "sv_query drivers \"picorv32_axi.axi_adapter.mem_rdata[16]\" -f picorv32.v --depth 1 --json --pretty",
+        "sv_query drivers \"picorv32_axi.axi_adapter.mem_rdata[16]\" -f picorv32.v --depth 1 --json",
+        "sv_query drivers \"picorv32_axi.axi_adapter.mem_rdata[16]\" -f picorv32.v --depth 1 --tree",
+        "sv_query trace fanin \"picorv32_axi.axi_adapter.mem_rdata[16]\" -f picorv32.v --depth 1 --json"
+      ],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "serv_clk_path",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "seed": 1,
+      "duration_ms": 24745,
+      "confidence": null,
+      "answer": {
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      },
+      "queries": [],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "serv_clk_path",
+      "model": "DeepSeek-Flash",
+      "arm": "t2",
+      "seed": 1,
+      "duration_ms": 75310,
+      "confidence": null,
+      "answer": {
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      },
+      "queries": [],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "serv_clk_path",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "seed": 1,
+      "duration_ms": 18675,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "serv_rf_top.clk"
+        ],
+        "loads": [
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      },
+      "queries": [
+        "ls -la /tmp/lr_long_hard/MiniMax-M3/serv_clk_path/source-s1/ && wc -l .../serv.f",
+        "read .../serv/serv_rf_top.v",
+        "grep -n 'alu|module |.i_clk|.clk' serv_top.v",
+        "sed -n '455,485p' serv_top.v && grep -n 'module|input|output|clk' serv_alu.v",
+        "read .../serv/serv_alu.v",
+        "sed -n '9,40p' serv_top.v && grep -rn 'clk_gate|dlygate|BUFG|bufif|clock_gen|clkbuf|IBUF|SB_IO' .",
+        "grep -rn 'serv_alu' . && grep -rn 'alu' *.v && grep -n 'clk' serv_top.v | grep -v 'i_clk|.clk'"
+      ],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "serv_clk_path",
+      "model": "MiniMax-M3",
+      "arm": "t2",
+      "seed": 1,
+      "duration_ms": 48175,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "serv_rf_top.clk"
+        ],
+        "loads": [
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      },
+      "queries": [
+        "sv_query paths serv_rf_top.clk serv_rf_top.cpu.alu.clk --filelist serv.f --canonical --json --evidence",
+        "sv_query paths serv_rf_top.clk serv_rf_top.cpu.alu.clk --filelist serv.f --all --max 200 --json",
+        "sv_query paths serv_rf_top.clk serv_rf_top.cpu.alu.clk --filelist serv.f --json",
+        "sv_query drivers serv_rf_top.clk --filelist serv.f --depth 1 --json",
+        "sv_query loads serv_rf_top.clk --filelist serv.f --depth 1 --json",
+        "sv_query drivers serv_rf_top.cpu.clk --filelist serv.f --depth 1 --json",
+        "sv_query loads serv_rf_top.cpu.clk --filelist serv.f --depth 1 --json",
+        "sv_query loads serv_rf_top.cpu.alu.clk --filelist serv.f --depth 1 --json"
+      ],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "axi_araddr_neighbors",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "seed": 2,
+      "duration_ms": 109801,
+      "confidence": null,
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ],
+        "path": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg",
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr",
+          "axi_adapter.m_axi_araddr"
+        ],
+        "count": 2
+      },
+      "queries": [],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "axi_araddr_neighbors",
+      "model": "DeepSeek-Flash",
+      "arm": "t2",
+      "seed": 2,
+      "duration_ms": 50406,
+      "confidence": null,
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ],
+        "path": [],
+        "count": 2
+      },
+      "queries": [],
+      "depth1_ok": false,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "axi_araddr_neighbors",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "seed": 2,
+      "duration_ms": 85712,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [],
+        "path": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg",
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr"
+        ],
+        "count": 1
+      },
+      "queries": [
+        "ls -la /tmp/lr_long_hard/MiniMax-M3/axi_araddr_neighbors/source-s2/",
+        "wc -l axi.f && head -100 axi.f",
+        "grep -rn \"m_axi_araddr\" --include=*.v .",
+        "cat axi/axi_adapter_rd.v",
+        "cat model.patch.yml && ls -R .cache/",
+        "sed -n '140,320p' axi/axi_adapter.v",
+        "python3 -c \"... (inspect .cache/321d1f3467ac9c68-v17-tall-bbone.pbc630b94.json.gz graph_data: nodes/edges/expr_trees)\"",
+        "python3 -c \"... (enumerate all distance-1 edges for the target node and classify driver/load/connection/bit_select)\"",
+        "python3 -c \"... (compare against PORT_OUT nodes that do have nonblocking loads, e.g. axi_cdma.m_axi_rready)\""
+      ],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": false
+    },
+    {
+      "task_id": "axi_araddr_neighbors",
+      "model": "MiniMax-M3",
+      "arm": "t2",
+      "seed": 2,
+      "duration_ms": 34740,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ],
+        "path": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr"
+        ],
+        "count": 1
+      },
+      "queries": [
+        "sv_query drivers \"axi_adapter.axi_adapter_rd_inst.m_axi_araddr\" --filelist axi.f --depth 1 --json --pretty",
+        "sv_query loads \"axi_adapter.axi_adapter_rd_inst.m_axi_araddr\" --filelist axi.f --depth 1 --json --pretty",
+        "sv_query trace fanin \"axi_adapter.axi_adapter_rd_inst.m_axi_araddr\" --filelist axi.f --depth 1 --human",
+        "sv_query trace fanout \"axi_adapter.axi_adapter_rd_inst.m_axi_araddr\" --filelist axi.f --depth 1 --human",
+        "sv_query drivers \"axi_adapter.axi_adapter_rd_inst.m_axi_araddr\" --filelist axi.f --depth 1 --json",
+        "sv_query loads \"axi_adapter.axi_adapter_rd_inst.m_axi_araddr\" --filelist axi.f --depth 1 --json"
+      ],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanout",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "seed": 2,
+      "duration_ms": 93824,
+      "confidence": null,
+      "answer": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_axi_rready",
+          "picorv32_axi.axi_adapter.xfer_done",
+          "picorv32_axi.axi_adapter.ack_awvalid",
+          "picorv32_axi.axi_adapter.ack_arvalid",
+          "picorv32_axi.axi_adapter.ack_wvalid"
+        ],
+        "count": 9
+      },
+      "queries": [],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": false
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanout",
+      "model": "DeepSeek-Flash",
+      "arm": "t2",
+      "seed": 2,
+      "duration_ms": 30280,
+      "confidence": null,
+      "answer": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_axi_rready",
+          "picorv32_axi.axi_adapter.xfer_done"
+        ],
+        "count": 6
+      },
+      "queries": [],
+      "depth1_ok": false,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanout",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "seed": 2,
+      "duration_ms": 40922,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "picorv32_axi.picorv32_core.mem_valid"
+        ],
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_axi_rready",
+          "picorv32_axi.axi_adapter.xfer_done",
+          "picorv32_axi.axi_adapter.ack_awvalid"
+        ],
+        "path": [
+          "picorv32_axi.picorv32_core.mem_valid",
+          "picorv32_axi.axi_adapter.mem_valid",
+          "picorv32_axi.axi_adapter.mem_axi_awvalid"
+        ],
+        "count": 7
+      },
+      "queries": [
+        "grep -n 'mem_valid' picorv32.v",
+        "read picorv32.v lines 2740-2819",
+        "read picorv32.v lines 2880-3009",
+        "read picorv32.v lines 2590-2709",
+        "grep -n '^module |axi_adapter|picorv32_axi' picorv32.v",
+        "read picorv32.v lines 2726-2745",
+        "awk 'NR>=2731 && NR<=2808' picorv32.v | grep -n 'mem_valid'",
+        "awk 'NR>=88 && NR<=96' picorv32.v; grep -n 'output reg        mem_valid' picorv32.v"
+      ],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": false
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanout",
+      "model": "MiniMax-M3",
+      "arm": "t2",
+      "seed": 2,
+      "duration_ms": 28545,
+      "confidence": "high",
+      "answer": {
+        "drivers": [],
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_axi_rready",
+          "picorv32_axi.axi_adapter.xfer_done"
+        ],
+        "path": [],
+        "count": 6
+      },
+      "queries": [
+        "sv_query loads \"picorv32_axi.axi_adapter.mem_valid\" --file picorv32.v --depth 1 --json --pretty",
+        "sv_query loads \"picorv32_axi.axi_adapter.mem_valid\" --file picorv32.v --depth 1 --json",
+        "sv_query loads \"picorv32_axi.axi_adapter.mem_valid\" --file picorv32.v --depth 1 --module picorv32_axi_adapter --json",
+        "sv_query trace fanout \"picorv32_axi.axi_adapter.mem_valid\" --file picorv32.v --depth 1 --json"
+      ],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "pico_adapter_rdata_fanin",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "seed": 2,
+      "duration_ms": 58624,
+      "confidence": null,
+      "answer": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
+        ],
+        "count": 1
+      },
+      "queries": [],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "pico_adapter_rdata_fanin",
+      "model": "DeepSeek-Flash",
+      "arm": "t2",
+      "seed": 2,
+      "duration_ms": 26322,
+      "confidence": null,
+      "answer": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
+        ],
+        "count": 1
+      },
+      "queries": [],
+      "depth1_ok": false,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "pico_adapter_rdata_fanin",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "seed": 2,
+      "duration_ms": 16524,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
+        ],
+        "loads": [],
+        "path": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
+        ],
+        "count": 1
+      },
+      "queries": [
+        "grep -n \"mem_rdata|axi_adapter\" /tmp/lr_long_hard/MiniMax-M3/pico_adapter_rdata_fanin/source-s2/picorv32.v",
+        "read /tmp/lr_long_hard/MiniMax-M3/pico_adapter_rdata_fanin/source-s2/picorv32.v lines 2590-2719 (picorv32_axi instance/port map)",
+        "read /tmp/lr_long_hard/MiniMax-M3/pico_adapter_rdata_fanin/source-s2/picorv32.v lines 2726-2845 (picorv32_axi_adapter module)",
+        "bash: grep -n \"mem_rdata|mem_axi_rdata\" file | awk '$1>=2725 && $1<=2810'",
+        "bash: grep -n \"mem_axi_rdata\" file",
+        "bash: sed -n '2756,2808p' file | cat -n (full axi_adapter body audit)"
+      ],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "pico_adapter_rdata_fanin",
+      "model": "MiniMax-M3",
+      "arm": "t2",
+      "seed": 2,
+      "duration_ms": 49587,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
+        ],
+        "loads": [
+          "picorv32_axi.mem_rdata[16]"
+        ],
+        "path": [
+          "picorv32_axi.mem_axi_rdata[16]",
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]",
+          "picorv32_axi.axi_adapter.mem_rdata[16]",
+          "picorv32_axi.mem_rdata[16]"
+        ],
+        "count": 1
+      },
+      "queries": [
+        "sv_query drivers \"picorv32_axi.axi_adapter.mem_rdata[16]\" --file picorv32.v --depth 1 --json --pretty",
+        "sv_query drivers \"picorv32_axi.axi_adapter.mem_rdata[16]\" --file picorv32.v --depth 1 --json",
+        "sv_query loads \"picorv32_axi.axi_adapter.mem_rdata[16]\" --file picorv32.v --depth 1 --json",
+        "sv_query drivers \"picorv32_axi.axi_adapter.mem_axi_rdata[16]\" --file picorv32.v --depth 1 --json",
+        "sv_query drivers \"picorv32_axi.axi_adapter.mem_rdata[16]\" --file picorv32.v --depth 1 --json --evidence"
+      ],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "serv_clk_path",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "seed": 2,
+      "duration_ms": 72448,
+      "confidence": null,
+      "answer": {
+        "drivers": [
+          "serv_rf_top.clk"
+        ],
+        "loads": [
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      },
+      "queries": [],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "serv_clk_path",
+      "model": "DeepSeek-Flash",
+      "arm": "t2",
+      "seed": 2,
+      "duration_ms": 51695,
+      "confidence": null,
+      "answer": {
+        "drivers": [],
+        "loads": [],
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      },
+      "queries": [],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "serv_clk_path",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "seed": 2,
+      "duration_ms": 13061,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "serv_rf_top.clk"
+        ],
+        "loads": [
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      },
+      "queries": [
+        "read serv.f",
+        "grep 'serv_rf_top' serv.f",
+        "read serv/serv_rf_top.v",
+        "read serv/serv_alu.v",
+        "grep 'alu|i_clk|clk' serv/serv_top.v",
+        "read serv/serv_top.v:455-484",
+        "read serv/serv_top.v:1-40",
+        "grep 'assign.*clk|clk\\s*=\\s*|buf|BUF|gate|GATE' serv/",
+        "grep 'clk' serv/serv_top.v"
+      ],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "serv_clk_path",
+      "model": "MiniMax-M3",
+      "arm": "t2",
+      "seed": 2,
+      "duration_ms": 81344,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "serv_rf_top.clk"
+        ],
+        "loads": [
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      },
+      "queries": [
+        "sv_query trace lookup --path \"serv_rf_top.clk\" --path \"serv_rf_top.cpu.alu.clk\" --filelist serv.f --json",
+        "sv_query paths \"serv_rf_top.clk\" \"serv_rf_top.cpu.alu.clk\" --filelist serv.f --canonical --evidence --json",
+        "sv_query paths \"serv_rf_top.clk\" \"serv_rf_top.cpu.alu.clk\" --filelist serv.f --all --max 200 --json",
+        "sv_query dataflow analyze \"serv_rf_top.clk\" \"serv_rf_top.cpu.alu.clk\" --filelist serv.f --json",
+        "sv_query trace fanin \"serv_rf_top.clk\" --filelist serv.f --depth 1 --json",
+        "sv_query trace fanout \"serv_rf_top.clk\" --filelist serv.f --depth 1 --json",
+        "sv_query trace fanin \"serv_rf_top.cpu.clk\" --filelist serv.f --depth 1 --json",
+        "sv_query trace fanout \"serv_rf_top.cpu.clk\" --filelist serv.f --depth 1 --json",
+        "sv_query trace fanin \"serv_rf_top.cpu.alu.clk\" --filelist serv.f --depth 1 --json",
+        "sv_query paths \"serv_rf_top.clk\" \"serv_rf_top.cpu.alu.clk\" --filelist serv.f --directed --json"
+      ],
+      "depth1_ok": true,
+      "fact_check_ok": true,
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    }
+  ]
+}

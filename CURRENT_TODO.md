@@ -29,6 +29,7 @@
 - **P80** 实验资产盘点 ✅（iter_384）
 - **P81** long-range 统一 runner ✅（iter_385）
 - **P82** 4-task pilot ✅（iter_386）
+- **P83** long-range 查询协议修复 ✅（iter_387）
 
 > P71/P72 已完成；P62.2 交互式 debug 保持 gate；P69.7 全矩阵待环境。
 
@@ -37,8 +38,8 @@
 ## 📦 仓库状态
 
 - **分支**: `main`；最新提交以 `git log -1` 为准
-- **全量基线**: **2545 passed / 0 failed**（`sim/tests/`, `-m "not opensource"`；
-  7 skipped / 119 deselected；iter_385 实测）
+- **全量基线**: **2548 passed / 0 failed**（`sim/tests/`, `-m "not opensource"`；
+  7 skipped / 119 deselected；iter_387 实测）
 - **命令面**: 39 命令 = core 35 + exp 4（class/constraint/covergroup）
 - **当前重点**: 审计结论是“功能已够用”；下一步外部小样本验证，其次 warm query service
 
