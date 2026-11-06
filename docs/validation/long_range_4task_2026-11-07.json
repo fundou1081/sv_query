@@ -1,0 +1,799 @@
+{
+  "protocol": "P82 long-range 4-task pilot, hard-isolated source/T2, budget=8; direct distance=1",
+  "tasks": [
+    {
+      "id": "axi_araddr_neighbors",
+      "ground_truth": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ]
+      }
+    },
+    {
+      "id": "serv_clk_path",
+      "ground_truth": {
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      }
+    },
+    {
+      "id": "pico_adapter_mem_valid_fanout",
+      "ground_truth": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_axi_rready",
+          "picorv32_axi.axi_adapter.xfer_done"
+        ],
+        "count": 6
+      }
+    },
+    {
+      "id": "pico_adapter_rdata_fanin",
+      "ground_truth": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
+        ],
+        "count": 1
+      }
+    }
+  ],
+  "results": [
+    {
+      "task_id": "axi_araddr_neighbors",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "seed": 1,
+      "duration_ms": 101215,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ],
+        "path": [
+          "axi_adapter",
+          "axi_adapter_rd_inst",
+          "m_axi_araddr"
+        ],
+        "count": 2
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "axi_araddr_neighbors",
+      "model": "DeepSeek-Flash",
+      "arm": "t2",
+      "seed": 1,
+      "duration_ms": 132401,
+      "confidence": null,
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ],
+        "path": [
+          "axi_adapter",
+          "axi_adapter_rd_inst",
+          "m_axi_araddr"
+        ],
+        "count": 2
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "axi_araddr_neighbors",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "seed": 1,
+      "duration_ms": 55105,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ],
+        "path": [
+          "axi_adapter",
+          "axi_adapter_rd_inst",
+          "m_axi_araddr"
+        ],
+        "count": 2
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "axi_araddr_neighbors",
+      "model": "MiniMax-M3",
+      "arm": "t2",
+      "seed": 1,
+      "duration_ms": 46921,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ],
+        "path": [],
+        "count": 2
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanout",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "seed": 1,
+      "duration_ms": 82258,
+      "confidence": null,
+      "answer": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_axi_rready",
+          "picorv32_axi.axi_adapter.xfer_done",
+          "picorv32_axi.axi_adapter.ack_awvalid",
+          "picorv32_axi.axi_adapter.ack_arvalid",
+          "picorv32_axi.axi_adapter.ack_wvalid"
+        ],
+        "count": 9
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": false
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanout",
+      "model": "DeepSeek-Flash",
+      "arm": "t2",
+      "seed": 1,
+      "duration_ms": 69715,
+      "confidence": null,
+      "answer": {
+        "drivers": [],
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_axi_rready",
+          "picorv32_axi.axi_adapter.xfer_done",
+          "picorv32_axi.axi_adapter.ack_awvalid",
+          "picorv32_axi.axi_adapter.ack_arvalid",
+          "picorv32_axi.axi_adapter.ack_wvalid"
+        ],
+        "path": [],
+        "count": 9
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": false
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanout",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "seed": 1,
+      "duration_ms": 13032,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_valid",
+          "picorv32_axi.picorv32_core.mem_valid"
+        ],
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_axi_rready",
+          "picorv32_axi.axi_adapter.xfer_done",
+          "picorv32_axi.axi_adapter.ack_awvalid"
+        ],
+        "path": [],
+        "count": 7
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": false
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanout",
+      "model": "MiniMax-M3",
+      "arm": "t2",
+      "seed": 1,
+      "duration_ms": 25416,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "picorv32_axi.mem_valid"
+        ],
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_valid_load_L2773_mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_valid_load_L2777_mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_valid_load_L2781_mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_valid_load_L2786_mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_valid_load_L2787_mem_axi_rready",
+          "picorv32_axi.axi_adapter.mem_valid_load_L2794_xfer_done",
+          "picorv32_axi.axi_adapter.mem_valid_load_L2801_ack_clear"
+        ],
+        "path": [
+          "picorv32_axi",
+          "axi_adapter",
+          "mem_valid"
+        ],
+        "count": 7
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": false
+    },
+    {
+      "task_id": "pico_adapter_rdata_fanin",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "seed": 1,
+      "duration_ms": 53402,
+      "confidence": null,
+      "answer": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
+        ],
+        "count": 1
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "pico_adapter_rdata_fanin",
+      "model": "DeepSeek-Flash",
+      "arm": "t2",
+      "seed": 1,
+      "duration_ms": 43869,
+      "confidence": null,
+      "answer": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
+        ],
+        "count": 1
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "pico_adapter_rdata_fanin",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "seed": 1,
+      "duration_ms": 14329,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
+        ],
+        "loads": [],
+        "path": [],
+        "count": 1
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "pico_adapter_rdata_fanin",
+      "model": "MiniMax-M3",
+      "arm": "t2",
+      "seed": 1,
+      "duration_ms": 12762,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "picorv32_axi.mem_axi_rdata[16]"
+        ],
+        "count": 1
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": false
+    },
+    {
+      "task_id": "serv_clk_path",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "seed": 1,
+      "duration_ms": 39135,
+      "confidence": null,
+      "answer": {
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "serv_clk_path",
+      "model": "DeepSeek-Flash",
+      "arm": "t2",
+      "seed": 1,
+      "duration_ms": 18589,
+      "confidence": null,
+      "answer": {
+        "drivers": [
+          "serv_rf_top.clk"
+        ],
+        "loads": [
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "serv_clk_path",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "seed": 1,
+      "duration_ms": 25451,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "serv_rf_top.clk"
+        ],
+        "loads": [
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "serv_clk_path",
+      "model": "MiniMax-M3",
+      "arm": "t2",
+      "seed": 1,
+      "duration_ms": 42306,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "serv_rf_top.clk"
+        ],
+        "loads": [
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "axi_araddr_neighbors",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "seed": 2,
+      "duration_ms": 100364,
+      "confidence": null,
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ],
+        "path": [
+          "axi_adapter",
+          "axi_adapter_rd_inst",
+          "m_axi_araddr"
+        ],
+        "count": 2
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "axi_araddr_neighbors",
+      "model": "DeepSeek-Flash",
+      "arm": "t2",
+      "seed": 2,
+      "duration_ms": 119248,
+      "confidence": null,
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ],
+        "path": [],
+        "count": 2
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "axi_araddr_neighbors",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "seed": 2,
+      "duration_ms": 47949,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ],
+        "path": [
+          "axi_adapter",
+          "axi_adapter_rd_inst",
+          "m_axi_araddr"
+        ],
+        "count": 2
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "axi_araddr_neighbors",
+      "model": "MiniMax-M3",
+      "arm": "t2",
+      "seed": 2,
+      "duration_ms": 21689,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [],
+        "path": [],
+        "count": 1
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": false
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanout",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "seed": 2,
+      "duration_ms": 114992,
+      "confidence": null,
+      "answer": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_axi_rready",
+          "picorv32_axi.axi_adapter.xfer_done",
+          "picorv32_axi.axi_adapter.ack_awvalid",
+          "picorv32_axi.axi_adapter.ack_arvalid",
+          "picorv32_axi.axi_adapter.ack_wvalid"
+        ],
+        "count": 9
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": false
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanout",
+      "model": "DeepSeek-Flash",
+      "arm": "t2",
+      "seed": 2,
+      "duration_ms": 148141,
+      "confidence": null,
+      "answer": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_axi_rready",
+          "picorv32_axi.axi_adapter.xfer_done",
+          "picorv32_axi.axi_adapter.ack_awvalid",
+          "picorv32_axi.axi_adapter.ack_arvalid",
+          "picorv32_axi.axi_adapter.ack_wvalid"
+        ],
+        "count": 9
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": false
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanout",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "seed": 2,
+      "duration_ms": 19553,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "picorv32_axi.mem_valid (wire, picorv32.v:2611) -> picorv32_axi.axi_adapter.mem_valid (input port, picorv32.v:2760)"
+        ],
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_valid",
+          "picorv32_axi.axi_adapter.mem_valid",
+          "picorv32_axi.axi_adapter.mem_valid",
+          "picorv32_axi.axi_adapter.mem_valid",
+          "picorv32_axi.axi_adapter.mem_valid",
+          "picorv32_axi.axi_adapter.mem_valid",
+          "picorv32_axi.axi_adapter.mem_valid"
+        ],
+        "path": [
+          "picorv32.v:2773",
+          "picorv32.v:2777",
+          "picorv32.v:2781",
+          "picorv32.v:2786",
+          "picorv32.v:2787",
+          "picorv32.v:2794",
+          "picorv32.v:2801"
+        ],
+        "count": 7
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": false
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanout",
+      "model": "MiniMax-M3",
+      "arm": "t2",
+      "seed": 2,
+      "duration_ms": 23297,
+      "confidence": "high",
+      "answer": {
+        "drivers": [],
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_valid",
+          "picorv32_axi.axi_adapter.mem_valid",
+          "picorv32_axi.axi_adapter.mem_valid",
+          "picorv32_axi.axi_adapter.mem_valid",
+          "picorv32_axi.axi_adapter.mem_valid",
+          "picorv32_axi.axi_adapter.mem_valid",
+          "picorv32_axi.axi_adapter.mem_valid"
+        ],
+        "path": [],
+        "count": 7
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": false
+    },
+    {
+      "task_id": "pico_adapter_rdata_fanin",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "seed": 2,
+      "duration_ms": 20164,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
+        ],
+        "count": 1
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "pico_adapter_rdata_fanin",
+      "model": "DeepSeek-Flash",
+      "arm": "t2",
+      "seed": 2,
+      "duration_ms": 24291,
+      "confidence": null,
+      "answer": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
+        ],
+        "count": 1
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "pico_adapter_rdata_fanin",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "seed": 2,
+      "duration_ms": 37156,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_rdata[16]"
+        ],
+        "loads": [],
+        "path": [],
+        "count": 1
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": false
+    },
+    {
+      "task_id": "pico_adapter_rdata_fanin",
+      "model": "MiniMax-M3",
+      "arm": "t2",
+      "seed": 2,
+      "duration_ms": 17456,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
+        ],
+        "loads": [],
+        "path": [
+          "picorv32_axi.axi_adapter.mem_rdata[16]",
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]",
+          "picorv32_axi.mem_axi_rdata[16]"
+        ],
+        "count": 1
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "serv_clk_path",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "seed": 2,
+      "duration_ms": 41706,
+      "confidence": null,
+      "answer": {
+        "drivers": [
+          "serv_rf_top.clk"
+        ],
+        "loads": [
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "serv_clk_path",
+      "model": "DeepSeek-Flash",
+      "arm": "t2",
+      "seed": 2,
+      "duration_ms": 42529,
+      "confidence": null,
+      "answer": {
+        "drivers": [
+          "serv_rf_top.clk"
+        ],
+        "loads": [
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "serv_clk_path",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "seed": 2,
+      "duration_ms": 14038,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "serv_rf_top.clk"
+        ],
+        "loads": [
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    },
+    {
+      "task_id": "serv_clk_path",
+      "model": "MiniMax-M3",
+      "arm": "t2",
+      "seed": 2,
+      "duration_ms": 24355,
+      "confidence": "high",
+      "answer": {
+        "drivers": [
+          "serv_rf_top.clk"
+        ],
+        "loads": [
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      },
+      "parsed": true,
+      "rc": 0,
+      "exact": true
+    }
+  ]
+}

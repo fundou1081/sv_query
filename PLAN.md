@@ -150,6 +150,10 @@ P81 long-range 统一 runner <已完成>
 -- P81.1 run_long_range.py + hard sandbox <已完成>
 -- P81.2 1 task smoke + 文档 <已完成>
 
+P82 long-range 4-task pilot <已完成>
+-- P82.1 4 题 × 2 模型 × 2 臂 × 2 seed <已完成>
+-- P82.2 结果/失败点 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

@@ -45,7 +45,7 @@ T2 基本一条命令就能答；source 需要人肉找 canonical ID。
 它测的是“直接查询执行”，不是“连续追问”。
 
 **runner 已补 (P81)**：`tools/benchmark/run_long_range.py` 支持 hard sandbox、
-本地 filelist、source/T2 同 prompt；单题 smoke 已通过。
+本地 filelist、source/T2 同 prompt；单题 smoke 已通过；4-task pilot 结果见 LONG_RANGE_4TASK_2026-11-07。
 
 ---
 
