@@ -35,11 +35,18 @@ Input: {input}
 Question: {question}
 The answer must use exact canonical node IDs / paths / counts.
 Use at most {budget} tool commands; do not read task JSON, ground truth or old pilot artifacts.
+{arm_hint}
 Return compact JSON:
 {{"task_id": "{task_id}", "answer": {{"drivers": [], "loads": [], "path": [], "count": 0}},
- "confidence": "high|medium|low", "evidence": ["..."]}}
+ "queries": ["exact commands you actually ran"], "confidence": "high|medium|low",
+ "evidence": ["..."]}}
 Only include the fields required by the question.
 """
+
+SOURCE_HINT = ("For source-only work, a direct edge means one graph hop; "
+               "do not report terminal/transitive uses as direct.")
+T2_HINT = ("T2: for every direct (distance=1) fanin/fanout question you MUST use "
+           "`sv_query ... --depth 1`; record the exact commands in `queries`.")
 
 
 def _env() -> dict:
@@ -112,14 +119,69 @@ def _extract_json(text: str) -> dict | None:
     return None
 
 
+def _query_spec(task: dict, input_path: Path) -> list[list[str]]:
+    """Deterministic CLI fact-check commands from the frozen task query."""
+    q = task["query"]
+    inp = ["--filelist" if input_path.suffix in (".f", ".fl") else "--file", str(input_path)]
+    base = SVQ.as_posix()
+    if q["cmd"] == "fanin":
+        cmds = [["sv_query", "drivers", q["signal"], "--depth", "1", *inp, "--json"]]
+        if q.get("also_loads"):
+            cmds.append(["sv_query", "loads", q["signal"], "--depth", "1", *inp, "--json"])
+        return cmds
+    if q["cmd"] == "fanout":
+        return [["sv_query", "loads", q["signal"], "--depth", "1", *inp, "--json"]]
+    return [["sv_query", "paths", q["src"], q["dst"], "--directed", *inp, "--json"]]
+
+
+def _fact_check(task: dict, input_path: Path, ws: Path) -> tuple[bool, dict]:
+    """Verify the frozen ground truth against the current graph before agents run."""
+    got: dict = {}
+    env = _env()
+    env["SVQ_CACHE_DIR"] = str(ws / ".cache")
+    for cmd in _query_spec(task, input_path):
+        r = subprocess.run(cmd, cwd=ws, env=env, capture_output=True, text=True, timeout=180)
+        if r.returncode != 0:
+            return False, {"error": r.stderr[-500:], **got}
+        data = json.loads(r.stdout)
+        res = data.get("result") or data
+        sig = (res.get("signals") or [{}])[0]
+        if "drivers" in cmd:
+            got["drivers"] = [d["id"] for d in sig.get("drivers", [])]
+        if "loads" in cmd:
+            got["loads"] = [d["id"] for d in sig.get("loads", [])]
+        if "paths" in cmd:
+            got["path"] = res.get("path")
+            got["count"] = res.get("hop_count")
+    if "drivers" in got:
+        got["count"] = len(got["drivers"])
+    elif "loads" in got:
+        got["count"] = len(got["loads"])
+    truth = task["ground_truth"]
+    ok = all(got.get(k) == v for k, v in truth.items())
+    return ok, {"actual": got, "expected": truth}
+
+
+def _needs_depth(task: dict) -> bool:
+    return task["query"]["cmd"] in ("fanin", "fanout")
+
+
 def _run(task: dict, model: dict, arm: str, seed: int, budget: int) -> dict:
     ws = WORK / model["label"].replace(".", "_") / task["id"] / f"{arm}-s{seed}"
     if ws.exists():
         shutil.rmtree(ws)
     ws.mkdir(parents=True)
     input_path = _copy_design(_design(task["id"]), ws)
+    fc_ok, fc = _fact_check(task, input_path, ws)
+    if not fc_ok:
+        return {"task_id": task["id"], "model": model["label"], "arm": arm,
+                "seed": seed, "duration_ms": 0, "rc": 0, "parsed": False,
+                "fact_check_ok": False, "fact_check": fc,
+                "answer": {}, "queries": [], "depth1_ok": False,
+                "stderr": "GROUND_TRUTH_MISMATCH", "workspace": str(ws)}
+    arm_hint = T2_HINT if arm == "t2" else SOURCE_HINT
     prompt = PROMPT.format(ws=ws, input=input_path, question=task["question"],
-                           budget=budget, task_id=task["id"])
+                           budget=budget, task_id=task["id"], arm_hint=arm_hint)
     profile = PROFILES / ("source.sb" if arm == "source" else "t2_long.sb")
     # The repo is denied inside both sandboxes; stage the model overlay in ws.
     patch = ws / "model.patch.yml"
@@ -150,14 +212,18 @@ def _run(task: dict, model: dict, arm: str, seed: int, budget: int) -> dict:
         time.sleep(60 * (attempt + 1))
     parsed = _extract_json(text)
     ans = (parsed or {}).get("answer", parsed or {})
+    queries = (parsed or {}).get("queries") or []
+    depth1_ok = (not (arm == "t2" and _needs_depth(task))) or any(
+        "--depth 1" in str(q) or "--depth=1" in str(q) for q in queries)
     raw = WORK / model["label"].replace(".", "_") / task["id"] / f"{arm}-s{seed}.txt"
     raw.write_text(text)
     return {
         "task_id": task["id"], "model": model["label"], "arm": arm, "seed": seed,
         "duration_ms": int((time.time() - t0) * 1000), "rc": rc,
         "confidence": (parsed or {}).get("confidence"),
-        "answer": ans, "parsed": parsed is not None,
-        "stderr": err, "workspace": str(ws),
+        "answer": ans, "queries": queries, "depth1_ok": depth1_ok,
+        "fact_check_ok": True, "fact_check": fc,
+        "parsed": parsed is not None, "stderr": err, "workspace": str(ws),
     }
 
 

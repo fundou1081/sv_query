@@ -154,6 +154,10 @@ P82 long-range 4-task pilot <已完成>
 -- P82.1 4 题 × 2 模型 × 2 臂 × 2 seed <已完成>
 -- P82.2 结果/失败点 <已完成>
 
+P83 long-range 查询协议修复 <已完成>
+-- P83.1 --depth 1 / queries / fact check <已完成>
+-- P83.2 4 题 ×2 seed 复跑 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

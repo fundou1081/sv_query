@@ -1,4 +1,6 @@
-# Long-range 4-task pilot（P82）
+# Long-range 4-task pilot（P82，协议修复前）
+
+> 修复 agent 查询协议后的结果见 [LONG_RANGE_4TASK_FIXED_2026-11-07.md](LONG_RANGE_4TASK_FIXED_2026-11-07.md)：T2 16/16 vs source 11/16。
 
 **日期**: 2026-11-07
 **性质**: hard-isolated source/T2 pilot；不是 12×3，不宣称模型排名。
