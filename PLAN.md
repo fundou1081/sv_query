@@ -143,6 +143,9 @@ P79 P1 交互式 debug 稳定性 <已完成>
 -- P79.1 P1 harness + seed2 运行 <已完成>
 -- P79.2 结果/稳定性/下一步 <已完成>
 
+P80 实验资产盘点 <已完成>
+-- P80.1 multi-turn / long-range / hard-isolation 清单 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

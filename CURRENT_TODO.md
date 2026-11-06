@@ -26,6 +26,7 @@
 - **P77** port-map ternary expression 子图 ✅（iter_381）
 - **P78** P0 deep_chain 行为验证 ✅（iter_382）
 - **P79** P1 稳定性 ✅（iter_383）
+- **P80** 实验资产盘点 ✅（iter_384）
 
 > P71/P72 已完成；P62.2 交互式 debug 保持 gate；P69.7 全矩阵待环境。
 
