@@ -132,14 +132,22 @@ def _run(task: dict, model: dict, arm: str, seed: int, budget: int) -> dict:
     env = _env()
     env["SVQ_CACHE_DIR"] = str(ws / ".cache")
     t0 = time.time()
-    try:
-        r = subprocess.run(cmd, cwd=ws, env=env, capture_output=True, text=True, timeout=900)
-        text, err, rc = r.stdout, r.stderr[-2000:], r.returncode
-    except subprocess.TimeoutExpired as e:
-        text = (e.stdout or "")
-        if isinstance(text, bytes):
-            text = text.decode(errors="replace")
-        err, rc = "TIMEOUT", 124
+    text = err = ""
+    rc = 1
+    for attempt in range(3):
+        try:
+            r = subprocess.run(cmd, cwd=ws, env=env, capture_output=True,
+                               text=True, timeout=900)
+            text, err, rc = r.stdout, r.stderr[-2000:], r.returncode
+        except subprocess.TimeoutExpired as e:
+            text = (e.stdout or "")
+            if isinstance(text, bytes):
+                text = text.decode(errors="replace")
+            err, rc = "TIMEOUT", 124
+            break
+        if rc == 0 or "RATE_LIMIT" not in err:
+            break
+        time.sleep(60 * (attempt + 1))
     parsed = _extract_json(text)
     ans = (parsed or {}).get("answer", parsed or {})
     raw = WORK / model["label"].replace(".", "_") / task["id"] / f"{arm}-s{seed}.txt"
