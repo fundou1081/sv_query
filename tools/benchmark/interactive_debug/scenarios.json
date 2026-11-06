@@ -144,6 +144,60 @@
         },
         "uncovered_rand_vars": []
       }
+    },
+    {
+      "id": "complex_constraints",
+      "fixture": "examples/interactive_debug/complex_constraints.sv",
+      "prompt": "Extract the signal-graph neighborhood around `top.e.p.len`: all rand variables, each constraint block affecting len (block id, defined_in, inherited), condition variables (especially `packet.mode`), and the block coupling addr+len. Use at least 4 iterative queries (class relations -> trace constraints -> instance members -> graph neighborhood). Return exact ids.",
+      "ground_truth": {
+        "property": "top.e.p.len",
+        "rand_vars": [
+          "packet.addr",
+          "packet.len",
+          "packet.mode",
+          "packet.payload"
+        ],
+        "constraints": [
+          "packet.c_len",
+          "packet.c_mode",
+          "packet.c_order"
+        ],
+        "condition_vars": [
+          "packet.mode"
+        ],
+        "both_addr_len_block": "packet.c_order",
+        "inherited": [
+          "packet.c_len"
+        ]
+      }
+    },
+    {
+      "id": "mux_neighborhood",
+      "fixture": "examples/interactive_debug/mux_neighborhood.sv",
+      "prompt": "Extract the local signal-graph mux neighborhood around `top.q`: direct register/sink, all OP_TERNARY nodes, select signals, data sources a/b/c/d, and the conditions on the nested muxes. Use graph subgraph with branch edges and controlflow. Return exact canonical ids and hop/depth evidence.",
+      "ground_truth": {
+        "seed": "top.q",
+        "register": "top.q",
+        "mux_nodes": [
+          "top.u.lo.ternary_sel[0]",
+          "top.u.hi.ternary_sel[0]",
+          "top.u.y.ternary_sel[1]"
+        ],
+        "selects": [
+          "top.u.sel[0]",
+          "top.u.sel[1]"
+        ],
+        "data_sources": [
+          "top.u.a",
+          "top.u.b",
+          "top.u.c",
+          "top.u.d"
+        ],
+        "conditions": [
+          "sel[0]",
+          "sel[1]"
+        ]
+      }
     }
   ]
 }
