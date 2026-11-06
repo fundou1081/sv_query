@@ -112,6 +112,9 @@ P72 filelist 编译失败显式分类 <已完成>
 -- P72.1 E_FILELIST_INCOMPLETE/INVALID + E_ELABORATION_FAILED <已完成>
 -- P72.2 测试/文档 <已完成>
 
+P73 项目目标/计划/测试缺口审计 <已完成>
+-- P73.1 审计文档与下一步排序 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>
