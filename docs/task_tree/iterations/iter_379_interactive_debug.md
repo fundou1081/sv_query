@@ -14,7 +14,7 @@
 
 ## 🧪 运行
 
-- 2 模型 × 3 场景，T2，隔离 workspace；
+- 3 模型 × 3 场景（后补 MiniMax-M3.1-Flash），T2，隔离 workspace；
 - 每 agent 至少 4 轮；实际 7–20 轮；
 - 第一次 DeepSeek 读到 fixture 下 ground truth，已作废并重跑；
 - 清理后 6/6 agent 都完成多轮查询。
@@ -29,7 +29,8 @@
 
 - deep chain：MiniMax 完整（11 节点 variant），DeepSeek 字段类型错（register/xor 布尔）；
 - constraints：DeepSeek 完整；MiniMax 共同 block 误答 covergroup；
-- coverage：两模型完整；
+- coverage：三个模型完整；
+- M3.1 Flash：constraints/coverage 完整；deep chain 的 `combinational` 自相矛盾为 true；
 - 共同缺口：`paths` 粒度、mux 未建模、class relative name、class instance scope。
 
 ## ✅ 门禁
@@ -40,5 +41,5 @@
 
 ## ⚠️ 不做结论
 
-- 6 agents / 1 seed / T2 only；
+- 9 agents / 1 seed / T2 only；
 - 不是真实 bug benchmark；不作模型排名。

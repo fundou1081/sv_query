@@ -1,8 +1,8 @@
 # 交互式 debug 场景 pilot
 
 **日期**: 2026-11-06
-**状态**: P74 pilot（不是全量 benchmark）
-**模型**: MiniMax-M3 / DeepSeek-Flash
+**状态**: P74 pilot（3 模型；不是全量 benchmark）
+**模型**: MiniMax-M3 / MiniMax-M3.1-Flash / DeepSeek-Flash
 **臂**: T2（sv_query）
 **工作区**: `/private/tmp/lr_interactive_ws`（仅 fixture，无 ground truth）
 
@@ -18,6 +18,7 @@
 
 Fixture 在 [examples/interactive_debug/](../../examples/interactive_debug/)，ground truth 在
 [tools/benchmark/interactive_debug/scenarios.json](../../tools/benchmark/interactive_debug/scenarios.json)。
+模型列表见 [models.json](../../tools/benchmark/interactive_debug/models.json)；M3.1 的 headless patch 见[minimax31.patch.yml](../../tools/benchmark/interactive_debug/minimax31.patch.yml)。
 
 ---
 
@@ -27,7 +28,8 @@ Fixture 在 [examples/interactive_debug/](../../examples/interactive_debug/)，g
 - 隔离工作区只放 `deep_chain.sv` / `rand_coverage.sv`，不放 `scenarios.json`；
 - 最终 JSON 记录 `rounds`、`answer`、`confidence`、`evidence`；
 - 第一次 pilot 中 DeepSeek 读过 fixture 目录下的 `scenarios.json`（ground truth），
-  该结果**作废**；将 ground truth 移出 fixture 目录后重新跑 6 个 agent。
+  该结果**作废**；将 ground truth 移出 fixture 目录后重新跑 6 个 agent；
+  MiniMax-M3.1-Flash 是后续补充的第三模型（3 场景）。
 
 ### 指标
 
@@ -39,6 +41,9 @@ Fixture 在 [examples/interactive_debug/](../../examples/interactive_debug/)，g
 | rand_constraints | DeepSeek-Flash | 7 | 12 | 162,549 | 8,451 | 54.2s |
 | rand_coverage_mapping | MiniMax-M3 | 10 | 28 | 252,557 | 7,304 | 53.5s |
 | rand_coverage_mapping | DeepSeek-Flash | 7 | 14 | 216,147 | 6,115 | 45.0s |
+| deep_drive_chain | MiniMax-M3.1-Flash | 16 | — | 1,394,304 | 19,976 | — |
+| rand_constraints | MiniMax-M3.1-Flash | 14 | — | 403,985 | 10,782 | — |
+| rand_coverage_mapping | MiniMax-M3.1-Flash | 6 | — | 300,480 | 9,847 | — |
 
 > token 是 DSH child session 的 `uncachedInput + cacheRead`；不含人工。
 
@@ -52,6 +57,7 @@ Fixture 在 [examples/interactive_debug/](../../examples/interactive_debug/)，g
 |---|---|---:|---|---|---|---|---|
 | MiniMax | 11 节点（含 `u_stage.d`） | 10 | ✅ `u_leaf.q` | ✅ `mixed` | `top.sel`（源） | false | **完整（接受 11 节点变体）** |
 | DeepSeek | 11 节点 | 10 | `true`（不是节点） | `true`（不是节点） | `top.sel` | false | **部分**：路径/时序对，字段类型错 |
+| MiniMax-M3.1-Flash | 11 节点 | 10 | ✅ `u_leaf.q` | `leaf_q ^ 8'hA5`（表达式） | `sel`（源） | **true（错）** | **部分**：路径/寄存器对，xor/mux 非节点，combinational 自相矛盾 |
 
 关键观察：
 
@@ -59,7 +65,7 @@ Fixture 在 [examples/interactive_debug/](../../examples/interactive_debug/)，g
 - `paths --directed --all` 的第一个路径是 **11 节点（10 hops）**，包含 `top.u_mid.u_stage.d`；
 - 两个都是图里的合法路径；任务没有规定粒度，导致 hop_count 不可比；
 - `sel ? d : ~d` 没有被建模成条件边：`controlflow analyze` 返回空，
-  两个模型最终都靠 `search`/源码确认 mux；
+  三个模型都靠 `search`/源码确认 mux；
 - MiniMax 明确说明三元 mux 没有 expression node，DeepSeek 也用源码证据。
 
 ### 3.2 Rand constraints
@@ -68,14 +74,15 @@ Fixture 在 [examples/interactive_debug/](../../examples/interactive_debug/)，g
 |---|---|---|---|---|---|
 | MiniMax | ✅ | ✅ c_base + c_packet | ✅ | ❌ `cg`（把 covergroup 当 block） | 部分 |
 | DeepSeek | ✅ | ✅ c_base + c_packet | ✅ | ✅ `c_packet` | **完整** |
+| MiniMax-M3.1-Flash | ✅ | ✅ c_base + c_packet | ✅ | ✅ `packet.c_packet` | **完整**（并验证 14 轮） |
 
 观察：
 
-- 两个模型都能通过 `class --relations` / `trace constraints` 找到继承约束；
+- 三个模型都能通过 `class --relations` / `trace constraints` 找到继承约束；
 - MiniMax 把“共同 block”误解成 covergroup，说明 prompt 需要明确
   **constraint block**；已修正 prompt/ground truth；
 - `trace constraints p.addr`（相对名）不工作，必须 `top.e.p.addr`；
-  两个模型都撞到这个边界，DeepSeek 明确记录。
+  三个模型都撞到这个边界，DeepSeek/M3.1 明确记录。
 
 ### 3.3 Rand ↔ coverage mapping
 
@@ -83,14 +90,15 @@ Fixture 在 [examples/interactive_debug/](../../examples/interactive_debug/)，g
 |---|---|---|---|---|---|---|
 | MiniMax | ✅ cp_addr/cp_len | ✅ low/high/len_small/len_large | ✅ | ✅ | [] | **完整** |
 | DeepSeek | ✅ | ✅ | ✅ | ✅ | [] | **完整** |
+| MiniMax-M3.1-Flash | ✅ | ✅ | ✅ | ✅ | [] | **完整** |
 
 关键观察：
 
 - **修复前** `trace covergroups` 只返回 `bins: 2`，不返回 bin 名称；
   MiniMax 在第一次 pilot 里为了拿 `low/high` 直接 import 了 `CovergroupExtractor`；
-- 本轮新增 `bin_details`（name/kind/values/bin_type）后，两个模型都能直接从 CLI 得到
+- 本轮新增 `bin_details`（name/kind/values/bin_type）后，三个模型都能直接从 CLI 得到
   `low/high`、`len_small/len_large`，不需要内部 API；
-- 两个模型都发现 `cg` 没有 `sample()`/clock；这是源码事实，不影响 mapping；
+- 三个模型都发现 `cg` 没有 `sample()`/clock；这是源码事实，不影响 mapping；
 - DeepSeek 的 `uncovered_rand_vars=[]` 正确；MiniMax 也是 `[]`（输出中曾用空串，语义等价）。
 
 ---

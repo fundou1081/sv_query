@@ -13,7 +13,7 @@
 - `examples/interactive_debug/` 三场景 fixture；
 - `tools/benchmark/interactive_debug/scenarios.json` ground truth；
 - 至少 4 轮、连续查询的 prompt；
-- MiniMax / DeepSeek T2 各跑一次；
+- MiniMax-M3 / MiniMax-M3.1-Flash / DeepSeek T2 各跑一次；
 - 记录轮数、工具调用、最终准确率、失败点。
 
 ## 边界
