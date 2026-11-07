@@ -32,7 +32,7 @@ function assertSuccess(payload, label) {
   }
 }
 
-function signalIds(payload, field, label) {
+function signalRows(payload, field, label) {
   assertSuccess(payload, label);
   if (!isPlainObject(payload.result)) {
     fail(`${label} payload is missing result object`);
@@ -54,43 +54,65 @@ function signalIds(payload, field, label) {
     if (!isPlainObject(row) || typeof row.id !== "string") {
       fail(`${label} payload result.signals[0].${field}[${i}] is missing string id`);
     }
-    return row.id;
+    return row;
   });
+}
+
+function detailRows(rows) {
+  return rows.map((row) => ({
+    id: row.id,
+    kind: row.kind ?? null,
+    condition: row.condition ?? "",
+    distance: row.distance ?? null,
+  }));
 }
 
 /** fanin: drivers -> compact driver ids. */
 export function compactFanin(payload, meta = {}) {
-  const drivers = signalIds(payload, "drivers", "fanin");
-  return {
+  const rows = signalRows(payload, "drivers", "fanin");
+  const drivers = rows.map((r) => r.id);
+  const out = {
     ok: true, intent: "fanin", snapshot: meta.snapshot,
     signal: meta.signal,
     drivers,
     count: drivers.length,
   };
+  if (meta.details) out.driver_details = detailRows(rows);
+  return out;
 }
 
 /** fanout: loads -> compact load ids. */
 export function compactFanout(payload, meta = {}) {
-  const loads = signalIds(payload, "loads", "fanout");
-  return {
+  const rows = signalRows(payload, "loads", "fanout");
+  const loads = rows.map((r) => r.id);
+  const out = {
     ok: true, intent: "fanout", snapshot: meta.snapshot,
     signal: meta.signal,
     loads,
     count: loads.length,
   };
+  if (meta.details) out.load_details = detailRows(rows);
+  return out;
 }
 
 /** neighbors: combine one drivers payload and one loads payload. */
 export function compactNeighbors(driverPayload, loadPayload, meta = {}) {
-  const drivers = signalIds(driverPayload, "drivers", "neighbors drivers");
-  const loads = signalIds(loadPayload, "loads", "neighbors loads");
-  return {
+  const driverRows = signalRows(driverPayload, "drivers", "neighbors drivers");
+  const loadRows = signalRows(loadPayload, "loads", "neighbors loads");
+  const drivers = driverRows.map((r) => r.id);
+  const loads = loadRows.map((r) => r.id);
+  const out = {
     ok: true, intent: "neighbors", snapshot: meta.snapshot,
     signal: meta.signal,
     drivers,
     loads,
     count: drivers.length + loads.length,
   };
+  if (meta.details) {
+    out.driver_details = detailRows(driverRows);
+    out.load_details = detailRows(loadRows);
+  }
+  return out;
 }
 
 /** path: canonical node path + hop count. */

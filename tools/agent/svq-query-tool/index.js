@@ -47,6 +47,10 @@ export function apply(ctx) {
         type: "integer",
         description: "Hop depth; direct queries use 1.",
       },
+      details: {
+        type: "boolean",
+        description: "Include kind/condition/distance for each neighbor.",
+      },
     },
     output: {
       schema: { type: "object", additionalProperties: true },
@@ -64,7 +68,8 @@ export function apply(ctx) {
       }
       const base = ["--from-snapshot", args.snapshot, "--json"];
       const depth = args.depth ?? 1;
-      const meta = { snapshot: args.snapshot, signal: args.signal };
+      const meta = { snapshot: args.snapshot, signal: args.signal,
+                     details: args.details === true };
       if (args.intent === "path") {
         if (!args.dst) throw new Error("path requires dst");
         const payload = await query(["paths", args.signal, args.dst, "--directed", ...base]);
