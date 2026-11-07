@@ -1,0 +1,205 @@
+[
+  {
+    "task": "axi_araddr_neighbors",
+    "top": "axi_adapter",
+    "files": 3,
+    "total": 55,
+    "ok": true,
+    "query_s": 1.04,
+    "detail": {
+      "actual": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ],
+        "count": 1
+      },
+      "expected": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ]
+      }
+    }
+  },
+  {
+    "task": "axi_awvalid_fanout",
+    "top": "axi_adapter",
+    "files": 3,
+    "total": 55,
+    "ok": true,
+    "query_s": 0.81,
+    "detail": {
+      "actual": {
+        "loads": [
+          "axi_adapter.axi_adapter_wr_inst.s_axi_awvalid"
+        ],
+        "count": 1
+      },
+      "expected": {
+        "loads": [
+          "axi_adapter.axi_adapter_wr_inst.s_axi_awvalid"
+        ],
+        "count": 1
+      }
+    }
+  },
+  {
+    "task": "axi_arvalid_fanin",
+    "top": "axi_adapter",
+    "files": 3,
+    "total": 55,
+    "ok": true,
+    "query_s": 0.82,
+    "detail": {
+      "actual": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_arvalid_reg"
+        ],
+        "count": 1
+      },
+      "expected": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_arvalid_reg"
+        ],
+        "count": 1
+      }
+    }
+  },
+  {
+    "task": "axi_awvalid_fanin",
+    "top": "axi_adapter",
+    "files": 3,
+    "total": 55,
+    "ok": true,
+    "query_s": 0.81,
+    "detail": {
+      "actual": {
+        "drivers": [
+          "axi_adapter.axi_adapter_wr_inst.m_axi_awvalid_reg"
+        ],
+        "count": 1
+      },
+      "expected": {
+        "drivers": [
+          "axi_adapter.axi_adapter_wr_inst.m_axi_awvalid_reg"
+        ],
+        "count": 1
+      }
+    }
+  },
+  {
+    "task": "serv_clk_fanout",
+    "top": "serv_rf_top",
+    "files": 17,
+    "total": 24,
+    "ok": true,
+    "query_s": 1.3,
+    "detail": {
+      "actual": {
+        "loads": [
+          "serv_rf_top.rf_ram_if.i_clk",
+          "serv_rf_top.rf_ram.i_clk",
+          "serv_rf_top.cpu.clk"
+        ],
+        "count": 3
+      },
+      "expected": {
+        "loads": [
+          "serv_rf_top.rf_ram_if.i_clk",
+          "serv_rf_top.rf_ram.i_clk",
+          "serv_rf_top.cpu.clk"
+        ],
+        "count": 3
+      }
+    }
+  },
+  {
+    "task": "serv_alu_clk_fanin",
+    "top": "serv_rf_top",
+    "files": 17,
+    "total": 24,
+    "ok": true,
+    "query_s": 1.3,
+    "detail": {
+      "actual": {
+        "drivers": [
+          "serv_rf_top.cpu.clk"
+        ],
+        "count": 1
+      },
+      "expected": {
+        "drivers": [
+          "serv_rf_top.cpu.clk"
+        ],
+        "count": 1
+      }
+    }
+  },
+  {
+    "task": "serv_cpu_clk_fanout",
+    "top": "serv_rf_top",
+    "files": 17,
+    "total": 24,
+    "ok": true,
+    "query_s": 1.33,
+    "detail": {
+      "actual": {
+        "loads": [
+          "serv_rf_top.cpu.state.i_clk",
+          "serv_rf_top.cpu.decode.clk",
+          "serv_rf_top.cpu.immdec.i_clk",
+          "serv_rf_top.cpu.bufreg.i_clk",
+          "serv_rf_top.cpu.bufreg2.i_clk",
+          "serv_rf_top.cpu.ctrl.clk",
+          "serv_rf_top.cpu.alu.clk",
+          "serv_rf_top.cpu.mem_if.i_clk"
+        ],
+        "count": 8
+      },
+      "expected": {
+        "loads": [
+          "serv_rf_top.cpu.state.i_clk",
+          "serv_rf_top.cpu.decode.clk",
+          "serv_rf_top.cpu.immdec.i_clk",
+          "serv_rf_top.cpu.bufreg.i_clk",
+          "serv_rf_top.cpu.bufreg2.i_clk",
+          "serv_rf_top.cpu.ctrl.clk",
+          "serv_rf_top.cpu.alu.clk",
+          "serv_rf_top.cpu.mem_if.i_clk"
+        ],
+        "count": 8
+      }
+    }
+  },
+  {
+    "task": "serv_clk_path",
+    "top": "serv_rf_top",
+    "files": 17,
+    "total": 24,
+    "ok": true,
+    "query_s": 1.25,
+    "detail": {
+      "actual": {
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      },
+      "expected": {
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      }
+    }
+  }
+]
