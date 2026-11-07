@@ -126,6 +126,20 @@ tool 19–28%；model residual 72–81%
 [QUERY_COST_ATTRIBUTION_2026-11-07.md](QUERY_COST_ATTRIBUTION_2026-11-07.md)、
 [SESSION_TELEMETRY_2026-11-07.md](SESSION_TELEMETRY_2026-11-07.md)
 
+### H. 受限 agent 工具（P98）
+
+`svq_query`（只允许 snapshot 查询，禁用 bash/fs/skill）：
+
+```text
+12 题 ×2 模型 ×2 次 = 48 cells
+exact 48/48
+MiniMax 9.0s / DeepSeek 4.7s mean
+每 cell 一次工具调用
+```
+
+这是**接口 pilot**，不是通用 debug 证据。  
+报告：[TOOL_PILOT_12_2026-11-08.md](TOOL_PILOT_12_2026-11-08.md)
+
 ### F. 回归
 
 ```text
