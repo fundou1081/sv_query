@@ -25,6 +25,7 @@ AD_WORK = Path("/tmp/lr_ad_prep")
 AD_SNAPS = Path("/tmp/lr_ad_snaps")
 AD_SNAP_ENV = "SVQ_SNAPSHOT_DIR"
 TAG = {"axi": "ad_axi", "serv": "ad_serv", "pico": "ad_pico"}
+SKILL = base.ROOT / ".dsh" / "skills" / "svq-query-protocol"
 TOP = {"axi": "axi_adapter", "serv": "serv_rf_top"}
 
 
@@ -123,10 +124,10 @@ def _check_snapshots() -> list[dict]:
     return rows
 
 
-def _ad_run(task: dict, model: dict, seed: int, budget: int) -> dict:
+def _ad_run(task: dict, model: dict, seed: int, budget: int, mode: str) -> dict:
     design = base._design(task["id"])
     tag = TAG[design]
-    ws = base.WORK / model["label"].replace(".", "_") / task["id"] / f"t2ad-s{seed}"
+    ws = base.WORK / model["label"].replace(".", "_") / task["id"] / f"t2ad-{mode}-s{seed}"
     if ws.exists():
         shutil.rmtree(ws)
     ws.mkdir(parents=True)
@@ -136,7 +137,7 @@ def _ad_run(task: dict, model: dict, seed: int, budget: int) -> dict:
     # the agent starts so it cannot bypass the snapshot interface by reading it.
     shutil.rmtree(ws / ".cache", ignore_errors=True)
     if not fc_ok:
-        return {"task_id": task["id"], "model": model["label"], "arm": "t2ad",
+        return {"task_id": task["id"], "model": model["label"], "arm": f"t2ad-{mode}",
                 "seed": seed, "rc": 0, "parsed": False, "fact_check_ok": False,
                 "fact_check": fc, "answer": {}, "queries": [], "exact": False}
     hint = (f"T2 A+D: snapshots are prebuilt. Use `--from-snapshot {tag}` on every "
@@ -178,9 +179,9 @@ def _ad_run(task: dict, model: dict, seed: int, budget: int) -> dict:
     sc = score_answer(task, ans)
     depth1_ok = (not base._needs_depth(task)) or any(
         "--depth 1" in str(q) or "--depth=1" in str(q) for q in queries)
-    raw = base.WORK / model["label"].replace(".", "_") / task["id"] / f"t2ad-s{seed}.txt"
+    raw = base.WORK / model["label"].replace(".", "_") / task["id"] / f"t2ad-{mode}-s{seed}.txt"
     raw.write_text(text)
-    return {"task_id": task["id"], "model": model["label"], "arm": "t2ad",
+    return {"task_id": task["id"], "model": model["label"], "arm": f"t2ad-{mode}",
             "seed": seed, "duration_ms": int((time.time() - t0) * 1000),
             "rc": rc, "confidence": (parsed or {}).get("confidence"),
             "answer": ans, "queries": queries, "depth1_ok": depth1_ok,
@@ -191,8 +192,10 @@ def _ad_run(task: dict, model: dict, seed: int, budget: int) -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
+    ap.add_argument("--tasks", nargs="*", default=None)
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--models", nargs="*", default=["MiniMax-M3", "DeepSeek-Flash"])
+    ap.add_argument("--modes", nargs="*", default=["prompt", "skill"])
     ap.add_argument("--workers", type=int, default=2)
     ap.add_argument("--budget", type=int, default=8)
     ap.add_argument("--output", type=Path, default=Path("/tmp/long_12_ad.json"))
@@ -200,18 +203,20 @@ def main() -> int:
     prep = _prepare()
     checks = _check_snapshots()
     tasks = json.loads(base.TASKS.read_text())["tasks"]
+    if args.tasks:
+        tasks = [t for t in tasks if t["id"] in args.tasks]
     models = [m for m in base.MODELS if m["label"] in args.models]
-    jobs = [(t, m) for t in tasks for m in models]
+    jobs = [(t, m, mode) for t in tasks for m in models for mode in args.modes]
     rows = []
     with ThreadPoolExecutor(max_workers=max(1, args.workers)) as ex:
-        futs = {ex.submit(_ad_run, t, m, args.seed, args.budget): (t, m)
-                for t, m in jobs}
+        futs = {ex.submit(_ad_run, t, m, args.seed, args.budget, mode): (t, m, mode)
+                for t, m, mode in jobs}
         for f in as_completed(futs):
             r = f.result()
             rows.append(r)
             print(json.dumps({k: r.get(k) for k in
-                              ("task_id", "model", "seed", "rc", "parsed",
-                               "duration_ms", "exact")}, ensure_ascii=False))
+                              ("task_id", "model", "arm", "seed", "rc", "parsed",
+                               "duration_ms", "exact", "protocol_ok")}, ensure_ascii=False))
     rows.sort(key=lambda r: (r["task_id"], r["model"]))
     payload = {"protocol": "P94 12-task A+D: pruned filelist snapshot, T2 only",
                "seed": args.seed, "prep": prep, "checks": checks,

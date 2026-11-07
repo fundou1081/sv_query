@@ -207,6 +207,10 @@ P95 严格 A/D agent 协议 <放弃>
 -- P95.1 repo deny + query-only workspace <放弃>
 -- P95.2 24-cell 严格重跑 <放弃>
 
+P96 sv_query skill pilot <已完成>
+-- P96.1 通用 skill + 3-cell pilot <已完成>
+-- P96.2 负结果/边界 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>
