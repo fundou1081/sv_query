@@ -224,6 +224,11 @@ P99 Worker 辅助工具硬化 <已完成>
 -- P99.1 compact.js/tests/README <已完成>
 -- P99.2 重装 + 3-cell smoke <已完成>
 
+P100 svq_query details / neighborhood <进行中>
+-- P100.1 kind/condition/distance details <已完成>
+-- P100.2 mux details probe <已完成>
+-- P100.3 bounded neighborhood BFS <待做>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

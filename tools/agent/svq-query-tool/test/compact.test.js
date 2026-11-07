@@ -160,3 +160,26 @@ test("compactResult dispatches all supported intents", () => {
   assert.equal(neighbors.count, 2);
   assert.throws(() => compactResult("impact", {}, meta), /unknown intent/);
 });
+
+test("fanin details carry kind, condition, distance", () => {
+  const payload = signalPayload("drivers", [
+    { id: "top.a", kind: "SIGNAL", condition: "sel[0]", distance: 1 },
+  ]);
+  const out = compactFanin(payload, { ...meta, details: true });
+  assert.deepEqual(out.drivers, ["top.a"]);
+  assert.deepEqual(out.driver_details, [
+    { id: "top.a", kind: "SIGNAL", condition: "sel[0]", distance: 1 },
+  ]);
+});
+
+test("neighbors details carry both sides", () => {
+  const out = compactNeighbors(
+    signalPayload("drivers", [{ id: "top.a", kind: "SIGNAL", condition: "sel" }]),
+    signalPayload("loads", [{ id: "top.b", kind: "PORT_OUT" }]),
+    { ...meta, details: true },
+  );
+  assert.equal(out.driver_details[0].condition, "sel");
+  assert.deepEqual(out.load_details, [
+    { id: "top.b", kind: "PORT_OUT", condition: "", distance: null },
+  ]);
+});

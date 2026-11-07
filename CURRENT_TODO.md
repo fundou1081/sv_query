@@ -3,7 +3,7 @@
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **可视化计划**: [structural_review_plan_2026-11-02](docs/architecture/structural_review_plan_2026-11-02.md) — 全设计图退役；动态子图 + 局部 review。
-> **最后更新**: 2026-11-08 GMT+8 (iter_404: worker 工具硬化)
+> **最后更新**: 2026-11-08 GMT+8 (iter_405: 工具 details)
 
 ---
 
@@ -46,6 +46,7 @@
 - **P97** inline skill prompt pilot ✅（iter_401）：无稳定收益
 - **P98** 受限 svq_query 工具 ✅（iter_403）：48/48，MiniMax 9.0s / DeepSeek 4.7s
 - **P99** Worker 辅助工具硬化 ✅（iter_404）：compact.js + 12 Node tests
+- **P100** svq_query details ✅（iter_405）；neighborhood BFS 待做
 
 > P71/P72 已完成；P62.2 交互式 debug 保持 gate；外部 VeriBug 明确 deferred/放弃。
 
