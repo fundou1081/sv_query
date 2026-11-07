@@ -1,0 +1,96 @@
+{
+  "method": "cold cache vs warm cache replay of agent T2 commands",
+  "caution": "agent_minus_observed = agent wall - warm command sum; includes model generation and harness overhead; negative/outlier values mean self-reported query logs are not telemetry",
+  "rows": [
+    {
+      "task_id": "axi_araddr_neighbors",
+      "model": "MiniMax-M3",
+      "arm": "t2",
+      "seed": 1,
+      "agent_wall_ms": 17953,
+      "commands": 6,
+      "cli_startup_ms": 270.2,
+      "cold_first_ms": 27311.0,
+      "warm_first_ms": 595.2,
+      "warm_sum_ms": 29483.6,
+      "build_over_warm_ms": 26715.8,
+      "agent_minus_observed_ms": -11530.6,
+      "warm_outliers": [
+        5
+      ],
+      "warm_outlier_commands": [
+        "sv_query connections \"axi_adapter.m_axi_araddr\" --filelist axi.f --json"
+      ],
+      "warm_commands_ms": [
+        595.2,
+        508.8,
+        564.6,
+        510.4,
+        500.0,
+        26804.6
+      ],
+      "queries": [
+        "sv_query drivers \"axi_adapter.axi_adapter_rd_inst.m_axi_araddr\" --filelist axi.f --depth 1 --json --pretty --evidence",
+        "sv_query loads \"axi_adapter.axi_adapter_rd_inst.m_axi_araddr\" --filelist axi.f --depth 1 --json --pretty --evidence",
+        "sv_query drivers \"axi_adapter.axi_adapter_rd_inst.m_axi_araddr\" --filelist axi.f --depth 1 -H",
+        "sv_query loads \"axi_adapter.axi_adapter_rd_inst.m_axi_araddr\" --filelist axi.f --depth 1 -H",
+        "sv_query loads \"axi_adapter.axi_adapter_rd_inst.m_axi_araddr\" --filelist axi.f --depth 1 --module axi_adapter --json",
+        "sv_query connections \"axi_adapter.m_axi_araddr\" --filelist axi.f --json"
+      ]
+    },
+    {
+      "task_id": "serv_clk_path",
+      "model": "DeepSeek-Flash",
+      "arm": "t2",
+      "seed": 2,
+      "agent_wall_ms": 61749,
+      "commands": 2,
+      "cli_startup_ms": 270.0,
+      "cold_first_ms": 3408.7,
+      "warm_first_ms": 3388.4,
+      "warm_sum_ms": 7391.5,
+      "build_over_warm_ms": 20.3,
+      "agent_minus_observed_ms": 54357.5,
+      "warm_outliers": [],
+      "warm_outlier_commands": [],
+      "warm_commands_ms": [
+        3388.4,
+        4003.1
+      ],
+      "queries": [
+        "sv_query paths --filelist serv.f --json --pretty serv_rf_top.clk serv_rf_top.cpu.alu.clk",
+        "sv_query paths --filelist serv.f --canonical --json --pretty serv_rf_top.clk serv_rf_top.cpu.alu.clk"
+      ]
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanout",
+      "model": "MiniMax-M3",
+      "arm": "t2",
+      "seed": 2,
+      "agent_wall_ms": 23942,
+      "commands": 5,
+      "cli_startup_ms": 270.2,
+      "cold_first_ms": 2120.6,
+      "warm_first_ms": 261.0,
+      "warm_sum_ms": 3110.0,
+      "build_over_warm_ms": 1859.6,
+      "agent_minus_observed_ms": 20832.0,
+      "warm_outliers": [],
+      "warm_outlier_commands": [],
+      "warm_commands_ms": [
+        261.0,
+        270.2,
+        264.8,
+        270.2,
+        2043.8
+      ],
+      "queries": [
+        "sv_query loads \"picorv32_axi.axi_adapter.mem_valid\" --file picorv32.v --depth 1 --json --evidence -p",
+        "sv_query loads \"picorv32_axi.axi_adapter.mem_valid\" --file picorv32.v --depth 1 --json --evidence",
+        "sv_query loads \"picorv32_axi.axi_adapter.mem_valid\" --file picorv32.v --depth 1 --json",
+        "sv_query trace fanout \"picorv32_axi.axi_adapter.mem_valid\" --file picorv32.v --depth 1 --json",
+        "sv_query trace lookup --path \"picorv32_axi.axi_adapter.mem_valid\" --file picorv32.v --json"
+      ]
+    }
+  ]
+}

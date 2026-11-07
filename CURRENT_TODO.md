@@ -3,7 +3,7 @@
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **可视化计划**: [structural_review_plan_2026-11-02](docs/architecture/structural_review_plan_2026-11-02.md) — 全设计图退役；动态子图 + 局部 review。
-> **最后更新**: 2026-11-07 GMT+8 (iter_392: 收尾/外部验证 deferred)
+> **最后更新**: 2026-11-07 GMT+8 (iter_393: 查询成本归因)
 
 ---
 
@@ -36,6 +36,7 @@
 - **P87** 12-task fixed protocol ✅（iter_391）
 - **P88** 外部 VeriBug 验证 ⏭️ 放弃（成本/环境）
 - **P89** 最终验证摘要 ✅（iter_392）
+- **P90** agent 查询成本归因 ✅（iter_393）：暂不做 serve
 
 > P71/P72 已完成；P62.2 交互式 debug 保持 gate；外部 VeriBug 明确 deferred/放弃。
 
@@ -47,7 +48,7 @@
 - **全量基线**: **2556 passed / 0 failed**（`sim/tests/`, `-m "not opensource"`；
   7 skipped / 119 deselected；iter_391 实测）
 - **命令面**: 39 命令 = core 35 + exp 4（class/constraint/covergroup）
-- **当前重点**: 收尾；外部效度未验证，不再扩实验（P89）
+- **当前重点**: 收尾；成本归因显示模型生成主导（P90）
 
 ---
 
