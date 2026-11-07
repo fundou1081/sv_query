@@ -229,6 +229,10 @@ P100 svq_query details / neighborhood <已完成>
 -- P100.2 mux details probe <已完成>
 -- P100.3 bounded neighborhood BFS <已完成>
 
+P101 neighborhood condition schema <已完成>
+-- P101.1 conditions + condition_atoms <已完成>
+-- P101.2 mux depth5 条件复测 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

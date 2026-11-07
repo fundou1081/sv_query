@@ -135,6 +135,33 @@ export function compactPath(payload, meta = {}) {
   };
 }
 
+/** Normalize branch conditions to unique condition atoms.
+ *
+ * The graph records both a condition and its negation (`sel[0]`,
+ * `!(sel[0])`). The atom is the expression under the negation, not the branch
+ * polarity. This is a presentation helper, not a semantic solver.
+ */
+export function conditionAtoms(conditions) {
+  if (!Array.isArray(conditions)) {
+    fail("conditions must be an array");
+  }
+  const out = [];
+  const seen = new Set();
+  for (const raw of conditions) {
+    if (typeof raw !== "string") continue;
+    let atom = raw.trim();
+    if (!atom) continue;
+    if (atom.startsWith("!")) atom = atom.slice(1).trim();
+    while (atom.startsWith("(") && atom.endsWith(")")) {
+      atom = atom.slice(1, -1).trim();
+    }
+    if (!atom || seen.has(atom)) continue;
+    seen.add(atom);
+    out.push(atom);
+  }
+  return out;
+}
+
 /**
  * Dispatch by intent.
  *

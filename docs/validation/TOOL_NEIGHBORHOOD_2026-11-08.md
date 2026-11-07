@@ -52,25 +52,30 @@ data_sources:
 
 与 mux ground truth 的三个 OP_TERNARY、两个 select、a/b/c/d 一致。
 
-### 条件边界
+### 条件字段
 
-返回：
+工具现在同时返回：
 
 ```text
 conditions:
   !(sel[1]) / sel[1] / sel[0] / !(sel[0])
+
+condition_atoms:
+  sel[1] / sel[0]
 ```
 
-任务 ground truth 只要求：
+- `conditions`：图事实，4 条分支条件；
+- `condition_atoms`：去掉极性后的条件原子，2 条 select 条件。
+
+mux 复测输出：
 
 ```text
-sel[0] / sel[1]
+conditions: ["sel[1]", "sel[0]"]
 ```
 
-所以结构字段通过，但条件数组的**粒度**仍需产品定义：
-- 分支条件（4 条）是图事实；
-- select 条件（2 条）是任务约定；
-- 不能静默把两者当成同一个字段。
+与任务要求的两个 select 条件一致（顺序不同，语义一致）。
+
+所以不再把两种粒度混成一个字段。
 
 ## 3. 深度
 
@@ -83,16 +88,16 @@ depth 4 时 `top.u.sel[0]` 在第 5 跳，未返回；depth 5 才完整。
 - 每个节点一次 `sv_query` 调用，大邻域会慢；
 - 100 节点截断；
 - 无 MIG；
-- 条件粒度未统一；
+- `condition_atoms` 是展示层归一化，不是布尔求解；
 - 未做正式评分；
-- 未加 Node 测试（BFS 依赖真实 `sv_query`）。
+- 未加纯 BFS 单元测试（BFS 依赖真实 `sv_query`）。
 
 ## 5. 结论
 
 ```text
 bounded neighborhood 可用；
 mux 的 mux_nodes/selects/data_sources 已正确；
-conditions 仍需语义约定。
+condition_atoms 解决了条件粒度。
 ```
 
 下一步：

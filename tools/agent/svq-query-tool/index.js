@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { defineTool } from "@deepseek-ai/dsh-tools";
-import { INTENTS, compactResult } from "./compact.js";
+import { INTENTS, compactResult, conditionAtoms } from "./compact.js";
 
 const execFileP = promisify(execFile);
 
@@ -61,7 +61,9 @@ async function neighborhood(signal, snapshot, maxDepth, base) {
     ok: true, intent: "neighborhood", snapshot,
     signal, depth: maxDepth,
     nodes: nodeList, edges,
-    op_ternary: opTernary, conditions,
+    op_ternary: opTernary,
+    conditions,
+    condition_atoms: conditionAtoms(conditions),
     count: nodeList.length, truncated,
   };
 }

@@ -51,10 +51,9 @@ conditions:
 
 ### 仍存在的问题
 
-- selects 返回了 `top.sel[0]/[1]`，而 canonical 期望是 `top.u.sel[0]/[1]`；
-- conditions 返回 4 条分支条件，而任务 ground truth 是 2 条 select 条件；
-- 说明工具还需要 **canonical alias / condition 语义**，不能只加 details；
-- 这次没有做自动评分，不应写成 mux 任务通过。
+- details 本身只解决 kind/condition 可见性；
+- 后续 neighborhood + condition_atoms 已补上 canonical select 与条件原子；
+- 仍不应仅凭 details 写成 mux 任务通过。
 
 ---
 
