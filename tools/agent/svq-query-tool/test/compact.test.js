@@ -183,3 +183,12 @@ test("neighbors details carry both sides", () => {
     { id: "top.b", kind: "PORT_OUT", condition: "", distance: null },
   ]);
 });
+
+test("conditionAtoms strips polarity and duplicates", async () => {
+  const { conditionAtoms } = await import("../compact.js");
+  assert.deepEqual(
+    conditionAtoms(["sel[0]", "!(sel[0])", "sel[1]", "!(sel[1])", ""]),
+    ["sel[0]", "sel[1]"],
+  );
+  assert.deepEqual(conditionAtoms(["(mode == 0)"]), ["mode == 0"]);
+});
