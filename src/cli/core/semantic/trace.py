@@ -937,7 +937,7 @@ def impact(
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
     top: str = typer.Option(None, "--top", help="[P71] 多 top filelist 时指定顶层模块"),
-    prune: bool = typer.Option(False, "--prune", help="[P91] 先按 --top 裁剪 filelist；失败自动回退完整 filelist"),
+
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments"),
     batch_file: str = typer.Option(None, "--batch-file", help="[B1 2026-07-03] Path to file with one signal per line (# comment, blank skipped)."),
     batch: str = typer.Option(None, "--batch", help="[B1 2026-07-03] Inline batch of signals, comma-separated (e.g., 'top.clk,top.rst_n')."),
@@ -972,16 +972,8 @@ def impact(
             raise ValueError("--from-snapshot is mutually exclusive with --file/--filelist")
         if from_snapshot and top:
             raise ValueError("--top cannot be used with --from-snapshot")
-        if prune and (from_snapshot or not filelist):
-            raise ValueError("--prune requires --filelist (and is incompatible with --from-snapshot)")
-        if prune and not top:
-            raise ValueError("--prune requires --top")
         if from_snapshot:
             tracer = _load_tracer_from_snapshot(from_snapshot, log_level="ERROR", preprocess_macros=preprocess_macros)
-        elif filelist and prune:
-            tracer = _build_pruned_tracer(filelist, top, log_level="ERROR",
-                                          preprocess_macros=preprocess_macros,
-                                          use_cache=not no_cache)
         elif filelist:
             tracer = UnifiedTracer(filelist=filelist, log_level="ERROR",
                                    preprocess_macros=preprocess_macros,
@@ -1124,9 +1116,6 @@ def impact(
             },
             "errors": per_signal_errors,
         }
-        if prune:
-            data["prune"] = getattr(tracer, "_svq_prune_info", None)
-
         if json_output:
             emit_json(data, pretty)
         elif format == "json":

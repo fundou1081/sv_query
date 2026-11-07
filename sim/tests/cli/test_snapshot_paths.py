@@ -30,3 +30,15 @@ def test_paths_from_snapshot_matches_filelist():
     b = json.loads(snap.stdout)
     assert a["found"] is b["found"] is True
     assert a["path"] == b["path"]
+
+
+def test_paths_from_snapshot_invalid_and_mutually_exclusive():
+    env = {**os.environ, "SVQ_SNAPSHOT_DIR": tempfile.mkdtemp(prefix="svq_d_bad_")}
+    r = _run("paths", "a", "b", "--from-snapshot", "missing", "--json", env=env)
+    assert r.returncode != 0
+    assert json.loads(r.stdout)["ok"] is False
+
+    r = _run("paths", "a", "b", "--from-snapshot", "missing",
+             "--filelist", str(FL), "--json", env=env)
+    assert r.returncode != 0
+    assert "mutually exclusive" in json.loads(r.stdout)["error"].lower()

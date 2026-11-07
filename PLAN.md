@@ -195,6 +195,10 @@ P92 snapshot 预构建（D） <已完成>
 -- P92.1 snapshot PathResolver + paths --from-snapshot <已完成>
 -- P92.2 AXI/SERV 实测与边界 <已完成>
 
+P93 A/D 充分测试 <已完成>
+-- P93.1 prune fallback/边界测试 <已完成>
+-- P93.2 snapshot/paths 一致性与 12-task pruned matrix <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

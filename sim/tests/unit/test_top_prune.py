@@ -87,3 +87,24 @@ def test_pruned_build_falls_back_to_full_filelist(tmp_path):
     assert info["fallback"] is True
     assert "elaboration" in info["fallback_reason"].lower() or "unknown module" in info["fallback_reason"].lower()
     assert "top.u" in [i.full_path for i in tr.get_instances()]
+
+
+def test_chain_and_unused_stress(tmp_path):
+    m = _load()
+    src = {}
+    n = 120
+    for i in range(n):
+        name = f"m{i}"
+        nxt = f"    m{i + 1} u();\n" if i + 1 < n else ""
+        p = tmp_path / f"{name}.sv"
+        p.write_text(f"module {name};\n{nxt}endmodule\n")
+        src[str(p)] = p.read_text()
+    unused = tmp_path / "unused.sv"
+    unused.write_text("module unused; endmodule\n")
+    src[str(unused)] = unused.read_text()
+
+    r = m.prune_sources(src, "m0")
+    names = {Path(p).stem for p in r.selected}
+    assert len(names) == n
+    assert "unused" not in names
+    assert r.reason == "reachable"
