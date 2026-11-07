@@ -168,6 +168,10 @@ P85 neighborhood source/T2 pilot <已完成>
 -- P85.2 2 场景 ×3 模型 ×2 臂 ×2 seed <已完成>
 -- P85.3 结果/决策 <已完成>
 
+P86 统一双评分 <已完成>
+-- P86.1 canonical + semantic scorer <已完成>
+-- P86.2 bench 接入/测试/文档 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

@@ -16,7 +16,11 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
+import sys
 import yaml
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from scoring import score_answer
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
@@ -34,6 +38,13 @@ TASKS = [
         "question": "Extract the signal-graph neighborhood around top.e.p.len: all rand variables, each constraint block affecting len (block id, defined_in, inherited), condition variables (especially packet.mode), and the block coupling addr+len. Use exact ids.",
         "shape": {"property": "top.e.p.len", "rand_vars": [], "constraints": [],
                   "condition_vars": [], "both_addr_len_block": "", "inherited": []},
+        "ground_truth": {
+            "rand_vars": ["packet.addr", "packet.len", "packet.mode", "packet.payload"],
+            "constraints": ["packet.c_len", "packet.c_mode", "packet.c_order"],
+            "condition_vars": ["packet.mode"],
+            "both_addr_len_block": "packet.c_order",
+            "inherited": ["packet.c_len"],
+        },
     },
     {
         "id": "mux_neighborhood",
@@ -41,6 +52,13 @@ TASKS = [
         "question": "Extract the local signal-graph mux neighborhood around top.q: direct register/sink, all OP_TERNARY nodes, select signals, data sources a/b/c/d, and mux conditions. Use exact canonical ids.",
         "shape": {"seed": "top.q", "register": "top.q", "mux_nodes": [],
                   "selects": [], "data_sources": [], "conditions": []},
+        "ground_truth": {
+            "mux_nodes": ["top.u.lo.ternary_sel[0]", "top.u.hi.ternary_sel[0]",
+                          "top.u.y.ternary_sel[1]"],
+            "selects": ["top.u.sel[0]", "top.u.sel[1]"],
+            "data_sources": ["top.u.a", "top.u.b", "top.u.c", "top.u.d"],
+            "register": "top.q",
+        },
     },
 ]
 
@@ -119,67 +137,6 @@ def _fact_check(task: dict, ws: Path) -> tuple[bool, dict]:
     return want <= nodes, {"missing": sorted(want - nodes)}
 
 
-def _strs(v) -> set[str]:
-    out: set[str] = set()
-    if isinstance(v, str):
-        out.add(v)
-    elif isinstance(v, dict):
-        for k in ("id", "name", "block", "block_id", "defined_in"):
-            if isinstance(v.get(k), str):
-                out.add(v[k])
-    elif isinstance(v, (list, tuple, set)):
-        for x in v:
-            out |= _strs(x)
-    return out
-
-
-def _check(task: dict, d: dict | None) -> dict:
-    if d is None:
-        return {"parsed": False, "checks": {}}
-    a = d.get("answer", d)
-    if task["id"] == "complex_constraints":
-        return {"parsed": True, "checks": {
-            "rand_vars": _strs(a.get("rand_vars")) == {
-                "packet.addr", "packet.len", "packet.mode", "packet.payload"},
-            "constraints": {"packet.c_len", "packet.c_mode", "packet.c_order"} <= _strs(a.get("constraints")),
-            "condition": "packet.mode" in _strs(a.get("condition_vars")),
-            "coupling": "packet.c_order" in _strs(a.get("both_addr_len_block")),
-            "inherited": "packet.c_len" in _strs(a.get("inherited")),
-        }}
-    return {"parsed": True, "checks": {
-        "mux_nodes": _strs(a.get("mux_nodes")) == {
-            "top.u.lo.ternary_sel[0]", "top.u.hi.ternary_sel[0]",
-            "top.u.y.ternary_sel[1]"},
-        "selects": _strs(a.get("selects")) == {"top.u.sel[0]", "top.u.sel[1]"},
-        "sources": _strs(a.get("data_sources")) == {
-            "top.u.a", "top.u.b", "top.u.c", "top.u.d"},
-        "register": a.get("register") == "top.q",
-    }}
-
-
-def _semantic(task: dict, d: dict | None) -> dict:
-    """Format-tolerant neighborhood check: source answers may use instance aliases."""
-    if d is None:
-        return {"parsed": False}
-    a = d.get("answer", d)
-    blob = json.dumps(a, ensure_ascii=False)
-    if task["id"] == "complex_constraints":
-        return {"parsed": True, "checks": {
-            "rand_vars": all(x in blob for x in ("addr", "len", "mode", "payload")),
-            "constraints": all(x in blob for x in ("c_len", "c_mode", "c_order")),
-            "condition": "mode" in blob,
-            "coupling": "c_order" in blob,
-            "inherited": "c_len" in blob,
-        }}
-    # mux aliases: top.u.a / top.a / mux_tree.a; OP suffix stripped
-    return {"parsed": True, "checks": {
-        "mux_nodes": all(x in blob for x in ("lo", "hi", "y")),
-        "selects": all(x in blob for x in ("sel[0]", "sel[1]")),
-        "sources": all(x in blob for x in ("a", "b", "c", "d")),
-        "register": "top.q" in blob or "q" in blob,
-    }}
-
-
 def _run(task: dict, model: dict, arm: str, seed: int, budget: int) -> dict:
     ws = WORK / model["label"].replace(".", "_") / task["id"] / f"{arm}-s{seed}"
     if ws.exists():
@@ -225,6 +182,7 @@ def _run(task: dict, model: dict, arm: str, seed: int, budget: int) -> dict:
             break
         time.sleep(60 * (attempt + 1))
     parsed = _extract_json(text)
+    score = score_answer(task, (parsed or {}).get("answer", {}))
     (ws / "raw.txt").write_text(text)
     return {"task_id": task["id"], "model": model["label"], "arm": arm,
             "seed": seed, "duration_ms": int((time.time() - t0) * 1000),
@@ -232,7 +190,12 @@ def _run(task: dict, model: dict, arm: str, seed: int, budget: int) -> dict:
             "fact_check": fc, "answer": (parsed or {}).get("answer", {}),
             "queries": (parsed or {}).get("queries", []),
             "confidence": (parsed or {}).get("confidence"),
-            "checks": _check(task, parsed), "semantic": _semantic(task, parsed),
+            "canonical": score["canonical"],
+            "checks": {"parsed": parsed is not None,
+                       "checks": score["canonical_checks"]},
+            "semantic": {"parsed": parsed is not None,
+                         "checks": score["semantic_checks"]},
+            "semantic_ok": score["semantic"],
             "stderr": err, "workspace": str(ws)}
 
 

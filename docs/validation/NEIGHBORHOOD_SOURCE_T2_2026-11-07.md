@@ -36,9 +36,9 @@
 | 模型 / 臂 | strict |
 |---|---:|
 | MiniMax-M3 / source | 0/4 |
-| MiniMax-M3 / T2 | 2/4 |
+| MiniMax-M3 / T2 | 1/4 |
 | MiniMax-M3.1-Flash / source | 0/4 |
-| MiniMax-M3.1-Flash / T2 | 1/4 |
+| MiniMax-M3.1-Flash / T2 | 0/4 |
 | DeepSeek-Flash / source | 0/4 |
 | DeepSeek-Flash / T2 | 3/4 |
 
@@ -46,7 +46,7 @@
 
 ```text
 source: 0/12
-T2:     6/12
+T2:     4/12
 ```
 
 ### semantic
@@ -133,7 +133,7 @@ T2 更慢；没有 token 统计。
 
 1. **复杂 constraint / mux 的关系语义，source 和 T2 都能拿到。**
 2. T2 的优势主要是 **canonical/synthetic ID**，不是理解能力。
-3. 但 T2 的 strict canonical 也只有 6/12，说明格式仍不稳定。
+3. 但 T2 的 strict canonical 只有 4/12，说明额外字段/alias 仍会让严格匹配失败。
 4. 之前“T2 应该更好”的假设在邻域任务上没有成立。
 5. 不能据此做 neighborhood CLI；没有证据表明它能提升语义准确率。
 
