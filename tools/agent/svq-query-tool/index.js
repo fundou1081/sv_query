@@ -1,13 +1,12 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { defineTool } from "@deepseek-ai/dsh-tools";
+import { INTENTS, compactResult } from "./compact.js";
 
 const execFileP = promisify(execFile);
 
 export const name = "svq-query-tool";
 export const inject = ["tools"];
-
-const INTENTS = ["fanin", "fanout", "neighbors", "path"];
 
 /** Run the installed sv_query binary without a shell. */
 async function query(args) {
@@ -58,47 +57,31 @@ export function apply(ctx) {
     },
     async execute(args) {
       if (!INTENTS.includes(args.intent)) {
-        throw new Error("intent must be fanin, fanout, or path");
+        throw new Error(`intent must be one of: ${INTENTS.join(", ")}`);
       }
       if (!/^[A-Za-z0-9_.-]+$/.test(args.snapshot)) {
         throw new Error("invalid snapshot tag");
       }
       const base = ["--from-snapshot", args.snapshot, "--json"];
       const depth = args.depth ?? 1;
+      const meta = { snapshot: args.snapshot, signal: args.signal };
       if (args.intent === "path") {
         if (!args.dst) throw new Error("path requires dst");
-        const d = await query(["paths", args.signal, args.dst, "--directed", ...base]);
-        return {
-          ok: d.ok !== false,
-          intent: "path", snapshot: args.snapshot,
-          path: d.path || [], count: d.hop_count ?? null,
-        };
+        const payload = await query(["paths", args.signal, args.dst, "--directed", ...base]);
+        return compactResult("path", payload, meta);
       }
       if (depth < 1 || depth > 32) throw new Error("depth must be 1..32");
-      const run = async (cmd) => {
-        const d = await query([cmd, args.signal, "--depth", String(depth), ...base]);
-        const s = d.result?.signals?.[0] || {};
-        return (cmd === "drivers" ? s.drivers : s.loads) || [];
-      };
+      const fetch = (cmd) =>
+        query([cmd, args.signal, "--depth", String(depth), ...base]);
       if (args.intent === "neighbors") {
-        const drivers = await run("drivers");
-        const loads = await run("loads");
-        return {
-          ok: true, intent: "neighbors", snapshot: args.snapshot,
-          signal: args.signal,
-          drivers: drivers.map((x) => x.id),
-          loads: loads.map((x) => x.id),
-          count: drivers.length + loads.length,
-        };
+        const [drivers, loads] = await Promise.all([
+          fetch("drivers"),
+          fetch("loads"),
+        ]);
+        return compactResult("neighbors", { drivers, loads }, meta);
       }
-      const rows = await run(args.intent === "fanin" ? "drivers" : "loads");
-      const ids = rows.map((x) => x.id);
-      return {
-        ok: true, intent: args.intent, snapshot: args.snapshot,
-        signal: args.signal,
-        [args.intent === "fanin" ? "drivers" : "loads"]: ids,
-        count: ids.length,
-      };
+      const payload = await fetch(args.intent === "fanin" ? "drivers" : "loads");
+      return compactResult(args.intent, payload, meta);
     },
   }));
 }
