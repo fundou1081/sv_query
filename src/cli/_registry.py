@@ -194,6 +194,8 @@ COMMANDS: list[CommandSpec] = [
        note="列图节点 (kind/module/--match 过滤; --detail 给表达式等富字段); 支持 --file / --filelist"),
     _c("graph edges", "locate", kind="primitive", cost="cheap",
        note="列出图边; 支持 --file / --filelist (iter_236 补)"),
+    _c("filelist prune", "locate", kind="primitive", cost="cheap",
+       note="[P91] top-aware 保守 filelist 裁剪; 只输出候选/可选写新 filelist，不改源文件"),
     _c("graph subgraph", "locate", kind="primitive", cost="cheap",
        note="[P60] seed 的 k-hop 局部子图; depth/direction/edge-kinds/budget; JSON boundary/truncated"),
     CommandSpec(key="diagnose", layer="exp", group="diagnose", kind="experimental",
