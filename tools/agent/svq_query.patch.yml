@@ -1,0 +1,11 @@
+- id: tool-bash
+  disabled: true
+- id: tool-fs
+  disabled: true
+- id: tool-fs-search
+  disabled: true
+- id: tool-skill
+  disabled: true
+- insert:
+    - id: svq-query-tool
+      name: '@svq/query-tool'
