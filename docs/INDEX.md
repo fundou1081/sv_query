@@ -15,10 +15,10 @@
 | 源码规模 | 163 文件 / 63,146 行 | `find src -name "*.py"` |
 | 测试规模 | 368 测试文件 / 78,847 行 + 117 SV fixture | `find sim/tests -name "*.py"` |
 | 回归基线 | **2129 passed + 35 subtests** (unit + regression, `-m "not opensource"`) | 2026-09-08 实测 (iter_190 后) |
-| 全量 (canonical) | **2556 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; 7 skipped / 119 deselected) | 2026-11-07 实测 (iter_391): 12-task fixed，无测试计数变化。历史: iter_390 2556 / iter_389 2552 |
+| 全量 (canonical) | **2561 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; 7 skipped / 119 deselected) | 2026-11-07 实测 (iter_395): filelist prune +5。历史: iter_391 2556 / iter_390 2556 |
 | CLI / integration | **810 passed / 0 failed** (`sim/tests/cli sim/tests/integration`, `-m "not opensource"`) | 2026-09-08 实测 (iter_185 修复后) |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (381 份, 只增不改) | 每次迭代一份 |
+| 迭代记录 | `docs/task_tree/iterations/` (382 份, 只增不改) | 每次迭代一份 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 | 语义 regex 纪律 | `python3 tools/check_semantic_regex.py` 必须 ✅ | 仅 UVM 宏例外；class/constraint/covergroup 语义走 slang (iter_368) |
@@ -93,6 +93,7 @@
 | [validation/FINAL_VALIDATION_SUMMARY_2026-11-07.md](validation/FINAL_VALIDATION_SUMMARY_2026-11-07.md) | **最终验证摘要（P89）**: 已支持/未验证/不可宣称；外部 VeriBug 放弃 |
 | [validation/QUERY_COST_ATTRIBUTION_2026-11-07.md](validation/QUERY_COST_ATTRIBUTION_2026-11-07.md) | **P90 成本归因**: query 仅 12–13%；模型生成主导；暂停 serve |
 | [validation/SESSION_TELEMETRY_2026-11-07.md](validation/SESSION_TELEMETRY_2026-11-07.md) | **P90.3 telemetry 修正**: 真实 sv_query 48/48；`queries` 是 lossy；tool 19–28% |
+| [validation/FILELIST_PRUNE_2026-11-07.md](validation/FILELIST_PRUNE_2026-11-07.md) | **P91 top-aware prune**: AXI 55→3, 27.3s→0.84s；SERV 24→17, 3.4→1.23s |
 | [validation/COMPARISON_RECORD_2026-11-05.md](validation/COMPARISON_RECORD_2026-11-05.md) | **对比结果冻结记录**: 哈希、模型、指标、单独复验脚本与已知缺陷 |
 | [validation/long_range_12_usage_2026-11-05.json](validation/long_range_12_usage_2026-11-05.json) | **token/tool-call 汇总**: 四臂 token、tool calls、tokens/correct |
 | [architecture/long_range_structural_benchmark_2026-11-05.md](architecture/long_range_structural_benchmark_2026-11-05.md) | **长程结构查询对照基准**: B0/B1/T1/T2 对照、任务族、ground truth 冻结与准确度/成本指标 |

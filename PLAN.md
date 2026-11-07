@@ -187,6 +187,10 @@ P90 agent 查询成本归因 <已完成>
 -- P90.2 决策：暂停 serve/batch，先修 cache/telemetry <已完成>
 -- P90.3 DSH session 真实 telemetry 调查 <已完成>
 
+P91 大 filelist top-aware 裁剪 <已完成>
+-- P91.1 保守 scanner + `filelist prune` CLI <已完成>
+-- P91.2 AXI/SERV 实测与边界 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

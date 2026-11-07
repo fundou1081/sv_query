@@ -3,7 +3,7 @@
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **可视化计划**: [structural_review_plan_2026-11-02](docs/architecture/structural_review_plan_2026-11-02.md) — 全设计图退役；动态子图 + 局部 review。
-> **最后更新**: 2026-11-07 GMT+8 (iter_394: session telemetry 修正)
+> **最后更新**: 2026-11-07 GMT+8 (iter_395: filelist prune A)
 
 ---
 
@@ -37,6 +37,7 @@
 - **P88** 外部 VeriBug 验证 ⏭️ 放弃（成本/环境）
 - **P89** 最终验证摘要 ✅（iter_392）
 - **P90** agent 查询成本归因 ✅（iter_393）；session telemetry 修正 ✅（iter_394）
+- **P91** 大 filelist top-aware 裁剪 ✅（iter_395）
 
 > P71/P72 已完成；P62.2 交互式 debug 保持 gate；外部 VeriBug 明确 deferred/放弃。
 
@@ -45,9 +46,9 @@
 ## 📦 仓库状态
 
 - **分支**: `main`；最新提交以 `git log -1` 为准
-- **全量基线**: **2556 passed / 0 failed**（`sim/tests/`, `-m "not opensource"`；
-  7 skipped / 119 deselected；iter_391 实测）
-- **命令面**: 39 命令 = core 35 + exp 4（class/constraint/covergroup）
+- **全量基线**: **2561 passed / 0 failed**（`sim/tests/`, `-m "not opensource"`；
+  7 skipped / 119 deselected；iter_395 实测）
+- **命令面**: 40 命令 = core 36 + exp 4（class/constraint/covergroup）
 - **当前重点**: 收尾；成本归因显示模型生成主导（P90）
 
 ---

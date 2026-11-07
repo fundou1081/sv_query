@@ -54,6 +54,7 @@ from cli.core.state.diff import diff_app
 # [iter_248 T2] 诊断: 4 个子命令合并为 1 个 `diagnose <check>` (fix 老路径已删除)
 from cli.core.diagnose.dispatch import diagnose_cmd
 from cli.core.locate.graph import graph_app
+from cli.core.locate.filelist_cmd import filelist_app
 from cli.core.locate.capabilities import capabilities
 from cli.core.locate.search import search
 from cli.core.state.snapshot import snapshot_app
@@ -118,6 +119,7 @@ app.add_typer(review_app, name="review", hidden=True)
 # [FIX 2026-07-06] graph 是早期写但从未注册的 Typer app (dump/nodes/edges/find 4 commands)
 # 修 dump 的 TraceNode attribute bug 之后, 重新启用
 app.add_typer(graph_app, name="graph")
+app.add_typer(filelist_app, name="filelist")
 
 # [iter_230] 能力清单 (agent 的工具面真相源; 只读 + JSON)。普通顶层命令
 app.command("capabilities")(capabilities)
