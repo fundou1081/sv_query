@@ -36,6 +36,7 @@ from trace.core.graph.models import EdgeKind
 from trace.core.sva_extractor import SVAExtractor
 from trace.unified_tracer import UnifiedTracer
 import logging
+from cli._common import _build_pruned_tracer
 from cli._output import emit_json
 
 logger = logging.getLogger(__name__)
@@ -354,6 +355,7 @@ def fanin(
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
     top: str = typer.Option(None, "--top", help="[P71] 多 top filelist 时指定顶层模块"),
+    prune: bool = typer.Option(False, "--prune", help="[P91] 先按 --top 裁剪 filelist；失败自动回退完整 filelist"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments"),
     max_results: int | None = typer.Option(None, "--max-results", "-N", help="[C1 2026-06-28 LLM] Cap number of results per signal (None=unlimited). Returns truncated=true if any signal capped."),
     batch_file: str = typer.Option(None, "--batch-file", help="[B1 2026-07-03] Path to file with one signal per line (# comment, blank skipped)."),
@@ -392,8 +394,16 @@ def fanin(
             raise ValueError("--from-snapshot is mutually exclusive with --file/--filelist")
         if from_snapshot and top:
             raise ValueError("--top cannot be used with --from-snapshot")
+        if prune and (from_snapshot or not filelist):
+            raise ValueError("--prune requires --filelist (and is incompatible with --from-snapshot)")
+        if prune and not top:
+            raise ValueError("--prune requires --top")
         if from_snapshot:
             tracer = _load_tracer_from_snapshot(from_snapshot, log_level="ERROR", preprocess_macros=preprocess_macros)
+        elif filelist and prune:
+            tracer = _build_pruned_tracer(filelist, top, log_level="ERROR",
+                                          preprocess_macros=preprocess_macros,
+                                          use_cache=not no_cache)
         elif filelist:
             tracer = UnifiedTracer(filelist=filelist, log_level="ERROR",
                                    preprocess_macros=preprocess_macros,
@@ -406,7 +416,8 @@ def fanin(
             tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR",
                                    preprocess_macros=preprocess_macros,
                                    top_modules=[top] if top else None)
-        _ = tracer.build_graph(use_cache=not no_cache)
+        if tracer.get_graph() is None:
+            _ = tracer.build_graph(use_cache=not no_cache)
         _tops = tracer.list_top_modules()
         _top_ambiguous = len(_tops) > 1 and top is None
 
@@ -565,6 +576,8 @@ def fanin(
             },
             "errors": per_signal_errors,
         }
+        if prune:
+            data["prune"] = getattr(tracer, "_svq_prune_info", None)
 
         if json_output:
             emit_json(data, pretty)
@@ -635,6 +648,7 @@ def fanout(
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
     top: str = typer.Option(None, "--top", help="[P71] 多 top filelist 时指定顶层模块"),
+    prune: bool = typer.Option(False, "--prune", help="[P91] 先按 --top 裁剪 filelist；失败自动回退完整 filelist"),
     include_clock: bool = typer.Option(False, "--include-clock", help="[Req-12] Include CLOCK edges (sensitivity list)"),
     include_reset: bool = typer.Option(False, "--include-reset", help="[Req-12] Include RESET edges"),
     include_control: bool = typer.Option(False, "--include-control", help="[UNSUPPORTED] no CONTROL edges are emitted; returns explicit error (use --include-conditional)"),
@@ -673,8 +687,16 @@ def fanout(
             raise ValueError("--from-snapshot is mutually exclusive with --file/--filelist")
         if from_snapshot and top:
             raise ValueError("--top cannot be used with --from-snapshot")
+        if prune and (from_snapshot or not filelist):
+            raise ValueError("--prune requires --filelist (and is incompatible with --from-snapshot)")
+        if prune and not top:
+            raise ValueError("--prune requires --top")
         if from_snapshot:
             tracer = _load_tracer_from_snapshot(from_snapshot, log_level="ERROR", preprocess_macros=preprocess_macros)
+        elif filelist and prune:
+            tracer = _build_pruned_tracer(filelist, top, log_level="ERROR",
+                                          preprocess_macros=preprocess_macros,
+                                          use_cache=not no_cache)
         elif filelist:
             tracer = UnifiedTracer(filelist=filelist, log_level="ERROR",
                                    preprocess_macros=preprocess_macros,
@@ -687,7 +709,8 @@ def fanout(
             tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR",
                                    preprocess_macros=preprocess_macros,
                                    top_modules=[top] if top else None)
-        _ = tracer.build_graph(use_cache=not no_cache)
+        if tracer.get_graph() is None:
+            _ = tracer.build_graph(use_cache=not no_cache)
         _tops = tracer.list_top_modules()
         _top_ambiguous = len(_tops) > 1 and top is None
 
@@ -839,6 +862,8 @@ def fanout(
             },
             "errors": per_signal_errors,
         }
+        if prune:
+            data["prune"] = getattr(tracer, "_svq_prune_info", None)
 
         if json_output:
             emit_json(data, pretty)
@@ -912,6 +937,7 @@ def impact(
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
     top: str = typer.Option(None, "--top", help="[P71] 多 top filelist 时指定顶层模块"),
+    prune: bool = typer.Option(False, "--prune", help="[P91] 先按 --top 裁剪 filelist；失败自动回退完整 filelist"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments"),
     batch_file: str = typer.Option(None, "--batch-file", help="[B1 2026-07-03] Path to file with one signal per line (# comment, blank skipped)."),
     batch: str = typer.Option(None, "--batch", help="[B1 2026-07-03] Inline batch of signals, comma-separated (e.g., 'top.clk,top.rst_n')."),
@@ -946,8 +972,16 @@ def impact(
             raise ValueError("--from-snapshot is mutually exclusive with --file/--filelist")
         if from_snapshot and top:
             raise ValueError("--top cannot be used with --from-snapshot")
+        if prune and (from_snapshot or not filelist):
+            raise ValueError("--prune requires --filelist (and is incompatible with --from-snapshot)")
+        if prune and not top:
+            raise ValueError("--prune requires --top")
         if from_snapshot:
             tracer = _load_tracer_from_snapshot(from_snapshot, log_level="ERROR", preprocess_macros=preprocess_macros)
+        elif filelist and prune:
+            tracer = _build_pruned_tracer(filelist, top, log_level="ERROR",
+                                          preprocess_macros=preprocess_macros,
+                                          use_cache=not no_cache)
         elif filelist:
             tracer = UnifiedTracer(filelist=filelist, log_level="ERROR",
                                    preprocess_macros=preprocess_macros,
@@ -1090,6 +1124,8 @@ def impact(
             },
             "errors": per_signal_errors,
         }
+        if prune:
+            data["prune"] = getattr(tracer, "_svq_prune_info", None)
 
         if json_output:
             emit_json(data, pretty)

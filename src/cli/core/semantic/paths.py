@@ -17,7 +17,7 @@ import typer
 
 from cli.core.semantic._bit_args import normalize_endpoint, parse_bits
 from cli.core.semantic._common import build_tracer, emit, fail
-from cli.core.semantic.trace_common import edge_evidence_dict
+from cli.core.semantic.trace_common import edge_evidence_dict, _load_tracer_from_snapshot
 
 
 def paths_cmd(
@@ -41,6 +41,8 @@ def paths_cmd(
              "位节点缺失时回落总线并在 JSON 标 coarse_fallback"),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str = typer.Option(None, "--filelist", help="filelist (.f/.fl) for multi-file projects"),
+    from_snapshot: str = typer.Option(None, "--from-snapshot",
+                                      help="Load graph from saved snapshot tag (skip parse); mutually exclusive with --file/--filelist"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     log_level: str = typer.Option("WARNING", "--log-level"),
@@ -56,7 +58,18 @@ def paths_cmd(
         svq paths in_a add_out --directed --filelist project.f --json
         svq paths top.din top.dout --directed --canonical --json
     """
-    tracer = build_tracer(file, filelist, log_level)
+    if from_snapshot and (file or filelist):
+        fail("--from-snapshot is mutually exclusive with --file/--filelist",
+             json_output, pretty)
+        return
+    if from_snapshot:
+        try:
+            tracer = _load_tracer_from_snapshot(from_snapshot)
+        except ValueError as e:
+            fail(str(e), json_output, pretty)
+            return
+    else:
+        tracer = build_tracer(file, filelist, log_level)
     if tracer is None:
         return
 

@@ -121,6 +121,6 @@ PicoRV32 是单文件，不需要 prune。
 ## 5. 下一步
 
 1. 在更多项目上量裁剪率和失败率；
-2. 把 prune 接入 `trace` 的显式 `--prune` 开关（不是默认静默）；
-3. 如果 build 失败，自动回退完整 filelist，并显式告警；
-4. 再做 D（snapshot 评估）。
+2. `trace --prune` 已接入，build 失败自动回退完整 filelist；
+3. D snapshot 已完成（见 [SNAPSHOT_2026-11-07.md](SNAPSHOT_2026-11-07.md)）；
+4. 下一步是 C 的进入条件评估。

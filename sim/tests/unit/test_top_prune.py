@@ -68,3 +68,22 @@ def test_no_top_returns_all(tmp_path):
     r = m.prune_sources(src, None)
     assert r.reason == "no_top"
     assert set(r.selected) == set(src)
+
+
+def test_pruned_build_falls_back_to_full_filelist(tmp_path):
+    """A macro-generated instantiation is invisible to the textual scan; the
+    pruned build fails and the helper must rebuild from the full filelist."""
+    (tmp_path / "defs.svh").write_text("`define CHILD child\n")
+    (tmp_path / "top.sv").write_text(
+        '`include "defs.svh"\nmodule top; `CHILD u(); endmodule\n')
+    (tmp_path / "child.sv").write_text("module child; endmodule\n")
+    fl = tmp_path / "all.f"
+    fl.write_text("\n".join(str(tmp_path / n) for n in
+                            ("top.sv", "child.sv", "defs.svh")) + "\n")
+
+    from cli._common import _build_pruned_tracer
+    tr = _build_pruned_tracer(str(fl), "top", log_level="ERROR")
+    info = tr._svq_prune_info
+    assert info["fallback"] is True
+    assert "elaboration" in info["fallback_reason"].lower() or "unknown module" in info["fallback_reason"].lower()
+    assert "top.u" in [i.full_path for i in tr.get_instances()]

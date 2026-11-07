@@ -22,6 +22,7 @@ from pathlib import Path
 import typer
 
 from trace.core.compiler import CompilationError
+from trace.core.top_prune import prune_sources
 from trace.unified_tracer import UnifiedTracer
 import logging
 
@@ -108,6 +109,65 @@ def _build_tracer(
     else:
         raise ValueError("Either --file or --filelist must be provided")
     return tracer
+
+
+def _build_pruned_tracer(
+    filelist: str,
+    top: str,
+    log_level: str = "ERROR",
+    preprocess_macros: bool = True,
+    use_cache: bool = True,
+) -> UnifiedTracer:
+    """Build from a pruned filelist; fall back to the full filelist on failure.
+
+    The first attempt uses top_prune's conservative subset. If elaboration
+    raises or reports errors, rebuild from the complete filelist and record the
+    fallback on ``tracer._svq_prune_info``. The fallback is never silent: CLI
+    output includes it.
+    """
+    fl = Path(filelist)
+    if not fl.exists():
+        raise FileNotFoundError(f"Filelist not found: {filelist}")
+    if not top:
+        raise ValueError("--prune requires --top")
+    sources, incdirs = _read_filelist_full(str(fl), base_dir=fl.parent.resolve())
+    pruned = prune_sources(sources, top)
+
+    def make(selected: list[str]) -> UnifiedTracer:
+        return UnifiedTracer(
+            sources={p: sources[p] for p in selected},
+            log_level=log_level,
+            include_dirs=incdirs,
+            preprocess_macros=preprocess_macros,
+            top_modules=[top],
+        )
+
+    def info(fallback: bool, reason: str = "") -> dict:
+        return {
+            "enabled": True,
+            "top": top,
+            "selected_count": len(pruned.selected),
+            "total_files": pruned.total,
+            "reason": pruned.reason,
+            "fallback": fallback,
+            "fallback_reason": reason,
+        }
+
+    try:
+        tracer = make(pruned.selected)
+        tracer.build_graph(use_cache=use_cache)
+        errors = tracer.get_elaboration_errors()
+        if errors:
+            raise CompilationError(
+                f"pruned build has {len(errors)} elaboration error(s)"
+            )
+        tracer._svq_prune_info = info(False)
+        return tracer
+    except Exception as exc:
+        tracer = make(list(sources))
+        tracer.build_graph(use_cache=use_cache)
+        tracer._svq_prune_info = info(True, str(exc))
+        return tracer
 
 
 def _detect_filelist_base_dir(filelist_path: Path, fallback: Path) -> Path:
