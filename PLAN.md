@@ -172,6 +172,10 @@ P86 统一双评分 <已完成>
 -- P86.1 canonical + semantic scorer <已完成>
 -- P86.2 bench 接入/测试/文档 <已完成>
 
+P87 12-task fixed protocol <已完成>
+-- P87.1 12-task fixed seed1 <已完成>
+-- P87.2 seed2/汇总 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

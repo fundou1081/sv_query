@@ -84,24 +84,15 @@ def _env() -> dict:
 
 
 def _extract_json(text: str) -> dict | None:
-    # Prefer the complete envelope (task_id + answer); nested answer objects
-    # must not be mistaken for the envelope.
+    decoder = json.JSONDecoder()
     candidates: list[dict] = []
     for m in re.finditer(r"\{", text):
-        depth = 0
-        for i in range(m.start(), len(text)):
-            if text[i] == "{":
-                depth += 1
-            elif text[i] == "}":
-                depth -= 1
-                if depth == 0:
-                    try:
-                        d = json.loads(text[m.start():i + 1])
-                        if isinstance(d, dict):
-                            candidates.append(d)
-                    except json.JSONDecodeError:
-                        pass
-                    break
+        try:
+            d, _ = decoder.raw_decode(text[m.start():])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(d, dict):
+            candidates.append(d)
     for d in reversed(candidates):
         if "task_id" in d and "answer" in d:
             return d

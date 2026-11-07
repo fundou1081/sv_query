@@ -93,37 +93,25 @@ def _copy_design(design: str, ws: Path) -> Path:
 
 
 def _extract_json(text: str) -> dict | None:
-    for block in reversed(re.findall(r"```(?:json)?\s*(.*?)```", text, re.S)):
+    decoder = json.JSONDecoder()
+    candidates: list[dict] = []
+    for m in re.finditer(r"\{", text):
         try:
-            d = json.loads(block)
-            if isinstance(d, dict):
-                return d
+            d, _ = decoder.raw_decode(text[m.start():])
         except json.JSONDecodeError:
             continue
-    for m in reversed(list(re.finditer(r"\{", text))):
-        if m.start() < text[:m.start()].rfind("```"):
-            continue
-        depth = 0
-        for i in range(m.start(), len(text)):
-            if text[i] == "{":
-                depth += 1
-            elif text[i] == "}":
-                depth -= 1
-                if depth == 0:
-                    try:
-                        d = json.loads(text[m.start():i + 1])
-                        if isinstance(d, dict):
-                            return d
-                    except json.JSONDecodeError:
-                        break
-    return None
-
+        if isinstance(d, dict):
+            candidates.append(d)
+    for d in reversed(candidates):
+        if "task_id" in d and "answer" in d:
+            return d
+    return candidates[-1] if candidates else None
 
 def _query_spec(task: dict, input_path: Path) -> list[list[str]]:
     """Deterministic CLI fact-check commands from the frozen task query."""
     q = task["query"]
-    inp = ["--filelist" if input_path.suffix in (".f", ".fl") else "--file", str(input_path)]
-    base = SVQ.as_posix()
+    inp = ["--filelist" if input_path.suffix in (".f", ".fl") else "--file",
+           str(input_path)]
     if q["cmd"] == "fanin":
         cmds = [["sv_query", "drivers", q["signal"], "--depth", "1", *inp, "--json"]]
         if q.get("also_loads"):
@@ -135,12 +123,13 @@ def _query_spec(task: dict, input_path: Path) -> list[list[str]]:
 
 
 def _fact_check(task: dict, input_path: Path, ws: Path) -> tuple[bool, dict]:
-    """Verify the frozen ground truth against the current graph before agents run."""
+    """Verify frozen ground truth against current graph before agents run."""
     got: dict = {}
     env = _env()
     env["SVQ_CACHE_DIR"] = str(ws / ".cache")
     for cmd in _query_spec(task, input_path):
-        r = subprocess.run(cmd, cwd=ws, env=env, capture_output=True, text=True, timeout=180)
+        r = subprocess.run(cmd, cwd=ws, env=env, capture_output=True,
+                           text=True, timeout=180)
         if r.returncode != 0:
             return False, {"error": r.stderr[-500:], **got}
         data = json.loads(r.stdout)
