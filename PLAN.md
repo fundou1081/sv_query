@@ -199,6 +199,10 @@ P93 A/D 充分测试 <已完成>
 -- P93.1 prune fallback/边界测试 <已完成>
 -- P93.2 snapshot/paths 一致性与 12-task pruned matrix <已完成>
 
+P94 A+D vs 原版模型对比 <已完成>
+-- P94.1 A+D T2 snapshot runner <已完成>
+-- P94.2 12 题 seed1 对比/边界 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>
