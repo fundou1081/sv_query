@@ -185,6 +185,7 @@ P89 最终验证摘要 <已完成>
 P90 agent 查询成本归因 <已完成>
 -- P90.1 3 任务 cold/warm 归因 <已完成>
 -- P90.2 决策：暂停 serve/batch，先修 cache/telemetry <已完成>
+-- P90.3 DSH session 真实 telemetry 调查 <已完成>
 
 ## 已完成（保留最近记录，便于核查上一轮）
 

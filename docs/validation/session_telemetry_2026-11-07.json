@@ -1,0 +1,202 @@
+{
+  "method": "latest DSH session per workspace; tool durations from job/settled; tokens from assistant messages",
+  "sessions": [
+    {
+      "workspace": "/tmp/lr_long_hard/MiniMax-M3/axi_araddr_neighbors/t2-s1",
+      "session": "/Users/fundou/.dsh/sessions/--private-tmp-lr_long_hard-MiniMax-M3-axi_araddr_neighbors-t2-s1--/session-ca0ee687-05e2-40cd-a580-4f5838ac743c/session.v4.jsonl.zstd",
+      "wall_ms": 16101,
+      "tool_ms": 3797,
+      "model_residual_ms": 12304,
+      "steps": 6,
+      "tokens": {
+        "inputTokens": 14166,
+        "outputTokens": 1945,
+        "cacheReadTokens": 45824,
+        "cacheWriteTokens": 0,
+        "totalTokens": 61935
+      },
+      "tools": 10,
+      "sv_query_calls": 6,
+      "tool_detail": [
+        {
+          "name": "bash",
+          "duration_ms": 20,
+          "command": "ls -la /tmp/lr_long_hard/MiniMax-M3/axi_araddr_neighbors/t2-s1/ 2>&1 | head -50"
+        },
+        {
+          "name": "bash",
+          "duration_ms": 312,
+          "command": "which sv_query; sv_query --help 2>&1 | head -60"
+        },
+        {
+          "name": "read",
+          "duration_ms": 0,
+          "command": ""
+        },
+        {
+          "name": "bash",
+          "duration_ms": 519,
+          "command": "cd /tmp/lr_long_hard/MiniMax-M3/axi_araddr_neighbors/t2-s1 && sv_query drivers --help 2>&1 | head -40; echo \"=== LOADS ===\"; sv_query loads --help 2>&1 | head -40"
+        },
+        {
+          "name": "bash",
+          "duration_ms": 586,
+          "command": "cd /tmp/lr_long_hard/MiniMax-M3/axi_araddr_neighbors/t2-s1 && sv_query drivers \"axi_adapter.axi_adapter_rd_inst.m_axi_araddr\" --filelist axi.f --depth 1 --json --pretty --evidence 2>&1 | head -120"
+        },
+        {
+          "name": "bash",
+          "duration_ms": 501,
+          "command": "cd /tmp/lr_long_hard/MiniMax-M3/axi_araddr_neighbors/t2-s1 && sv_query loads \"axi_adapter.axi_adapter_rd_inst.m_axi_araddr\" --filelist axi.f --depth 1 --json --pretty --evidence 2>&1 | head -120"
+        },
+        {
+          "name": "grep",
+          "duration_ms": 0,
+          "command": ""
+        },
+        {
+          "name": "grep",
+          "duration_ms": 0,
+          "command": ""
+        },
+        {
+          "name": "bash",
+          "duration_ms": 1130,
+          "command": "cd /tmp/lr_long_hard/MiniMax-M3/axi_araddr_neighbors/t2-s1 && echo \"=== drivers depth1 human ===\"; sv_query drivers \"axi_adapter.axi_adapter_rd_inst.m_axi_araddr\" --filelist axi.f --depth 1 -H 2>&1 | head -30; echo; echo \"=== loads depth1 human ===\"; sv_query loads \"axi_adapter.axi_adapter_rd_inst.m_axi_araddr\" --filelist axi.f --depth 1 -H 2>&1 | head -30"
+        },
+        {
+          "name": "bash",
+          "duration_ms": 729,
+          "command": "cd /tmp/lr_long_hard/MiniMax-M3/axi_araddr_neighbors/t2-s1 && echo \"=== module-scoped loads in axi_adapter ===\"; sv_query loads \"axi_adapter.axi_adapter_rd_inst.m_axi_araddr\" --filelist axi.f --depth 1 --module axi_adapter --json 2>&1 | python3 -c \"import sys,json;d=json.load(sys.stdin);s=d['result']['signals'][0];print('count',s.get('count'));[print('LOAD:',l['id'],l['kind'],'dist',l['distance']) for l in s.get('loads',[])]\" 2>&1 | head -20; echo; echo \"=== connections for axi_adapter.m_axi_araddr ===\"; sv_query connections \"axi_adapter.m_axi_araddr\" --filelist axi.f --json 2>&1 | head -60"
+        }
+      ]
+    },
+    {
+      "workspace": "/tmp/lr_long_hard/DeepSeek-Flash/serv_clk_path/t2-s2",
+      "session": "/Users/fundou/.dsh/sessions/--private-tmp-lr_long_hard-DeepSeek-Flash-serv_clk_path-t2-s2--/session-2bc170c7-8b1d-4378-815a-1c80dfa96aca/session.v4.jsonl.zstd",
+      "wall_ms": 60169,
+      "tool_ms": 11172,
+      "model_residual_ms": 48997,
+      "steps": 7,
+      "tokens": {
+        "inputTokens": 11835,
+        "outputTokens": 7621,
+        "cacheReadTokens": 64768,
+        "cacheWriteTokens": 0,
+        "totalTokens": 84224
+      },
+      "tools": 8,
+      "sv_query_calls": 5,
+      "tool_detail": [
+        {
+          "name": "bash",
+          "duration_ms": 11,
+          "command": "ls -la /tmp/lr_long_hard/DeepSeek-Flash/serv_clk_path/t2-s2"
+        },
+        {
+          "name": "read",
+          "duration_ms": 0,
+          "command": ""
+        },
+        {
+          "name": "bash",
+          "duration_ms": 8,
+          "command": "command -v sv_query || (echo \"not in PATH\"; ls /usr/local/bin /opt 2>/dev/null | head -50)"
+        },
+        {
+          "name": "grep",
+          "duration_ms": 0,
+          "command": ""
+        },
+        {
+          "name": "bash",
+          "duration_ms": 254,
+          "command": "sv_query --help 2>&1 | head -60"
+        },
+        {
+          "name": "bash",
+          "duration_ms": 472,
+          "command": "sv_query paths --help 2>&1 | head -60; echo ===; sv_query instances --help 2>&1 | head -30"
+        },
+        {
+          "name": "bash",
+          "duration_ms": 3566,
+          "command": "cd /tmp/lr_long_hard/DeepSeek-Flash/serv_clk_path/t2-s2 && sv_query paths --filelist serv.f --canonical --evidence --json --pretty serv_rf_top.clk serv_rf_top.cpu.alu.clk 2>&1 | head -200"
+        },
+        {
+          "name": "bash",
+          "duration_ms": 6861,
+          "command": "cd /tmp/lr_long_hard/DeepSeek-Flash/serv_clk_path/t2-s2\nsv_query paths --filelist serv.f --json --pretty serv_rf_top.clk serv_rf_top.cpu.alu.clk > /tmp/serv_p_default.txt 2>&1\nsv_query paths --filelist serv.f --canonical --json --pretty serv_rf_top.clk serv_rf_top.cpu.alu.clk > /tmp/serv_p_canon.txt 2>&1\npython3 - <<'EOF'\nimport json\ndec=json.JSONDecoder()\nfor fn in ['/tmp/serv_p_default.txt','/tmp/serv_p_canon.txt']:\n    t=open(fn,encoding='utf-8',errors='replace').read()\n    print('=====',fn,'len',len(t))\n    i=t.find('{')\n    if i<0:\n        print(t[-1500:]); continue\n    try:\n        obj,_=dec.raw_decode(t[i:])\n        print(json.dumps(obj,ensure_ascii=False,indent=1)[:6000])\n    except Exception as e:\n        print('parse err',e); print(t[i:i+3000])\nEOF"
+        }
+      ]
+    },
+    {
+      "workspace": "/tmp/lr_long_hard/MiniMax-M3/pico_adapter_mem_valid_fanout/t2-s2",
+      "session": "/Users/fundou/.dsh/sessions/--private-tmp-lr_long_hard-MiniMax-M3-pico_adapter_mem_valid_fanout-t2-s2--/session-9acbfeec-35bf-486c-9cd8-c630f5fa0329/session.v4.jsonl.zstd",
+      "wall_ms": 22943,
+      "tool_ms": 6419,
+      "model_residual_ms": 16524,
+      "steps": 11,
+      "tokens": {
+        "inputTokens": 9621,
+        "outputTokens": 2510,
+        "cacheReadTokens": 99840,
+        "cacheWriteTokens": 0,
+        "totalTokens": 111971
+      },
+      "tools": 10,
+      "sv_query_calls": 8,
+      "tool_detail": [
+        {
+          "name": "bash",
+          "duration_ms": 291,
+          "command": "ls -la /tmp/lr_long_hard/MiniMax-M3/pico_adapter_mem_valid_fanout/t2-s2/ && which sv_query; sv_query --help 2>&1 | head -50"
+        },
+        {
+          "name": "bash",
+          "duration_ms": 10,
+          "command": "cd /tmp/lr_long_hard/MiniMax-M3/pico_adapter_mem_valid_fanout/t2-s2 && cat model.patch.yml && ls -la .cache pico && ls -la .."
+        },
+        {
+          "name": "bash",
+          "duration_ms": 563,
+          "command": "cd /tmp/lr_long_hard/MiniMax-M3/pico_adapter_mem_valid_fanout/t2-s2 && sv_query loads --help 2>&1 | head -40; echo \"=== TRACE ===\"; sv_query trace --help 2>&1 | head -60"
+        },
+        {
+          "name": "bash",
+          "duration_ms": 2152,
+          "command": "cd /tmp/lr_long_hard/MiniMax-M3/pico_adapter_mem_valid_fanout/t2-s2 && sv_query loads \"picorv32_axi.axi_adapter.mem_valid\" --file picorv32.v --depth 1 --json --evidence -p 2>&1 | head -80"
+        },
+        {
+          "name": "bash",
+          "duration_ms": 281,
+          "command": "cd /tmp/lr_long_hard/MiniMax-M3/pico_adapter_mem_valid_fanout/t2-s2 && sv_query loads \"picorv32_axi.axi_adapter.mem_valid\" --file picorv32.v --depth 1 --json --evidence 2>&1 | python3 -c \"\nimport sys,json\nraw=sys.stdin.read()\ni=raw.find('{')\nd=json.loads(raw[i:])\nfor s in d['result']['signals']:\n    print('SIGNAL:', s['signal'])\n    print('num loads:', len(s.get('loads',[])))\n    for l in s.get('loads',[]):\n        print(' -', l['id'], '| kind=',l.get('kind'), '| dist=',l.get('distance'), '| module=',l.get('module'), '| cond=', repr(l.get('condition')), '| parent=', l.get('parent'))\n        ev=l.get('evidence')\n        if ev: print('    ev:', json.dumps(ev)[:600])\n    print('keys:', list(s.keys()))\n\""
+        },
+        {
+          "name": "bash",
+          "duration_ms": 269,
+          "command": "cd /tmp/lr_long_hard/MiniMax-M3/pico_adapter_mem_valid_fanout/t2-s2 && sv_query loads \"picorv32_axi.axi_adapter.mem_valid\" --file picorv32.v --depth 1 --json 2>&1 | python3 -c \"\nimport sys,json\nraw=sys.stdin.read(); d=json.loads(raw[raw.find('{'):])\ns=d['result']['signals'][0]\nfor k in ['count','pre_filter_count','truncated','truncated_by_depth','precision','resolved_signal','resolution','error','top_modules']:\n    print(k,'=',s.get(k))\n\"\necho \"=== RTL grep mem_valid ===\"\ngrep -n \"mem_valid\" picorv32.v"
+        },
+        {
+          "name": "bash",
+          "duration_ms": 19,
+          "command": "cd /tmp/lr_long_hard/MiniMax-M3/pico_adapter_mem_valid_fanout/t2-s2 && sed -n '2755,2810p' picorv32.v"
+        },
+        {
+          "name": "bash",
+          "duration_ms": 486,
+          "command": "cd /tmp/lr_long_hard/MiniMax-M3/pico_adapter_mem_valid_fanout/t2-s2 && echo \"=== trace fanout --depth 1 ===\" && sv_query trace fanout \"picorv32_axi.axi_adapter.mem_valid\" --file picorv32.v --depth 1 --json 2>&1 | python3 -c \"\nimport sys,json\nraw=sys.stdin.read()\ntry:\n    d=json.loads(raw[raw.find('{'):])\nexcept Exception as e:\n    print('parse err'); print(raw[:1500]); raise SystemExit\ndef walk(o):\n    if isinstance(o,dict):\n        if 'id' in o and 'distance' in o: print(' -',o.get('id'),'| dist=',o.get('distance'),'| kind=',o.get('kind'))\n        for v in o.values(): walk(v)\n    elif isinstance(o,list):\n        for v in o: walk(v)\nwalk(d)\n\"\necho \"=== lookup ===\"\nsv_query trace lookup \"picorv32_axi.axi_adapter.mem_valid\" --file picorv32.v --json 2>&1 | tail -25"
+        },
+        {
+          "name": "bash",
+          "duration_ms": 262,
+          "command": "cd /tmp/lr_long_hard/MiniMax-M3/pico_adapter_mem_valid_fanout/t2-s2 && sv_query trace lookup --help 2>&1 | sed -n '1,30p'"
+        },
+        {
+          "name": "bash",
+          "duration_ms": 2086,
+          "command": "cd /tmp/lr_long_hard/MiniMax-M3/pico_adapter_mem_valid_fanout/t2-s2 && sv_query trace lookup --path \"picorv32_axi.axi_adapter.mem_valid\" --file picorv32.v --json 2>&1 | tail -30"
+        }
+      ]
+    }
+  ]
+}
