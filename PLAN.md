@@ -215,6 +215,11 @@ P97 inline skill prompt pilot <已完成>
 -- P97.1 skill 内容直接注入 prompt <已完成>
 -- P97.2 3-cell A/B/负结果 <已完成>
 
+P98 受限 svq_query 工具 pilot <进行中>
+-- P98.1 DSH tool + patch（禁 bash/fs） <已完成>
+-- P98.2 DeepSeek 3-cell pilot <已完成>
+-- P98.3 MiniMax 3-cell 对照（配额阻塞） <阻塞>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

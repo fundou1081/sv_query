@@ -1,0 +1,204 @@
+{
+  "protocol": "P98 constrained svq_query",
+  "tasks": [
+    {
+      "id": "axi_araddr_neighbors",
+      "cwd": "/tmp/lr_pilot/axi",
+      "input": "/tmp/lr_pilot/axi.f",
+      "question": "For bus `axi_adapter.axi_adapter_rd_inst.m_axi_araddr`, list ALL direct (distance=1) driver node IDs and ALL direct load node IDs. Return exact canonical IDs.",
+      "required": [
+        "drivers",
+        "loads"
+      ],
+      "ground_truth": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ]
+      },
+      "source": {
+        "kind": "filelist",
+        "path": "sim/tests/fixtures/verilog-axi/filelist.f"
+      },
+      "query": {
+        "cmd": "fanin",
+        "signal": "axi_adapter.axi_adapter_rd_inst.m_axi_araddr",
+        "also_loads": true
+      }
+    },
+    {
+      "id": "serv_clk_path",
+      "cwd": "/tmp/lr_pilot/serv",
+      "input": "/tmp/lr_pilot/serv.f",
+      "question": "Find the shortest structural path from `serv_rf_top.clk` to `serv_rf_top.cpu.alu.clk`; return exact path and hop count.",
+      "required": [
+        "path",
+        "count"
+      ],
+      "ground_truth": {
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      },
+      "source": {
+        "kind": "serv"
+      },
+      "query": {
+        "cmd": "path",
+        "src": "serv_rf_top.clk",
+        "dst": "serv_rf_top.cpu.alu.clk"
+      }
+    },
+    {
+      "id": "pico_adapter_mem_valid_fanout",
+      "cwd": "/tmp/lr_pilot/pico",
+      "input": "/tmp/lr_pilot/pico/picorv32.v",
+      "question": "List ALL direct (distance=1) loads of `picorv32_axi.axi_adapter.mem_valid`, exact canonical IDs and count.",
+      "required": [
+        "loads",
+        "count"
+      ],
+      "ground_truth": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_axi_rready",
+          "picorv32_axi.axi_adapter.xfer_done"
+        ],
+        "count": 6
+      },
+      "source": {
+        "kind": "file",
+        "path": "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v"
+      },
+      "query": {
+        "cmd": "fanout",
+        "signal": "picorv32_axi.axi_adapter.mem_valid"
+      }
+    }
+  ],
+  "results": [
+    {
+      "task_id": "axi_araddr_neighbors",
+      "model": "MiniMax-M3",
+      "arm": "tool",
+      "duration_ms": 20089,
+      "rc": 1,
+      "parsed": false,
+      "answer": {},
+      "queries": [],
+      "exact": false,
+      "workspace": "/tmp/svq_tool_pilot/MiniMax-M3/axi_araddr_neighbors",
+      "stderr": "dsh: RATE_LIMIT: 429 {\"type\":\"error\",\"error\":{\"type\":\"rate_limit_error\",\"message\":\"当前已达到 Token Plan 用量上限。为避免调用中断，请升级 Token Plan 套餐，或购买积分补充用量并开启积分自动消耗。 (2067)\"},\"request_id\":\"073e7db5ef736de70d2072bcefbe9f50\"}\n"
+    },
+    {
+      "task_id": "axi_araddr_neighbors",
+      "model": "DeepSeek-Flash",
+      "arm": "tool",
+      "duration_ms": 4084,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ],
+        "count": 2
+      },
+      "queries": [
+        {
+          "tool": "svq_query"
+        }
+      ],
+      "exact": true,
+      "workspace": "/tmp/svq_tool_pilot/DeepSeek-Flash/axi_araddr_neighbors",
+      "stderr": ""
+    },
+    {
+      "task_id": "serv_clk_path",
+      "model": "MiniMax-M3",
+      "arm": "tool",
+      "duration_ms": 17609,
+      "rc": 1,
+      "parsed": false,
+      "answer": {},
+      "queries": [],
+      "exact": false,
+      "workspace": "/tmp/svq_tool_pilot/MiniMax-M3/serv_clk_path",
+      "stderr": "dsh: RATE_LIMIT: 429 {\"type\":\"error\",\"error\":{\"type\":\"rate_limit_error\",\"message\":\"当前已达到 Token Plan 用量上限。为避免调用中断，请升级 Token Plan 套餐，或购买积分补充用量并开启积分自动消耗。 (2067)\"},\"request_id\":\"073e7dcb56d223826952ae209359a3b7\"}\n"
+    },
+    {
+      "task_id": "serv_clk_path",
+      "model": "DeepSeek-Flash",
+      "arm": "tool",
+      "duration_ms": 6220,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      },
+      "queries": [
+        {
+          "tool": "svq_query"
+        }
+      ],
+      "exact": true,
+      "workspace": "/tmp/svq_tool_pilot/DeepSeek-Flash/serv_clk_path",
+      "stderr": "dsh: reasoning:\nThe user wants me to call svq_query with intent=path, snapshot='ad_serv', signal='serv_rf_top.clk', dst='serv_rf_top.cpu.alu.clk', depth=1, then return JSON.\n\nLet me call the tool.\ndsh: reasoning:\nReturn one valid JSON object. Keys double-quoted. Task_id was given with single quotes in the example — but requirement says double-quoted keys. Values: path from tool result, count 2.\n\n\"queries\":[{\"tool\":\"svq_query\"}]. confidence \"high\".\n"
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanout",
+      "model": "MiniMax-M3",
+      "arm": "tool",
+      "duration_ms": 19069,
+      "rc": 1,
+      "parsed": false,
+      "answer": {},
+      "queries": [],
+      "exact": false,
+      "workspace": "/tmp/svq_tool_pilot/MiniMax-M3/pico_adapter_mem_valid_fanout",
+      "stderr": "dsh: RATE_LIMIT: 429 {\"type\":\"error\",\"error\":{\"type\":\"rate_limit_error\",\"message\":\"当前已达到 Token Plan 用量上限。为避免调用中断，请升级 Token Plan 套餐，或购买积分补充用量并开启积分自动消耗。 (2067)\"},\"request_id\":\"073e7de4b95416593d7a24344cc50b45\"}\n"
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanout",
+      "model": "DeepSeek-Flash",
+      "arm": "tool",
+      "duration_ms": 4404,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_axi_rready",
+          "picorv32_axi.axi_adapter.xfer_done"
+        ],
+        "count": 6
+      },
+      "queries": [
+        {
+          "tool": "svq_query"
+        }
+      ],
+      "exact": true,
+      "workspace": "/tmp/svq_tool_pilot/DeepSeek-Flash/pico_adapter_mem_valid_fanout",
+      "stderr": ""
+    }
+  ]
+}
