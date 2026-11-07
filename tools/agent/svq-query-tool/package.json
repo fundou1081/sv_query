@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "main": "index.js",
+  "scripts": {
+    "test": "node --test test/"
+  },
   "peerDependencies": {
     "@deepseek-ai/dsh-tools": "0.2.1-rc.2"
   }

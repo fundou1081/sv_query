@@ -18,7 +18,7 @@
 | 全量 (canonical) | **2571 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; 7 skipped / 119 deselected) | 2026-11-07 实测 (iter_397): A/D tests +8。历史: iter_396 2563 / iter_395 2561 |
 | CLI / integration | **810 passed / 0 failed** (`sim/tests/cli sim/tests/integration`, `-m "not opensource"`) | 2026-09-08 实测 (iter_185 修复后) |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (390 份, 只增不改) | 每次迭代一份 |
+| 迭代记录 | `docs/task_tree/iterations/` (391 份, 只增不改) | 每次迭代一份 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 | 语义 regex 纪律 | `python3 tools/check_semantic_regex.py` 必须 ✅ | 仅 UVM 宏例外；class/constraint/covergroup 语义走 slang (iter_368) |
@@ -102,6 +102,7 @@
 | [validation/SKILL_INLINE_PILOT_2026-11-07.md](validation/SKILL_INLINE_PILOT_2026-11-07.md) | **P97 inline skill**: 3 cells；prompt78.3s vs inline111.8s；无稳定收益 |
 | [validation/TOOL_PILOT_2026-11-07.md](validation/TOOL_PILOT_2026-11-07.md) | **P98 受限工具**: DeepSeek 3/3，4–6s，单次 svq_query；MiniMax 429 阻塞 |
 | [validation/TOOL_PILOT_12_2026-11-08.md](validation/TOOL_PILOT_12_2026-11-08.md) | **P98 12 题**: 48/48；MiniMax 9.0s / DeepSeek 4.7s；单次工具调用 |
+| [validation/WORKER_TOOL_HARDENING_2026-11-08.md](validation/WORKER_TOOL_HARDENING_2026-11-08.md) | **P99 worker 硬化**: compact.js + 12 Node tests；3-cell smoke 6/6 |
 | [validation/COMPARISON_RECORD_2026-11-05.md](validation/COMPARISON_RECORD_2026-11-05.md) | **对比结果冻结记录**: 哈希、模型、指标、单独复验脚本与已知缺陷 |
 | [validation/long_range_12_usage_2026-11-05.json](validation/long_range_12_usage_2026-11-05.json) | **token/tool-call 汇总**: 四臂 token、tool calls、tokens/correct |
 | [architecture/long_range_structural_benchmark_2026-11-05.md](architecture/long_range_structural_benchmark_2026-11-05.md) | **长程结构查询对照基准**: B0/B1/T1/T2 对照、任务族、ground truth 冻结与准确度/成本指标 |

@@ -220,6 +220,10 @@ P98 受限 svq_query 工具 pilot <已完成>
 -- P98.2 DeepSeek 3-cell pilot <已完成>
 -- P98.3 12 题 ×2 模型 ×2 次 <已完成>
 
+P99 Worker 辅助工具硬化 <已完成>
+-- P99.1 compact.js/tests/README <已完成>
+-- P99.2 重装 + 3-cell smoke <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>
