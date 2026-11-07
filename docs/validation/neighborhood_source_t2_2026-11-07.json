@@ -1,0 +1,2048 @@
+{
+  "protocol": "P85 neighborhood source/T2, hard-isolated, 2 scenarios x 3 models x 2 arms x 2 seeds",
+  "tasks": [
+    {
+      "id": "complex_constraints",
+      "fixture": "complex_constraints.sv",
+      "question": "Extract the signal-graph neighborhood around top.e.p.len: all rand variables, each constraint block affecting len (block id, defined_in, inherited), condition variables (especially packet.mode), and the block coupling addr+len. Use exact ids.",
+      "shape": {
+        "property": "top.e.p.len",
+        "rand_vars": [],
+        "constraints": [],
+        "condition_vars": [],
+        "both_addr_len_block": "",
+        "inherited": []
+      }
+    },
+    {
+      "id": "mux_neighborhood",
+      "fixture": "mux_neighborhood.sv",
+      "question": "Extract the local signal-graph mux neighborhood around top.q: direct register/sink, all OP_TERNARY nodes, select signals, data sources a/b/c/d, and mux conditions. Use exact canonical ids.",
+      "shape": {
+        "seed": "top.q",
+        "register": "top.q",
+        "mux_nodes": [],
+        "selects": [],
+        "data_sources": [],
+        "conditions": []
+      }
+    }
+  ],
+  "results": [
+    {
+      "task_id": "complex_constraints",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "seed": 1,
+      "duration_ms": 24245,
+      "confidence": "high",
+      "answer": {
+        "property": "top.e.p.len",
+        "rand_vars": [
+          "top.e.p.addr",
+          "top.e.p.len",
+          "top.e.p.mode",
+          "top.e.p.payload"
+        ],
+        "constraints": [
+          {
+            "id": "base_item::c_len",
+            "defined_in": "base_item",
+            "inherited": true,
+            "effect": "len inside {[1:64]}"
+          },
+          {
+            "id": "packet::c_order",
+            "defined_in": "packet",
+            "inherited": false,
+            "effect": "addr < len"
+          },
+          {
+            "id": "packet::c_mode",
+            "defined_in": "packet",
+            "inherited": false,
+            "effect": "if (mode == 0) len < 32; else len >= 32"
+          }
+        ],
+        "condition_vars": [
+          "top.e.p.mode"
+        ],
+        "both_addr_len_block": "packet::c_order",
+        "inherited": [
+          "base_item::c_len"
+        ]
+      },
+      "queries": [
+        "ls -la; wc -l complex_constraints.sv",
+        "read complex_constraints.sv (full file, 29 lines)"
+      ],
+      "fact_check_ok": true,
+      "rc": 0,
+      "parsed": true,
+      "strict": false,
+      "semantic": true,
+      "strict_checks": {
+        "rand_vars": false,
+        "constraints": false,
+        "condition": false,
+        "coupling": false,
+        "inherited": false
+      },
+      "semantic_checks": {
+        "rand_vars": true,
+        "constraints": true,
+        "condition": true,
+        "coupling": true,
+        "inherited": true
+      }
+    },
+    {
+      "task_id": "complex_constraints",
+      "model": "DeepSeek-Flash",
+      "arm": "t2",
+      "seed": 1,
+      "duration_ms": 44443,
+      "confidence": "high",
+      "answer": {
+        "property": "top.e.p.len",
+        "rand_vars": [
+          "packet.addr",
+          "packet.len",
+          "packet.mode"
+        ],
+        "constraints": [
+          {
+            "block": "packet.c_len",
+            "defined_in": "base_item",
+            "inherited": true,
+            "rand_vars": [
+              "packet.len"
+            ],
+            "conditions": []
+          },
+          {
+            "block": "packet.c_mode",
+            "defined_in": "packet",
+            "inherited": false,
+            "rand_vars": [
+              "packet.len"
+            ],
+            "conditions": [
+              "packet.mode"
+            ]
+          },
+          {
+            "block": "packet.c_order",
+            "defined_in": "packet",
+            "inherited": false,
+            "rand_vars": [
+              "packet.addr",
+              "packet.len"
+            ],
+            "conditions": []
+          },
+          {
+            "block": "packet.c_addr",
+            "defined_in": "base_item",
+            "inherited": true,
+            "rand_vars": [
+              "packet.addr"
+            ],
+            "conditions": []
+          }
+        ],
+        "condition_vars": [
+          "packet.mode"
+        ],
+        "both_addr_len_block": "packet.c_order",
+        "inherited": [
+          "packet.c_len",
+          "packet.c_addr"
+        ]
+      },
+      "queries": [
+        "read complex_constraints.sv",
+        "sv_query capabilities",
+        "sv_query graph --help; sv_query class --help; sv_query controlflow --help",
+        "sv_query class packet --relations --json -f complex_constraints.sv",
+        "sv_query class base_item --relations --json -f complex_constraints.sv",
+        "sv_query graph nodes --match len --detail --json -f complex_constraints.sv",
+        "sv_query trace constraints top.e.p.len --json -f complex_constraints.sv",
+        "sv_query controlflow analyze top.e.p.len --conditions-only --json -f complex_constraints.sv",
+        "sv_query graph subgraph top.e.p.len --depth 2 --json -f complex_constraints.sv",
+        "sv_query graph subgraph packet.len --depth 2 --edge-kinds driver,control --json -f complex_constraints.sv",
+        "sv_query controlflow analyze packet.len --conditions-only --json -f complex_constraints.sv"
+      ],
+      "fact_check_ok": true,
+      "rc": 0,
+      "parsed": true,
+      "strict": false,
+      "semantic": false,
+      "strict_checks": {
+        "rand_vars": false,
+        "constraints": true,
+        "condition": true,
+        "coupling": true,
+        "inherited": true
+      },
+      "semantic_checks": {
+        "rand_vars": false,
+        "constraints": true,
+        "condition": true,
+        "coupling": true,
+        "inherited": true
+      }
+    },
+    {
+      "task_id": "complex_constraints",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "seed": 1,
+      "duration_ms": 16468,
+      "confidence": "high",
+      "answer": {
+        "property": "top.e.p.len",
+        "rand_vars": [
+          "top.e.p.len",
+          "top.e.p.addr",
+          "top.e.p.mode",
+          "top.e.p.payload"
+        ],
+        "constraints": [
+          {
+            "block_id": "c_len",
+            "defined_in": "base_item",
+            "inherited": true,
+            "class": "base_item",
+            "expression": "len inside {[1:64]};",
+            "affects_len": true
+          },
+          {
+            "block_id": "c_addr",
+            "defined_in": "base_item",
+            "inherited": true,
+            "class": "base_item",
+            "expression": "addr inside {[32:128]};",
+            "affects_len": false,
+            "note": "affects len indirectly via c_order coupling"
+          },
+          {
+            "block_id": "c_order",
+            "defined_in": "packet",
+            "inherited": false,
+            "class": "packet",
+            "expression": "addr < len;",
+            "affects_len": true,
+            "note": "couples addr and len"
+          },
+          {
+            "block_id": "c_mode",
+            "defined_in": "packet",
+            "inherited": false,
+            "class": "packet",
+            "expression": "if (mode == 0) { len < 32; } else { len >= 32; }",
+            "affects_len": true,
+            "conditional": true,
+            "condition_var": "packet.mode"
+          },
+          {
+            "block_id": "c_payload",
+            "defined_in": "packet",
+            "inherited": false,
+            "class": "packet",
+            "expression": "payload > 0;",
+            "affects_len": false,
+            "note": "no path to len; not in neighborhood"
+          }
+        ],
+        "condition_vars": [
+          "packet.mode"
+        ],
+        "both_addr_len_block": "c_order",
+        "inherited": [
+          "c_len",
+          "c_addr",
+          "base_item.len",
+          "base_item.addr"
+        ]
+      },
+      "queries": [
+        "ls -la /tmp/lr_neigh_hard/MiniMax-M3/complex_constraints/source-s1/",
+        "read complex_constraints.sv",
+        "read model.patch.yml",
+        "grep -n 'constraint|include|rand|class|property' <dir>"
+      ],
+      "fact_check_ok": true,
+      "rc": 0,
+      "parsed": true,
+      "strict": false,
+      "semantic": true,
+      "strict_checks": {
+        "rand_vars": false,
+        "constraints": false,
+        "condition": true,
+        "coupling": false,
+        "inherited": false
+      },
+      "semantic_checks": {
+        "rand_vars": true,
+        "constraints": true,
+        "condition": true,
+        "coupling": true,
+        "inherited": true
+      }
+    },
+    {
+      "task_id": "complex_constraints",
+      "model": "MiniMax-M3",
+      "arm": "t2",
+      "seed": 1,
+      "duration_ms": 31883,
+      "confidence": "high",
+      "answer": {
+        "property": "top.e.p.len",
+        "rand_vars": [
+          {
+            "id": "top.e.p.addr",
+            "member": "addr",
+            "is_rand": true,
+            "type": "int",
+            "class_instance": "top.e.p",
+            "defined_in": "base_item"
+          },
+          {
+            "id": "top.e.p.len",
+            "member": "len",
+            "is_rand": true,
+            "type": "int",
+            "class_instance": "top.e.p",
+            "defined_in": "base_item"
+          },
+          {
+            "id": "top.e.p.mode",
+            "member": "mode",
+            "is_rand": true,
+            "type": "bit[7:0]",
+            "class_instance": "top.e.p",
+            "defined_in": "packet"
+          },
+          {
+            "id": "top.e.p.payload",
+            "member": "payload",
+            "is_rand": true,
+            "type": "bit[7:0]",
+            "class_instance": "top.e.p",
+            "defined_in": "packet"
+          }
+        ],
+        "constraints": [
+          {
+            "block_id": "packet.c_len",
+            "defined_in": "base_item",
+            "inherited": true,
+            "vars": [
+              "packet.len"
+            ],
+            "conditions": [],
+            "rand_vars": [
+              "packet.len"
+            ],
+            "affects_len": true
+          },
+          {
+            "block_id": "packet.c_mode",
+            "defined_in": "packet",
+            "inherited": false,
+            "vars": [
+              "packet.len"
+            ],
+            "conditions": [
+              "packet.mode"
+            ],
+            "rand_vars": [
+              "packet.len"
+            ],
+            "affects_len": true
+          },
+          {
+            "block_id": "packet.c_order",
+            "defined_in": "packet",
+            "inherited": false,
+            "vars": [
+              "packet.addr",
+              "packet.len"
+            ],
+            "conditions": [],
+            "rand_vars": [
+              "packet.addr",
+              "packet.len"
+            ],
+            "affects_len": true
+          }
+        ],
+        "condition_vars": [
+          {
+            "id": "packet.mode",
+            "instance_id": "top.e.p.mode",
+            "role": "condition",
+            "used_by": [
+              "packet.c_mode"
+            ],
+            "condition_node": "packet.c_mode::if_0",
+            "expr": "mode == 0",
+            "true_branch": "packet.c_mode::if_0::cons_0 (len < 32)",
+            "false_branch": "packet.c_mode::if_0::alt_0::expr_0 (len >= 32)"
+          }
+        ],
+        "both_addr_len_block": "packet.c_order",
+        "inherited": [
+          {
+            "block_id": "packet.c_len",
+            "defined_in": "base_item",
+            "inherited": true,
+            "vars": [
+              "packet.len"
+            ],
+            "affects_len": true
+          },
+          {
+            "block_id": "packet.c_addr",
+            "defined_in": "base_item",
+            "inherited": true,
+            "vars": [
+              "packet.addr"
+            ],
+            "affects_len": false
+          }
+        ]
+      },
+      "queries": [
+        "sv_query class -f complex_constraints.sv -j",
+        "sv_query class base_item -f complex_constraints.sv -j",
+        "sv_query class packet -f complex_constraints.sv -j",
+        "sv_query class packet --relations -f complex_constraints.sv -j",
+        "sv_query class base_item --relations -f complex_constraints.sv -j",
+        "sv_query class env --relations -f complex_constraints.sv -j",
+        "sv_query graph nodes -k CONSTRAINT_BLOCK -f complex_constraints.sv -j --detail",
+        "sv_query graph nodes -k CLASS_PROPERTY -f complex_constraints.sv -j --detail",
+        "sv_query graph nodes -k CONSTRAINT_EXPR -f complex_constraints.sv -j --detail",
+        "sv_query graph edges -f complex_constraints.sv -j",
+        "sv_query scope top -f complex_constraints.sv -j",
+        "sv_query hierarchy -f complex_constraints.sv -j",
+        "sv_query instances -f complex_constraints.sv -j",
+        "sv_query controlflow analyze packet.len -f complex_constraints.sv -j",
+        "sv_query controlflow list-conditioned -f complex_constraints.sv -j",
+        "sv_query class packet --member len -f complex_constraints.sv -j",
+        "sv_query class packet --member mode -f complex_constraints.sv -j",
+        "sv_query class packet --member addr -f complex_constraints.sv -j"
+      ],
+      "fact_check_ok": true,
+      "rc": 0,
+      "parsed": true,
+      "strict": false,
+      "semantic": true,
+      "strict_checks": {
+        "rand_vars": false,
+        "constraints": false,
+        "condition": true,
+        "coupling": true,
+        "inherited": false
+      },
+      "semantic_checks": {
+        "rand_vars": true,
+        "constraints": true,
+        "condition": true,
+        "coupling": true,
+        "inherited": true
+      }
+    },
+    {
+      "task_id": "complex_constraints",
+      "model": "MiniMax-M3.1-Flash",
+      "arm": "source",
+      "seed": 1,
+      "duration_ms": 31264,
+      "confidence": "high",
+      "answer": {
+        "property": "top.e.p.len",
+        "rand_vars": [
+          "top.e.p.len",
+          "top.e.p.addr",
+          "top.e.p.mode",
+          "top.e.p.payload"
+        ],
+        "constraints": [
+          {
+            "id": "c_len",
+            "defined_in": "base_item",
+            "inherited": true,
+            "expr": "len inside {[1:64]}",
+            "affects": "len (direct)"
+          },
+          {
+            "id": "c_order",
+            "defined_in": "packet",
+            "inherited": false,
+            "expr": "addr < len",
+            "affects": "len (direct, couples addr+len)"
+          },
+          {
+            "id": "c_mode",
+            "defined_in": "packet",
+            "inherited": false,
+            "expr": "if (mode == 0) { len < 32; } else { len >= 32; }",
+            "affects": "len (direct, conditional on mode)"
+          },
+          {
+            "id": "c_addr",
+            "defined_in": "base_item",
+            "inherited": true,
+            "expr": "addr inside {[32:128]}",
+            "affects": "len (indirect: bounds addr, which bounds len via c_order)"
+          },
+          {
+            "id": "c_payload",
+            "defined_in": "packet",
+            "inherited": false,
+            "expr": "payload > 0",
+            "affects": "none (does not reference len)"
+          }
+        ],
+        "condition_vars": [
+          "top.e.p.mode"
+        ],
+        "both_addr_len_block": "c_order",
+        "inherited": [
+          "c_addr",
+          "c_len"
+        ]
+      },
+      "queries": [
+        "bash: ls -la /tmp/lr_neigh_hard/MiniMax-M3_1-Flash/complex_constraints/source-s1/",
+        "read: /tmp/lr_neigh_hard/MiniMax-M3_1-Flash/complex_constraints/source-s1/complex_constraints.sv"
+      ],
+      "fact_check_ok": true,
+      "rc": 0,
+      "parsed": true,
+      "strict": false,
+      "semantic": true,
+      "strict_checks": {
+        "rand_vars": false,
+        "constraints": false,
+        "condition": false,
+        "coupling": false,
+        "inherited": false
+      },
+      "semantic_checks": {
+        "rand_vars": true,
+        "constraints": true,
+        "condition": true,
+        "coupling": true,
+        "inherited": true
+      }
+    },
+    {
+      "task_id": "complex_constraints",
+      "model": "MiniMax-M3.1-Flash",
+      "arm": "t2",
+      "seed": 1,
+      "duration_ms": 140932,
+      "confidence": "high",
+      "answer": {
+        "property": "top.e.p.len",
+        "rand_vars": [
+          {
+            "id": "packet.len",
+            "type": "int",
+            "is_rand": true,
+            "scope": "packet",
+            "note": "target property (instance path top.e.p.len -> env.p -> packet)"
+          },
+          {
+            "id": "packet.addr",
+            "type": "int",
+            "is_rand": true,
+            "scope": "packet",
+            "inherited_from": "base_item.addr"
+          },
+          {
+            "id": "packet.mode",
+            "type": "bit[7:0]",
+            "is_rand": true,
+            "scope": "packet",
+            "inherited_from": null
+          },
+          {
+            "id": "packet.payload",
+            "type": "bit[7:0]",
+            "is_rand": true,
+            "scope": "packet",
+            "inherited_from": null
+          },
+          {
+            "id": "base_item.len",
+            "type": "int",
+            "is_rand": true,
+            "scope": "base_item",
+            "note": "ancestor declaration of packet.len"
+          },
+          {
+            "id": "base_item.addr",
+            "type": "int",
+            "is_rand": true,
+            "scope": "base_item",
+            "note": "ancestor declaration of packet.addr"
+          }
+        ],
+        "constraints": [
+          {
+            "block_id": "packet.c_len",
+            "defined_in": "base_item",
+            "inherited": true,
+            "expr_ids": [
+              "packet.c_len::expr_0"
+            ],
+            "affects": [
+              "packet.len"
+            ],
+            "body": "len inside {[1:64]}"
+          },
+          {
+            "block_id": "base_item.c_len",
+            "defined_in": "base_item",
+            "inherited": false,
+            "expr_ids": [
+              "base_item.c_len::expr_0"
+            ],
+            "affects": [
+              "base_item.len"
+            ],
+            "body": "len inside {[1:64]}"
+          },
+          {
+            "block_id": "packet.c_order",
+            "defined_in": "packet",
+            "inherited": false,
+            "expr_ids": [
+              "packet.c_order::expr_0"
+            ],
+            "affects": [
+              "packet.addr",
+              "packet.len"
+            ],
+            "body": "addr < len"
+          },
+          {
+            "block_id": "packet.c_mode",
+            "defined_in": "packet",
+            "inherited": false,
+            "expr_ids": [
+              "packet.c_mode::if_0",
+              "packet.c_mode::if_0::cons_0",
+              "packet.c_mode::if_0::alt_0",
+              "packet.c_mode::if_0::alt_0::expr_0"
+            ],
+            "affects": [
+              "packet.len"
+            ],
+            "body": "if (mode == 0) len < 32; else len >= 32",
+            "conditional": true
+          }
+        ],
+        "condition_vars": [
+          {
+            "id": "packet.mode",
+            "role": "condition of packet.c_mode::if_0",
+            "expression": "mode == 0",
+            "edge": "packet.c_mode::if_0 --HAS_CONDITION--> packet.mode"
+          }
+        ],
+        "both_addr_len_block": "packet.c_order",
+        "inherited": [
+          {
+            "id": "packet.c_len",
+            "from": "base_item.c_len",
+            "kind": "CONSTRAINT_BLOCK"
+          },
+          {
+            "id": "packet.c_addr",
+            "from": "base_item.c_addr",
+            "kind": "CONSTRAINT_BLOCK"
+          },
+          {
+            "id": "packet.len",
+            "from": "base_item.len",
+            "kind": "CLASS_PROPERTY"
+          },
+          {
+            "id": "packet.addr",
+            "from": "base_item.addr",
+            "kind": "CLASS_PROPERTY"
+          }
+        ]
+      },
+      "queries": [
+        "sv_query --help",
+        "sv_query graph --help; sv_query class --help; sv_query controlflow --help",
+        "sv_query class --relations --file complex_constraints.sv --json   # failed: needs a class name",
+        "sv_query class packet --file complex_constraints.sv --json -p; sv_query class base_item --file complex_constraints.sv --json -p",
+        "sv_query class packet --relations --file complex_constraints.sv --json -p; sv_query graph nodes --file complex_constraints.sv --detail --json -p   # -p rejected by graph nodes",
+        "sv_query graph nodes --help; graph edges --help; graph subgraph --help; controlflow analyze --help; controlflow list-conditioned --help",
+        "sv_query graph nodes --file complex_constraints.sv --detail --json; sv_query graph edges --file complex_constraints.sv --json; sv_query graph subgraph top.e.p.len --file complex_constraints.sv --depth 2 --direction both --edge-kinds driver,connection,control --evidence --json; sv_query controlflow analyze top.e.p.len --file complex_constraints.sv --evidence --json -p; sv_query controlflow list-conditioned --file complex_constraints.sv --json -p"
+      ],
+      "fact_check_ok": true,
+      "rc": 0,
+      "parsed": true,
+      "strict": false,
+      "semantic": true,
+      "strict_checks": {
+        "rand_vars": false,
+        "constraints": false,
+        "condition": true,
+        "coupling": true,
+        "inherited": true
+      },
+      "semantic_checks": {
+        "rand_vars": true,
+        "constraints": true,
+        "condition": true,
+        "coupling": true,
+        "inherited": true
+      }
+    },
+    {
+      "task_id": "mux_neighborhood",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "seed": 1,
+      "duration_ms": 71422,
+      "confidence": "medium",
+      "answer": {
+        "seed": "top.q",
+        "register": "top.q",
+        "mux_nodes": [
+          "top.u.lo",
+          "top.u.hi",
+          "top.y"
+        ],
+        "selects": [
+          "top.sel[0]",
+          "top.sel[1]"
+        ],
+        "data_sources": [
+          "top.a",
+          "top.b",
+          "top.c",
+          "top.d"
+        ],
+        "conditions": [
+          "top.u.lo = top.sel[0] ? top.a : top.b",
+          "top.u.hi = top.sel[0] ? top.c : top.d",
+          "top.y = top.sel[1] ? top.u.hi : top.u.lo"
+        ]
+      },
+      "queries": [
+        "wc -l mux_neighborhood.sv && grep -n \"OP_TERNARY\\|assign\\|always\\|q\\b\" mux_neighborhood.sv | head -80",
+        "read mux_neighborhood.sv",
+        "ls -la; find . -maxdepth 2 -type f -printf '%p\\n'"
+      ],
+      "fact_check_ok": true,
+      "rc": 0,
+      "parsed": true,
+      "strict": false,
+      "semantic": true,
+      "strict_checks": {
+        "mux_nodes": false,
+        "selects": false,
+        "sources": false,
+        "register": true
+      },
+      "semantic_checks": {
+        "mux_nodes": true,
+        "selects": true,
+        "sources": true,
+        "register": true
+      }
+    },
+    {
+      "task_id": "mux_neighborhood",
+      "model": "DeepSeek-Flash",
+      "arm": "t2",
+      "seed": 1,
+      "duration_ms": 30162,
+      "confidence": "high",
+      "answer": {
+        "seed": "top.q",
+        "register": "top.q",
+        "mux_nodes": [
+          "top.u.lo.ternary_sel[0]",
+          "top.u.hi.ternary_sel[0]",
+          "top.u.y.ternary_sel[1]"
+        ],
+        "selects": [
+          "top.u.sel[0]",
+          "top.u.sel[1]"
+        ],
+        "data_sources": [
+          "top.u.a",
+          "top.u.b",
+          "top.u.c",
+          "top.u.d"
+        ],
+        "conditions": [
+          "sel[0]",
+          "!(sel[0])",
+          "sel[1]",
+          "!(sel[1])"
+        ]
+      },
+      "queries": [
+        "sv_query graph nodes -f mux_neighborhood.sv --json",
+        "sv_query graph subgraph top.q -f mux_neighborhood.sv --json",
+        "sv_query graph subgraph top.q -f mux_neighborhood.sv --json --depth 10 --direction in --max-nodes 200 --max-edges 400",
+        "sv_query graph nodes -f mux_neighborhood.sv --kind OP_TERNARY --detail --json",
+        "sv_query controlflow analyze top.u.lo -f mux_neighborhood.sv --json",
+        "sv_query controlflow analyze top.u.hi -f mux_neighborhood.sv --json",
+        "sv_query controlflow analyze top.u.y -f mux_neighborhood.sv --json",
+        "sv_query drivers/loads top.u.sel[0] top.u.sel[1] -f mux_neighborhood.sv --json"
+      ],
+      "fact_check_ok": true,
+      "rc": 0,
+      "parsed": true,
+      "strict": true,
+      "semantic": true,
+      "strict_checks": {
+        "mux_nodes": true,
+        "selects": true,
+        "sources": true,
+        "register": true
+      },
+      "semantic_checks": {
+        "mux_nodes": true,
+        "selects": true,
+        "sources": true,
+        "register": true
+      }
+    },
+    {
+      "task_id": "mux_neighborhood",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "seed": 1,
+      "duration_ms": 14908,
+      "confidence": "high",
+      "answer": {
+        "seed": "top.q",
+        "register": "top.q",
+        "mux_nodes": [
+          "mux_tree.lo",
+          "mux_tree.hi",
+          "mux_tree.y"
+        ],
+        "selects": [
+          "mux_tree.lo: sel[0]",
+          "mux_tree.hi: sel[0]",
+          "mux_tree.y: sel[1]"
+        ],
+        "data_sources": [
+          "mux_tree.lo.a: mux_tree.a",
+          "mux_tree.lo.b: mux_tree.b",
+          "mux_tree.hi.a: mux_tree.c",
+          "mux_tree.hi.b: mux_tree.d",
+          "mux_tree.y.a: mux_tree.hi",
+          "mux_tree.y.b: mux_tree.lo"
+        ],
+        "conditions": [
+          "sel[0]",
+          "sel[1]"
+        ]
+      },
+      "queries": [
+        "read /tmp/lr_neigh_hard/MiniMax-M3/mux_neighborhood/source-s1/mux_neighborhood.sv",
+        "glob **/* in /tmp/lr_neigh_hard/MiniMax-M3/mux_neighborhood/source-s1",
+        "read /tmp/lr_neigh_hard/MiniMax-M3/mux_neighborhood/source-s1/model.patch.yml"
+      ],
+      "fact_check_ok": true,
+      "rc": 0,
+      "parsed": true,
+      "strict": false,
+      "semantic": true,
+      "strict_checks": {
+        "mux_nodes": false,
+        "selects": false,
+        "sources": false,
+        "register": true
+      },
+      "semantic_checks": {
+        "mux_nodes": true,
+        "selects": true,
+        "sources": true,
+        "register": true
+      }
+    },
+    {
+      "task_id": "mux_neighborhood",
+      "model": "MiniMax-M3",
+      "arm": "t2",
+      "seed": 1,
+      "duration_ms": 29816,
+      "confidence": "high",
+      "answer": {
+        "seed": "top.q",
+        "register": "top.q",
+        "mux_nodes": [
+          "top.u.lo.ternary_sel[0]",
+          "top.u.hi.ternary_sel[0]",
+          "top.u.y.ternary_sel[1]"
+        ],
+        "selects": [
+          "top.u.sel[0]",
+          "top.u.sel[1]"
+        ],
+        "data_sources": [
+          "top.a",
+          "top.b",
+          "top.c",
+          "top.d"
+        ],
+        "conditions": [
+          "top.u.sel[0]",
+          "top.u.sel[1]"
+        ]
+      },
+      "queries": [
+        "sv_query capabilities",
+        "sv_query graph --help",
+        "sv_query graph nodes --file mux_neighborhood.sv --detail --json",
+        "sv_query graph edges --file mux_neighborhood.sv --json",
+        "sv_query controlflow analyze top.q --file mux_neighborhood.sv --conditions-only --json",
+        "sv_query controlflow analyze top.u.y.ternary_sel[1] --file mux_neighborhood.sv --conditions-only --json",
+        "sv_query controlflow analyze top.u.lo.ternary_sel[0] --file mux_neighborhood.sv --conditions-only --json",
+        "sv_query controlflow analyze top.u.hi.ternary_sel[0] --file mux_neighborhood.sv --conditions-only --json",
+        "sv_query controlflow analyze top.y --file mux_neighborhood.sv --conditions-only --json",
+        "sv_query controlflow analyze top.u.sel[0] --file mux_neighborhood.sv --conditions-only --json",
+        "sv_query controlflow analyze top.u.sel[1] --file mux_neighborhood.sv --conditions-only --json",
+        "sv_query graph subgraph top.q --file mux_neighborhood.sv --depth 4 --json",
+        "sv_query drivers top.q --file mux_neighborhood.sv --json",
+        "sv_query loads top.q --file mux_neighborhood.sv --json",
+        "sv_query trace profile top.y --file mux_neighborhood.sv --json",
+        "sv_query trace lookup --path top.q --path top.u.y --path top.u.lo --path top.u.hi --path top.u.sel[0] --path top.u.sel[1] --path top.a --path top.b --path top.c --path top.d --file mux_neighborhood.sv --json",
+        "sv_query graph subgraph top.q --file mux_neighborhood.sv --depth 5 --edge-kinds driver,connection,branch_condition,branch_true,branch_false,branch_result,bit_select,clock --json",
+        "sv_query graph subgraph top.q --file mux_neighborhood.sv --depth 6 --edge-kinds driver,connection,branch,bit_select,clock --json"
+      ],
+      "fact_check_ok": true,
+      "rc": 0,
+      "parsed": true,
+      "strict": false,
+      "semantic": true,
+      "strict_checks": {
+        "mux_nodes": true,
+        "selects": true,
+        "sources": false,
+        "register": true
+      },
+      "semantic_checks": {
+        "mux_nodes": true,
+        "selects": true,
+        "sources": true,
+        "register": true
+      }
+    },
+    {
+      "task_id": "mux_neighborhood",
+      "model": "MiniMax-M3.1-Flash",
+      "arm": "source",
+      "seed": 1,
+      "duration_ms": 98124,
+      "confidence": "medium",
+      "answer": {
+        "seed": "top.q",
+        "register": "top.q",
+        "mux_nodes": [
+          "top.u.y",
+          "top.u.lo",
+          "top.u.hi"
+        ],
+        "selects": [
+          "top.sel[0]",
+          "top.sel[1]"
+        ],
+        "data_sources": [
+          "top.a",
+          "top.b",
+          "top.c",
+          "top.d"
+        ],
+        "conditions": [
+          "top.sel[0]",
+          "top.sel[1]"
+        ]
+      },
+      "queries": [
+        "ls -la /tmp/lr_neigh_hard/MiniMax-M3_1-Flash/mux_neighborhood/source-s1/",
+        "wc -l /tmp/lr_neigh_hard/MiniMax-M3_1-Flash/mux_neighborhood/source-s1/mux_neighborhood.sv",
+        "Read mux_neighborhood.sv (22 lines, full file)",
+        "Read model.patch.yml (model/provider config, no signal-graph info)",
+        "grep -rl 'OP_TERNARY' over /usr/local /opt $HOME /Applications /Library (no hit; `timeout` missing in shell)",
+        "grep -rl 'OP_TERNARY' over $HOME/openchip-qa* (no hit)",
+        "ls $HOME/openchip-qa* + grep -rIn 'OP_TERNARY|sv_query' $HOME/openchip-qa* (only sv_query QA docs, no id convention)"
+      ],
+      "fact_check_ok": true,
+      "rc": 0,
+      "parsed": true,
+      "strict": false,
+      "semantic": true,
+      "strict_checks": {
+        "mux_nodes": false,
+        "selects": false,
+        "sources": false,
+        "register": true
+      },
+      "semantic_checks": {
+        "mux_nodes": true,
+        "selects": true,
+        "sources": true,
+        "register": true
+      }
+    },
+    {
+      "task_id": "mux_neighborhood",
+      "model": "MiniMax-M3.1-Flash",
+      "arm": "t2",
+      "seed": 1,
+      "duration_ms": 65950,
+      "confidence": "high",
+      "answer": {
+        "seed": "top.q",
+        "register": "top.q",
+        "mux_nodes": [
+          "top.u.lo.ternary_sel[0]",
+          "top.u.hi.ternary_sel[0]",
+          "top.u.y.ternary_sel[1]"
+        ],
+        "selects": [
+          "top.u.sel[0]",
+          "top.u.sel[1]",
+          "top.sel[0]",
+          "top.sel[1]"
+        ],
+        "data_sources": [
+          "top.u.a",
+          "top.u.b",
+          "top.u.c",
+          "top.u.d",
+          "top.a",
+          "top.b",
+          "top.c",
+          "top.d"
+        ],
+        "conditions": [
+          "top.u.sel[0] -> top.u.lo.ternary_sel[0] (true: top.u.a, false: top.u.b)",
+          "top.u.sel[0] -> top.u.hi.ternary_sel[0] (true: top.u.c, false: top.u.d)",
+          "top.u.sel[1] -> top.u.y.ternary_sel[1] (true: top.u.hi, false: top.u.lo)"
+        ]
+      },
+      "queries": [
+        "sv_query graph nodes --detail -f mux_neighborhood.sv",
+        "sv_query graph edges -f mux_neighborhood.sv",
+        "sv_query drivers top.q -f mux_neighborhood.sv",
+        "sv_query loads top.q -f mux_neighborhood.sv",
+        "sv_query graph subgraph top.q --depth 3 --direction in --evidence -f mux_neighborhood.sv",
+        "sv_query controlflow analyze top.q -f mux_neighborhood.sv",
+        "sv_query controlflow analyze top.y -f mux_neighborhood.sv",
+        "sv_query controlflow analyze top.u.lo -f mux_neighborhood.sv",
+        "sv_query controlflow analyze top.u.hi -f mux_neighborhood.sv",
+        "sv_query controlflow analyze top.u.y -f mux_neighborhood.sv",
+        "sv_query controlflow list-conditioned -f mux_neighborhood.sv",
+        "sv_query graph nodes --detail --json -f mux_neighborhood.sv"
+      ],
+      "fact_check_ok": true,
+      "rc": 0,
+      "parsed": true,
+      "strict": false,
+      "semantic": true,
+      "strict_checks": {
+        "mux_nodes": true,
+        "selects": false,
+        "sources": false,
+        "register": true
+      },
+      "semantic_checks": {
+        "mux_nodes": true,
+        "selects": true,
+        "sources": true,
+        "register": true
+      }
+    },
+    {
+      "task_id": "complex_constraints",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "seed": 2,
+      "duration_ms": 8682,
+      "confidence": "high",
+      "answer": {
+        "property": "top.e.p.len",
+        "rand_vars": [
+          "base_item.addr",
+          "base_item.len",
+          "packet.mode",
+          "packet.payload"
+        ],
+        "constraints": [
+          {
+            "id": "c_len",
+            "defined_in": "base_item",
+            "inherited": true,
+            "affects": [
+              "len"
+            ],
+            "expr": "len inside {[1:64]}"
+          },
+          {
+            "id": "c_order",
+            "defined_in": "packet",
+            "inherited": false,
+            "affects": [
+              "addr",
+              "len"
+            ],
+            "expr": "addr < len"
+          },
+          {
+            "id": "c_mode",
+            "defined_in": "packet",
+            "inherited": false,
+            "affects": [
+              "len"
+            ],
+            "expr": "if (mode == 0) len < 32; else len >= 32"
+          },
+          {
+            "id": "c_addr",
+            "defined_in": "base_item",
+            "inherited": true,
+            "affects": [
+              "addr"
+            ],
+            "expr": "addr inside {[32:128]}",
+            "note": "constrains addr only; indirect via c_order"
+          },
+          {
+            "id": "c_payload",
+            "defined_in": "packet",
+            "inherited": false,
+            "affects": [
+              "payload"
+            ],
+            "expr": "payload > 0",
+            "note": "not in len neighborhood"
+          }
+        ],
+        "condition_vars": [
+          "packet.mode"
+        ],
+        "both_addr_len_block": "c_order",
+        "inherited": [
+          "c_len",
+          "c_addr"
+        ]
+      },
+      "queries": [
+        "ls -la; wc -l complex_constraints.sv",
+        "read complex_constraints.sv (full, 29 lines)"
+      ],
+      "fact_check_ok": true,
+      "rc": 0,
+      "parsed": true,
+      "strict": false,
+      "semantic": true,
+      "strict_checks": {
+        "rand_vars": false,
+        "constraints": false,
+        "condition": true,
+        "coupling": false,
+        "inherited": false
+      },
+      "semantic_checks": {
+        "rand_vars": true,
+        "constraints": true,
+        "condition": true,
+        "coupling": true,
+        "inherited": true
+      }
+    },
+    {
+      "task_id": "complex_constraints",
+      "model": "DeepSeek-Flash",
+      "arm": "t2",
+      "seed": 2,
+      "duration_ms": 47946,
+      "confidence": "high",
+      "answer": {
+        "property": "top.e.p.len",
+        "rand_vars": [
+          "packet.addr",
+          "packet.len",
+          "packet.mode",
+          "packet.payload"
+        ],
+        "constraints": [
+          {
+            "id": "packet.c_order",
+            "defined_in": "packet",
+            "inherited": false
+          },
+          {
+            "id": "packet.c_mode",
+            "defined_in": "packet",
+            "inherited": false
+          },
+          {
+            "id": "packet.c_len",
+            "defined_in": "base_item",
+            "inherited": true
+          }
+        ],
+        "condition_vars": [
+          "packet.mode"
+        ],
+        "both_addr_len_block": "packet.c_order",
+        "inherited": [
+          "packet.c_len"
+        ]
+      },
+      "queries": [
+        "sv_query --help",
+        "sv_query graph nodes --help",
+        "sv_query class --help",
+        "sv_query controlflow --help",
+        "sv_query graph nodes -f complex_constraints.sv --json",
+        "sv_query graph nodes -f complex_constraints.sv --match len --detail --json",
+        "sv_query class packet --relations -f complex_constraints.sv --json",
+        "sv_query controlflow analyze top.e.p.len -f complex_constraints.sv --json",
+        "sv_query graph edges -f complex_constraints.sv -d packet.len --json",
+        "sv_query controlflow analyze packet.len -f complex_constraints.sv --json"
+      ],
+      "fact_check_ok": true,
+      "rc": 0,
+      "parsed": true,
+      "strict": true,
+      "semantic": true,
+      "strict_checks": {
+        "rand_vars": true,
+        "constraints": true,
+        "condition": true,
+        "coupling": true,
+        "inherited": true
+      },
+      "semantic_checks": {
+        "rand_vars": true,
+        "constraints": true,
+        "condition": true,
+        "coupling": true,
+        "inherited": true
+      }
+    },
+    {
+      "task_id": "complex_constraints",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "seed": 2,
+      "duration_ms": 11985,
+      "confidence": "high",
+      "answer": {
+        "property": "top.e.p.len",
+        "rand_vars": [
+          {
+            "id": "len",
+            "type": "int",
+            "declared_in": "base_item",
+            "path": "top.e.p.len"
+          },
+          {
+            "id": "addr",
+            "type": "int",
+            "declared_in": "base_item",
+            "path": "top.e.p.addr"
+          },
+          {
+            "id": "mode",
+            "type": "bit [7:0]",
+            "declared_in": "packet",
+            "path": "top.e.p.mode"
+          }
+        ],
+        "constraints": [
+          {
+            "block_id": "c_len",
+            "defined_in": "base_item",
+            "inherited": true,
+            "expression": "len inside {[1:64]}"
+          },
+          {
+            "block_id": "c_order",
+            "defined_in": "packet",
+            "inherited": false,
+            "expression": "addr < len"
+          },
+          {
+            "block_id": "c_mode",
+            "defined_in": "packet",
+            "inherited": false,
+            "expression": "if (mode == 0) { len < 32; } else { len >= 32; }"
+          }
+        ],
+        "condition_vars": [
+          {
+            "id": "mode",
+            "type": "bit [7:0]",
+            "declared_in": "packet",
+            "used_in_block": "c_mode",
+            "test": "mode == 0"
+          }
+        ],
+        "both_addr_len_block": "c_order",
+        "inherited": [
+          "c_len"
+        ]
+      },
+      "queries": [
+        "grep -n 'len|addr|mode' complex_constraints.sv",
+        "wc -l complex_constraints.sv; ls source-s2/",
+        "read complex_constraints.sv (full, 29 lines)",
+        "grep -n 'constraint|class|module|extends|rand|function' complex_constraints.sv"
+      ],
+      "fact_check_ok": true,
+      "rc": 0,
+      "parsed": true,
+      "strict": false,
+      "semantic": false,
+      "strict_checks": {
+        "rand_vars": false,
+        "constraints": false,
+        "condition": false,
+        "coupling": false,
+        "inherited": false
+      },
+      "semantic_checks": {
+        "rand_vars": false,
+        "constraints": true,
+        "condition": true,
+        "coupling": true,
+        "inherited": true
+      }
+    },
+    {
+      "task_id": "complex_constraints",
+      "model": "MiniMax-M3",
+      "arm": "t2",
+      "seed": 2,
+      "duration_ms": 25831,
+      "confidence": "high",
+      "answer": {
+        "property": "top.e.p.len",
+        "rand_vars": [
+          "packet.addr",
+          "packet.len",
+          "packet.mode",
+          "packet.payload"
+        ],
+        "constraints": [
+          {
+            "id": "packet.c_len",
+            "vars": [
+              "packet.len"
+            ],
+            "rand_vars": [
+              "packet.len"
+            ],
+            "conditions": [],
+            "defined_in": "base_item",
+            "inherited": true
+          },
+          {
+            "id": "packet.c_mode",
+            "vars": [
+              "packet.len"
+            ],
+            "rand_vars": [
+              "packet.len"
+            ],
+            "conditions": [
+              "packet.mode"
+            ],
+            "defined_in": "packet",
+            "inherited": false
+          },
+          {
+            "id": "packet.c_order",
+            "vars": [
+              "packet.addr",
+              "packet.len"
+            ],
+            "rand_vars": [
+              "packet.addr",
+              "packet.len"
+            ],
+            "conditions": [],
+            "defined_in": "packet",
+            "inherited": false
+          }
+        ],
+        "condition_vars": [
+          "packet.mode"
+        ],
+        "both_addr_len_block": "packet.c_order",
+        "inherited": [
+          "packet.c_addr",
+          "packet.c_len"
+        ]
+      },
+      "queries": [
+        "sv_query class packet --relations -f complex_constraints.sv -j",
+        "sv_query class -f complex_constraints.sv -j",
+        "sv_query class base_item --relations -f complex_constraints.sv -j",
+        "sv_query class env --relations -f complex_constraints.sv -j",
+        "sv_query graph nodes --match packet --detail -f complex_constraints.sv -j",
+        "sv_query graph edges --src packet.len -f complex_constraints.sv -j",
+        "sv_query controlflow analyze packet.len -f complex_constraints.sv -j",
+        "sv_query instances -f complex_constraints.sv -j",
+        "sv_query scope top.e.p -f complex_constraints.sv -j"
+      ],
+      "fact_check_ok": true,
+      "rc": 0,
+      "parsed": true,
+      "strict": true,
+      "semantic": true,
+      "strict_checks": {
+        "rand_vars": true,
+        "constraints": true,
+        "condition": true,
+        "coupling": true,
+        "inherited": true
+      },
+      "semantic_checks": {
+        "rand_vars": true,
+        "constraints": true,
+        "condition": true,
+        "coupling": true,
+        "inherited": true
+      }
+    },
+    {
+      "task_id": "complex_constraints",
+      "model": "MiniMax-M3.1-Flash",
+      "arm": "source",
+      "seed": 2,
+      "duration_ms": 15102,
+      "confidence": "high",
+      "answer": {
+        "property": "top.e.p.len",
+        "rand_vars": [
+          {
+            "id": "base_item.len",
+            "name": "len",
+            "type": "int",
+            "declared_in": "base_item",
+            "instance_path": "top.e.p.len"
+          },
+          {
+            "id": "base_item.addr",
+            "name": "addr",
+            "type": "int",
+            "declared_in": "base_item",
+            "instance_path": "top.e.p.addr"
+          },
+          {
+            "id": "packet.mode",
+            "name": "mode",
+            "type": "bit [7:0]",
+            "declared_in": "packet",
+            "instance_path": "top.e.p.mode"
+          },
+          {
+            "id": "packet.payload",
+            "name": "payload",
+            "type": "bit [7:0]",
+            "declared_in": "packet",
+            "instance_path": "top.e.p.payload"
+          }
+        ],
+        "constraints": [
+          {
+            "id": "base_item.c_len",
+            "name": "c_len",
+            "defined_in": "base_item",
+            "inherited": true,
+            "expr": "len inside {[1:64]}",
+            "vars": [
+              "len"
+            ]
+          },
+          {
+            "id": "packet.c_order",
+            "name": "c_order",
+            "defined_in": "packet",
+            "inherited": false,
+            "expr": "addr < len",
+            "vars": [
+              "addr",
+              "len"
+            ]
+          },
+          {
+            "id": "packet.c_mode",
+            "name": "c_mode",
+            "defined_in": "packet",
+            "inherited": false,
+            "expr": "if (mode == 0) { len < 32; } else { len >= 32; }",
+            "vars": [
+              "mode",
+              "len"
+            ],
+            "conditional": true,
+            "condition": "mode == 0"
+          }
+        ],
+        "condition_vars": [
+          {
+            "id": "packet.mode",
+            "name": "mode",
+            "role": "guard/selector",
+            "used_in": "packet.c_mode",
+            "note": "mode == 0 -> len < 32, else len >= 32"
+          },
+          {
+            "id": "base_item.addr",
+            "name": "addr",
+            "role": "coupled comparison operand",
+            "used_in": "packet.c_order"
+          }
+        ],
+        "both_addr_len_block": "packet.c_order",
+        "inherited": [
+          "base_item.c_len"
+        ]
+      },
+      "queries": [
+        "read /tmp/lr_neigh_hard/MiniMax-M3_1-Flash/complex_constraints/source-s2/complex_constraints.sv",
+        "glob **/* (dir=/tmp/lr_neigh_hard/MiniMax-M3_1-Flash/complex_constraints/source-s2)",
+        "grep -E 'constraint|rand|class|module' (dir=/tmp/lr_neigh_hard/MiniMax-M3_1-Flash/complex_constraints/source-s2)"
+      ],
+      "fact_check_ok": true,
+      "rc": 0,
+      "parsed": true,
+      "strict": false,
+      "semantic": true,
+      "strict_checks": {
+        "rand_vars": false,
+        "constraints": false,
+        "condition": true,
+        "coupling": true,
+        "inherited": false
+      },
+      "semantic_checks": {
+        "rand_vars": true,
+        "constraints": true,
+        "condition": true,
+        "coupling": true,
+        "inherited": true
+      }
+    },
+    {
+      "task_id": "complex_constraints",
+      "model": "MiniMax-M3.1-Flash",
+      "arm": "t2",
+      "seed": 2,
+      "duration_ms": 37055,
+      "confidence": "high",
+      "answer": {
+        "property": "top.e.p.len",
+        "rand_vars": [
+          "packet.addr",
+          "packet.len",
+          "packet.mode",
+          "packet.payload"
+        ],
+        "constraints": [
+          {
+            "block": "packet.c_len",
+            "defined_in": "base_item",
+            "inherited": true,
+            "vars": [
+              "packet.len"
+            ],
+            "rand_vars": [
+              "packet.len"
+            ],
+            "conditions": [],
+            "expr_count": 1,
+            "expr_id": "packet.c_len::expr_0"
+          },
+          {
+            "block": "packet.c_mode",
+            "defined_in": "packet",
+            "inherited": false,
+            "vars": [
+              "packet.len"
+            ],
+            "rand_vars": [
+              "packet.len"
+            ],
+            "conditions": [
+              "packet.mode"
+            ],
+            "expr_count": 1,
+            "branches": [
+              "packet.c_mode::if_0::cons_0 (mode == 0 -> len < 32)",
+              "packet.c_mode::if_0::alt_0::expr_0 (else -> len >= 32)"
+            ]
+          },
+          {
+            "block": "packet.c_order",
+            "defined_in": "packet",
+            "inherited": false,
+            "vars": [
+              "packet.addr",
+              "packet.len"
+            ],
+            "rand_vars": [
+              "packet.addr",
+              "packet.len"
+            ],
+            "conditions": [],
+            "expr_count": 1,
+            "expr_id": "packet.c_order::expr_0"
+          }
+        ],
+        "condition_vars": [
+          "packet.mode"
+        ],
+        "both_addr_len_block": "packet.c_order",
+        "inherited": [
+          {
+            "block": "packet.c_addr",
+            "defined_in": "base_item",
+            "inherited": true,
+            "vars": [
+              "packet.addr"
+            ]
+          },
+          {
+            "block": "packet.c_len",
+            "defined_in": "base_item",
+            "inherited": true,
+            "vars": [
+              "packet.len"
+            ]
+          }
+        ],
+        "instance_chain": [
+          "top.e",
+          "env.p"
+        ],
+        "instance_property": "top.e.p.len -> resolved to type-level id packet.len",
+        "rand_vars_instance_paths": [
+          "top.e.p.addr",
+          "top.e.p.len",
+          "top.e.p.mode",
+          "top.e.p.payload"
+        ]
+      },
+      "queries": [
+        "sv_query capabilities",
+        "sv_query --help; sv_query trace constraints --help; sv_query class --help; sv_query graph --help; sv_query controlflow --help",
+        "sv_query trace constraints top.e.p.len --file complex_constraints.sv --json --pretty",
+        "sv_query class --file complex_constraints.sv --json",
+        "sv_query class packet --relations --file complex_constraints.sv --json --pretty",
+        "sv_query class base_item --relations --file complex_constraints.sv --json --pretty",
+        "sv_query controlflow analyze top.e.p.len --file complex_constraints.sv --json --pretty",
+        "sv_query graph nodes --file complex_constraints.sv --json (id extraction); sv_query instances --file complex_constraints.sv --json; sv_query scope top.e.p --file complex_constraints.sv --json; sv_query trace constraints top.e.p.mode --file complex_constraints.sv --json"
+      ],
+      "fact_check_ok": true,
+      "rc": 0,
+      "parsed": true,
+      "strict": true,
+      "semantic": true,
+      "strict_checks": {
+        "rand_vars": true,
+        "constraints": true,
+        "condition": true,
+        "coupling": true,
+        "inherited": true
+      },
+      "semantic_checks": {
+        "rand_vars": true,
+        "constraints": true,
+        "condition": true,
+        "coupling": true,
+        "inherited": true
+      }
+    },
+    {
+      "task_id": "mux_neighborhood",
+      "model": "DeepSeek-Flash",
+      "arm": "source",
+      "seed": 2,
+      "duration_ms": 23870,
+      "confidence": "medium",
+      "answer": {
+        "seed": "top.q",
+        "register": "top.q",
+        "mux_nodes": [
+          "top.u.lo",
+          "top.u.hi",
+          "top.u.y"
+        ],
+        "selects": [
+          "top.sel[0]",
+          "top.sel[1]"
+        ],
+        "data_sources": [
+          "top.a",
+          "top.b",
+          "top.c",
+          "top.d"
+        ],
+        "conditions": [
+          "top.sel[0] ? top.a : top.b",
+          "top.sel[0] ? top.c : top.d",
+          "top.sel[1] ? top.u.hi : top.u.lo"
+        ]
+      },
+      "queries": [
+        "wc -l mux_neighborhood.sv && ls -la",
+        "read mux_neighborhood.sv (1-22)"
+      ],
+      "fact_check_ok": true,
+      "rc": 0,
+      "parsed": true,
+      "strict": false,
+      "semantic": true,
+      "strict_checks": {
+        "mux_nodes": false,
+        "selects": false,
+        "sources": false,
+        "register": true
+      },
+      "semantic_checks": {
+        "mux_nodes": true,
+        "selects": true,
+        "sources": true,
+        "register": true
+      }
+    },
+    {
+      "task_id": "mux_neighborhood",
+      "model": "DeepSeek-Flash",
+      "arm": "t2",
+      "seed": 2,
+      "duration_ms": 43135,
+      "confidence": "high",
+      "answer": {
+        "seed": "top.q",
+        "register": "top.q",
+        "mux_nodes": [
+          "top.u.lo.ternary_sel[0]",
+          "top.u.hi.ternary_sel[0]",
+          "top.u.y.ternary_sel[1]"
+        ],
+        "selects": [
+          "top.u.sel[0]",
+          "top.u.sel[1]"
+        ],
+        "data_sources": [
+          "top.u.a",
+          "top.u.b",
+          "top.u.c",
+          "top.u.d"
+        ],
+        "conditions": [
+          "sel[0]",
+          "sel[1]"
+        ]
+      },
+      "queries": [
+        "sv_query capabilities",
+        "sv_query graph subgraph top.q mux_tree.u --file mux_neighborhood.sv --depth 5 --edge-kinds driver,connection,control --evidence --json",
+        "sv_query graph nodes --file mux_neighborhood.sv --detail --json",
+        "sv_query drivers top.q --file mux_neighborhood.sv --json",
+        "sv_query controlflow analyze top.u.y --file mux_neighborhood.sv --json",
+        "sv_query controlflow analyze top.u.lo --file mux_neighborhood.sv --json",
+        "sv_query controlflow analyze top.u.hi --file mux_neighborhood.sv --json",
+        "sv_query connections top.u --file mux_neighborhood.sv --json",
+        "sv_query graph edges --file mux_neighborhood.sv --json"
+      ],
+      "fact_check_ok": true,
+      "rc": 0,
+      "parsed": true,
+      "strict": true,
+      "semantic": true,
+      "strict_checks": {
+        "mux_nodes": true,
+        "selects": true,
+        "sources": true,
+        "register": true
+      },
+      "semantic_checks": {
+        "mux_nodes": true,
+        "selects": true,
+        "sources": true,
+        "register": true
+      }
+    },
+    {
+      "task_id": "mux_neighborhood",
+      "model": "MiniMax-M3",
+      "arm": "source",
+      "seed": 2,
+      "duration_ms": 12711,
+      "confidence": "high",
+      "answer": {
+        "seed": "top.q",
+        "register": "top.q",
+        "mux_nodes": [
+          "u.y",
+          "u.hi",
+          "u.lo"
+        ],
+        "selects": [
+          "sel[1]",
+          "sel[0]"
+        ],
+        "data_sources": [
+          "u.hi",
+          "u.lo",
+          "c",
+          "d",
+          "a",
+          "b"
+        ],
+        "conditions": [
+          "sel[1]",
+          "sel[0]",
+          "sel[0]"
+        ]
+      },
+      "queries": [
+        "read /tmp/lr_neigh_hard/MiniMax-M3/mux_neighborhood/source-s2/mux_neighborhood.sv",
+        "ls -la /tmp/lr_neigh_hard/MiniMax-M3/mux_neighborhood/source-s2/",
+        "read /tmp/lr_neigh_hard/MiniMax-M3/mux_neighborhood/source-s2/model.patch.yml",
+        "find . -type f + grep -rn 'ternary|OP_TERNARY|always_ff|assign|?' (source-s2)"
+      ],
+      "fact_check_ok": true,
+      "rc": 0,
+      "parsed": true,
+      "strict": false,
+      "semantic": true,
+      "strict_checks": {
+        "mux_nodes": false,
+        "selects": false,
+        "sources": false,
+        "register": true
+      },
+      "semantic_checks": {
+        "mux_nodes": true,
+        "selects": true,
+        "sources": true,
+        "register": true
+      }
+    },
+    {
+      "task_id": "mux_neighborhood",
+      "model": "MiniMax-M3",
+      "arm": "t2",
+      "seed": 2,
+      "duration_ms": 41274,
+      "confidence": "high",
+      "answer": {
+        "seed": "top.q",
+        "register": "top.q",
+        "mux_nodes": [
+          "top.u.lo.ternary_sel[0]",
+          "top.u.hi.ternary_sel[0]",
+          "top.u.y.ternary_sel[1]"
+        ],
+        "selects": [
+          "top.u.sel[0]",
+          "top.u.sel[1]"
+        ],
+        "data_sources": [
+          "top.u.a",
+          "top.u.b",
+          "top.u.c",
+          "top.u.d"
+        ],
+        "conditions": [
+          "top.u.sel[0]",
+          "!(top.u.sel[0])",
+          "top.u.sel[1]",
+          "!(top.u.sel[1])"
+        ]
+      },
+      "queries": [
+        "ls -la /tmp/lr_neigh_hard/MiniMax-M3/mux_neighborhood/t2-s2/",
+        "wc -l mux_neighborhood.sv && head -60 mux_neighborhood.sv",
+        "which sv_query; cat model.patch.yml",
+        "sv_query --help",
+        "sv_query graph --help",
+        "sv_query stats",
+        "sv_query graph nodes --file mux_neighborhood.sv --detail",
+        "sv_query graph edges --file mux_neighborhood.sv",
+        "sv_query graph subgraph --help; sv_query graph subgraph --file mux_neighborhood.sv --depth 4 --direction in --edge-kinds driver,connection,control,bit_select --evidence top.q",
+        "sv_query controlflow --help; sv_query controlflow list-conditioned --file mux_neighborhood.sv",
+        "sv_query controlflow analyze --file mux_neighborhood.sv --evidence --human top.q",
+        "sv_query drivers --file mux_neighborhood.sv top.q; sv_query loads --file mux_neighborhood.sv top.y",
+        "sv_query controlflow analyze --file mux_neighborhood.sv --evidence --human --tree top.u.y",
+        "sv_query controlflow analyze --file mux_neighborhood.sv --evidence --json --pretty top.u.y",
+        "sv_query controlflow analyze --file mux_neighborhood.sv --human --tree top.u.lo; ... top.u.hi",
+        "sv_query verify --help; sv_query graph nodes --file mux_neighborhood.sv --kind OP_TERNARY",
+        "sv_query verify consistency --file mux_neighborhood.sv --json",
+        "sv_query instances --file mux_neighborhood.sv; sv_query hierarchy --file mux_neighborhood.sv"
+      ],
+      "fact_check_ok": true,
+      "rc": 0,
+      "parsed": true,
+      "strict": true,
+      "semantic": true,
+      "strict_checks": {
+        "mux_nodes": true,
+        "selects": true,
+        "sources": true,
+        "register": true
+      },
+      "semantic_checks": {
+        "mux_nodes": true,
+        "selects": true,
+        "sources": true,
+        "register": true
+      }
+    },
+    {
+      "task_id": "mux_neighborhood",
+      "model": "MiniMax-M3.1-Flash",
+      "arm": "source",
+      "seed": 2,
+      "duration_ms": 69278,
+      "confidence": "medium",
+      "answer": {
+        "seed": "top.q",
+        "register": "top.q",
+        "mux_nodes": [
+          "top.u.lo",
+          "top.u.hi",
+          "top.u.y"
+        ],
+        "selects": [
+          "top.sel[0]",
+          "top.sel[1]"
+        ],
+        "data_sources": [
+          "top.a",
+          "top.b",
+          "top.c",
+          "top.d"
+        ],
+        "conditions": [
+          "top.sel[0]",
+          "top.sel[1]"
+        ]
+      },
+      "queries": [
+        "ls -la /tmp/lr_neigh_hard/MiniMax-M3_1-Flash/mux_neighborhood/source-s2/ && wc -l mux_neighborhood.sv",
+        "read mux_neighborhood.sv",
+        "read model.patch.yml",
+        "command -v sv_query sv-query svq yosys verilator; python3 module check; pip list | grep -iE 'sv|verilog|hdl|sig'",
+        "ls /Users/fundou/my_dv_proj/sv_query/ && .../sv_query/sv_query/",
+        "python3 -c 'import sv_query; print(sv_query.__file__)'",
+        "head -3 /Users/fundou/miniconda3/bin/sv_query; ls -la /Users/fundou/my_dv_proj/; miniconda python3 import sv_query",
+        "grep -nE 'assign|always_ff|logic|mux_tree|\\.sel' mux_neighborhood.sv"
+      ],
+      "fact_check_ok": true,
+      "rc": 0,
+      "parsed": true,
+      "strict": false,
+      "semantic": true,
+      "strict_checks": {
+        "mux_nodes": false,
+        "selects": false,
+        "sources": false,
+        "register": true
+      },
+      "semantic_checks": {
+        "mux_nodes": true,
+        "selects": true,
+        "sources": true,
+        "register": true
+      }
+    },
+    {
+      "task_id": "mux_neighborhood",
+      "model": "MiniMax-M3.1-Flash",
+      "arm": "t2",
+      "seed": 2,
+      "duration_ms": 36578,
+      "confidence": "high",
+      "answer": {
+        "seed": "top.q",
+        "register": "top.q",
+        "mux_nodes": [
+          "top.u.lo.ternary_sel[0]",
+          "top.u.hi.ternary_sel[0]",
+          "top.u.y.ternary_sel[1]"
+        ],
+        "selects": [
+          "top.u.sel[0]",
+          "top.u.sel[1]",
+          "top.sel[0]",
+          "top.sel[1]"
+        ],
+        "data_sources": [
+          "top.u.a",
+          "top.u.b",
+          "top.u.c",
+          "top.u.d",
+          "top.a",
+          "top.b",
+          "top.c",
+          "top.d"
+        ],
+        "conditions": [
+          "sel[0]",
+          "!(sel[0])",
+          "sel[1]",
+          "!(sel[1])"
+        ]
+      },
+      "queries": [
+        "ls -la /tmp/lr_neigh_hard/MiniMax-M3_1-Flash/mux_neighborhood/t2-s2/ ; sv_query --help",
+        "read mux_neighborhood.sv",
+        "sv_query capabilities",
+        "sv_query graph nodes --file mux_neighborhood.sv --detail --json",
+        "sv_query graph edges --file mux_neighborhood.sv --json",
+        "sv_query controlflow analyze --file mux_neighborhood.sv top.q --json ; ... top.y --json ; sv_query class --file mux_neighborhood.sv --json",
+        "sv_query controlflow list-conditioned --file mux_neighborhood.sv --json",
+        "sv_query controlflow analyze --file mux_neighborhood.sv top.u.y --json ; top.u.lo --json ; top.u.hi --json",
+        "sv_query graph subgraph --file mux_neighborhood.sv top.q --depth 3 --json"
+      ],
+      "fact_check_ok": true,
+      "rc": 0,
+      "parsed": true,
+      "strict": false,
+      "semantic": true,
+      "strict_checks": {
+        "mux_nodes": true,
+        "selects": false,
+        "sources": false,
+        "register": true
+      },
+      "semantic_checks": {
+        "mux_nodes": true,
+        "selects": true,
+        "sources": true,
+        "register": true
+      }
+    }
+  ]
+}

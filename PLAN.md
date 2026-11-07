@@ -163,6 +163,11 @@ P84 constraint/mux 邻域场景 <已完成>
 -- P84.2 agent pilot <已完成>
 -- P84.3 结果/边界 <已完成>
 
+P85 neighborhood source/T2 pilot <已完成>
+-- P85.1 neighborhood runner + fact check <已完成>
+-- P85.2 2 场景 ×3 模型 ×2 臂 ×2 seed <已完成>
+-- P85.3 结果/决策 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

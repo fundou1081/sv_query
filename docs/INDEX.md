@@ -15,10 +15,10 @@
 | 源码规模 | 163 文件 / 63,146 行 | `find src -name "*.py"` |
 | 测试规模 | 368 测试文件 / 78,847 行 + 117 SV fixture | `find sim/tests -name "*.py"` |
 | 回归基线 | **2129 passed + 35 subtests** (unit + regression, `-m "not opensource"`) | 2026-09-08 实测 (iter_190 后) |
-| 全量 (canonical) | **2550 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; 7 skipped / 119 deselected) | 2026-11-07 实测 (iter_388): neighborhood +2。历史: iter_387 2548 / iter_385 2545 |
+| 全量 (canonical) | **2552 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; 7 skipped / 119 deselected) | 2026-11-07 实测 (iter_389): neighborhood runner +2。历史: iter_388 2550 / iter_387 2548 |
 | CLI / integration | **810 passed / 0 failed** (`sim/tests/cli sim/tests/integration`, `-m "not opensource"`) | 2026-09-08 实测 (iter_185 修复后) |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (375 份, 只增不改) | 每次迭代一份 |
+| 迭代记录 | `docs/task_tree/iterations/` (376 份, 只增不改) | 每次迭代一份 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 | 语义 regex 纪律 | `python3 tools/check_semantic_regex.py` 必须 ✅ | 仅 UVM 宏例外；class/constraint/covergroup 语义走 slang (iter_368) |
@@ -87,6 +87,7 @@
 | [validation/LONG_RANGE_4TASK_2026-11-07.md](validation/LONG_RANGE_4TASK_2026-11-07.md) | **P82 4-task pilot**: 32 cells；source 11/16 vs T2 10/16；pico direct fanout 0/8；agent 协议问题 |
 | [validation/LONG_RANGE_4TASK_FIXED_2026-11-07.md](validation/LONG_RANGE_4TASK_FIXED_2026-11-07.md) | **P83 修复后**: T2 16/16 vs source 11/16；T2 0 high-conf；query log 11/16 |
 | [validation/INTERACTIVE_NEIGHBORHOOD_2026-11-07.md](validation/INTERACTIVE_NEIGHBORHOOD_2026-11-07.md) | **P84 邻域场景**: complex constraints / nested mux；3 模型 ×2 场景 6/6 |
+| [validation/NEIGHBORHOOD_SOURCE_T2_2026-11-07.md](validation/NEIGHBORHOOD_SOURCE_T2_2026-11-07.md) | **P85 source/T2**: strict 0 vs6/12；semantic 11 vs11/12；T2 只有 canonical 优势 |
 | [validation/COMPARISON_RECORD_2026-11-05.md](validation/COMPARISON_RECORD_2026-11-05.md) | **对比结果冻结记录**: 哈希、模型、指标、单独复验脚本与已知缺陷 |
 | [validation/long_range_12_usage_2026-11-05.json](validation/long_range_12_usage_2026-11-05.json) | **token/tool-call 汇总**: 四臂 token、tool calls、tokens/correct |
 | [architecture/long_range_structural_benchmark_2026-11-05.md](architecture/long_range_structural_benchmark_2026-11-05.md) | **长程结构查询对照基准**: B0/B1/T1/T2 对照、任务族、ground truth 冻结与准确度/成本指标 |

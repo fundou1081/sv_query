@@ -190,7 +190,7 @@ P77 新增 `sim/tests/cli/test_port_ternary.py`：
 - `controlflow` complete；
 - fanin 条件驱动。
 
-全量 **2550 passed / 0 failed**。
+全量 **2552 passed / 0 failed**。
 
 ---
 
