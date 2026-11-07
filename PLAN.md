@@ -211,6 +211,10 @@ P96 sv_query skill pilot <已完成>
 -- P96.1 通用 skill + 3-cell pilot <已完成>
 -- P96.2 负结果/边界 <已完成>
 
+P97 inline skill prompt pilot <已完成>
+-- P97.1 skill 内容直接注入 prompt <已完成>
+-- P97.2 3-cell A/B/负结果 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

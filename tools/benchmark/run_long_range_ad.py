@@ -143,6 +143,21 @@ def _ad_run(task: dict, model: dict, seed: int, budget: int, mode: str) -> dict:
     hint = (f"T2 A+D: snapshots are prebuilt. Use `--from-snapshot {tag}` on every "
             "query; do NOT parse/build source. For direct fanin/fanout also use "
             "`--depth 1`; record exact commands in `queries`.")
+    if mode == "skill":
+        skill_dst = ws / ".dsh" / "skills" / "svq-query-protocol"
+        skill_dst.parent.mkdir(parents=True, exist_ok=True)
+        if skill_dst.exists():
+            shutil.rmtree(skill_dst)
+        shutil.copytree(SKILL, skill_dst)
+        hint += (" A project skill `svq-query-protocol` is installed. Load it "
+                 "with the skill tool before the first query and follow it.")
+    elif mode == "inline":
+        body = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        if body.startswith("---"):
+            parts = body.split("---", 2)
+            body = parts[2] if len(parts) == 3 else body
+        hint += ("\n\nPROTOCOL SKILL (inline; source .dsh/skills/"
+                 "svq-query-protocol/SKILL.md):\n" + body.strip())
     prompt = base.PROMPT.format(ws=ws, input=input_path, question=task["question"],
                                 budget=budget, task_id=task["id"], arm_hint=hint)
     patch = ws / "model.patch.yml"
