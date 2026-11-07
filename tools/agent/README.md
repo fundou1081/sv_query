@@ -10,9 +10,12 @@ agent profile with one narrow, reproducible interface.
 | `fanout` | `snapshot`, `signal`, `depth` | `{ ok, intent, snapshot, signal, loads, count }` |
 | `neighbors` | `snapshot`, `signal`, `depth` | `{ ok, intent, snapshot, signal, drivers, loads, count }` |
 | `path` | `snapshot`, `signal`, `dst` | `{ ok, intent, snapshot, path, count }` |
+| `neighborhood` | `snapshot`, `signal`, `depth` | `{ ok, intent, snapshot, signal, nodes, edges, op_ternary, conditions, count, truncated }` |
 
 `drivers` / `loads` / `path` are arrays of canonical signal IDs. `count` is the
 array length for fanin/fanout/neighbors and `hop_count` for path.
+`details=true` adds `kind`, `condition`, and `distance` for neighbors.
+`neighborhood` performs a bounded fanin BFS and returns node/edge metadata.
 
 ## Install
 
@@ -74,8 +77,9 @@ or filesystem tools.
 - **No MIG / connections / instances**: the snapshot used here does not expose
   module-instance graph (MIG) data, so `connections`, `instances`, `ports`,
   `params`, and hierarchy queries are unavailable.
-- **Four intents only**: `fanin`, `fanout`, `neighbors`, `path`; `path` is
-  directed and requires `dst`.
+- **Five intents only**: `fanin`, `fanout`, `neighbors`, `path`,
+  `neighborhood`; `path` is directed and requires `dst`; neighborhood is
+  fanin-only and capped at depth 8.
 - **Compact IDs only**: attributes such as conditions, bit ranges, evidence,
   multi-driver status, and truncation flags are dropped by compaction.
 - **One signal per call**: no batch queries; `depth` is limited to `1..32`.
