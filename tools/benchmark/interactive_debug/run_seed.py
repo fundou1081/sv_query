@@ -78,16 +78,10 @@ def _env() -> dict:
 
 
 def _extract_json(text: str) -> dict | None:
-    blocks = re.findall(r"```(?:json)?\s*(.*?)```", text, re.S)
-    for block in reversed(blocks):
-        try:
-            d = json.loads(block)
-        except json.JSONDecodeError:
-            continue
-        if isinstance(d, dict):
-            return d
-    # Last-resort: balanced object starting at a task_id/answer marker.
-    for m in reversed(list(re.finditer(r"\{", text))):
+    # Prefer the complete envelope (task_id + answer); nested answer objects
+    # must not be mistaken for the envelope.
+    candidates: list[dict] = []
+    for m in re.finditer(r"\{", text):
         depth = 0
         for i in range(m.start(), len(text)):
             if text[i] == "{":
@@ -98,11 +92,14 @@ def _extract_json(text: str) -> dict | None:
                     try:
                         d = json.loads(text[m.start():i + 1])
                         if isinstance(d, dict):
-                            return d
+                            candidates.append(d)
                     except json.JSONDecodeError:
-                        break
-    return None
-
+                        pass
+                    break
+    for d in reversed(candidates):
+        if "task_id" in d and "answer" in d:
+            return d
+    return candidates[-1] if candidates else None
 
 def _find_answer(d: dict) -> dict:
     if isinstance(d.get("answer"), dict):
