@@ -3,7 +3,7 @@
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **可视化计划**: [structural_review_plan_2026-11-02](docs/architecture/structural_review_plan_2026-11-02.md) — 全设计图退役；动态子图 + 局部 review。
-> **最后更新**: 2026-11-07 GMT+8 (iter_398: A+D 模型对比)
+> **最后更新**: 2026-11-07 GMT+8 (iter_399: 严格 A/D 尝试放弃)
 
 ---
 
@@ -41,6 +41,7 @@
 - **P92** snapshot 预构建 D ✅（iter_396）
 - **P93** A/D 充分测试 ✅（iter_397）
 - **P94** A+D vs 原版模型对比 ✅（iter_398）
+- **P95** 严格 A/D agent 协议 ⏭️ 放弃（无法强制工具使用）
 
 > P71/P72 已完成；P62.2 交互式 debug 保持 gate；外部 VeriBug 明确 deferred/放弃。
 
