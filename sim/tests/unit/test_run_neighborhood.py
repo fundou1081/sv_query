@@ -31,15 +31,17 @@ def test_extract_envelope_prefers_complete_answer():
 def test_semantic_accepts_instance_aliases_but_requires_payload():
     m = _load()
     task = next(t for t in m.TASKS if t["id"] == "complex_constraints")
-    good = {"answer": {
+    good = {
         "rand_vars": ["top.e.p.addr", "top.e.p.len", "top.e.p.mode", "top.e.p.payload"],
         "constraints": [{"id": "c_len"}, {"id": "c_mode"}, {"id": "c_order"}],
         "condition_vars": ["top.e.p.mode"], "both_addr_len_block": "c_order",
         "inherited": ["c_len"],
-    }}
-    assert all(m._semantic(task, good)["checks"].values())
-    bad = {"answer": {"rand_vars": ["packet.addr", "packet.len", "packet.mode"],
-                      "constraints": ["c_len", "c_mode", "c_order"],
-                      "condition_vars": ["packet.mode"], "both_addr_len_block": "c_order",
-                      "inherited": ["c_len"]}}
-    assert not all(m._semantic(task, bad)["checks"].values())
+    }
+    assert m.score_answer(task, good)["semantic"] is True
+    bad = {
+        "rand_vars": ["packet.addr", "packet.len", "packet.mode"],
+        "constraints": ["c_len", "c_mode", "c_order"],
+        "condition_vars": ["packet.mode"], "both_addr_len_block": "c_order",
+        "inherited": ["c_len"],
+    }
+    assert m.score_answer(task, bad)["semantic"] is False

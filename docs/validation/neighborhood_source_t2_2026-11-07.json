@@ -12,6 +12,26 @@
         "condition_vars": [],
         "both_addr_len_block": "",
         "inherited": []
+      },
+      "ground_truth": {
+        "rand_vars": [
+          "packet.addr",
+          "packet.len",
+          "packet.mode",
+          "packet.payload"
+        ],
+        "constraints": [
+          "packet.c_len",
+          "packet.c_mode",
+          "packet.c_order"
+        ],
+        "condition_vars": [
+          "packet.mode"
+        ],
+        "both_addr_len_block": "packet.c_order",
+        "inherited": [
+          "packet.c_len"
+        ]
       }
     },
     {
@@ -25,6 +45,24 @@
         "selects": [],
         "data_sources": [],
         "conditions": []
+      },
+      "ground_truth": {
+        "mux_nodes": [
+          "top.u.lo.ternary_sel[0]",
+          "top.u.hi.ternary_sel[0]",
+          "top.u.y.ternary_sel[1]"
+        ],
+        "selects": [
+          "top.u.sel[0]",
+          "top.u.sel[1]"
+        ],
+        "data_sources": [
+          "top.u.a",
+          "top.u.b",
+          "top.u.c",
+          "top.u.d"
+        ],
+        "register": "top.q"
       }
     }
   ],
@@ -79,13 +117,13 @@
       "fact_check_ok": true,
       "rc": 0,
       "parsed": true,
-      "strict": false,
+      "canonical": false,
       "semantic": true,
-      "strict_checks": {
+      "canonical_checks": {
         "rand_vars": false,
         "constraints": false,
-        "condition": false,
-        "coupling": false,
+        "condition_vars": false,
+        "both_addr_len_block": true,
         "inherited": false
       },
       "semantic_checks": {
@@ -176,14 +214,14 @@
       "fact_check_ok": true,
       "rc": 0,
       "parsed": true,
-      "strict": false,
+      "canonical": false,
       "semantic": false,
-      "strict_checks": {
+      "canonical_checks": {
         "rand_vars": false,
-        "constraints": true,
-        "condition": true,
-        "coupling": true,
-        "inherited": true
+        "constraints": false,
+        "condition_vars": true,
+        "both_addr_len_block": true,
+        "inherited": false
       },
       "semantic_checks": {
         "rand_vars": false,
@@ -275,13 +313,13 @@
       "fact_check_ok": true,
       "rc": 0,
       "parsed": true,
-      "strict": false,
+      "canonical": false,
       "semantic": true,
-      "strict_checks": {
+      "canonical_checks": {
         "rand_vars": false,
         "constraints": false,
-        "condition": true,
-        "coupling": false,
+        "condition_vars": true,
+        "both_addr_len_block": true,
         "inherited": false
       },
       "semantic_checks": {
@@ -439,13 +477,13 @@
       "fact_check_ok": true,
       "rc": 0,
       "parsed": true,
-      "strict": false,
+      "canonical": false,
       "semantic": true,
-      "strict_checks": {
+      "canonical_checks": {
         "rand_vars": false,
-        "constraints": false,
-        "condition": true,
-        "coupling": true,
+        "constraints": true,
+        "condition_vars": true,
+        "both_addr_len_block": true,
         "inherited": false
       },
       "semantic_checks": {
@@ -524,13 +562,13 @@
       "fact_check_ok": true,
       "rc": 0,
       "parsed": true,
-      "strict": false,
+      "canonical": false,
       "semantic": true,
-      "strict_checks": {
+      "canonical_checks": {
         "rand_vars": false,
         "constraints": false,
-        "condition": false,
-        "coupling": false,
+        "condition_vars": false,
+        "both_addr_len_block": true,
         "inherited": false
       },
       "semantic_checks": {
@@ -693,14 +731,14 @@
       "fact_check_ok": true,
       "rc": 0,
       "parsed": true,
-      "strict": false,
+      "canonical": false,
       "semantic": true,
-      "strict_checks": {
+      "canonical_checks": {
         "rand_vars": false,
         "constraints": false,
-        "condition": true,
-        "coupling": true,
-        "inherited": true
+        "condition_vars": true,
+        "both_addr_len_block": true,
+        "inherited": false
       },
       "semantic_checks": {
         "rand_vars": true,
@@ -749,12 +787,12 @@
       "fact_check_ok": true,
       "rc": 0,
       "parsed": true,
-      "strict": false,
+      "canonical": false,
       "semantic": true,
-      "strict_checks": {
+      "canonical_checks": {
         "mux_nodes": false,
         "selects": false,
-        "sources": false,
+        "data_sources": false,
         "register": true
       },
       "semantic_checks": {
@@ -809,12 +847,12 @@
       "fact_check_ok": true,
       "rc": 0,
       "parsed": true,
-      "strict": true,
+      "canonical": true,
       "semantic": true,
-      "strict_checks": {
+      "canonical_checks": {
         "mux_nodes": true,
         "selects": true,
-        "sources": true,
+        "data_sources": true,
         "register": true
       },
       "semantic_checks": {
@@ -865,12 +903,12 @@
       "fact_check_ok": true,
       "rc": 0,
       "parsed": true,
-      "strict": false,
+      "canonical": false,
       "semantic": true,
-      "strict_checks": {
+      "canonical_checks": {
         "mux_nodes": false,
         "selects": false,
-        "sources": false,
+        "data_sources": false,
         "register": true
       },
       "semantic_checks": {
@@ -933,12 +971,12 @@
       "fact_check_ok": true,
       "rc": 0,
       "parsed": true,
-      "strict": false,
+      "canonical": false,
       "semantic": true,
-      "strict_checks": {
+      "canonical_checks": {
         "mux_nodes": true,
         "selects": true,
-        "sources": false,
+        "data_sources": false,
         "register": true
       },
       "semantic_checks": {
@@ -990,12 +1028,12 @@
       "fact_check_ok": true,
       "rc": 0,
       "parsed": true,
-      "strict": false,
+      "canonical": false,
       "semantic": true,
-      "strict_checks": {
+      "canonical_checks": {
         "mux_nodes": false,
         "selects": false,
-        "sources": false,
+        "data_sources": false,
         "register": true
       },
       "semantic_checks": {
@@ -1059,12 +1097,12 @@
       "fact_check_ok": true,
       "rc": 0,
       "parsed": true,
-      "strict": false,
+      "canonical": false,
       "semantic": true,
-      "strict_checks": {
+      "canonical_checks": {
         "mux_nodes": true,
         "selects": false,
-        "sources": false,
+        "data_sources": false,
         "register": true
       },
       "semantic_checks": {
@@ -1155,13 +1193,13 @@
       "fact_check_ok": true,
       "rc": 0,
       "parsed": true,
-      "strict": false,
+      "canonical": false,
       "semantic": true,
-      "strict_checks": {
+      "canonical_checks": {
         "rand_vars": false,
         "constraints": false,
-        "condition": true,
-        "coupling": false,
+        "condition_vars": true,
+        "both_addr_len_block": true,
         "inherited": false
       },
       "semantic_checks": {
@@ -1227,13 +1265,13 @@
       "fact_check_ok": true,
       "rc": 0,
       "parsed": true,
-      "strict": true,
+      "canonical": true,
       "semantic": true,
-      "strict_checks": {
+      "canonical_checks": {
         "rand_vars": true,
         "constraints": true,
-        "condition": true,
-        "coupling": true,
+        "condition_vars": true,
+        "both_addr_len_block": true,
         "inherited": true
       },
       "semantic_checks": {
@@ -1316,13 +1354,13 @@
       "fact_check_ok": true,
       "rc": 0,
       "parsed": true,
-      "strict": false,
+      "canonical": false,
       "semantic": false,
-      "strict_checks": {
+      "canonical_checks": {
         "rand_vars": false,
         "constraints": false,
-        "condition": false,
-        "coupling": false,
+        "condition_vars": false,
+        "both_addr_len_block": true,
         "inherited": false
       },
       "semantic_checks": {
@@ -1413,14 +1451,14 @@
       "fact_check_ok": true,
       "rc": 0,
       "parsed": true,
-      "strict": true,
+      "canonical": false,
       "semantic": true,
-      "strict_checks": {
+      "canonical_checks": {
         "rand_vars": true,
         "constraints": true,
-        "condition": true,
-        "coupling": true,
-        "inherited": true
+        "condition_vars": true,
+        "both_addr_len_block": true,
+        "inherited": false
       },
       "semantic_checks": {
         "rand_vars": true,
@@ -1533,13 +1571,13 @@
       "fact_check_ok": true,
       "rc": 0,
       "parsed": true,
-      "strict": false,
+      "canonical": false,
       "semantic": true,
-      "strict_checks": {
+      "canonical_checks": {
         "rand_vars": false,
         "constraints": false,
-        "condition": true,
-        "coupling": true,
+        "condition_vars": false,
+        "both_addr_len_block": true,
         "inherited": false
       },
       "semantic_checks": {
@@ -1663,14 +1701,14 @@
       "fact_check_ok": true,
       "rc": 0,
       "parsed": true,
-      "strict": true,
+      "canonical": false,
       "semantic": true,
-      "strict_checks": {
+      "canonical_checks": {
         "rand_vars": true,
         "constraints": true,
-        "condition": true,
-        "coupling": true,
-        "inherited": true
+        "condition_vars": true,
+        "both_addr_len_block": true,
+        "inherited": false
       },
       "semantic_checks": {
         "rand_vars": true,
@@ -1718,12 +1756,12 @@
       "fact_check_ok": true,
       "rc": 0,
       "parsed": true,
-      "strict": false,
+      "canonical": false,
       "semantic": true,
-      "strict_checks": {
+      "canonical_checks": {
         "mux_nodes": false,
         "selects": false,
-        "sources": false,
+        "data_sources": false,
         "register": true
       },
       "semantic_checks": {
@@ -1777,12 +1815,12 @@
       "fact_check_ok": true,
       "rc": 0,
       "parsed": true,
-      "strict": true,
+      "canonical": true,
       "semantic": true,
-      "strict_checks": {
+      "canonical_checks": {
         "mux_nodes": true,
         "selects": true,
-        "sources": true,
+        "data_sources": true,
         "register": true
       },
       "semantic_checks": {
@@ -1834,12 +1872,12 @@
       "fact_check_ok": true,
       "rc": 0,
       "parsed": true,
-      "strict": false,
+      "canonical": false,
       "semantic": true,
-      "strict_checks": {
+      "canonical_checks": {
         "mux_nodes": false,
         "selects": false,
-        "sources": false,
+        "data_sources": false,
         "register": true
       },
       "semantic_checks": {
@@ -1904,12 +1942,12 @@
       "fact_check_ok": true,
       "rc": 0,
       "parsed": true,
-      "strict": true,
+      "canonical": true,
       "semantic": true,
-      "strict_checks": {
+      "canonical_checks": {
         "mux_nodes": true,
         "selects": true,
-        "sources": true,
+        "data_sources": true,
         "register": true
       },
       "semantic_checks": {
@@ -1962,12 +2000,12 @@
       "fact_check_ok": true,
       "rc": 0,
       "parsed": true,
-      "strict": false,
+      "canonical": false,
       "semantic": true,
-      "strict_checks": {
+      "canonical_checks": {
         "mux_nodes": false,
         "selects": false,
-        "sources": false,
+        "data_sources": false,
         "register": true
       },
       "semantic_checks": {
@@ -2029,12 +2067,12 @@
       "fact_check_ok": true,
       "rc": 0,
       "parsed": true,
-      "strict": false,
+      "canonical": false,
       "semantic": true,
-      "strict_checks": {
+      "canonical_checks": {
         "mux_nodes": true,
         "selects": false,
-        "sources": false,
+        "data_sources": false,
         "register": true
       },
       "semantic_checks": {
