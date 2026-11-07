@@ -191,6 +191,10 @@ P91 大 filelist top-aware 裁剪 <已完成>
 -- P91.1 保守 scanner + `filelist prune` CLI <已完成>
 -- P91.2 AXI/SERV 实测与边界 <已完成>
 
+P92 snapshot 预构建（D） <已完成>
+-- P92.1 snapshot PathResolver + paths --from-snapshot <已完成>
+-- P92.2 AXI/SERV 实测与边界 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

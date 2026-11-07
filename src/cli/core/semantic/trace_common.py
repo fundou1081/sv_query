@@ -885,6 +885,7 @@ def _load_tracer_from_snapshot(
         ValueError: snapshot tag not found.
     """
     from trace.core.graph.models import SignalGraph
+    from trace.core.module_instance_graph import PathResolver
     from trace.core.query.signal import SignalTracer
     from trace.core.snapshot_manager import SnapshotManager
 
@@ -904,4 +905,7 @@ def _load_tracer_from_snapshot(
     )
     tracer._graph = graph
     tracer._signal_tracer = SignalTracer(graph, mig=None)
+    # Snapshot carries SignalGraph only. PathResolver's RTL traversal uses the
+    # graph (no MIG virtual hops since iter_272), so paths remain answerable.
+    tracer._path_resolver = PathResolver(graph, None)
     return tracer
