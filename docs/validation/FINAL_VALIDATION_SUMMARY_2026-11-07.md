@@ -48,7 +48,7 @@ T2:     48/48
 
 ```text
 rc=0 / parsed / fact_check_ok
-T2 query+depth audit 48/48
+T2 实际 sv_query 48/48；44/44 direct 使用 --depth 1（session telemetry）
 ```
 
 报告：[LONG_RANGE_12_FIXED_2026-11-07.md](LONG_RANGE_12_FIXED_2026-11-07.md)
@@ -106,17 +106,25 @@ MiniMax-M3 constraints seed1
 
 报告：[DUAL_SCORING_2026-11-07.md](DUAL_SCORING_2026-11-07.md)
 
-### G. 成本归因
+### G. 成本归因（真实 session telemetry）
 
-3 个 T2 cell 的 cold/warm 重放：
+3 个 T2 cell：
 
-- SERV：query 7.4s / wall 61.7s（12%），模型 residual 54.4s；
-- Pico：query 3.1s / wall 23.9s（13%），residual 20.8s；
-- AXI：cold 27.3s；`connections` warm 26.8s；self-reported query sum > wall。
+| task | wall | tool | model residual | sv_query | tokens |
+|---|---:|---:|---:|---:|---:|
+| AXI | 16.1s | 3.8s | 12.3s | 6 | 61,935 |
+| SERV | 60.2s | 11.2s | 49.0s | 5 | 84,224 |
+| Pico | 22.9s | 6.4s | 16.5s | 8 | 111,971 |
+
+```text
+tool 19–28%；model residual 72–81%
+```
 
 结论：**模型生成主导**；暂停 serve/batch，先修 cache/telemetry。
 
-报告：[QUERY_COST_ATTRIBUTION_2026-11-07.md](QUERY_COST_ATTRIBUTION_2026-11-07.md)
+报告：
+[QUERY_COST_ATTRIBUTION_2026-11-07.md](QUERY_COST_ATTRIBUTION_2026-11-07.md)、
+[SESSION_TELEMETRY_2026-11-07.md](SESSION_TELEMETRY_2026-11-07.md)
 
 ### F. 回归
 
@@ -223,7 +231,7 @@ source/T2 ×1 seed = 20 agents
 
 否则保持冻结。
 
-成本归因（P90）显示 query 只占 12–13%，所以 warm service 不是当前第一优先。
+成本归因（P90）显示 tool 占 19–28%、model 72–81%，所以 warm service 不是当前第一优先。
 
 ---
 

@@ -26,7 +26,10 @@ hard-isolated；固定 direct-query 协议；不是外部 benchmark。
 rc=0
 parsed=true
 fact_check_ok=true
-T2 depth1_ok = 24/24
+T2 depth1_ok = 24/24（自报）
+
+> 后续用 DSH session telemetry 复核：T2 48/48 有实际 sv_query，
+> 44/44 direct fanin/fanout 实际使用 `--depth 1`；最终 `queries` 文本仍是 lossy。
 ```
 
 无 429、无超时。
