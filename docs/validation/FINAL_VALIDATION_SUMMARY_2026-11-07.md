@@ -106,6 +106,18 @@ MiniMax-M3 constraints seed1
 
 报告：[DUAL_SCORING_2026-11-07.md](DUAL_SCORING_2026-11-07.md)
 
+### G. 成本归因
+
+3 个 T2 cell 的 cold/warm 重放：
+
+- SERV：query 7.4s / wall 61.7s（12%），模型 residual 54.4s；
+- Pico：query 3.1s / wall 23.9s（13%），residual 20.8s；
+- AXI：cold 27.3s；`connections` warm 26.8s；self-reported query sum > wall。
+
+结论：**模型生成主导**；暂停 serve/batch，先修 cache/telemetry。
+
+报告：[QUERY_COST_ATTRIBUTION_2026-11-07.md](QUERY_COST_ATTRIBUTION_2026-11-07.md)
+
 ### F. 回归
 
 ```text
@@ -210,6 +222,8 @@ source/T2 ×1 seed = 20 agents
 且只声称 **Icarus-compatible subset**。
 
 否则保持冻结。
+
+成本归因（P90）显示 query 只占 12–13%，所以 warm service 不是当前第一优先。
 
 ---
 
