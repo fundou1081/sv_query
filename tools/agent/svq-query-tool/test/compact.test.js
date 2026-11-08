@@ -192,3 +192,18 @@ test("conditionAtoms strips polarity and duplicates", async () => {
   );
   assert.deepEqual(conditionAtoms(["(mode == 0)"]), ["mode == 0"]);
 });
+
+test("path chooses the granular variant when all_paths is present", async () => {
+  const { compactPath } = await import("../compact.js");
+  const out = compactPath({
+    ok: true,
+    all_paths: [
+      ["a", "b"],
+      ["a", "x", "b"],
+      ["a", "c", "b"],
+    ],
+  }, { snapshot: "s" });
+  assert.deepEqual(out.path, ["a", "c", "b"]);
+  assert.equal(out.count, 2);
+  assert.equal(out.variants, 3);
+});

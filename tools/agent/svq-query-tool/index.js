@@ -73,7 +73,8 @@ export function apply(ctx) {
                      details: args.details === true };
       if (args.intent === "path") {
         if (!args.dst) throw new Error("path requires dst");
-        const payload = await query(["paths", args.signal, args.dst, "--directed", ...base]);
+        const payload = await query(["paths", args.signal, args.dst, "--all", "--max", "20",
+                                     "--directed", ...base]);
         return compactResult("path", payload, meta);
       }
       if (depth < 1 || depth > 32) throw new Error("depth must be 1..32");

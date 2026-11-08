@@ -241,6 +241,11 @@ P103 deep_chain tool probe <已完成>
 -- P103.1 3-step path+neighborhood <已完成>
 -- P103.2 负结果/边界 <已完成>
 
+P104 granular path <已完成>
+-- P104.1 path --all + 最细变体 <已完成>
+-- P104.2 deep_chain 复测 <已完成>
+-- P104.3 xor 语义边界 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>
