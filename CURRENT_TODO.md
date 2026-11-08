@@ -3,7 +3,7 @@
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **可视化计划**: [structural_review_plan_2026-11-02](docs/architecture/structural_review_plan_2026-11-02.md) — 全设计图退役；动态子图 + 局部 review。
-> **最后更新**: 2026-11-08 GMT+8 (iter_407: condition schema)
+> **最后更新**: 2026-11-08 GMT+8 (iter_408: BFS tests)
 
 ---
 
@@ -48,6 +48,7 @@
 - **P99** Worker 辅助工具硬化 ✅（iter_404）：compact.js + 12 Node tests
 - **P100** svq_query details + neighborhood ✅（iter_406）
 - **P101** neighborhood condition schema ✅（iter_407）
+- **P102** Worker 辅助 BFS 测试 ✅（iter_408）
 
 > P71/P72 已完成；P62.2 交互式 debug 保持 gate；外部 VeriBug 明确 deferred/放弃。
 
