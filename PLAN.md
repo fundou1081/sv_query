@@ -250,6 +250,9 @@ P105 svq_query evidence intent <已完成>
 -- P105.1 file/line/source_context <已完成>
 -- P105.2 deep_chain 7/7 复核 <已完成>
 
+P106 evidence 默认关闭回归 <已完成>
+-- P106.1 12 题 ×2 模型 evidence=false <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>
