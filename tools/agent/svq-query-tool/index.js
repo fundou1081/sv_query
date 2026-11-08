@@ -5,6 +5,10 @@ import { join, isAbsolute, resolve } from "node:path";
 import { promisify } from "node:util";
 import { defineTool } from "@deepseek-ai/dsh-tools";
 import { INTENTS, compactResult } from "./compact.js";
+import {
+  addEvidence as addEvidenceWith,
+  collectEvidence as collectEvidenceWith,
+} from "./evidence.js";
 import { neighborhood } from "./neighborhood.js";
 
 const execFileP = promisify(execFile);
@@ -36,62 +40,29 @@ async function readSnapshot(tag) {
   }
 }
 
-function resolveSourceFile(file) {
+function resolveSourceFile(file, root) {
   if (!file) return null;
   if (isAbsolute(file)) return existsSync(file) ? file : null;
-  const root = process.env.SVQ_SOURCE_ROOT;
   if (!root) return null;
   const p = resolve(root, file);
   return existsSync(p) ? p : null;
 }
 
-/** Add bounded file/line/source_line evidence for returned node ids only. */
+function evidenceDeps() {
+  return {
+    readSnapshot,
+    resolveSource: resolveSourceFile,
+    readSource: (path) => readFile(path, "utf8"),
+    sourceRoot: process.env.SVQ_SOURCE_ROOT,
+  };
+}
+
 async function collectEvidence(snapshot, ids) {
-  const snap = await readSnapshot(snapshot);
-  if (!snap) return null;
-  const byId = new Map((snap.nodes || []).map((n) => [n.id, n]));
-  const lines = new Map();
-  const evidence = {};
-  for (const id of [...new Set(ids)].slice(0, 80)) {
-    const node = byId.get(id);
-    if (!node) continue;
-    const rec = { file: node.file || null, line: node.line || null };
-    const source = resolveSourceFile(node.file);
-    if (source && Number.isInteger(node.line) && node.line > 0) {
-      try {
-        let content = lines.get(source);
-        if (!content) {
-          content = (await readFile(source, "utf8")).split(/\r?\n/);
-          lines.set(source, content);
-        }
-        const text = (content[node.line - 1] || "").trim();
-        if (text) rec.source_line = text.slice(0, 160);
-        const startLine = Math.max(1, node.line - 2);
-        const endLine = Math.min(content.length, node.line + 2);
-        rec.source_context = [];
-        for (let n = startLine; n <= endLine; n++) {
-          const line = (content[n - 1] || "").trim();
-          if (line) rec.source_context.push({ line: n, text: line.slice(0, 160) });
-        }
-      } catch {
-        rec.source_missing = true;
-      }
-    }
-    evidence[id] = rec;
-  }
-  return evidence;
+  return collectEvidenceWith({ snapshot, ids, ...evidenceDeps() });
 }
 
 async function addEvidence(out, args) {
-  if (!args.evidence) return out;
-  const wanted = [];
-  for (const key of ["drivers", "loads", "path"]) {
-    for (const id of out[key] || []) if (typeof id === "string") wanted.push(id);
-  }
-  for (const n of out.nodes || []) if (n && typeof n.id === "string") wanted.push(n.id);
-  const evidence = await collectEvidence(args.snapshot, wanted);
-  if (!evidence) return { ...out, evidence_error: "snapshot metadata unavailable" };
-  return { ...out, evidence };
+  return addEvidenceWith(out, args, evidenceDeps());
 }
 
 export function apply(ctx) {
