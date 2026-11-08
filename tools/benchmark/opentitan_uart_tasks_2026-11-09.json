@@ -66,10 +66,10 @@
     {
       "id": "ot_uart_rx_evidence",
       "kind": "t3",
-      "question": "Find the exact source location where the OpenTitan UART receive shift register `uart.uart_core.rx_val_q` is loaded. Return {file,line,source_line}; source_line must contain the assignment that updates rx_val_q.",
+      "question": "Find the exact source location where the OpenTitan UART receive shift register `uart.uart_core.rx_val_q` receives its functional (non-reset) load. Return {file,line,source_line}; source_line must contain the assignment that shifts `rx_in` into rx_val_q.",
       "expected": {
         "file": "uart_core.sv",
-        "line": 306,
+        "line": 307,
         "source_contains": "rx_val_q"
       }
     },

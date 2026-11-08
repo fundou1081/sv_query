@@ -12,7 +12,7 @@ agent profile with one narrow, reproducible interface.
 | `path` | `snapshot`, `signal`, `dst` | `{ ok, intent, snapshot, path, count }` (shortest) |
 | `deep_path` | `snapshot`, `signal`, `dst` | same, longest variant |
 | `neighborhood` | `snapshot`, `signal`, `depth` | `{ ok, intent, snapshot, signal, nodes, edges, op_ternary, conditions, condition_atoms, count, truncated }` |
-| `evidence` | `snapshot`, `signal` | `{ ok, intent, snapshot, signal, evidence: {file,line,source_line,source_context} }` |
+| `evidence` | `snapshot`, `signal` | `{ ok, intent, snapshot, signal, evidence: {file,line,source_line,source_context}, edge_evidence: [...] }` |
 | `verify` | `snapshot`, `claim` | `{ ok, status, verify_status, claim, evidence, counterevidence }` |
 
 Every result has `ok`, `status` (`ok|not_found|ambiguous|truncated|error`),

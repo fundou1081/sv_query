@@ -1,0 +1,187 @@
+{
+  "protocol": "P118 OpenTitan UART real-project pilot",
+  "frozen_at": "2026-11-09",
+  "note": "Task questions derived from worker onboarding of OpenTitan hw/ip/uart; ground truth frozen before agent runs. Snapshot tag opentitan_uart, 4803 nodes / 8507 edges.",
+  "snapshot": "opentitan_uart",
+  "snapshot_dir": "/tmp/opentitan_svq/snapshots",
+  "source_root": "/Users/fundou/.dsh/opencode-workers-lite/opentitan-pilot/workspace",
+  "tasks": [
+    {
+      "id": "ot_uart_intr_test_gate",
+      "kind": "t1",
+      "question": "In the OpenTitan UART register block, find the internal signal that gates the write-enable of the interrupt-test (INTR_TEST) registers. Report its canonical id, its single driver, and all nine load ids. Then take the INTR_TEST tx_watermark qe output: report its canonical id, its two drivers, and its loads (which should be empty). Return exactly: {primary_signal, primary_drivers, primary_loads, empty_side_signal, empty_side_drivers, empty_side_loads}.",
+      "expected": {
+        "primary_signal": "uart.u_reg.intr_test_qe",
+        "primary_drivers": [
+          "uart.u_reg.intr_test_flds_we"
+        ],
+        "primary_loads": [
+          "uart.u_reg.reg2hw.intr_test.tx_watermark.qe",
+          "uart.u_reg.reg2hw.intr_test.rx_watermark.qe",
+          "uart.u_reg.reg2hw.intr_test.tx_done.qe",
+          "uart.u_reg.reg2hw.intr_test.rx_overflow.qe",
+          "uart.u_reg.reg2hw.intr_test.rx_frame_err.qe",
+          "uart.u_reg.reg2hw.intr_test.rx_break_err.qe",
+          "uart.u_reg.reg2hw.intr_test.rx_timeout.qe",
+          "uart.u_reg.reg2hw.intr_test.rx_parity_err.qe",
+          "uart.u_reg.reg2hw.intr_test.tx_empty.qe"
+        ],
+        "empty_side_signal": "uart.u_reg.reg2hw.intr_test.tx_watermark.qe",
+        "empty_side_drivers": [
+          "uart.u_reg.intr_test_qe",
+          "uart.u_reg.intr_test_flds_we"
+        ],
+        "empty_side_loads": []
+      }
+    },
+    {
+      "id": "ot_uart_rx_path",
+      "kind": "t2",
+      "question": "Trace the directed structural path in the OpenTitan UART from the chip-level receive pin `uart.cio_rx_i` to the 16-bit receive shift register `uart.uart_core.rx_val_q`. Return the most granular canonical ordered path and its hop count. If multiple paths exist, prefer the canonical path rather than the shortest cosmetic path.",
+      "expected": {
+        "path": [
+          "uart.cio_rx_i",
+          "uart.uart_core.rx",
+          "uart.uart_core.sync_rx.d_i",
+          "uart.uart_core.sync_rx.d_o",
+          "uart.uart_core.sync_rx.u_sync_1.d_i",
+          "uart.uart_core.sync_rx.u_sync_1.q_o",
+          "uart.uart_core.sync_rx.intq",
+          "uart.uart_core.sync_rx.u_sync_2.d_i",
+          "uart.uart_core.sync_rx.u_sync_2.q_o",
+          "uart.uart_core.sync_rx.q_o",
+          "uart.uart_core.rx_sync",
+          "uart.uart_core.rx_sync_q1",
+          "uart.uart_core.rx_sync_q2",
+          "uart.uart_core.rx_in_maj",
+          "uart.uart_core.rx_in_mx.ternary_rxnf_enable",
+          "uart.uart_core.rx_in_mx",
+          "uart.uart_core.rx_in.ternary_line_loopback",
+          "uart.uart_core.rx_in",
+          "uart.uart_core.rx_val_q"
+        ],
+        "hop_count": 18
+      }
+    },
+    {
+      "id": "ot_uart_rx_evidence",
+      "kind": "t3",
+      "question": "Find the exact source location where the OpenTitan UART receive shift register `uart.uart_core.rx_val_q` is loaded. Return {file,line,source_line}; source_line must contain the assignment that updates rx_val_q.",
+      "expected": {
+        "file": "uart_core.sv",
+        "line": 306,
+        "source_contains": "rx_val_q"
+      }
+    },
+    {
+      "id": "ot_uart_verify_claims",
+      "kind": "t4",
+      "question": "Verify three claims in the OpenTitan UART: A) driver claim `uart.u_reg.err_q` drives `uart.u_reg.intg_err_o`; B) path claim `uart.u_reg.intg_err_o` reaches `uart.alerts[0]`; C) driver claim `uart.uart_core.rx_in` drives `uart.uart_core.tx_out_q`. Return {claim_A,claim_B,negative_control}, each one of verified/contradicted/unknown.",
+      "expected": {
+        "claim_A": "verified",
+        "claim_B": "verified",
+        "negative_control": "contradicted"
+      }
+    },
+    {
+      "id": "ot_uart_unknown_direction",
+      "kind": "t5",
+      "question": "Check two things in the OpenTitan UART. For the missing endpoint `uart.uart_core.nonexistent_sig` against `uart.uart_core.rx_val_q`, report `missing_signal_status` as unknown/contradicted/verified. For the directed path claim `uart.cio_tx_o` -> `uart.uart_core.tx_out_q`, report `no_path_status` as unknown/contradicted/verified. Return exactly {missing_signal_status, no_path_status}; both values must be statuses, not IDs or booleans.",
+      "expected": {
+        "missing_signal_status": "unknown",
+        "no_path_status": "contradicted"
+      }
+    }
+  ],
+  "results": [
+    {
+      "task_id": "ot_uart_rx_evidence",
+      "model": "MiniMax-M3",
+      "kind": "t3",
+      "duration_ms": 21191,
+      "rc": 0,
+      "parsed": true,
+      "json_repaired": false,
+      "found": true,
+      "answer": {
+        "file": "uart_core.sv",
+        "line": 307,
+        "source_line": "else if (tick_baud_x16) rx_val_q <= {rx_val_q[14:0], rx_in};"
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "file": "uart_core.sv",
+          "line": 307,
+          "source_line": "else if (tick_baud_x16) rx_val_q <= {rx_val_q[14:0], rx_in};",
+          "note": "DRIVER edge uart.uart_core.rx_in -> uart.uart_core.rx_val_q, expression {rx_val_q[14:0], rx_in}, condition !(!rst_ni) && tick_baud_x16 — this is the functional load of the RX shift register (shifts rx_in into rx_val_q[0])"
+        },
+        {
+          "file": "uart_core.sv",
+          "line": 306,
+          "source_line": "if (!rst_ni)            rx_val_q <= 16'h0;",
+          "note": "RESET/CLOCK edge to uart.uart_core.rx_val_q (synchronous reset branch of the same always block)"
+        },
+        {
+          "file": "uart_core.sv",
+          "line": 43,
+          "source_line": "logic   [15:0]  rx_val_q;",
+          "note": "Declaration of the receive shift register uart.uart_core.rx_val_q"
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 16,
+      "workspace": "/tmp/opentitan_agent/MiniMax-M3/ot_uart_rx_evidence",
+      "stderr": ""
+    },
+    {
+      "task_id": "ot_uart_rx_evidence",
+      "model": "DeepSeek-Flash",
+      "kind": "t3",
+      "duration_ms": 5089,
+      "rc": 0,
+      "parsed": true,
+      "json_repaired": false,
+      "found": true,
+      "answer": {
+        "file": "uart_core.sv",
+        "line": 307,
+        "source_line": "else if (tick_baud_x16) rx_val_q <= {rx_val_q[14:0], rx_in};"
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "id": "uart.uart_core.rx_val_q",
+          "kind": "DRIVER",
+          "file": "uart_core.sv",
+          "line": 307,
+          "source_line": "else if (tick_baud_x16) rx_val_q <= {rx_val_q[14:0], rx_in};",
+          "condition": "!(!rst_ni) && tick_baud_x16",
+          "expression": "{rx_val_q[14:0], rx_in}"
+        },
+        {
+          "id": "uart.uart_core.rx_in",
+          "kind": "DRIVER",
+          "file": "uart_core.sv",
+          "line": 307,
+          "source_line": "else if (tick_baud_x16) rx_val_q <= {rx_val_q[14:0], rx_in};"
+        },
+        {
+          "id": "uart.uart_core.clk_i",
+          "kind": "CLOCK",
+          "file": "uart_core.sv",
+          "line": 307,
+          "source_line": "else if (tick_baud_x16) rx_val_q <= {rx_val_q[14:0], rx_in};"
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 1,
+      "workspace": "/tmp/opentitan_agent/DeepSeek-Flash/ot_uart_rx_evidence",
+      "stderr": "dsh: reasoning:\nThe load is at line 307. Let me verify maybe with fanin/verify. The evidence gives it. The answer: file uart_core.sv, line 307, source_line \"else if (tick_baud_x16) rx_val_q <= {rx_val_q[14:0], rx_in};\".\n\nConfidence high. One JSON object.\n"
+    }
+  ]
+}
