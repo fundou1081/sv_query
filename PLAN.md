@@ -280,6 +280,10 @@ P113 Contract blind + interface fixes <已完成>
 -- P113.2 F1-F4 contract fixes <已完成>
 -- P113.3 deep_path + source-root inference <已完成>
 
+P114 Fresh untouched blind validation <已完成>
+-- P114.1 5 new tasks ×2 models <已完成>
+-- P114.2 10/10, false 0 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>
