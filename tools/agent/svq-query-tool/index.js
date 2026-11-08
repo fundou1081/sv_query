@@ -100,6 +100,10 @@ export function apply(ctx) {
         type: "boolean",
         description: "Include file/line/source_line for returned node ids.",
       },
+      granular: {
+        type: "boolean",
+        description: "Path only: prefer the longest variant instead of the shortest.",
+      },
     },
     output: {
       schema: { type: "object", additionalProperties: true },
@@ -124,7 +128,8 @@ export function apply(ctx) {
       const base = ["--from-snapshot", args.snapshot, "--json"];
       const depth = args.depth ?? 1;
       const meta = { snapshot: args.snapshot, signal: args.signal,
-                     details: args.details === true };
+                     details: args.details === true,
+                     granular: args.granular === true };
       if (args.intent === "path") {
         if (!args.dst) throw new Error("path requires dst");
         const payload = await query(["paths", args.signal, args.dst, "--all", "--max", "20",

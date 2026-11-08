@@ -1,0 +1,219 @@
+{
+  "protocol": "P110 blind realistic structural validation",
+  "frozen_at": "2026-11-08",
+  "note": "Questions and ground truth frozen before any agent run. Ground truth derived by source inspection plus canonical-ID lookup; not produced by an agent.",
+  "tasks": [
+    {
+      "id": "blind_axi_s_axi_rvalid",
+      "design": "axi",
+      "snapshot": "ad_axi",
+      "source_root": "/tmp/lr_ad_prep/axi",
+      "kind": "neighbors",
+      "question": "For the AXI adapter top-level handshake output `axi_adapter.s_axi_rvalid`, list ALL direct driver IDs and ALL direct load IDs at distance 1. Preserve empty lists when there are none.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "drivers": [
+            "axi_adapter.axi_adapter_rd_inst.s_axi_rvalid"
+          ],
+          "loads": []
+        }
+      }
+    },
+    {
+      "id": "blind_axi_m_axi_awaddr",
+      "design": "axi",
+      "snapshot": "ad_axi",
+      "source_root": "/tmp/lr_ad_prep/axi",
+      "kind": "neighbors",
+      "question": "For the AXI adapter top-level write address bus `axi_adapter.m_axi_awaddr`, list ALL direct driver IDs and ALL direct load IDs at distance 1. Preserve empty lists when there are none.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "drivers": [
+            "axi_adapter.axi_adapter_wr_inst.m_axi_awaddr"
+          ],
+          "loads": []
+        }
+      }
+    },
+    {
+      "id": "blind_serv_bufreg_data",
+      "design": "serv",
+      "snapshot": "ad_serv",
+      "source_root": "/tmp/lr_ad_prep/serv",
+      "kind": "loads",
+      "question": "For the SERV RF buffer internal register `serv_rf_top.cpu.bufreg.data`, list ALL direct load IDs at distance 1. Do not infer beyond the direct edge.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "loads": [
+            "serv_rf_top.cpu.bufreg.o_ext_rs1"
+          ]
+        }
+      }
+    },
+    {
+      "id": "blind_pico_rvalid_to_xfer",
+      "design": "pico",
+      "snapshot": "ad_pico",
+      "source_root": "/tmp/lr_ad_prep/pico",
+      "kind": "path",
+      "question": "In the Pico AXI adapter, find the directed structural path from `picorv32_axi.axi_adapter.mem_axi_rvalid` to `picorv32_axi.axi_adapter.xfer_done`. Return the ordered canonical path and hop count (number of edges).",
+      "expected": {
+        "found": true,
+        "answer": {
+          "path": [
+            "picorv32_axi.axi_adapter.mem_axi_rvalid",
+            "picorv32_axi.axi_adapter.mem_ready",
+            "picorv32_axi.axi_adapter.xfer_done"
+          ],
+          "hop_count": 2
+        }
+      }
+    },
+    {
+      "id": "blind_pico_unknown_signal",
+      "design": "pico",
+      "snapshot": "ad_pico",
+      "source_root": "/tmp/lr_ad_prep/pico",
+      "kind": "unknown",
+      "question": "Query the direct neighbors of `picorv32_axi.axi_adapter.mem_ready_q`. If the signal does not exist in the snapshot, report found=false with reason `not_found`. Do NOT invent a similar name.",
+      "expected": {
+        "found": false,
+        "answer": {
+          "reason": "not_found"
+        }
+      }
+    }
+  ],
+  "results": [
+    {
+      "task_id": "blind_axi_s_axi_rvalid",
+      "model": "DeepSeek-Flash",
+      "kind": "neighbors",
+      "duration_ms": 4962,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.s_axi_rvalid"
+        ],
+        "loads": []
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/blind_axi_s_axi_rvalid",
+      "stderr": "dsh: reasoning:\nBoth queries succeeded. Return JSON.\n\nShould I verify evidence? Task says use only svq_query, evidence array. Could include evidence via evidence intent but not necessary. Return object.\n"
+    },
+    {
+      "task_id": "blind_axi_m_axi_awaddr",
+      "model": "DeepSeek-Flash",
+      "kind": "neighbors",
+      "duration_ms": 4723,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_wr_inst.m_axi_awaddr"
+        ],
+        "loads": []
+      },
+      "confidence": "high",
+      "evidence": [
+        "svq_query fanin: driver axi_adapter.axi_adapter_wr_inst.m_axi_awaddr (PORT_OUT, distance 1)",
+        "svq_query fanout: loads [] (count 0)"
+      ],
+      "exact": true,
+      "false_confident": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/blind_axi_m_axi_awaddr",
+      "stderr": "dsh: reasoning:\nBoth queries succeeded. Report.\n\nLoads empty — preserve empty list.\n\nReturn single JSON object, no markdown.\n"
+    },
+    {
+      "task_id": "blind_serv_bufreg_data",
+      "model": "DeepSeek-Flash",
+      "kind": "loads",
+      "duration_ms": 6771,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "loads": [
+          "serv_rf_top.cpu.bufreg.o_ext_rs1"
+        ]
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "tool_calls": 4,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/blind_serv_bufreg_data",
+      "stderr": "dsh: reasoning:\nWe need use svq_query. Need query fanin of signal serv_rf_top.cpu.bufreg.data at distance 1. list direct load IDs. Let's call.\ndsh: reasoning:\nFanin empty. But question says \"direct load IDs at distance 1\". Maybe loads are not fanin? In RTL graph, loads could be fanout? The wording \"direct load IDs\" maybe signals that load this register data = fanout. But they say \"load IDs\" perhaps load operations? Need investigate. Use only svq_query. Query fanout, neighbors maybe. Let's inspect.\ndsh: reasoning:\nNeed output one valid JSON. Answer loads list canonical. Evidence? [] perhaps include the edge? User says evidence [] format. Return exact. Confidence high. Ensure no markdown.\n"
+    },
+    {
+      "task_id": "blind_pico_rvalid_to_xfer",
+      "model": "DeepSeek-Flash",
+      "kind": "path",
+      "duration_ms": 6547,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "path": [
+          "picorv32_axi.axi_adapter.mem_axi_rvalid",
+          "picorv32_axi.axi_adapter.mem_ready",
+          "picorv32_axi.axi_adapter.xfer_done"
+        ],
+        "hop_count": 2
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "id": "picorv32_axi.axi_adapter.mem_axi_rvalid",
+          "file": "picorv32.v",
+          "line": 2567
+        },
+        {
+          "id": "picorv32_axi.axi_adapter.mem_ready",
+          "file": "picorv32.v",
+          "line": 2616
+        },
+        {
+          "id": "picorv32_axi.axi_adapter.xfer_done",
+          "file": "picorv32.v",
+          "line": 2771
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/blind_pico_rvalid_to_xfer",
+      "stderr": " path. Let me also verify with evidence maybe. But simplest: return path with hop_count 2. Let me maybe double-check there isn't a longer/granular variant that matters. The spec asks for \"the directed structural path\" — shortest path is fine. Let me get evidence for confidence.\ndsh: reasoning:\nThe default (non-granular) path is the shortest: 2 hops. The granular variant is 13 hops, going through the core and back — that's clearly the longer variant. The task asks for \"the directed structural path\" — likely the shortest path. hop_count = 2.\n\nHmm, but which is intended? The question: \"find the directed structural path from mem_axi_rvalid to xfer_done\". Both are in axi_adapter, so the direct 2-hop path is the natural answer. Return it.\n\nEvidence: lines 2567 and 2771, and mem_ready line 2616.\n"
+    },
+    {
+      "task_id": "blind_pico_unknown_signal",
+      "model": "DeepSeek-Flash",
+      "kind": "unknown",
+      "duration_ms": 7802,
+      "rc": 0,
+      "parsed": true,
+      "found": false,
+      "answer": {
+        "reason": "not_found"
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "tool_calls": 4,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/blind_pico_unknown_signal",
+      "stderr": "y do not invent a similar name. But I should verify existence. Let me query fanout too, and maybe check a valid signal like picorv32_axi.axi_adapter to see structure. Actually \"do not invent a similar name\" — querying a similar name to compare might be considered inventing. But verifying tool works is fine. Let me just try a known signal query to confirm tool functionality.\n\nActually evidence returned ok=true but empty evidence — that strongly suggests not found. Let me confirm with a nearby valid signal? The instruction explicitly says do NOT invent a similar name. So I shouldn't query mem_ready_d or similar. But I could query the module prefix to see if it exists.\n\nLet me try fanout too.\ndsh: reasoning:\nAll structural queries fail and evidence is empty. So found=false, reason not_found.\n"
+    }
+  ]
+}
