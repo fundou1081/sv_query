@@ -246,6 +246,10 @@ P104 granular path <已完成>
 -- P104.2 deep_chain 复测 <已完成>
 -- P104.3 xor 语义边界 <已完成>
 
+P105 svq_query evidence intent <已完成>
+-- P105.1 file/line/source_context <已完成>
+-- P105.2 deep_chain 7/7 复核 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>
