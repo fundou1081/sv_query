@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { join, isAbsolute, resolve } from "node:path";
 import { promisify } from "node:util";
 import { defineTool } from "@deepseek-ai/dsh-tools";
@@ -8,6 +8,7 @@ import { INTENTS, compactResult, compactVerify } from "./compact.js";
 import {
   addEvidence as addEvidenceWith,
   collectEvidence as collectEvidenceWith,
+  collectEdgeEvidence as collectEdgeEvidenceWith,
 } from "./evidence.js";
 import { failureResult } from "./failure.js";
 import { neighborhood } from "./neighborhood.js";
@@ -41,12 +42,54 @@ async function readSnapshot(tag) {
   }
 }
 
+function findSourceByName(root, basename, budget = 20000) {
+  let seen = 0;
+  const walk = (dir, depth) => {
+    if (depth < 0 || seen > budget) return null;
+    let entries;
+    try {
+      entries = readdirSync(dir);
+    } catch {
+      return null;
+    }
+    for (const name of entries) {
+      seen += 1;
+      if (seen > budget) return null;
+      if (name === ".git" || name === "node_modules") continue;
+      const p = resolve(dir, name);
+      if (name === basename) {
+        try {
+          if (statSync(p).isFile()) return p;
+        } catch {
+          // ignore unreadable candidate
+        }
+      }
+      try {
+        if (statSync(p).isDirectory()) {
+          const hit = walk(p, depth - 1);
+          if (hit) return hit;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return null;
+  };
+  return walk(root, 8);
+}
+
 function resolveSourceFile(file, root) {
   if (!file) return null;
   if (isAbsolute(file)) return existsSync(file) ? file : null;
   if (!root) return null;
   const p = resolve(root, file);
-  return existsSync(p) ? p : null;
+  if (existsSync(p)) return p;
+  // Snapshot source_locations often keep only the basename. Search inside the
+  // configured source root as a bounded fallback; never escape the root.
+  if (!file.includes("/") && !file.includes("\\")) {
+    return findSourceByName(root, file);
+  }
+  return null;
 }
 
 function evidenceDeps() {
@@ -64,6 +107,10 @@ async function collectEvidence(snapshot, ids) {
 
 async function addEvidence(out, args) {
   return addEvidenceWith(out, args, evidenceDeps());
+}
+
+async function collectEdgeEvidence(snapshot, ids) {
+  return collectEdgeEvidenceWith({ snapshot, ids, ...evidenceDeps() });
 }
 
 export function apply(ctx) {
@@ -147,6 +194,7 @@ async function executeInner(args) {
       if (args.intent === "evidence") {
         if (!args.signal) throw new Error("evidence requires signal");
         const rec = await collectEvidence(args.snapshot, [args.signal]);
+        const edgeEvidence = await collectEdgeEvidence(args.snapshot, [args.signal]);
         if (!rec || !rec[args.signal]) {
           return { ok: false, status: "not_found", found: false,
                    intent: "evidence", snapshot: args.snapshot,
@@ -157,7 +205,8 @@ async function executeInner(args) {
         }
         return { ok: true, status: "ok", found: true,
                  intent: "evidence", snapshot: args.snapshot,
-                 signal: args.signal, evidence_available: true, evidence: rec };
+                 signal: args.signal, evidence_available: true,
+                 evidence: rec, edge_evidence: edgeEvidence || [] };
       }
       const base = ["--from-snapshot", args.snapshot, "--json"];
       const depth = args.depth ?? 1;

@@ -108,3 +108,57 @@ export async function addEvidence(out, args, deps) {
   }
   return { ...out, evidence, evidence_available: Object.keys(evidence).length > 0 };
 }
+
+/**
+ * Collect incoming driver-edge evidence for the requested node ids.
+ *
+ * Snapshot edges now carry `source_location`, `expression`, and `bit_slice`;
+ * this is the assignment-level evidence that node declarations cannot give.
+ * The caller injects the same fs accessors as `collectEvidence`.
+ */
+export async function collectEdgeEvidence({
+  snapshot,
+  ids,
+  readSnapshot,
+  resolveSource,
+  readSource,
+  sourceRoot,
+  maxEdges = 20,
+}) {
+  const snap = await readSnapshot(snapshot);
+  if (!snap) return null;
+  const wanted = new Set(ids);
+  const lines = new Map();
+  const out = [];
+  for (const edge of snap.edges || []) {
+    if (!wanted.has(edge.dst)) continue;
+    if (out.length >= maxEdges) break;
+    const loc = edge.source_location || {};
+    const rec = {
+      src: edge.src || null,
+      dst: edge.dst || null,
+      kind: edge.kind || null,
+      condition: edge.condition || "",
+      expression: edge.expression || "",
+      bit_slice: edge.bit_slice || "",
+      file: loc.file || null,
+      line: Number.isInteger(loc.line_start) && loc.line_start > 0 ? loc.line_start : null,
+      line_end: Number.isInteger(loc.line_end) && loc.line_end > 0 ? loc.line_end : null,
+    };
+    const source = resolveSource(loc.file, sourceRoot);
+    if (source && rec.line) {
+      try {
+        let content = lines.get(source);
+        if (!content) {
+          content = (await readSource(source)).split(/\r?\n/);
+          lines.set(source, content);
+        }
+        rec.source_line = (content[rec.line - 1] || "").trim().slice(0, 160);
+      } catch {
+        rec.source_missing = true;
+      }
+    }
+    out.push(rec);
+  }
+  return out;
+}

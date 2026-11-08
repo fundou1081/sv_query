@@ -302,6 +302,11 @@ P118 OpenTitan UART real-project pilot <已完成>
 -- P118.2 5 real tasks ×2 模型 <已完成>
 -- P118.3 记录 edge-evidence 缺口 <已完成>
 
+P119 Edge-level source evidence <已完成>
+-- P119.1 snapshot edge source_location/expression <已完成>
+-- P119.2 tool edge_evidence + source fallback <已完成>
+-- P119.3 OpenTitan T3 复测 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

@@ -605,6 +605,12 @@ class SignalGraph(nx.DiGraph):
                         "clock_domain": edge.clock_domain,
                         "modport_dir": edge.modport_dir,
                         "confidence": edge.confidence,
+                        "expression": edge.expression,
+                        "bit_slice": edge.bit_slice,
+                        "source_location": (
+                            edge.source_location.to_dict()
+                            if edge.source_location is not None else None
+                        ),
                     }
                 )
 
@@ -701,6 +707,15 @@ class SignalGraph(nx.DiGraph):
             except (KeyError, TypeError):
                 kind = EdgeKind.DRIVER
 
+            loc_data = edge_dict.get("source_location")
+            source_location = None
+            if isinstance(loc_data, dict):
+                source_location = SourceLocation(
+                    file=loc_data.get("file", ""),
+                    line_start=loc_data.get("line_start", 0),
+                    line_end=loc_data.get("line_end", 0),
+                    column=loc_data.get("column", 0),
+                )
             edge = TraceEdge(
                 src=edge_dict["src"],
                 dst=edge_dict["dst"],
@@ -710,6 +725,9 @@ class SignalGraph(nx.DiGraph):
                 clock_domain=edge_dict.get("clock_domain", ""),
                 modport_dir=edge_dict.get("modport_dir"),
                 confidence=edge_dict.get("confidence", "high"),
+                expression=edge_dict.get("expression", ""),
+                bit_slice=edge_dict.get("bit_slice", ""),
+                source_location=source_location,
             )
             graph.add_trace_edge(edge)
 

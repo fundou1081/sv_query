@@ -53,6 +53,26 @@ standalone worker
 
 但必须分开看。
 
+## 2.1 修复后复测
+
+初始 T3 两次失败后，修复了 edge-level evidence：
+
+- snapshot 保存 `TraceEdge.source_location/expression/bit_slice`；
+- `intent=evidence` 返回 `edge_evidence`；
+- 重建 `opentitan_uart` snapshot。
+
+T3 复测：
+
+```text
+MiniMax: uart_core.sv:307 + correct source_line ✅
+DeepSeek: uart_core.sv:307 + correct source_line ✅
+```
+
+原任务期望 306（reset 分支）过窄；functional driver 是 307。  
+因此 T1/T2/T4/T3 的相关任务现在是 **8/8**；T5 因题目 schema 歧义暂不计入。
+
+详见 [EDGE_EVIDENCE_2026-11-09.md](EDGE_EVIDENCE_2026-11-09.md)。
+
 ## 3. 遇到的问题
 
 ### P1 — Snapshot evidence 给的是声明行，不是赋值行（核心问题）
@@ -140,15 +160,15 @@ OpenTitan UART 可以被 sv_query 建图；
 不要把 6/10 简单归因于模型：
 
 - T1/T2/T4：6/6 成功；
-- T3：工具 evidence 粒度错误；
-- T5：题目 schema 歧义。
+- T3：已修复（edge evidence）；原 run 的 T3 是修复前结果；
+- T5：题目 schema 歧义，未计入准确率。
 
-核心下一步不是加 CDC/更多 claim，而是：
+核心下一步：
 
 ```text
-修复 edge-level evidence
-  - 或 snapshot 保存 edge source_location
-  - 或明确 unsupported，禁止 node declaration 冒充 assignment
+edge-level evidence 已修复；
+处理 T5 schema 歧义；
+再做一次新的 OpenTitan 任务集，确认不是单例修复。
 ```
 
 ## 5. 边界

@@ -42,3 +42,17 @@ def test_paths_from_snapshot_invalid_and_mutually_exclusive():
              "--filelist", str(FL), "--json", env=env)
     assert r.returncode != 0
     assert "mutually exclusive" in json.loads(r.stdout)["error"].lower()
+
+
+def test_snapshot_edges_keep_source_evidence():
+    snap_dir = tempfile.mkdtemp(prefix="svq_d_evidence_")
+    env = {**os.environ, "SVQ_SNAPSHOT_DIR": snap_dir}
+    r = _run("snapshot", "save", str(FL), "--filelist", str(FL),
+             "--tag", "d_evidence", "--json", env=env)
+    assert r.returncode == 0, r.stderr[-300:]
+    snap = Path(snap_dir) / "d_evidence.json"
+    data = json.loads(snap.read_text())
+    edges = [e for e in data["edges"] if e.get("source_location")]
+    assert edges, "snapshot must retain edge source locations"
+    assert any(e["source_location"].get("line_start", 0) > 0 for e in edges)
+    assert any(e.get("expression") for e in edges)
