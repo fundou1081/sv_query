@@ -6,7 +6,7 @@
  * payloads throw an explicit Error instead of degrading to empty lists.
  */
 
-export const INTENTS = ["fanin", "fanout", "neighbors", "path", "neighborhood"];
+export const INTENTS = ["fanin", "fanout", "neighbors", "path", "neighborhood", "evidence"];
 
 function fail(message) {
   throw new Error(`svq compact: ${message}`);
