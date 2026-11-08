@@ -23,6 +23,8 @@ test("fanin compacts driver ids", () => {
   const out = compactFanin(signalPayload("drivers", nodes("top.a", "top.b")), meta);
   assert.deepEqual(out, {
     ok: true,
+    status: "ok",
+    found: true,
     intent: "fanin",
     snapshot: "ad_axi",
     signal: "top.u_axi.araddr",
@@ -35,6 +37,8 @@ test("fanout compacts load ids", () => {
   const out = compactFanout(signalPayload("loads", nodes("top.c")), meta);
   assert.deepEqual(out, {
     ok: true,
+    status: "ok",
+    found: true,
     intent: "fanout",
     snapshot: "ad_axi",
     signal: "top.u_axi.araddr",
@@ -51,6 +55,8 @@ test("neighbors combines drivers and loads", () => {
   );
   assert.deepEqual(out, {
     ok: true,
+    status: "ok",
+    found: true,
     intent: "neighbors",
     snapshot: "ad_axi",
     signal: "top.u_axi.araddr",
@@ -69,6 +75,8 @@ test("path keeps canonical path and hop count", () => {
   };
   assert.deepEqual(compactPath(payload, meta), {
     ok: true,
+    status: "ok",
+    found: true,
     intent: "path",
     snapshot: "ad_axi",
     path: ["top.a", "top.mid", "top.b"],
@@ -76,21 +84,22 @@ test("path keeps canonical path and hop count", () => {
   });
 });
 
-test("path without a found path stays ok with empty path", () => {
+test("path without a route is explicitly not_found", () => {
   const payload = { ok: true, found: false, hop_count: null, path: null };
-  assert.deepEqual(compactPath(payload, meta), {
-    ok: true,
-    intent: "path",
-    snapshot: "ad_axi",
-    path: [],
-    count: null,
-  });
+  const out = compactPath(payload, meta);
+  assert.equal(out.ok, false);
+  assert.equal(out.status, "not_found");
+  assert.equal(out.found, false);
+  assert.deepEqual(out.path, []);
+  assert.equal(out.error.code, "E_PATH_NOT_FOUND");
 });
 
 test("empty signals payload yields an empty list", () => {
   const payload = { ok: true, result: { signals: [] } };
   assert.deepEqual(compactFanin(payload, meta), {
     ok: true,
+    status: "ok",
+    found: true,
     intent: "fanin",
     snapshot: "ad_axi",
     signal: "top.u_axi.araddr",

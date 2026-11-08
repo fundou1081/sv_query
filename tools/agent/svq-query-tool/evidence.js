@@ -93,5 +93,5 @@ export async function addEvidence(out, args, deps) {
     ids: wantedIds(out),
   });
   if (!evidence) return { ...out, evidence_error: "snapshot metadata unavailable" };
-  return { ...out, evidence };
+  return { ...out, evidence, evidence_available: Object.keys(evidence).length > 0 };
 }

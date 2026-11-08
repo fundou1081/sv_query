@@ -271,9 +271,9 @@ P111 Snapshot/evidence 一键化 <已完成>
 -- P111.1 setup_snapshot.py + env <已完成>
 -- P111.2 新 snapshot e2e 10/10 <已完成>
 
-P112 Explicit unknown/abstention 合同 <待做>
--- P112.1 not_found/ambiguous/truncated <待做>
--- P112.2 confidence + evidence 绑定 <待做>
+P112 Explicit unknown/abstention 合同 <已完成>
+-- P112.1 not_found/ambiguous/truncated <已完成>
+-- P112.2 confidence + evidence 绑定 <已完成>
 
 ## 已完成（保留最近记录，便于核查上一轮）
 

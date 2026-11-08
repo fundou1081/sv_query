@@ -47,6 +47,11 @@ export async function neighborhood(queryFn, {
     for (const item of frontier) {
       if (nodes.size > maxNodes) { truncated = true; break; }
       const d = await queryFn(["drivers", item.id, "--depth", "1", ...base]);
+      if (d.ok === false) {
+        const err = new Error(d.error || "neighborhood query failed");
+        err.payload = d;
+        throw err;
+      }
       const rows = d.result?.signals?.[0]?.drivers || [];
       for (const row of rows) {
         const id = row.id;
@@ -73,7 +78,8 @@ export async function neighborhood(queryFn, {
   const opTernary = nodeList.filter((n) => n.kind === "OP_TERNARY").map((n) => n.id);
   const conditions = [...new Set(edges.map((e) => e.condition).filter(Boolean))];
   return {
-    ok: true, intent: "neighborhood", snapshot,
+    ok: true, status: truncated ? "truncated" : "ok", found: true,
+    intent: "neighborhood", snapshot,
     signal, depth: maxDepth,
     nodes: nodeList, edges,
     op_ternary: opTernary,
