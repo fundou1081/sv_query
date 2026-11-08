@@ -1,0 +1,884 @@
+{
+  "protocol": "P115 10-task x 2-seed validation",
+  "frozen_at": "2026-11-08",
+  "note": "Frozen before seed1/seed2 runs. No tool changes after this freeze.",
+  "tasks": [
+    {
+      "id": "p115_axi_s_axi_awready",
+      "design": "axi",
+      "snapshot": "p111_axi",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/axi/axi",
+      "kind": "neighbors",
+      "question": "For `axi_adapter.s_axi_awready` in snapshot p111_axi, list all direct drivers and loads at distance 1.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "drivers": [
+            "axi_adapter.axi_adapter_wr_inst.s_axi_awready"
+          ],
+          "loads": []
+        }
+      }
+    },
+    {
+      "id": "p115_axi_m_axi_rdata",
+      "design": "axi",
+      "snapshot": "p111_axi",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/axi/axi",
+      "kind": "neighbors",
+      "question": "For `axi_adapter.m_axi_rdata` in snapshot p111_axi, list all direct drivers and loads at distance 1. Empty driver list is valid.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "drivers": [],
+          "loads": [
+            "axi_adapter.axi_adapter_rd_inst.m_axi_rdata"
+          ]
+        }
+      }
+    },
+    {
+      "id": "p115_serv_bufreg_o_q",
+      "design": "serv",
+      "snapshot": "p111_serv",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/serv/serv",
+      "kind": "neighbors",
+      "question": "For `serv_rf_top.cpu.bufreg.o_q` in snapshot p111_serv, list all direct drivers and loads at distance 1.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "drivers": [
+            "serv_rf_top.cpu.bufreg.data[0]"
+          ],
+          "loads": [
+            "serv_rf_top.cpu.bufreg_q"
+          ]
+        }
+      }
+    },
+    {
+      "id": "p115_serv_ctrl_trap",
+      "design": "serv",
+      "snapshot": "p111_serv",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/serv/serv",
+      "kind": "neighbors",
+      "question": "For `serv_rf_top.cpu.state.o_ctrl_trap` in snapshot p111_serv, list all direct drivers and loads at distance 1.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "drivers": [
+            "serv_rf_top.cpu.state.i_new_irq",
+            "serv_rf_top.cpu.state.i_e_op",
+            "serv_rf_top.cpu.state.misalign_trap_sync"
+          ],
+          "loads": [
+            "serv_rf_top.cpu.state.o_bufreg_en",
+            "serv_rf_top.cpu.trap"
+          ]
+        }
+      }
+    },
+    {
+      "id": "p115_pico_awvalid",
+      "design": "pico",
+      "snapshot": "p111_pico",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/pico",
+      "kind": "neighbors",
+      "question": "For `picorv32_axi.axi_adapter.mem_axi_awvalid` in snapshot p111_pico, list all direct drivers and loads at distance 1.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "drivers": [
+            "picorv32_axi.axi_adapter.mem_valid",
+            "picorv32_axi.axi_adapter.mem_wstrb",
+            "picorv32_axi.axi_adapter.ack_awvalid"
+          ],
+          "loads": [
+            "picorv32_axi.mem_axi_awvalid"
+          ]
+        }
+      }
+    },
+    {
+      "id": "p115_pico_bvalid_long_path",
+      "design": "pico",
+      "snapshot": "p111_pico",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/pico",
+      "kind": "path",
+      "question": "Find the directed path from `picorv32_axi.axi_adapter.mem_axi_bvalid` to `picorv32_axi.axi_adapter.mem_valid` in snapshot p111_pico. Return canonical path and hop count.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "path": [
+            "picorv32_axi.axi_adapter.mem_axi_bvalid",
+            "picorv32_axi.axi_adapter.mem_ready",
+            "picorv32_axi.mem_ready",
+            "picorv32_axi.picorv32_core.mem_ready",
+            "picorv32_axi.picorv32_core.mem_xfer",
+            "picorv32_axi.picorv32_core.mem_done",
+            "picorv32_axi.picorv32_core.decoder_trigger",
+            "picorv32_axi.picorv32_core.mem_do_rinst",
+            "picorv32_axi.picorv32_core.mem_la_firstword",
+            "picorv32_axi.picorv32_core.mem_la_use_prefetched_high_word",
+            "picorv32_axi.picorv32_core.mem_valid",
+            "picorv32_axi.mem_valid",
+            "picorv32_axi.axi_adapter.mem_valid"
+          ],
+          "hop_count": 12
+        }
+      }
+    },
+    {
+      "id": "p115_axi_s_axi_wstrb",
+      "design": "axi",
+      "snapshot": "p111_axi",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/axi/axi",
+      "kind": "neighbors",
+      "question": "For `axi_adapter.s_axi_wstrb` in snapshot p111_axi, list all direct drivers and loads at distance 1. Empty driver list is valid.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "drivers": [],
+          "loads": [
+            "axi_adapter.axi_adapter_wr_inst.s_axi_wstrb"
+          ]
+        }
+      }
+    },
+    {
+      "id": "p115_serv_evidence_data",
+      "design": "serv",
+      "snapshot": "p111_serv",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/serv/serv",
+      "kind": "evidence",
+      "question": "Find source evidence for `serv_rf_top.cpu.bufreg.data` in snapshot p111_serv. Return relative file, line, and source_line.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "file": "serv_bufreg.v",
+          "line": 41,
+          "source_contains": "data"
+        }
+      }
+    },
+    {
+      "id": "p115_pico_no_path",
+      "design": "pico",
+      "snapshot": "p111_pico",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/pico",
+      "kind": "no_path",
+      "question": "Find a directed path from `picorv32_axi.axi_adapter.mem_axi_awvalid` to `picorv32_axi.axi_adapter.mem_valid`. If none exists, report found=false and reason not_found.",
+      "expected": {
+        "found": false,
+        "answer": {
+          "reason": "not_found"
+        }
+      }
+    },
+    {
+      "id": "p115_axi_unknown",
+      "design": "axi",
+      "snapshot": "p111_axi",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/axi/axi",
+      "kind": "unknown",
+      "question": "Query direct neighbors of `axi_adapter.s_axi_bresp_q` in snapshot p111_axi. If absent, return found=false and reason not_found.",
+      "expected": {
+        "found": false,
+        "answer": {
+          "reason": "not_found"
+        }
+      }
+    }
+  ],
+  "results": [
+    {
+      "task_id": "p115_axi_s_axi_awready",
+      "model": "MiniMax-M3",
+      "kind": "neighbors",
+      "seed": 1,
+      "duration_ms": 17425,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_wr_inst.s_axi_awready"
+        ],
+        "loads": []
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "signal": "axi_adapter.axi_adapter_wr_inst.s_axi_awready",
+          "kind": "PORT_OUT",
+          "condition": "",
+          "distance": 1,
+          "file": "axi_adapter.v",
+          "line": 94,
+          "source_line": "output wire                     s_axi_awready,"
+        },
+        {
+          "query": "neighbors/fanin/fanout on 'axi_adapter.s_axi_awready' in snapshot p111_axi returned driver count 1 and load count 0"
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 4,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/p115_axi_s_axi_awready_s1",
+      "stderr": ""
+    },
+    {
+      "task_id": "p115_axi_s_axi_awready",
+      "model": "DeepSeek-Flash",
+      "kind": "neighbors",
+      "seed": 1,
+      "duration_ms": 6931,
+      "rc": 0,
+      "parsed": true,
+      "found": null,
+      "answer": null,
+      "confidence": null,
+      "evidence": [],
+      "exact": false,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 3,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/p115_axi_s_axi_awready_s1",
+      "stderr": "dsh: reasoning:\nFanout empty. Maybe signal id is top-level port; loads might be internal. The fanin shows driver. Fanout 0 loads — possibly the signal is a top-level output port, no loads. But let me check neighbors to double check.\n"
+    },
+    {
+      "task_id": "p115_axi_m_axi_rdata",
+      "model": "MiniMax-M3",
+      "kind": "neighbors",
+      "seed": 1,
+      "duration_ms": 5133,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [],
+        "loads": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_rdata"
+        ]
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "id": "axi_adapter.axi_adapter_rd_inst.m_axi_rdata",
+          "kind": "PORT_IN",
+          "condition": "",
+          "distance": 1,
+          "file": "axi_adapter.v",
+          "line": 168,
+          "source_line": "input  wire [M_DATA_WIDTH-1:0]  m_axi_rdata,"
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/p115_axi_m_axi_rdata_s1",
+      "stderr": ""
+    },
+    {
+      "task_id": "p115_axi_m_axi_rdata",
+      "model": "DeepSeek-Flash",
+      "kind": "neighbors",
+      "seed": 1,
+      "duration_ms": 3823,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [],
+        "loads": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_rdata"
+        ]
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 1,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/p115_axi_m_axi_rdata_s1",
+      "stderr": "dsh: reasoning:\nThe result: drivers empty, loads one. Return JSON.\n"
+    },
+    {
+      "task_id": "p115_serv_bufreg_o_q",
+      "model": "MiniMax-M3",
+      "kind": "neighbors",
+      "seed": 1,
+      "duration_ms": 4813,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [
+          "serv_rf_top.cpu.bufreg.data[0]"
+        ],
+        "loads": [
+          "serv_rf_top.cpu.bufreg_q"
+        ]
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 1,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/p115_serv_bufreg_o_q_s1",
+      "stderr": ""
+    },
+    {
+      "task_id": "p115_serv_bufreg_o_q",
+      "model": "DeepSeek-Flash",
+      "kind": "neighbors",
+      "seed": 1,
+      "duration_ms": 4036,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [
+          "serv_rf_top.cpu.bufreg.data[0]"
+        ],
+        "loads": [
+          "serv_rf_top.cpu.bufreg_q"
+        ]
+      },
+      "confidence": "high",
+      "evidence": [
+        "svq_query fanin p111_serv serv_rf_top.cpu.bufreg.o_q -> serv_rf_top.cpu.bufreg.data[0] (SIGNAL, distance 1)",
+        "svq_query fanout p111_serv serv_rf_top.cpu.bufreg.o_q -> serv_rf_top.cpu.bufreg_q (SIGNAL, distance 1)"
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/p115_serv_bufreg_o_q_s1",
+      "stderr": "dsh: reasoning:\nBoth queries succeeded. Return JSON.\n"
+    },
+    {
+      "task_id": "p115_serv_ctrl_trap",
+      "model": "MiniMax-M3",
+      "kind": "neighbors",
+      "seed": 1,
+      "duration_ms": 4409,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [
+          "serv_rf_top.cpu.state.i_new_irq",
+          "serv_rf_top.cpu.state.i_e_op",
+          "serv_rf_top.cpu.state.misalign_trap_sync"
+        ],
+        "loads": [
+          "serv_rf_top.cpu.state.o_bufreg_en",
+          "serv_rf_top.cpu.trap"
+        ]
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/p115_serv_ctrl_trap_s1",
+      "stderr": ""
+    },
+    {
+      "task_id": "p115_serv_ctrl_trap",
+      "model": "DeepSeek-Flash",
+      "kind": "neighbors",
+      "seed": 1,
+      "duration_ms": 5177,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [
+          "serv_rf_top.cpu.state.i_new_irq",
+          "serv_rf_top.cpu.state.i_e_op",
+          "serv_rf_top.cpu.state.misalign_trap_sync"
+        ],
+        "loads": [
+          "serv_rf_top.cpu.state.o_bufreg_en",
+          "serv_rf_top.cpu.trap"
+        ]
+      },
+      "confidence": "high",
+      "evidence": [
+        "svq_query fanin p111_serv serv_rf_top.cpu.state.o_ctrl_trap: 3 direct drivers (i_new_irq, i_e_op, misalign_trap_sync)",
+        "svq_query fanout p111_serv serv_rf_top.cpu.state.o_ctrl_trap: 2 direct loads (o_bufreg_en, trap)"
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/p115_serv_ctrl_trap_s1",
+      "stderr": "dsh: reasoning:\nBoth queries succeeded. Return JSON object.\n\nEvidence — I have evidence field; use [] or the tool result details. Use IDs. Keep evidence empty array as specified? The template says \"evidence\":[] — I could include canonical IDs but safest to include the query basis. I'll put evidence with the driver/load details? The schema says evidence:[] — probably list of evidence strings. I'll include a brief string.\n"
+    },
+    {
+      "task_id": "p115_pico_awvalid",
+      "model": "MiniMax-M3",
+      "kind": "neighbors",
+      "seed": 1,
+      "duration_ms": 3811,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_valid",
+          "picorv32_axi.axi_adapter.mem_wstrb",
+          "picorv32_axi.axi_adapter.ack_awvalid"
+        ],
+        "loads": [
+          "picorv32_axi.mem_axi_awvalid"
+        ]
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "intent": "neighbors",
+          "snapshot": "p111_pico",
+          "signal": "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "driver_details": [
+            {
+              "id": "picorv32_axi.axi_adapter.mem_valid",
+              "kind": "PORT_IN",
+              "condition": "",
+              "distance": 1
+            },
+            {
+              "id": "picorv32_axi.axi_adapter.mem_wstrb",
+              "kind": "PORT_IN",
+              "condition": "",
+              "distance": 1
+            },
+            {
+              "id": "picorv32_axi.axi_adapter.ack_awvalid",
+              "kind": "REG",
+              "condition": "",
+              "distance": 1
+            }
+          ],
+          "load_details": [
+            {
+              "id": "picorv32_axi.mem_axi_awvalid",
+              "kind": "PORT_OUT",
+              "condition": "",
+              "distance": 1
+            }
+          ]
+        },
+        {
+          "intent": "fanin",
+          "snapshot": "p111_pico",
+          "signal": "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "depth": 1,
+          "count": 3
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/p115_pico_awvalid_s1",
+      "stderr": ""
+    },
+    {
+      "task_id": "p115_pico_awvalid",
+      "model": "DeepSeek-Flash",
+      "kind": "neighbors",
+      "seed": 1,
+      "duration_ms": 5071,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_valid",
+          "picorv32_axi.axi_adapter.mem_wstrb",
+          "picorv32_axi.axi_adapter.ack_awvalid"
+        ],
+        "loads": [
+          "picorv32_axi.mem_axi_awvalid"
+        ]
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/p115_pico_awvalid_s1",
+      "stderr": "dsh: reasoning:\nBoth queries succeeded. Return JSON with evidence empty? Evidence [] as specified. Maybe include evidence entries? The schema shows \"evidence\":[] — I can include a few entries but canonical IDs only requested. Keep empty list is valid. But maybe better to include minimal evidence. The instruction says evidence:[] — leaving empty is fine. I'll include empty array.\n\nReturn ONE valid JSON object, no markdown.\n"
+    },
+    {
+      "task_id": "p115_pico_bvalid_long_path",
+      "model": "MiniMax-M3",
+      "kind": "path",
+      "seed": 1,
+      "duration_ms": 4549,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "path": [
+          "picorv32_axi.axi_adapter.mem_axi_bvalid",
+          "picorv32_axi.axi_adapter.mem_ready",
+          "picorv32_axi.mem_ready",
+          "picorv32_axi.picorv32_core.mem_ready",
+          "picorv32_axi.picorv32_core.mem_xfer",
+          "picorv32_axi.picorv32_core.mem_done",
+          "picorv32_axi.picorv32_core.decoder_trigger",
+          "picorv32_axi.picorv32_core.mem_do_rinst",
+          "picorv32_axi.picorv32_core.mem_la_firstword",
+          "picorv32_axi.picorv32_core.mem_la_use_prefetched_high_word",
+          "picorv32_axi.picorv32_core.mem_valid",
+          "picorv32_axi.mem_valid",
+          "picorv32_axi.axi_adapter.mem_valid"
+        ],
+        "hop_count": 12
+      },
+      "confidence": "high",
+      "evidence": [
+        "deep_path query returned a single variant with 13 nodes (12 hops) and truncated=false",
+        "fanout of picorv32_axi.axi_adapter.mem_axi_bvalid has exactly one PORT_OUT load: picorv32_axi.axi_adapter.mem_ready at distance 1, matching the first hop of the path"
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/p115_pico_bvalid_long_path_s1",
+      "stderr": ""
+    },
+    {
+      "task_id": "p115_pico_bvalid_long_path",
+      "model": "DeepSeek-Flash",
+      "kind": "path",
+      "seed": 1,
+      "duration_ms": 9709,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "path": [
+          "picorv32_axi.axi_adapter.mem_axi_bvalid",
+          "picorv32_axi.axi_adapter.mem_ready",
+          "picorv32_axi.mem_ready",
+          "picorv32_axi.picorv32_core.mem_ready",
+          "picorv32_axi.picorv32_core.mem_xfer",
+          "picorv32_axi.picorv32_core.mem_done",
+          "picorv32_axi.picorv32_core.decoder_trigger",
+          "picorv32_axi.picorv32_core.mem_do_rinst",
+          "picorv32_axi.picorv32_core.mem_la_firstword",
+          "picorv32_axi.picorv32_core.mem_la_use_prefetched_high_word",
+          "picorv32_axi.picorv32_core.mem_valid",
+          "picorv32_axi.mem_valid",
+          "picorv32_axi.axi_adapter.mem_valid"
+        ],
+        "hop_count": 12
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "id": "picorv32_axi.axi_adapter.mem_axi_bvalid",
+          "file": "picorv32.v",
+          "line": 2559,
+          "source_line": "input         mem_axi_bvalid,"
+        },
+        {
+          "id": "picorv32_axi.axi_adapter.mem_valid",
+          "file": "picorv32.v",
+          "line": 2611,
+          "source_line": "wire        mem_valid;"
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 4,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/p115_pico_bvalid_long_path_s1",
+      "stderr": "und, 13 nodes, 12 hops. Let me sanity check with deep_path maybe to confirm this is the directed shortest path. The task just asks directed path and hop count. count:12 hops. Let me verify with a deep_path query to see if there's a longer variant, but the answer requires \"the directed path\". I'll just verify hop count = 12.\n\nConfidence high.\n\nLet me maybe double-check with deep_path to ensure shortest vs longest distinction. The tool's path returned count 12, variants 1, truncated false. Good.\n\nI should output ONE JSON object, no markdown. Evidence: include file/line entries.\n\nNote the answer format: {\"task_id\":'p115_pico_bvalid_long_path',...}. task_id uses single quotes in prompt but JSON requires double quotes. I'll use double quotes.\n\nEvidence array — include the two evidence entries.\n"
+    },
+    {
+      "task_id": "p115_axi_s_axi_wstrb",
+      "model": "MiniMax-M3",
+      "kind": "neighbors",
+      "seed": 1,
+      "duration_ms": 5090,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [],
+        "loads": [
+          "axi_adapter.axi_adapter_wr_inst.s_axi_wstrb"
+        ]
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/p115_axi_s_axi_wstrb_s1",
+      "stderr": ""
+    },
+    {
+      "task_id": "p115_axi_s_axi_wstrb",
+      "model": "DeepSeek-Flash",
+      "kind": "neighbors",
+      "seed": 1,
+      "duration_ms": 5033,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [],
+        "loads": [
+          "axi_adapter.axi_adapter_wr_inst.s_axi_wstrb"
+        ]
+      },
+      "confidence": "high",
+      "evidence": [
+        "svq_query fanin axi_adapter.s_axi_wstrb @p111_axi: 0 drivers",
+        "svq_query fanout axi_adapter.s_axi_wstrb @p111_axi: 1 load (PORT_IN, distance 1) -> axi_adapter.axi_adapter_wr_inst.s_axi_wstrb"
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/p115_axi_s_axi_wstrb_s1",
+      "stderr": "dsh: reasoning:\nBoth queries succeeded. Drivers empty, loads one.\n\nNote the fanin returned empty, which is valid. Return JSON.\n\nEvidence: include tool evidence? The schema says \"evidence\":[] - array. I could include canonical ids or query references. I'll include evidence strings.\n"
+    },
+    {
+      "task_id": "p115_serv_evidence_data",
+      "model": "MiniMax-M3",
+      "kind": "evidence",
+      "seed": 1,
+      "duration_ms": 3807,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "file": "serv_bufreg.v",
+        "line": 41,
+        "source_line": "reg [31:0]\t      data;"
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "file": "serv_bufreg.v",
+          "line": 41,
+          "source_line": "reg [31:0]\t      data;",
+          "context": [
+            {
+              "line": 39,
+              "text": "wire [B:0]\t      q;"
+            },
+            {
+              "line": 40,
+              "text": "reg [B:0]\t      c_r;"
+            },
+            {
+              "line": 42,
+              "text": "wire [B:0]\t      clr_lsb;"
+            }
+          ]
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 1,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/p115_serv_evidence_data_s1",
+      "stderr": ""
+    },
+    {
+      "task_id": "p115_serv_evidence_data",
+      "model": "DeepSeek-Flash",
+      "kind": "evidence",
+      "seed": 1,
+      "duration_ms": 2962,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "file": "serv_bufreg.v",
+        "line": 41,
+        "source_line": "reg [31:0]\t      data;"
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 1,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/p115_serv_evidence_data_s1",
+      "stderr": "dsh: reasoning:\nFound. Return JSON.\n"
+    },
+    {
+      "task_id": "p115_pico_no_path",
+      "model": "MiniMax-M3",
+      "kind": "no_path",
+      "seed": 1,
+      "duration_ms": 13843,
+      "rc": 0,
+      "parsed": true,
+      "found": false,
+      "answer": {
+        "reason": "not_found"
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "query": "path src=picorv32_axi.axi_adapter.mem_axi_awvalid dst=picorv32_axi.axi_adapter.mem_valid",
+          "snapshot": "p111_pico",
+          "result": "not_found",
+          "error": {
+            "code": "E_PATH_NOT_FOUND",
+            "message": "no directed path found"
+          }
+        },
+        {
+          "query": "path src=picorv32_axi.axi_adapter.mem_valid dst=picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "snapshot": "p111_pico",
+          "result": "ok",
+          "path": [
+            "picorv32_axi.axi_adapter.mem_valid",
+            "picorv32_axi.axi_adapter.mem_axi_awvalid"
+          ],
+          "count": 1,
+          "variants": 1
+        },
+        {
+          "query": "neighborhood src=picorv32_axi.axi_adapter.mem_axi_awvalid depth=2",
+          "snapshot": "p111_pico",
+          "result": "ok",
+          "edge": {
+            "src": "picorv32_axi.axi_adapter.mem_valid",
+            "dst": "picorv32_axi.axi_adapter.mem_axi_awvalid",
+            "kind": "PORT_IN"
+          }
+        },
+        {
+          "query": "fanout src=picorv32_axi.axi_adapter.mem_axi_awvalid depth=3",
+          "snapshot": "p111_pico",
+          "result": "ok",
+          "loads": [
+            "picorv32_axi.mem_axi_awvalid"
+          ],
+          "note": "no path to picorv32_axi.axi_adapter.mem_valid"
+        },
+        {
+          "query": "fanin src=picorv32_axi.axi_adapter.mem_axi_awvalid depth=4",
+          "snapshot": "p111_pico",
+          "result": "ok",
+          "drivers": [
+            "picorv32_axi.axi_adapter.mem_valid",
+            "picorv32_axi.mem_valid",
+            "picorv32_axi.axi_adapter.mem_wstrb",
+            "picorv32_axi.mem_wstrb",
+            "picorv32_axi.axi_adapter.ack_awvalid",
+            "0",
+            "1"
+          ]
+        },
+        {
+          "query": "deep_path src=picorv32_axi.axi_adapter.mem_axi_awvalid dst=picorv32_axi.axi_adapter.mem_valid",
+          "snapshot": "p111_pico",
+          "result": "not_found",
+          "error": {
+            "code": "E_PATH_NOT_FOUND",
+            "message": "no directed path found"
+          }
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 9,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/p115_pico_no_path_s1",
+      "stderr": ""
+    },
+    {
+      "task_id": "p115_pico_no_path",
+      "model": "DeepSeek-Flash",
+      "kind": "no_path",
+      "seed": 1,
+      "duration_ms": 7886,
+      "rc": 0,
+      "parsed": true,
+      "found": false,
+      "answer": {
+        "reason": "not_found"
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 3,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/p115_pico_no_path_s1",
+      "stderr": "_axi_awvalid. So the path exists in the opposite direction (mem_valid -> mem_axi_awvalid), not mem_axi_awvalid -> mem_valid. The path query is directed a→b, so not found.\n\nConfidence high. Evidence should use canonical IDs from tool results. Evidence empty array per template? Template says \"evidence\":[] but we can include. The prescribed object has evidence empty. I'll include evidence with canonical IDs maybe. The instruction: Return ONE valid JSON object with that shape. Safer to follow exactly, evidence []. But adding evidence might be acceptable... The template literally shows \"evidence\":[] — I'll keep it empty to match, though could add. I'll keep exactly as template with found false.\n\nWait — found:false and answer {\"reason\":\"not_found\"}. Task_id 'p115_pico_no_path'. Confidence high.\n"
+    },
+    {
+      "task_id": "p115_axi_unknown",
+      "model": "MiniMax-M3",
+      "kind": "unknown",
+      "seed": 1,
+      "duration_ms": 3191,
+      "rc": 0,
+      "parsed": true,
+      "found": false,
+      "answer": {
+        "reason": "not_found"
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 1,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/p115_axi_unknown_s1",
+      "stderr": ""
+    },
+    {
+      "task_id": "p115_axi_unknown",
+      "model": "DeepSeek-Flash",
+      "kind": "unknown",
+      "seed": 1,
+      "duration_ms": 4014,
+      "rc": 0,
+      "parsed": true,
+      "found": false,
+      "answer": {
+        "reason": "not_found"
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 1,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/p115_axi_unknown_s1",
+      "stderr": "dsh: reasoning:\nNot found. No bash. Could try variant? The task says if absent return not_found. Should I attempt alternate canonical id forms? The instruction: \"Query direct neighbors of axi_adapter.s_axi_bresp_q ... If absent, return found=false and reason not_found.\" The lookup failed. Could do one more sanity check with a different intent? Only svq_query allowed. Maybe try fanin to confirm same. But candidates empty, suggestions empty. Return found=false.\n\nEvidence empty. Confidence high.\n"
+    }
+  ]
+}

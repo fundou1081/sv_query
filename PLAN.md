@@ -284,6 +284,10 @@ P114 Fresh untouched blind validation <已完成>
 -- P114.1 5 new tasks ×2 models <已完成>
 -- P114.2 10/10, false 0 <已完成>
 
+P115 10-task ×2-seed validation <已完成>
+-- P115.1 10 new tasks ×2 seed <已完成>
+-- P115.2 39/40 valid JSON, false 0 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>
