@@ -127,6 +127,22 @@ export function compactPath(payload, meta = {}) {
       && !Number.isInteger(payload.hop_count)) {
     fail("path payload hop_count must be an integer or null");
   }
+  if (Array.isArray(payload.all_paths)) {
+    const variants = payload.all_paths.filter((x) => Array.isArray(x) && x.length > 0);
+    if (variants.length === 0) {
+      return { ok: payload.ok !== false, intent: "path", snapshot: meta.snapshot,
+               path: [], count: null, variants: 0, truncated: !!payload.truncated };
+    }
+    // Granular path: prefer the path with the most nodes; tie-break lexicographically.
+    variants.sort((a, b) => b.length - a.length || a.join("\u0000").localeCompare(b.join("\u0000")));
+    const path = variants[0];
+    return {
+      ok: payload.ok !== false,
+      intent: "path", snapshot: meta.snapshot,
+      path, count: path.length - 1,
+      variants: variants.length, truncated: !!payload.truncated,
+    };
+  }
   return {
     ok: payload.ok !== false,
     intent: "path", snapshot: meta.snapshot,
