@@ -1,0 +1,416 @@
+{
+  "protocol": "P111 end-to-end regression (snapshots built by setup_snapshot.py)",
+  "frozen_at": "2026-11-08",
+  "note": "Same five frozen tasks; snapshots rebuilt from filelists via setup_snapshot.py. Not a new blind set; end-to-end setup/query regression.",
+  "tasks": [
+    {
+      "id": "blind_b_axi_s_axi_rready",
+      "design": "axi",
+      "snapshot": "p111_axi",
+      "source_root": "/tmp/lr_ad_prep/axi",
+      "kind": "neighbors",
+      "question": "For the AXI adapter top-level handshake input `axi_adapter.s_axi_rready`, list ALL direct driver IDs and ALL direct load IDs at distance 1. Preserve empty lists when there are none.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "drivers": [],
+          "loads": [
+            "axi_adapter.axi_adapter_rd_inst.s_axi_rready"
+          ]
+        }
+      },
+      "snapshot_dir": "/tmp/p111_snaps"
+    },
+    {
+      "id": "blind_b_axi_m_axi_wdata",
+      "design": "axi",
+      "snapshot": "p111_axi",
+      "source_root": "/tmp/lr_ad_prep/axi",
+      "kind": "neighbors",
+      "question": "For the AXI adapter top-level write data bus `axi_adapter.m_axi_wdata`, list ALL direct driver IDs and ALL direct load IDs at distance 1. Preserve empty lists when there are none.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "drivers": [
+            "axi_adapter.axi_adapter_wr_inst.m_axi_wdata"
+          ],
+          "loads": []
+        }
+      },
+      "snapshot_dir": "/tmp/p111_snaps"
+    },
+    {
+      "id": "blind_b_serv_dbus_address",
+      "design": "serv",
+      "snapshot": "p111_serv",
+      "source_root": "/tmp/lr_ad_prep/serv",
+      "kind": "neighbors",
+      "question": "For the SERV buffer-register output `serv_rf_top.cpu.bufreg.o_dbus_adr`, list ALL direct driver IDs and ALL direct load IDs at distance 1.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "drivers": [
+            "serv_rf_top.cpu.bufreg.data[31:2]"
+          ],
+          "loads": [
+            "serv_rf_top.cpu.o_dbus_adr"
+          ]
+        }
+      },
+      "snapshot_dir": "/tmp/p111_snaps"
+    },
+    {
+      "id": "blind_b_pico_bvalid_to_xfer",
+      "design": "pico",
+      "snapshot": "p111_pico",
+      "source_root": "/tmp/lr_ad_prep/pico",
+      "kind": "path",
+      "question": "In the Pico AXI adapter, find the directed structural path from `picorv32_axi.axi_adapter.mem_axi_bvalid` to `picorv32_axi.axi_adapter.xfer_done`. Return the ordered canonical path and hop count (number of edges).",
+      "expected": {
+        "found": true,
+        "answer": {
+          "path": [
+            "picorv32_axi.axi_adapter.mem_axi_bvalid",
+            "picorv32_axi.axi_adapter.mem_ready",
+            "picorv32_axi.axi_adapter.xfer_done"
+          ],
+          "hop_count": 2
+        }
+      },
+      "snapshot_dir": "/tmp/p111_snaps"
+    },
+    {
+      "id": "blind_b_pico_unknown_signal",
+      "design": "pico",
+      "snapshot": "p111_pico",
+      "source_root": "/tmp/lr_ad_prep/pico",
+      "kind": "unknown",
+      "question": "Query the direct neighbors of `picorv32_axi.axi_adapter.mem_ready_d`. If the signal does not exist in the snapshot, report found=false with reason `not_found`. Do NOT invent a similar name.",
+      "expected": {
+        "found": false,
+        "answer": {
+          "reason": "not_found"
+        }
+      },
+      "snapshot_dir": "/tmp/p111_snaps"
+    }
+  ],
+  "results": [
+    {
+      "task_id": "blind_b_axi_s_axi_rready",
+      "model": "MiniMax-M3",
+      "kind": "neighbors",
+      "duration_ms": 5689,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [],
+        "loads": [
+          "axi_adapter.axi_adapter_rd_inst.s_axi_rready"
+        ]
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "tool_calls": 1,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/blind_b_axi_s_axi_rready",
+      "stderr": ""
+    },
+    {
+      "task_id": "blind_b_axi_s_axi_rready",
+      "model": "DeepSeek-Flash",
+      "kind": "neighbors",
+      "duration_ms": 4643,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [],
+        "loads": [
+          "axi_adapter.axi_adapter_rd_inst.s_axi_rready"
+        ]
+      },
+      "confidence": "high",
+      "evidence": [
+        "axi_adapter.axi_adapter_rd_inst.s_axi_rready: PORT_IN at axi_adapter.v:125, distance 1"
+      ],
+      "exact": true,
+      "false_confident": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/blind_b_axi_s_axi_rready",
+      "stderr": "dsh: reasoning:\nThe user wants me to use svq_query on snapshot p111_axi for signal axi_adapter.s_axi_rready, fanin and fanout at depth 1.\n\nLet me query both.\ndsh: reasoning:\nFanin empty, fanout one load. Return JSON.\n"
+    },
+    {
+      "task_id": "blind_b_axi_m_axi_wdata",
+      "model": "MiniMax-M3",
+      "kind": "neighbors",
+      "duration_ms": 6579,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_wr_inst.m_axi_wdata"
+        ],
+        "loads": []
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "signal": "axi_adapter.m_axi_wdata",
+          "kind": "PORT_OUT",
+          "distance": 1,
+          "file": "axi_adapter.v",
+          "line": 143
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "tool_calls": 4,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/blind_b_axi_m_axi_wdata",
+      "stderr": ""
+    },
+    {
+      "task_id": "blind_b_axi_m_axi_wdata",
+      "model": "DeepSeek-Flash",
+      "kind": "neighbors",
+      "duration_ms": 4515,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_wr_inst.m_axi_wdata"
+        ],
+        "loads": []
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/blind_b_axi_m_axi_wdata",
+      "stderr": "dsh: reasoning:\nLet me query the snapshot for fanin and fanout of axi_adapter.m_axi_wdata.\ndsh: reasoning:\nBoth lookups succeeded. Driver: axi_adapter.axi_adapter_wr_inst.m_axi_wdata. Loads: empty.\n\nReturn JSON.\n"
+    },
+    {
+      "task_id": "blind_b_serv_dbus_address",
+      "model": "MiniMax-M3",
+      "kind": "neighbors",
+      "duration_ms": 5608,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [
+          "serv_rf_top.cpu.bufreg.data[31:2]"
+        ],
+        "loads": [
+          "serv_rf_top.cpu.o_dbus_adr"
+        ]
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "file": "serv_rf_top.v",
+          "line": 72,
+          "note": "source of serv_rf_top.cpu.bufreg.o_dbus_adr"
+        },
+        {
+          "id": "serv_rf_top.cpu.bufreg.data[31:2]",
+          "kind": "REG",
+          "distance": 1,
+          "role": "driver"
+        },
+        {
+          "id": "serv_rf_top.cpu.o_dbus_adr",
+          "kind": "PORT_OUT",
+          "distance": 1,
+          "role": "load"
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "tool_calls": 4,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/blind_b_serv_dbus_address",
+      "stderr": ""
+    },
+    {
+      "task_id": "blind_b_serv_dbus_address",
+      "model": "DeepSeek-Flash",
+      "kind": "neighbors",
+      "duration_ms": 4441,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [
+          "serv_rf_top.cpu.bufreg.data[31:2]"
+        ],
+        "loads": [
+          "serv_rf_top.cpu.o_dbus_adr"
+        ]
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "signal": "serv_rf_top.cpu.bufreg.o_dbus_adr",
+          "intent": "fanin",
+          "distance": 1,
+          "result": "serv_rf_top.cpu.bufreg.data[31:2]"
+        },
+        {
+          "signal": "serv_rf_top.cpu.bufreg.o_dbus_adr",
+          "intent": "fanout",
+          "distance": 1,
+          "result": "serv_rf_top.cpu.o_dbus_adr"
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/blind_b_serv_dbus_address",
+      "stderr": "dsh: reasoning:\nBoth queries succeeded. Return the JSON.\n\nCanonical IDs: driver \"serv_rf_top.cpu.bufreg.data[31:2]\", load \"serv_rf_top.cpu.o_dbus_adr\".\n\nEvidence: maybe empty array. Task says evidence: []. I could include the ids as evidence. Keep empty per template.\n"
+    },
+    {
+      "task_id": "blind_b_pico_bvalid_to_xfer",
+      "model": "MiniMax-M3",
+      "kind": "path",
+      "duration_ms": 6251,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "path": [
+          "picorv32_axi.axi_adapter.mem_axi_bvalid",
+          "picorv32_axi.axi_adapter.mem_ready",
+          "picorv32_axi.axi_adapter.xfer_done"
+        ],
+        "hop_count": 2
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "signal": "picorv32_axi.axi_adapter.mem_axi_bvalid",
+          "file": "picorv32.v",
+          "line": 2559,
+          "source_line": "input         mem_axi_bvalid,"
+        },
+        {
+          "signal": "picorv32_axi.axi_adapter.mem_ready",
+          "file": "picorv32.v",
+          "line": 2616,
+          "source_line": "wire        mem_ready;"
+        },
+        {
+          "signal": "picorv32_axi.axi_adapter.xfer_done",
+          "file": "picorv32.v",
+          "line": 2771,
+          "source_line": "reg xfer_done;"
+        },
+        {
+          "note": "fanout of picorv32_axi.axi_adapter.mem_axi_bvalid lists picorv32_axi.axi_adapter.mem_ready at distance 1 and picorv32_axi.axi_adapter.xfer_done at distance 2",
+          "kind": "fanout"
+        },
+        {
+          "note": "fanin of picorv32_axi.axi_adapter.xfer_done lists picorv32_axi.axi_adapter.mem_axi_bvalid at distance 2 via picorv32_axi.axi_adapter.mem_ready",
+          "kind": "fanin"
+        },
+        {
+          "note": "direct path query returns the granular 13-hop variant through picorv32_core; the shortest directed structural path is the 2-hop mem_ready route confirmed by both fanin and fanout at matching distances",
+          "kind": "path"
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "tool_calls": 4,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/blind_b_pico_bvalid_to_xfer",
+      "stderr": ""
+    },
+    {
+      "task_id": "blind_b_pico_bvalid_to_xfer",
+      "model": "DeepSeek-Flash",
+      "kind": "path",
+      "duration_ms": 11592,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "path": [
+          "picorv32_axi.axi_adapter.mem_axi_bvalid",
+          "picorv32_axi.axi_adapter.mem_ready",
+          "picorv32_axi.axi_adapter.xfer_done"
+        ],
+        "hop_count": 2
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "id": "picorv32_axi.axi_adapter.mem_axi_bvalid",
+          "file": "picorv32.v",
+          "line": 2616,
+          "source_line": "wire        mem_ready;"
+        },
+        {
+          "id": "picorv32_axi.axi_adapter.mem_ready",
+          "file": "picorv32.v",
+          "line": 2616,
+          "source_line": "wire        mem_ready;"
+        },
+        {
+          "id": "picorv32_axi.axi_adapter.xfer_done",
+          "file": "picorv32.v",
+          "line": 2771,
+          "source_line": "reg xfer_done;"
+        },
+        {
+          "note": "svq_query path (directed, shortest): mem_axi_bvalid -> mem_ready -> xfer_done, count 2, variants 2, not truncated; mem_axi_bvalid drives mem_ready, which is a flop input of xfer_done (with clk and mem_valid)"
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "tool_calls": 6,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/blind_b_pico_bvalid_to_xfer",
+      "stderr": ". \"variants\": 2. But shortest path requested: \"directed structural path\". The answer should probably be the path found. Let me also verify with granular to be thorough? The task asks for \"the directed structural path\" — likely the tool's path output. Variants 2 suggests two path variants; canonical shortest is fine.\n\nLet me get evidence for the nodes.\ndsh: reasoning:\nThe shortest path is the 2-edge path. The task asks \"the directed structural path from ... to ...\" — singular. Answer with the shortest path, 2 hops.\n\nConfidence: high.\n\nEvidence entries: file/line for the nodes. I'll include evidence lines: mem_axi_bvalid at 2559, mem_ready at 2616, xfer_done at 2771. Format: array of objects with id, file, line, source_line? Task says \"evidence\":[] — no schema specified. I'll include a few.\n"
+    },
+    {
+      "task_id": "blind_b_pico_unknown_signal",
+      "model": "MiniMax-M3",
+      "kind": "unknown",
+      "duration_ms": 8771,
+      "rc": 0,
+      "parsed": true,
+      "found": false,
+      "answer": {
+        "reason": "not_found"
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "tool_calls": 7,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/blind_b_pico_unknown_signal",
+      "stderr": ""
+    },
+    {
+      "task_id": "blind_b_pico_unknown_signal",
+      "model": "DeepSeek-Flash",
+      "kind": "unknown",
+      "duration_ms": 19225,
+      "rc": 0,
+      "parsed": true,
+      "found": false,
+      "answer": {
+        "reason": "not_found"
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "tool_calls": 10,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/blind_b_pico_unknown_signal",
+      "stderr": "orv32_axi.axi_adapter.mem_ready_d` does not exist. This is the \"similar name\" trap. Report found=false, reason not_found, evidence empty (or maybe include nothing). The schema asks evidence array. I'll return empty array.\n\nTask_id exact: \"blind_b_pico_unknown_signal\". Use the exact JSON with single quotes? They requested ONE valid JSON object, no markdown. JSON needs double quotes. Their template used single quotes but JSON validity requires double quotes. I'll produce valid JSON with double quotes.\n\nFormat: {\"task_id\":\"blind_b_pico_unknown_signal\",\"found\":false,\"answer\":{\"reason\":\"not_found\"},\"confidence\":\"high\",\"evidence\":[]}\n\nConfidence high because two independent checks (evidence empty, fanin/fanout fail) plus the similarly-named signal exists, confirming the queried name is unknown.\n"
+    }
+  ]
+}
