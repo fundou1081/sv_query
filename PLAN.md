@@ -267,9 +267,13 @@ P110 Blind realistic validation <已完成>
 -- P110.1 首轮 blind/发现 path 默认 bug <已完成>
 -- P110.2 fresh set 9/10，false-confident 0 <已完成>
 
-P111 Snapshot/evidence 一键化 <待做>
--- P111.1 fresh project -> snapshot -> query <待做>
--- P111.2 evidence 自动 source root <待做>
+P111 Snapshot/evidence 一键化 <已完成>
+-- P111.1 setup_snapshot.py + env <已完成>
+-- P111.2 新 snapshot e2e 10/10 <已完成>
+
+P112 Explicit unknown/abstention 合同 <待做>
+-- P112.1 not_found/ambiguous/truncated <待做>
+-- P112.2 confidence + evidence 绑定 <待做>
 
 ## 已完成（保留最近记录，便于核查上一轮）
 

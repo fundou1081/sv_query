@@ -74,7 +74,7 @@ def run_one(task: dict, model: dict) -> dict:
         shutil.rmtree(ws)
     ws.mkdir(parents=True)
     env = base._env()
-    env["SVQ_SNAPSHOT_DIR"] = str(SNAPS)
+    env["SVQ_SNAPSHOT_DIR"] = task.get("snapshot_dir", str(SNAPS))
     env["SVQ_SOURCE_ROOT"] = task["source_root"]
     patch = (base.INTERACTIVE / model["patch"]).resolve()
     cmd = ["dsh", "--profile", "headless", "--patch", str(patch),

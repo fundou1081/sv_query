@@ -1,0 +1,98 @@
+{
+  "protocol": "P111 end-to-end regression (snapshots built by setup_snapshot.py)",
+  "frozen_at": "2026-11-08",
+  "note": "Same five frozen tasks; snapshots rebuilt from filelists via setup_snapshot.py. Not a new blind set; end-to-end setup/query regression.",
+  "tasks": [
+    {
+      "id": "blind_b_axi_s_axi_rready",
+      "design": "axi",
+      "snapshot": "p111_axi",
+      "source_root": "/tmp/lr_ad_prep/axi",
+      "kind": "neighbors",
+      "question": "For the AXI adapter top-level handshake input `axi_adapter.s_axi_rready`, list ALL direct driver IDs and ALL direct load IDs at distance 1. Preserve empty lists when there are none.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "drivers": [],
+          "loads": [
+            "axi_adapter.axi_adapter_rd_inst.s_axi_rready"
+          ]
+        }
+      },
+      "snapshot_dir": "/tmp/p111_snaps"
+    },
+    {
+      "id": "blind_b_axi_m_axi_wdata",
+      "design": "axi",
+      "snapshot": "p111_axi",
+      "source_root": "/tmp/lr_ad_prep/axi",
+      "kind": "neighbors",
+      "question": "For the AXI adapter top-level write data bus `axi_adapter.m_axi_wdata`, list ALL direct driver IDs and ALL direct load IDs at distance 1. Preserve empty lists when there are none.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "drivers": [
+            "axi_adapter.axi_adapter_wr_inst.m_axi_wdata"
+          ],
+          "loads": []
+        }
+      },
+      "snapshot_dir": "/tmp/p111_snaps"
+    },
+    {
+      "id": "blind_b_serv_dbus_address",
+      "design": "serv",
+      "snapshot": "p111_serv",
+      "source_root": "/tmp/lr_ad_prep/serv",
+      "kind": "neighbors",
+      "question": "For the SERV buffer-register output `serv_rf_top.cpu.bufreg.o_dbus_adr`, list ALL direct driver IDs and ALL direct load IDs at distance 1.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "drivers": [
+            "serv_rf_top.cpu.bufreg.data[31:2]"
+          ],
+          "loads": [
+            "serv_rf_top.cpu.o_dbus_adr"
+          ]
+        }
+      },
+      "snapshot_dir": "/tmp/p111_snaps"
+    },
+    {
+      "id": "blind_b_pico_bvalid_to_xfer",
+      "design": "pico",
+      "snapshot": "p111_pico",
+      "source_root": "/tmp/lr_ad_prep/pico",
+      "kind": "path",
+      "question": "In the Pico AXI adapter, find the directed structural path from `picorv32_axi.axi_adapter.mem_axi_bvalid` to `picorv32_axi.axi_adapter.xfer_done`. Return the ordered canonical path and hop count (number of edges).",
+      "expected": {
+        "found": true,
+        "answer": {
+          "path": [
+            "picorv32_axi.axi_adapter.mem_axi_bvalid",
+            "picorv32_axi.axi_adapter.mem_ready",
+            "picorv32_axi.axi_adapter.xfer_done"
+          ],
+          "hop_count": 2
+        }
+      },
+      "snapshot_dir": "/tmp/p111_snaps"
+    },
+    {
+      "id": "blind_b_pico_unknown_signal",
+      "design": "pico",
+      "snapshot": "p111_pico",
+      "source_root": "/tmp/lr_ad_prep/pico",
+      "kind": "unknown",
+      "question": "Query the direct neighbors of `picorv32_axi.axi_adapter.mem_ready_d`. If the signal does not exist in the snapshot, report found=false with reason `not_found`. Do NOT invent a similar name.",
+      "expected": {
+        "found": false,
+        "answer": {
+          "reason": "not_found"
+        }
+      },
+      "snapshot_dir": "/tmp/p111_snaps"
+    }
+  ]
+}
