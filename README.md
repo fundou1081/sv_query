@@ -198,6 +198,7 @@ sv_query/
 ├── sim/tests/              # 测试
 ├── examples/               # 可复现 walkthrough（反幻觉 CDC）
 ├── docs/                   # 文档 / 性能数据
+├── skills/                # OpenClaw skill 包 (sv-query, 供 agent 加载)
 └── tools/                  # 独立工具（含 benchmark/query_perf.py）
 ```
 
