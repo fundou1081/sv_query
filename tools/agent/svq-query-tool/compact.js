@@ -133,8 +133,13 @@ export function compactPath(payload, meta = {}) {
       return { ok: payload.ok !== false, intent: "path", snapshot: meta.snapshot,
                path: [], count: null, variants: 0, truncated: !!payload.truncated };
     }
-    // Granular path: prefer the path with the most nodes; tie-break lexicographically.
-    variants.sort((a, b) => b.length - a.length || a.join("\u0000").localeCompare(b.join("\u0000")));
+    // Default: shortest path. `granular` opts into the most-node variant
+    // (used by deep-chain tasks); ties are lexicographic.
+    if (meta.granular) {
+      variants.sort((a, b) => b.length - a.length || a.join("\u0000").localeCompare(b.join("\u0000")));
+    } else {
+      variants.sort((a, b) => a.length - b.length || a.join("\u0000").localeCompare(b.join("\u0000")));
+    }
     const path = variants[0];
     return {
       ok: payload.ok !== false,

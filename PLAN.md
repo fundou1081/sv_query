@@ -263,6 +263,14 @@ P108 evidence=true 成本 <已完成>
 P109 svq_query 默认决策 <已完成>
 -- P109.1 opt-in profile，不做全局默认 <已完成>
 
+P110 Blind realistic validation <已完成>
+-- P110.1 首轮 blind/发现 path 默认 bug <已完成>
+-- P110.2 fresh set 9/10，false-confident 0 <已完成>
+
+P111 Snapshot/evidence 一键化 <待做>
+-- P111.1 fresh project -> snapshot -> query <待做>
+-- P111.2 evidence 自动 source root <待做>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

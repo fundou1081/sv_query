@@ -17,8 +17,8 @@ agent profile with one narrow, reproducible interface.
 array length for fanin/fanout/neighbors and `hop_count` for path.
 `details=true` adds `kind`, `condition`, and `distance` for neighbors.
 `neighborhood` performs a bounded fanin BFS and returns node/edge metadata.
-`path` requests `paths --all` and returns the most granular variant (most
-nodes, lexicographic tie-break).
+`path` requests `paths --all` and defaults to the shortest variant. Pass
+`granular=true` to prefer the most-node variant (used by deep-chain tasks).
 
 ## Install
 

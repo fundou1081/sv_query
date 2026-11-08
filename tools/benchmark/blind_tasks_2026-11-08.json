@@ -1,0 +1,84 @@
+{
+  "protocol": "P110 blind realistic structural validation",
+  "frozen_at": "2026-11-08",
+  "note": "Questions and ground truth frozen before any agent run. Ground truth derived by source inspection plus canonical-ID lookup; not produced by an agent.",
+  "tasks": [
+    {
+      "id": "blind_axi_s_axi_rvalid",
+      "design": "axi",
+      "snapshot": "ad_axi",
+      "source_root": "/tmp/lr_ad_prep/axi",
+      "kind": "neighbors",
+      "question": "For the AXI adapter top-level handshake output `axi_adapter.s_axi_rvalid`, list ALL direct driver IDs and ALL direct load IDs at distance 1. Preserve empty lists when there are none.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "drivers": ["axi_adapter.axi_adapter_rd_inst.s_axi_rvalid"],
+          "loads": []
+        }
+      }
+    },
+    {
+      "id": "blind_axi_m_axi_awaddr",
+      "design": "axi",
+      "snapshot": "ad_axi",
+      "source_root": "/tmp/lr_ad_prep/axi",
+      "kind": "neighbors",
+      "question": "For the AXI adapter top-level write address bus `axi_adapter.m_axi_awaddr`, list ALL direct driver IDs and ALL direct load IDs at distance 1. Preserve empty lists when there are none.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "drivers": ["axi_adapter.axi_adapter_wr_inst.m_axi_awaddr"],
+          "loads": []
+        }
+      }
+    },
+    {
+      "id": "blind_serv_bufreg_data",
+      "design": "serv",
+      "snapshot": "ad_serv",
+      "source_root": "/tmp/lr_ad_prep/serv",
+      "kind": "loads",
+      "question": "For the SERV RF buffer internal register `serv_rf_top.cpu.bufreg.data`, list ALL direct load IDs at distance 1. Do not infer beyond the direct edge.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "loads": ["serv_rf_top.cpu.bufreg.o_ext_rs1"]
+        }
+      }
+    },
+    {
+      "id": "blind_pico_rvalid_to_xfer",
+      "design": "pico",
+      "snapshot": "ad_pico",
+      "source_root": "/tmp/lr_ad_prep/pico",
+      "kind": "path",
+      "question": "In the Pico AXI adapter, find the directed structural path from `picorv32_axi.axi_adapter.mem_axi_rvalid` to `picorv32_axi.axi_adapter.xfer_done`. Return the ordered canonical path and hop count (number of edges).",
+      "expected": {
+        "found": true,
+        "answer": {
+          "path": [
+            "picorv32_axi.axi_adapter.mem_axi_rvalid",
+            "picorv32_axi.axi_adapter.mem_ready",
+            "picorv32_axi.axi_adapter.xfer_done"
+          ],
+          "hop_count": 2
+        }
+      }
+    },
+    {
+      "id": "blind_pico_unknown_signal",
+      "design": "pico",
+      "snapshot": "ad_pico",
+      "source_root": "/tmp/lr_ad_prep/pico",
+      "kind": "unknown",
+      "question": "Query the direct neighbors of `picorv32_axi.axi_adapter.mem_ready_q`. If the signal does not exist in the snapshot, report found=false with reason `not_found`. Do NOT invent a similar name.",
+      "expected": {
+        "found": false,
+        "answer": {
+          "reason": "not_found"
+        }
+      }
+    }
+  ]
+}

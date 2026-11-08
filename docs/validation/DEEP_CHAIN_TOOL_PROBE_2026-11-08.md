@@ -79,6 +79,9 @@ path / hop_count / register / xor_node / mux_control / mux_node / combinational
 2. 或新增 `drive_chain` intent，由工具展开 ternary/reg；
 3. 或返回 `paths --all` 变体，让工具选“最细粒度且合法”的路径。
 
+> P110 更新：path 默认已改为最短；deep_chain 复测需显式 `granular=true`。
+> 这次 P103 记录的是修改前的行为。
+
 ## 6. 状态
 
 ```text

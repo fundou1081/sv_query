@@ -140,6 +140,21 @@ MiniMax 9.0s / DeepSeek 4.7s mean
 这是**接口 pilot**，不是通用 debug 证据。  
 报告：[TOOL_PILOT_12_2026-11-08.md](TOOL_PILOT_12_2026-11-08.md)
 
+### I. Blind realistic validation（P110）
+
+5 个真实设计（AXI/SERV/Pico）blind tasks，固定 ground truth：
+
+```text
+fresh set B: 9/10 exact
+0/10 false-confident
+MiniMax 5/5
+DeepSeek 4/5（1 个 JSON 格式失败）
+```
+
+首轮 blind 暴露了一个真实 path 默认 bug（选最长变体绕路），已修正为
+默认最短、`granular=true` 才选最长。  
+报告：[BLIND_REALISTIC_2026-11-08.md](BLIND_REALISTIC_2026-11-08.md)
+
 ### F. 回归
 
 ```text

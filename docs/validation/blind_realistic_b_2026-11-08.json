@@ -1,0 +1,359 @@
+{
+  "protocol": "P110b fresh blind realistic structural validation",
+  "frozen_at": "2026-11-08",
+  "note": "Fresh tasks frozen before any agent run, after the P110a path/default fixes. No task-specific tuning after this freeze.",
+  "tasks": [
+    {
+      "id": "blind_b_axi_s_axi_rready",
+      "design": "axi",
+      "snapshot": "ad_axi",
+      "source_root": "/tmp/lr_ad_prep/axi",
+      "kind": "neighbors",
+      "question": "For the AXI adapter top-level handshake input `axi_adapter.s_axi_rready`, list ALL direct driver IDs and ALL direct load IDs at distance 1. Preserve empty lists when there are none.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "drivers": [],
+          "loads": [
+            "axi_adapter.axi_adapter_rd_inst.s_axi_rready"
+          ]
+        }
+      }
+    },
+    {
+      "id": "blind_b_axi_m_axi_wdata",
+      "design": "axi",
+      "snapshot": "ad_axi",
+      "source_root": "/tmp/lr_ad_prep/axi",
+      "kind": "neighbors",
+      "question": "For the AXI adapter top-level write data bus `axi_adapter.m_axi_wdata`, list ALL direct driver IDs and ALL direct load IDs at distance 1. Preserve empty lists when there are none.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "drivers": [
+            "axi_adapter.axi_adapter_wr_inst.m_axi_wdata"
+          ],
+          "loads": []
+        }
+      }
+    },
+    {
+      "id": "blind_b_serv_dbus_address",
+      "design": "serv",
+      "snapshot": "ad_serv",
+      "source_root": "/tmp/lr_ad_prep/serv",
+      "kind": "neighbors",
+      "question": "For the SERV buffer-register output `serv_rf_top.cpu.bufreg.o_dbus_adr`, list ALL direct driver IDs and ALL direct load IDs at distance 1.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "drivers": [
+            "serv_rf_top.cpu.bufreg.data[31:2]"
+          ],
+          "loads": [
+            "serv_rf_top.cpu.o_dbus_adr"
+          ]
+        }
+      }
+    },
+    {
+      "id": "blind_b_pico_bvalid_to_xfer",
+      "design": "pico",
+      "snapshot": "ad_pico",
+      "source_root": "/tmp/lr_ad_prep/pico",
+      "kind": "path",
+      "question": "In the Pico AXI adapter, find the directed structural path from `picorv32_axi.axi_adapter.mem_axi_bvalid` to `picorv32_axi.axi_adapter.xfer_done`. Return the ordered canonical path and hop count (number of edges).",
+      "expected": {
+        "found": true,
+        "answer": {
+          "path": [
+            "picorv32_axi.axi_adapter.mem_axi_bvalid",
+            "picorv32_axi.axi_adapter.mem_ready",
+            "picorv32_axi.axi_adapter.xfer_done"
+          ],
+          "hop_count": 2
+        }
+      }
+    },
+    {
+      "id": "blind_b_pico_unknown_signal",
+      "design": "pico",
+      "snapshot": "ad_pico",
+      "source_root": "/tmp/lr_ad_prep/pico",
+      "kind": "unknown",
+      "question": "Query the direct neighbors of `picorv32_axi.axi_adapter.mem_ready_d`. If the signal does not exist in the snapshot, report found=false with reason `not_found`. Do NOT invent a similar name.",
+      "expected": {
+        "found": false,
+        "answer": {
+          "reason": "not_found"
+        }
+      }
+    }
+  ],
+  "results": [
+    {
+      "task_id": "blind_b_axi_s_axi_rready",
+      "model": "MiniMax-M3",
+      "kind": "neighbors",
+      "duration_ms": 4894,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [],
+        "loads": [
+          "axi_adapter.axi_adapter_rd_inst.s_axi_rready"
+        ]
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "id": "axi_adapter.axi_adapter_rd_inst.s_axi_rready",
+          "kind": "PORT_IN",
+          "distance": 1,
+          "file": "axi_adapter.v",
+          "line": 125
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "tool_calls": 1,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/blind_b_axi_s_axi_rready",
+      "stderr": ""
+    },
+    {
+      "task_id": "blind_b_axi_s_axi_rready",
+      "model": "DeepSeek-Flash",
+      "kind": "neighbors",
+      "duration_ms": 4420,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [],
+        "loads": [
+          "axi_adapter.axi_adapter_rd_inst.s_axi_rready"
+        ]
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/blind_b_axi_s_axi_rready",
+      "stderr": "dsh: reasoning:\nNow produce JSON. Drivers empty, loads one. Task says list ALL direct driver IDs and loads. Found true. Evidence empty list (as schema). Confidence high.\n\nLet me double-check with evidence maybe? Not needed.\n"
+    },
+    {
+      "task_id": "blind_b_axi_m_axi_wdata",
+      "model": "MiniMax-M3",
+      "kind": "neighbors",
+      "duration_ms": 5857,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_wr_inst.m_axi_wdata"
+        ],
+        "loads": []
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "id": "axi_adapter.axi_adapter_wr_inst.m_axi_wdata",
+          "kind": "PORT_OUT",
+          "condition": "",
+          "distance": 1,
+          "file": "axi_adapter.v",
+          "line": 143
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "tool_calls": 1,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/blind_b_axi_m_axi_wdata",
+      "stderr": ""
+    },
+    {
+      "task_id": "blind_b_axi_m_axi_wdata",
+      "model": "DeepSeek-Flash",
+      "kind": "neighbors",
+      "duration_ms": 4663,
+      "rc": 0,
+      "parsed": true,
+      "found": null,
+      "answer": null,
+      "confidence": null,
+      "evidence": [],
+      "exact": false,
+      "false_confident": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/blind_b_axi_m_axi_wdata",
+      "stderr": "dsh: reasoning:\nBoth queries succeeded. Drivers: 1, loads: empty. Confidence high. Evidence maybe include the query facts. The schema says evidence: []. Could include evidence strings. I'll keep it valid JSON with evidence describing tool results.\n"
+    },
+    {
+      "task_id": "blind_b_serv_dbus_address",
+      "model": "MiniMax-M3",
+      "kind": "neighbors",
+      "duration_ms": 5711,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [
+          "serv_rf_top.cpu.bufreg.data[31:2]"
+        ],
+        "loads": [
+          "serv_rf_top.cpu.o_dbus_adr"
+        ]
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "snapshot": "ad_serv",
+          "intent": "fanin",
+          "signal": "serv_rf_top.cpu.bufreg.o_dbus_adr",
+          "distance": 1,
+          "driver": {
+            "id": "serv_rf_top.cpu.bufreg.data[31:2]",
+            "kind": "REG"
+          }
+        },
+        {
+          "snapshot": "ad_serv",
+          "intent": "fanout",
+          "signal": "serv_rf_top.cpu.bufreg.o_dbus_adr",
+          "distance": 1,
+          "load": {
+            "id": "serv_rf_top.cpu.o_dbus_adr",
+            "kind": "PORT_OUT"
+          }
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/blind_b_serv_dbus_address",
+      "stderr": ""
+    },
+    {
+      "task_id": "blind_b_serv_dbus_address",
+      "model": "DeepSeek-Flash",
+      "kind": "neighbors",
+      "duration_ms": 11337,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [
+          "serv_rf_top.cpu.bufreg.data[31:2]"
+        ],
+        "loads": [
+          "serv_rf_top.cpu.o_dbus_adr"
+        ]
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/blind_b_serv_dbus_address",
+      "stderr": "dsh: reasoning:\nDirect results. Let me verify evidence maybe optional. Return JSON.\n\nCould optionally check evidence for confidence. The results are clean. Evidence array can be empty or contain details. I'll include evidence entries maybe with the query facts. Instruction says evidence: [] — format allows list. I'll put the two query lines as evidence? Probably keep simple, maybe include canonical driver/load. Safer: evidence with short strings. But \"evidence\":[] in template. I'll include minimal evidence strings.\n\nActually strictly follow format: evidence is a list; empty is fine. But providing evidence improves trust. I'll include evidence objects? Unknown schema. Use empty array to be safe.\n\nConfidence high.\n"
+    },
+    {
+      "task_id": "blind_b_pico_bvalid_to_xfer",
+      "model": "MiniMax-M3",
+      "kind": "path",
+      "duration_ms": 6427,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "path": [
+          "picorv32_axi.axi_adapter.mem_axi_bvalid",
+          "picorv32_axi.axi_adapter.mem_ready",
+          "picorv32_axi.axi_adapter.xfer_done"
+        ],
+        "hop_count": 2
+      },
+      "confidence": "high",
+      "evidence": [
+        "path query on ad_pico returned picorv32_axi.axi_adapter.mem_axi_bvalid -> picorv32_axi.axi_adapter.mem_ready -> picorv32_axi.axi_adapter.xfer_done with count=2",
+        "fanout of mem_axi_bvalid has a single load: picorv32_axi.axi_adapter.mem_ready",
+        "fanin of xfer_done includes picorv32_axi.axi_adapter.mem_ready (plus clk and mem_valid)",
+        "neighbors of mem_ready show load picorv32_axi.axi_adapter.xfer_done (REG, condition !(!resetn), distance 1)"
+      ],
+      "exact": true,
+      "false_confident": false,
+      "tool_calls": 4,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/blind_b_pico_bvalid_to_xfer",
+      "stderr": ""
+    },
+    {
+      "task_id": "blind_b_pico_bvalid_to_xfer",
+      "model": "DeepSeek-Flash",
+      "kind": "path",
+      "duration_ms": 14734,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "path": [
+          "picorv32_axi.axi_adapter.mem_axi_bvalid",
+          "picorv32_axi.axi_adapter.mem_ready",
+          "picorv32_axi.axi_adapter.xfer_done"
+        ],
+        "hop_count": 2
+      },
+      "confidence": "high",
+      "evidence": [
+        "fanout(picorv32_axi.axi_adapter.mem_axi_bvalid) -> [picorv32_axi.axi_adapter.mem_ready]",
+        "fanout(picorv32_axi.axi_adapter.mem_ready) -> [picorv32_axi.axi_adapter.xfer_done, picorv32_axi.mem_ready]",
+        "fanin(picorv32_axi.axi_adapter.xfer_done) -> [clk, mem_valid, mem_ready]"
+      ],
+      "exact": true,
+      "false_confident": false,
+      "tool_calls": 7,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/blind_b_pico_bvalid_to_xfer",
+      "stderr": "ng:\nInteresting: neighborhood BFS follows fanin only maybe? It shows bvalid's parent. But fanout showed mem_ready. Neighborhood might be bounded fanin BFS per description (\"bounded fanin BFS\"). So it's fanin.\n\nThe path is likely bvalid -> mem_ready -> xfer_done, hop count 2. Let's verify mem_ready fanout and whether it directly feeds xfer_done.\ndsh: reasoning:\nPath confirmed: bvalid -> mem_ready -> xfer_done, 2 edges. Note the path tool failed, but fanout confirms directed edges. However, is there a direct edge bvalid -> xfer_done? No, bvalid fanout only mem_ready. Good.\n\nBut wait — there could be a shorter path? hop count 2 is minimal since no direct edge bvalid->xfer_done. Could there be alternative path of same length? bvalid only fanout mem_ready, so only one 2-hop path.\n\nAnswer JSON.\n"
+    },
+    {
+      "task_id": "blind_b_pico_unknown_signal",
+      "model": "MiniMax-M3",
+      "kind": "unknown",
+      "duration_ms": 20086,
+      "rc": 0,
+      "parsed": true,
+      "found": false,
+      "answer": {
+        "reason": "not_found"
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "tool_calls": 12,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/blind_b_pico_unknown_signal",
+      "stderr": ""
+    },
+    {
+      "task_id": "blind_b_pico_unknown_signal",
+      "model": "DeepSeek-Flash",
+      "kind": "unknown",
+      "duration_ms": 9147,
+      "rc": 0,
+      "parsed": true,
+      "found": false,
+      "answer": {
+        "reason": "not_found"
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "tool_calls": 5,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/blind_b_pico_unknown_signal",
+      "stderr": "ys report not_found. Still, verifying the snapshot works would raise confidence. Let me try a known signal like the parent module or \"picorv32_axi.axi_adapter.mem_ready\". Hmm, but instruction says do not invent a similar name — that's about not substituting a similar name for the answer. Testing a sample signal for snapshot health is fine but could be seen as inventing. I'll try one evidence query on the prefix to see if module exists? Actually evidence requires a node id.\n\nLet me just try neighbors on a plausible existing signal to confirm snapshot health, e.g., \"picorv32_axi.clk\". That's a common signal. This is diagnostic only.\ndsh: reasoning:\nSnapshot works; the target signal isn't present (evidence returns empty, neighbors/fanin/fanout fail). Report found=false with reason not_found.\n"
+    }
+  ]
+}

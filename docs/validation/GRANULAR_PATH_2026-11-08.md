@@ -17,10 +17,14 @@ sv_query paths <src> <dst> --all --max 20 --directed --from-snapshot ...
 compact 规则：
 
 ```text
-选择节点数最多的变体；
+默认选择最短路径；
+granular=true 才选择节点数最多的变体；
 节点数相同按字典序 tie-break；
 返回 path / count / variants / truncated。
 ```
+
+> P110 盲测发现：如果默认选最长路径，普通 path 任务会被“绕路”变体污染。
+> 因此 P110 后默认改为最短；deep_chain 需要显式 `granular=true`。
 
 Node tests：23/23。
 
