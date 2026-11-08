@@ -160,7 +160,7 @@ OpenTitan UART 可以被 sv_query 建图；
 不要把 6/10 简单归因于模型：
 
 - T1/T2/T4：6/6 成功；
-- T3：已修复（edge evidence）；原 run 的 T3 是修复前结果；
+- T3：已修复（edge evidence；CLI `trace evidence --from-snapshot` 也返回 edge location）；原 run 的 T3 是修复前结果；
 - T5：题目 schema 歧义，未计入准确率。
 
 核心下一步：

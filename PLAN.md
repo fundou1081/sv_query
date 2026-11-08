@@ -306,6 +306,7 @@ P119 Edge-level source evidence <已完成>
 -- P119.1 snapshot edge source_location/expression <已完成>
 -- P119.2 tool edge_evidence + source fallback <已完成>
 -- P119.3 OpenTitan T3 复测 <已完成>
+-- P119.4 trace evidence --from-snapshot edge fallback <已完成>
 
 ## 已完成（保留最近记录，便于核查上一轮）
 

@@ -31,6 +31,50 @@ logger = logging.getLogger(__name__)
 # Stage 3A: evidence 命令 - 召回 always/if 块完整源码
 # ==============================================================================
 
+def _snapshot_edge_evidence(graph, signal: str) -> dict | None:
+    """Build assignment-level evidence from snapshot edges.
+
+    A snapshot has no source text, but P119 edges carry source_location and
+    expression. Prefer a functional driver edge with an expression over a
+    clock/reset edge, so evidence points at the assignment rather than the
+    declaration or reset branch.
+    """
+    candidates = []
+    for src, dst in graph.edges():
+        if dst != signal:
+            continue
+        for edge in graph.get_edges(src, dst):
+            loc = getattr(edge, "source_location", None)
+            if loc is None or not getattr(loc, "file", ""):
+                continue
+            candidates.append((edge, loc))
+    if not candidates:
+        return None
+    def is_const_edge(edge) -> bool:
+        node = graph.get_node(edge.src)
+        kind = getattr(getattr(node, "kind", None), "name", "")
+        return kind == "CONST"
+
+    candidates.sort(key=lambda item: (
+        is_const_edge(item[0]),
+        not bool(getattr(item[0], "expression", "")),
+        getattr(item[1], "line_start", 0),
+        item[0].src,
+    ))
+    edge, loc = candidates[0]
+    return {
+        "signal": signal,
+        "source_location": loc.to_dict(),
+        "source_text": getattr(edge, "expression", "") or "",
+        "kind": getattr(edge.kind, "name", str(edge.kind)),
+        "driver": edge.src,
+        "condition": edge.condition,
+        "expression": edge.expression,
+        "is_verified": True,
+        "credibility_score": 1.0,
+    }
+
+
 def evidence(
     signal: str = typer.Argument(None, help="Signal to query (e.g., top.q). Optional when --batch or --batch-file is used."),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
@@ -77,7 +121,10 @@ def evidence(
                     ev_dicts = [_evidence_to_dict(e) for e in evidences]
                 else:
                     ev = resolver.resolve(_query_sig)
-                    ev_dicts = _evidence_to_dict(ev)
+                    if from_snapshot and (not ev or not getattr(ev, "source_text", "")):
+                        ev_dicts = _snapshot_edge_evidence(_graph, _query_sig)
+                    else:
+                        ev_dicts = _evidence_to_dict(ev)
                 signals_result.append({
                     "signal": sig,
                     "index": i,

@@ -88,9 +88,18 @@ Node tests：72/72 仍通过。
 
 - node declaration evidence 与 edge assignment evidence 现在分开；
 - 旧 snapshot 没有 edge evidence；
-- `trace evidence --from-snapshot` 仍不是完整 edge evidence 渲染器，工具走自己的 edge_evidence；
+- `trace evidence --from-snapshot` 现在有 edge-location fallback（没有 source text），
+  工具走自己的 edge_evidence；
 - 只验证了 OpenTitan UART 一个 block；
 - T5 的 schema 歧义仍未解决。
+
+## 6.1 CLI parity
+
+补了 `trace evidence --from-snapshot` 的 edge-location fallback：
+
+- snapshot 没有 source text，所以不伪造 source_text；
+- 返回 edge 的 file/line/expression/condition；
+- 对 `count_q` 等 fixture 已测。
 
 ## 7. 结论
 

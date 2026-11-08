@@ -56,3 +56,18 @@ def test_snapshot_edges_keep_source_evidence():
     assert edges, "snapshot must retain edge source locations"
     assert any(e["source_location"].get("line_start", 0) > 0 for e in edges)
     assert any(e.get("expression") for e in edges)
+
+
+def test_trace_evidence_from_snapshot_uses_edge_location():
+    snap_dir = tempfile.mkdtemp(prefix="svq_d_evcmd_")
+    env = {**os.environ, "SVQ_SNAPSHOT_DIR": snap_dir}
+    r = _run("snapshot", "save", str(FL), "--filelist", str(FL),
+             "--tag", "d_ev", "--json", env=env)
+    assert r.returncode == 0, r.stderr[-300:]
+    r = _run("trace", "evidence", "uart_top.rx_fifo.count_q",
+             "--from-snapshot", "d_ev", "--json", env=env)
+    assert r.returncode == 0, r.stderr[-400:]
+    d = json.loads(r.stdout)
+    ev = d["evidence"]
+    assert ev["source_location"]["file"]
+    assert ev["source_location"]["line_start"] > 0
