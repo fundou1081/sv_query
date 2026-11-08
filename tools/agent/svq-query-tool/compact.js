@@ -8,8 +8,10 @@
 
 export const INTENTS = ["fanin", "fanout", "neighbors", "path", "neighborhood", "evidence"];
 
-function fail(message) {
-  throw new Error(`svq compact: ${message}`);
+function fail(message, payload = undefined) {
+  const err = new Error(`svq compact: ${message}`);
+  err.payload = payload;
+  throw err;
 }
 
 function isPlainObject(value) {
@@ -28,7 +30,7 @@ function assertSuccess(payload, label) {
     fail(`${label} payload must be an object`);
   }
   if (payload.ok === false) {
-    fail(`${label} returned failure: ${failureDetail(payload)}`);
+    fail(`${label} returned failure: ${failureDetail(payload)}`, payload);
   }
 }
 
@@ -72,7 +74,7 @@ export function compactFanin(payload, meta = {}) {
   const rows = signalRows(payload, "drivers", "fanin");
   const drivers = rows.map((r) => r.id);
   const out = {
-    ok: true, intent: "fanin", snapshot: meta.snapshot,
+    ok: true, status: "ok", found: true, intent: "fanin", snapshot: meta.snapshot,
     signal: meta.signal,
     drivers,
     count: drivers.length,
@@ -86,7 +88,7 @@ export function compactFanout(payload, meta = {}) {
   const rows = signalRows(payload, "loads", "fanout");
   const loads = rows.map((r) => r.id);
   const out = {
-    ok: true, intent: "fanout", snapshot: meta.snapshot,
+    ok: true, status: "ok", found: true, intent: "fanout", snapshot: meta.snapshot,
     signal: meta.signal,
     loads,
     count: loads.length,
@@ -102,7 +104,7 @@ export function compactNeighbors(driverPayload, loadPayload, meta = {}) {
   const drivers = driverRows.map((r) => r.id);
   const loads = loadRows.map((r) => r.id);
   const out = {
-    ok: true, intent: "neighbors", snapshot: meta.snapshot,
+    ok: true, status: "ok", found: true, intent: "neighbors", snapshot: meta.snapshot,
     signal: meta.signal,
     drivers,
     loads,
@@ -130,8 +132,10 @@ export function compactPath(payload, meta = {}) {
   if (Array.isArray(payload.all_paths)) {
     const variants = payload.all_paths.filter((x) => Array.isArray(x) && x.length > 0);
     if (variants.length === 0) {
-      return { ok: payload.ok !== false, intent: "path", snapshot: meta.snapshot,
-               path: [], count: null, variants: 0, truncated: !!payload.truncated };
+      return { ok: false, status: "not_found", found: false, intent: "path",
+               snapshot: meta.snapshot, path: [], count: null,
+               variants: 0, truncated: !!payload.truncated,
+               error: { code: "E_PATH_NOT_FOUND", message: "no directed path found" } };
     }
     // Default: shortest path. `granular` opts into the most-node variant
     // (used by deep-chain tasks); ties are lexicographic.
@@ -142,14 +146,19 @@ export function compactPath(payload, meta = {}) {
     }
     const path = variants[0];
     return {
-      ok: payload.ok !== false,
+      ok: payload.ok !== false, status: "ok", found: true,
       intent: "path", snapshot: meta.snapshot,
       path, count: path.length - 1,
       variants: variants.length, truncated: !!payload.truncated,
     };
   }
+  if (payload.found === false) {
+    return { ok: false, status: "not_found", found: false, intent: "path",
+             snapshot: meta.snapshot, path: [], count: null,
+             error: { code: "E_PATH_NOT_FOUND", message: "no directed path found" } };
+  }
   return {
-    ok: payload.ok !== false,
+    ok: payload.ok !== false, status: "ok", found: true,
     intent: "path", snapshot: meta.snapshot,
     path: payload.path || [],
     count: payload.hop_count ?? null,

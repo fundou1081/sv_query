@@ -13,8 +13,12 @@ agent profile with one narrow, reproducible interface.
 | `neighborhood` | `snapshot`, `signal`, `depth` | `{ ok, intent, snapshot, signal, nodes, edges, op_ternary, conditions, condition_atoms, count, truncated }` |
 | `evidence` | `snapshot`, `signal` | `{ ok, intent, snapshot, signal, evidence: {file,line,source_line,source_context} }` |
 
-`drivers` / `loads` / `path` are arrays of canonical signal IDs. `count` is the
-array length for fanin/fanout/neighbors and `hop_count` for path.
+Every result has `ok`, `status` (`ok|not_found|ambiguous|truncated|error`),
+and `found`. Empty neighbors are a successful fact (`ok:true, found:true,
+count:0`); missing signals/paths/evidence are `ok:false, status:not_found`
+with an error code. `drivers` / `loads` / `path` are arrays of canonical
+signal IDs. `count` is the array length for fanin/fanout/neighbors and
+`hop_count` for path.
 `details=true` adds `kind`, `condition`, and `distance` for neighbors.
 `neighborhood` performs a bounded fanin BFS and returns node/edge metadata.
 `path` requests `paths --all` and defaults to the shortest variant. Pass

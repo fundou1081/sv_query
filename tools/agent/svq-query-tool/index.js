@@ -65,6 +65,31 @@ async function addEvidence(out, args) {
   return addEvidenceWith(out, args, evidenceDeps());
 }
 
+function failureResult(args, err) {
+  const payload = err.payload || {};
+  const row = payload.result?.signals?.[0] || {};
+  const first = payload.errors?.[0] || {};
+  const code = row.error_code || first.error_code || err.code || "E_QUERY_FAILED";
+  let status = "error";
+  if (row.resolution === "not_found" || code === "E_SIGNAL_NOT_FOUND") {
+    status = "not_found";
+  } else if (row.resolution === "ambiguous" || row.top_ambiguous) {
+    status = "ambiguous";
+  }
+  return {
+    ok: false, status, found: false,
+    intent: args.intent, snapshot: args.snapshot,
+    signal: args.signal || null, dst: args.dst || null,
+    error: {
+      code,
+      message: row.error || first.error || err.message || "query failed",
+      candidates: row.candidates || [],
+      suggestions: row.suggestions || [],
+    },
+    evidence_available: false,
+  };
+}
+
 export function apply(ctx) {
   ctx.tools.register(defineTool({
     name: "svq_query",
@@ -113,6 +138,16 @@ export function apply(ctx) {
       }],
     },
     async execute(args) {
+      try {
+        return await executeInner(args);
+      } catch (err) {
+        return failureResult(args, err);
+      }
+    },
+  }));
+}
+
+async function executeInner(args) {
       if (!INTENTS.includes(args.intent)) {
         throw new Error(`intent must be one of: ${INTENTS.join(", ")}`);
       }
@@ -122,8 +157,16 @@ export function apply(ctx) {
       if (args.intent === "evidence") {
         if (!args.signal) throw new Error("evidence requires signal");
         const rec = await collectEvidence(args.snapshot, [args.signal]);
-        return { ok: true, intent: "evidence", snapshot: args.snapshot,
-                 signal: args.signal, evidence: rec };
+        if (!rec || !rec[args.signal]) {
+          return { ok: false, status: "not_found", found: false,
+                   intent: "evidence", snapshot: args.snapshot,
+                   signal: args.signal, evidence: rec || {},
+                   error: { code: "E_EVIDENCE_NOT_FOUND",
+                             message: "no evidence for signal" } };
+        }
+        return { ok: true, status: "ok", found: true,
+                 intent: "evidence", snapshot: args.snapshot,
+                 signal: args.signal, evidence_available: true, evidence: rec };
       }
       const base = ["--from-snapshot", args.snapshot, "--json"];
       const depth = args.depth ?? 1;
@@ -157,6 +200,4 @@ export function apply(ctx) {
       }
       const payload = await fetch(args.intent === "fanin" ? "drivers" : "loads");
       return await addEvidence(compactResult(args.intent, payload, meta), args);
-    },
-  }));
 }
