@@ -292,6 +292,11 @@ P116 Answer JSON format robustness <已完成>
 -- P116.1 tolerant parser + json_repaired <已完成>
 -- P116.2 P115 rescore 40/40 <已完成>
 
+P117 Constrained verify claim <已完成>
+-- P117.1 verify claim --from-snapshot <已完成>
+-- P117.2 tool intent=verify <已完成>
+-- P117.3 3 claims ×2 模型 6/6 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

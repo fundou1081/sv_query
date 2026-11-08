@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import { join, isAbsolute, resolve } from "node:path";
 import { promisify } from "node:util";
 import { defineTool } from "@deepseek-ai/dsh-tools";
-import { INTENTS, compactResult } from "./compact.js";
+import { INTENTS, compactResult, compactVerify } from "./compact.js";
 import {
   addEvidence as addEvidenceWith,
   collectEvidence as collectEvidenceWith,
@@ -75,7 +75,7 @@ export function apply(ctx) {
     parameters: {
       intent: {
         type: "string", required: true, enum: INTENTS,
-        description: "fanin, fanout, neighbors, path (shortest), deep_path (longest variant), neighborhood (bounded fanin BFS), or evidence (source file/line context for one node).",
+        description: "fanin, fanout, neighbors, path (shortest), deep_path (longest), neighborhood, evidence, or verify (verify one claim).",
       },
       snapshot: {
         type: "string", required: true,
@@ -100,6 +100,11 @@ export function apply(ctx) {
       evidence: {
         type: "boolean",
         description: "Include file/line/source_line for returned node ids.",
+      },
+      claim: {
+        type: "object",
+        additionalProperties: true,
+        description: "Verify intent only: claim object, e.g. {type:'driver',signal,dst?}.",
       },
       granular: {
         type: "boolean",
@@ -129,6 +134,15 @@ async function executeInner(args) {
       }
       if (!/^[A-Za-z0-9_.-]+$/.test(args.snapshot)) {
         throw new Error("invalid snapshot tag");
+      }
+      if (args.intent === "verify") {
+        if (!args.claim || typeof args.claim !== "object") {
+          throw new Error("verify requires a claim object");
+        }
+        const payload = await query(["verify", "claim", "--from-snapshot",
+                                     args.snapshot, "--claim",
+                                     JSON.stringify(args.claim), "--json"]);
+        return await addEvidence(compactVerify(payload, { snapshot: args.snapshot }), args);
       }
       if (args.intent === "evidence") {
         if (!args.signal) throw new Error("evidence requires signal");

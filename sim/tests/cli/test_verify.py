@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -10,9 +11,9 @@ STRUCT = ROOT / "sim" / "tests" / "fixtures" / "json_contract" / "struct.sv"
 BITSLICE = ROOT / "sim" / "tests" / "fixtures" / "json_contract" / "bitslice.sv"
 
 
-def _run(*args):
+def _run(*args, env=None):
     return subprocess.run(["sv_query", *args], capture_output=True, text=True,
-                          timeout=120, cwd=str(ROOT))
+                          timeout=120, cwd=str(ROOT), env=env)
 
 
 def _json(*args):
@@ -119,3 +120,20 @@ def test_bit_level_structural_consistency():
     assert c["bit_select_checked"] == 10
     assert c["index_like"] == 0
     assert c["coverage"]["scope"] == "all_parent_nodes"
+
+
+def test_claim_from_snapshot(tmp_path):
+    env = os.environ.copy()
+    env["SVQ_SNAPSHOT_DIR"] = str(tmp_path)
+    r = _run("snapshot", "save", str(STRUCT), "--tag", "verify_snap", "--json",
+             env=env)
+    assert r.returncode == 0, r.stderr[-400:]
+    r = _run("verify", "claim", "--from-snapshot", "verify_snap",
+             "--claim", json.dumps({
+                 "type": "driver", "signal": "top.u.y", "driver": "top.u.a"
+             }), "--json", env=env)
+    assert r.returncode == 0, r.stderr[-400:]
+    d = json.loads(r.stdout)
+    assert d["ok"] is True
+    assert d["params"]["from_snapshot"] == "verify_snap"
+    assert d["result"]["status"] == "verified"

@@ -19,7 +19,7 @@ import typer
 
 from cli._common import _build_tracer, handle_compilation_error
 from cli._output import emit_json
-from cli.core.semantic.trace_common import resolve_signal
+from cli.core.semantic.trace_common import resolve_signal, _load_tracer_from_snapshot
 from trace.core.compiler import CompilationError
 from trace.core.query.structural import StructuralError, symmetry_findings
 
@@ -29,7 +29,13 @@ verify_app = typer.Typer(help="客观检查：双向一致性 + claim verificati
 # ----------------------------------------------------------------------------
 # 共享
 # ----------------------------------------------------------------------------
-def _build(file, filelist, log_level: str):
+def _build(file, filelist, log_level: str, from_snapshot: str | None = None):
+    if from_snapshot:
+        if file or filelist:
+            raise ValueError("--from-snapshot is mutually exclusive with --file/--filelist")
+        return _load_tracer_from_snapshot(from_snapshot, log_level=log_level)
+    if not file and not filelist:
+        raise ValueError("Either --file, --filelist, or --from-snapshot must be provided")
     tracer = _build_tracer(file=file, filelist=filelist, log_level=log_level)
     tracer.build_graph()
     return tracer
@@ -515,6 +521,8 @@ def claim_cmd(
     claim_file: Path = typer.Option(None, "--claim-file", help="JSON claim file"),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str = typer.Option(None, "--filelist", help="filelist (.f/.fl) for multi-file projects"),
+    from_snapshot: str = typer.Option(None, "--from-snapshot",
+                                      help="Load graph from a saved snapshot tag (skip SV parse)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     log_level: str = typer.Option("WARNING", "--log-level"),
@@ -528,7 +536,7 @@ def claim_cmd(
         if not isinstance(obj, dict):
             raise ValueError("claim must be a JSON object")
         typ = obj.get("type")
-        tracer = _build(file, filelist, log_level)
+        tracer = _build(file, filelist, log_level, from_snapshot=from_snapshot)
         graph = tracer.get_graph()
         if typ == "driver":
             result = _verify_driver(tracer, graph, obj)
@@ -542,7 +550,9 @@ def claim_cmd(
             raise ValueError(f"unknown claim type: {typ!r} "
                              "(driver|path|connection|bit)")
         data = {"ok": True, "command": "verify_claim",
-                "params": {"file": str(file) if file else None, "filelist": filelist},
+                "params": {"file": str(file) if file else None,
+                           "filelist": filelist,
+                           "from_snapshot": from_snapshot},
                 "result": result, "errors": []}
         _emit(data, json_output, pretty)
     except CompilationError as e:

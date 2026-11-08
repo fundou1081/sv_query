@@ -1,0 +1,212 @@
+{
+  "protocol": "P117 constrained verify claim pilot",
+  "frozen_at": "2026-11-08",
+  "note": "Claims frozen before the run; snapshot p111_axi built by setup_snapshot.py.",
+  "tasks": [
+    {
+      "id": "verify_axi_true_driver",
+      "design": "axi",
+      "snapshot": "p111_axi",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/axi/axi",
+      "kind": "verify",
+      "question": "Use intent=verify. Claim: {\"type\":\"driver\",\"signal\":\"axi_adapter.s_axi_awready\",\"driver\":\"axi_adapter.axi_adapter_wr_inst.s_axi_awready\"}. Return the verify status.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "verify_status": "verified"
+        }
+      }
+    },
+    {
+      "id": "verify_axi_false_driver",
+      "design": "axi",
+      "snapshot": "p111_axi",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/axi/axi",
+      "kind": "verify",
+      "question": "Use intent=verify. Claim: {\"type\":\"driver\",\"signal\":\"axi_adapter.s_axi_awready\",\"driver\":\"axi_adapter.axi_adapter_rd_inst.m_axi_araddr\"}. Return the verify status.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "verify_status": "contradicted"
+        }
+      }
+    },
+    {
+      "id": "verify_axi_unknown_signal",
+      "design": "axi",
+      "snapshot": "p111_axi",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/axi/axi",
+      "kind": "verify",
+      "question": "Use intent=verify. Claim: {\"type\":\"driver\",\"signal\":\"axi_adapter.no_such\",\"driver\":\"axi_adapter.x\"}. Return the verify status.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "verify_status": "unknown"
+        }
+      }
+    }
+  ],
+  "results": [
+    {
+      "task_id": "verify_axi_true_driver",
+      "model": "MiniMax-M3",
+      "kind": "verify",
+      "seed": 1,
+      "duration_ms": 4776,
+      "rc": 0,
+      "parsed": true,
+      "json_repaired": false,
+      "found": true,
+      "answer": {
+        "verify_status": "verified"
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "kind": "fanin",
+          "signal": "axi_adapter.s_axi_awready",
+          "driver": "axi_adapter.axi_adapter_wr_inst.s_axi_awready",
+          "transitive": false
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 1,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/verify_axi_true_driver_s1",
+      "stderr": ""
+    },
+    {
+      "task_id": "verify_axi_true_driver",
+      "model": "DeepSeek-Flash",
+      "kind": "verify",
+      "seed": 1,
+      "duration_ms": 3616,
+      "rc": 0,
+      "parsed": true,
+      "json_repaired": false,
+      "found": true,
+      "answer": {
+        "verify_status": "verified"
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 1,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/verify_axi_true_driver_s1",
+      "stderr": ""
+    },
+    {
+      "task_id": "verify_axi_false_driver",
+      "model": "MiniMax-M3",
+      "kind": "verify",
+      "seed": 1,
+      "duration_ms": 3888,
+      "rc": 0,
+      "parsed": true,
+      "json_repaired": false,
+      "found": true,
+      "answer": {
+        "verify_status": "contradicted"
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "kind": "fanin",
+          "signal": "axi_adapter.s_axi_awready",
+          "actual_drivers": [
+            "axi_adapter.axi_adapter_wr_inst.s_axi_awready"
+          ],
+          "depth": 1,
+          "note": "axi_adapter.axi_adapter_rd_inst.m_axi_araddr is not in fanin(axi_adapter.s_axi_awready, depth=1)"
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 1,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/verify_axi_false_driver_s1",
+      "stderr": ""
+    },
+    {
+      "task_id": "verify_axi_false_driver",
+      "model": "DeepSeek-Flash",
+      "kind": "verify",
+      "seed": 1,
+      "duration_ms": 3340,
+      "rc": 0,
+      "parsed": true,
+      "json_repaired": false,
+      "found": true,
+      "answer": {
+        "verify_status": "contradicted"
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "kind": "fanin",
+          "signal": "axi_adapter.s_axi_awready",
+          "actual_drivers": [
+            "axi_adapter.axi_adapter_wr_inst.s_axi_awready"
+          ],
+          "reason": "axi_adapter.axi_adapter_rd_inst.m_axi_araddr is not in fanin(axi_adapter.s_axi_awready, depth=1)"
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 1,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/verify_axi_false_driver_s1",
+      "stderr": ""
+    },
+    {
+      "task_id": "verify_axi_unknown_signal",
+      "model": "MiniMax-M3",
+      "kind": "verify",
+      "seed": 1,
+      "duration_ms": 3720,
+      "rc": 0,
+      "parsed": true,
+      "json_repaired": false,
+      "found": true,
+      "answer": {
+        "verify_status": "unknown"
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 1,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/verify_axi_unknown_signal_s1",
+      "stderr": ""
+    },
+    {
+      "task_id": "verify_axi_unknown_signal",
+      "model": "DeepSeek-Flash",
+      "kind": "verify",
+      "seed": 1,
+      "duration_ms": 3690,
+      "rc": 0,
+      "parsed": true,
+      "json_repaired": false,
+      "found": true,
+      "answer": {
+        "verify_status": "unknown"
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 1,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/verify_axi_unknown_signal_s1",
+      "stderr": "dsh: reasoning:\nThe tool returned verify_status: unknown. Output JSON with found:true and answer.verify_status \"unknown\", evidence empty.\n"
+    }
+  ]
+}

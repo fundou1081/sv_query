@@ -13,6 +13,7 @@ agent profile with one narrow, reproducible interface.
 | `deep_path` | `snapshot`, `signal`, `dst` | same, longest variant |
 | `neighborhood` | `snapshot`, `signal`, `depth` | `{ ok, intent, snapshot, signal, nodes, edges, op_ternary, conditions, condition_atoms, count, truncated }` |
 | `evidence` | `snapshot`, `signal` | `{ ok, intent, snapshot, signal, evidence: {file,line,source_line,source_context} }` |
+| `verify` | `snapshot`, `claim` | `{ ok, status, verify_status, claim, evidence, counterevidence }` |
 
 Every result has `ok`, `status` (`ok|not_found|ambiguous|truncated|error`),
 and `found`. Empty neighbors are a successful fact (`ok:true, found:true,
@@ -86,8 +87,8 @@ or filesystem tools.
 - **No MIG / connections / instances**: the snapshot used here does not expose
   module-instance graph (MIG) data, so `connections`, `instances`, `ports`,
   `params`, and hierarchy queries are unavailable.
-- **Seven intents only**: `fanin`, `fanout`, `neighbors`, `path`,
-  `deep_path`, `neighborhood`, `evidence`; `path`/`deep_path` are directed and require `dst`;
+- **Eight intents only**: `fanin`, `fanout`, `neighbors`, `path`,
+  `deep_path`, `neighborhood`, `evidence`, `verify`; `path`/`deep_path` are directed and require `dst`;
   neighborhood is fanin-only and capped at depth 8. Evidence reads a bounded
   source context for returned nodes only; `SVQ_SOURCE_ROOT` must point at the
   source root.

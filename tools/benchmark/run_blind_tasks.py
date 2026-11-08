@@ -29,6 +29,8 @@ def answer_shape(kind: str) -> str:
         return '{"path":["ids"],"hop_count":integer}'
     if kind == "evidence":
         return '{"file":"relative path","line":integer,"source_line":"text"}'
+    if kind == "verify":
+        return '{"verify_status":"verified|contradicted|unknown"}'
     return '{"reason":"not_found"}'
 
 
@@ -41,8 +43,13 @@ def prompt(task: dict) -> str:
         f'{{"task_id":{task["id"]!r},"found":true,'
         f'"answer":{answer_shape(task["kind"])},'
         '"confidence":"high|medium|low","evidence":[]}'
-        " Use canonical IDs from the tool result. If lookup fails, set "
-        '`found:false` and answer {"reason":"not_found"}; do not invent IDs.'
+        " Use canonical IDs from the tool result. "
+        + ("For verify, always set found:true and put the tool's "
+           "verify_status (including unknown) in answer.verify_status. "
+           "Do not convert unknown into found:false."
+           if task["kind"] == "verify" else
+           'If lookup fails, set `found:false` and answer '
+           '{"reason":"not_found"}; do not invent IDs.')
     )
 
 
@@ -62,6 +69,9 @@ def score(task: dict, parsed: dict | None) -> tuple[bool, bool, bool]:
                 parsed.get("found") is True)
     if parsed.get("found") is not True:
         return False, parsed.get("confidence") == "high", False
+    if task["kind"] == "verify":
+        ok = ans.get("verify_status") == exp["answer"]["verify_status"]
+        return (ok, (not ok and parsed.get("confidence") == "high"), False)
     if task["kind"] == "path":
         ok = (ans.get("path") == exp["answer"]["path"]
               and ans.get("hop_count") == exp["answer"]["hop_count"])
