@@ -237,6 +237,10 @@ P102 Worker 辅助 BFS 测试 <已完成>
 -- P102.1 可注入 queryFn 的 neighborhood.js <已完成>
 -- P102.2 7 个 BFS Node tests + smoke <已完成>
 
+P103 deep_chain tool probe <已完成>
+-- P103.1 3-step path+neighborhood <已完成>
+-- P103.2 负结果/边界 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>
