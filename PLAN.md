@@ -253,6 +253,16 @@ P105 svq_query evidence intent <已完成>
 P106 evidence 默认关闭回归 <已完成>
 -- P106.1 12 题 ×2 模型 evidence=false <已完成>
 
+P107 Worker 辅助 evidence 测试 <已完成>
+-- P107.1 evidence.js 注入式重构 <已完成>
+-- P107.2 13 tests / 36 total <已完成>
+
+P108 evidence=true 成本 <已完成>
+-- P108.1 3-cell ×2 模型对照 <已完成>
+
+P109 svq_query 默认决策 <已完成>
+-- P109.1 opt-in profile，不做全局默认 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>
