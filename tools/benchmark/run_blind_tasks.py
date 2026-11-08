@@ -81,8 +81,8 @@ def score(task: dict, parsed: dict | None) -> tuple[bool, bool, bool]:
     return ok, false_conf, false_found
 
 
-def run_one(task: dict, model: dict) -> dict:
-    ws = WORK / model["label"].replace(".", "_") / task["id"]
+def run_one(task: dict, model: dict, seed: int = 1) -> dict:
+    ws = WORK / model["label"].replace(".", "_") / f"{task['id']}_s{seed}"
     if ws.exists():
         shutil.rmtree(ws)
     ws.mkdir(parents=True)
@@ -105,6 +105,7 @@ def run_one(task: dict, model: dict) -> dict:
         calls = []
     return {
         "task_id": task["id"], "model": model["label"], "kind": task["kind"],
+        "seed": seed,
         "duration_ms": int((time.time() - t0) * 1000), "rc": r.returncode,
         "parsed": parsed is not None, "found": (parsed or {}).get("found"),
         "answer": (parsed or {}).get("answer"),
@@ -121,11 +122,12 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--models", nargs="*", default=["MiniMax-M3", "DeepSeek-Flash"])
     ap.add_argument("--tasks", type=Path, default=TASKS)
+    ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--output", type=Path, default=Path("/tmp/blind_pilot.json"))
     args = ap.parse_args()
     data = json.loads(args.tasks.read_text())
     models = [m for m in base.MODELS if m["label"] in args.models]
-    rows = [run_one(t, m) for t in data["tasks"] for m in models]
+    rows = [run_one(t, m, args.seed) for t in data["tasks"] for m in models]
     for r in rows:
         print(json.dumps({k: r[k] for k in
                           ("task_id", "model", "exact", "false_confident",

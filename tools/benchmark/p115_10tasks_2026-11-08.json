@@ -1,0 +1,77 @@
+{
+  "protocol": "P115 10-task x 2-seed validation",
+  "frozen_at": "2026-11-08",
+  "note": "Frozen before seed1/seed2 runs. No tool changes after this freeze.",
+  "tasks": [
+    {
+      "id": "p115_axi_s_axi_awready",
+      "design": "axi", "snapshot": "p111_axi", "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/axi/axi", "kind": "neighbors",
+      "question": "For `axi_adapter.s_axi_awready` in snapshot p111_axi, list all direct drivers and loads at distance 1.",
+      "expected": {"found": true, "answer": {"drivers": ["axi_adapter.axi_adapter_wr_inst.s_axi_awready"], "loads": []}}
+    },
+    {
+      "id": "p115_axi_m_axi_rdata",
+      "design": "axi", "snapshot": "p111_axi", "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/axi/axi", "kind": "neighbors",
+      "question": "For `axi_adapter.m_axi_rdata` in snapshot p111_axi, list all direct drivers and loads at distance 1. Empty driver list is valid.",
+      "expected": {"found": true, "answer": {"drivers": [], "loads": ["axi_adapter.axi_adapter_rd_inst.m_axi_rdata"]}}
+    },
+    {
+      "id": "p115_serv_bufreg_o_q",
+      "design": "serv", "snapshot": "p111_serv", "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/serv/serv", "kind": "neighbors",
+      "question": "For `serv_rf_top.cpu.bufreg.o_q` in snapshot p111_serv, list all direct drivers and loads at distance 1.",
+      "expected": {"found": true, "answer": {"drivers": ["serv_rf_top.cpu.bufreg.data[0]"], "loads": ["serv_rf_top.cpu.bufreg_q"]}}
+    },
+    {
+      "id": "p115_serv_ctrl_trap",
+      "design": "serv", "snapshot": "p111_serv", "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/serv/serv", "kind": "neighbors",
+      "question": "For `serv_rf_top.cpu.state.o_ctrl_trap` in snapshot p111_serv, list all direct drivers and loads at distance 1.",
+      "expected": {"found": true, "answer": {"drivers": ["serv_rf_top.cpu.state.i_new_irq", "serv_rf_top.cpu.state.i_e_op", "serv_rf_top.cpu.state.misalign_trap_sync"], "loads": ["serv_rf_top.cpu.state.o_bufreg_en", "serv_rf_top.cpu.trap"]}}
+    },
+    {
+      "id": "p115_pico_awvalid",
+      "design": "pico", "snapshot": "p111_pico", "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/pico", "kind": "neighbors",
+      "question": "For `picorv32_axi.axi_adapter.mem_axi_awvalid` in snapshot p111_pico, list all direct drivers and loads at distance 1.",
+      "expected": {"found": true, "answer": {"drivers": ["picorv32_axi.axi_adapter.mem_valid", "picorv32_axi.axi_adapter.mem_wstrb", "picorv32_axi.axi_adapter.ack_awvalid"], "loads": ["picorv32_axi.mem_axi_awvalid"]}}
+    },
+    {
+      "id": "p115_pico_bvalid_long_path",
+      "design": "pico", "snapshot": "p111_pico", "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/pico", "kind": "path",
+      "question": "Find the directed path from `picorv32_axi.axi_adapter.mem_axi_bvalid` to `picorv32_axi.axi_adapter.mem_valid` in snapshot p111_pico. Return canonical path and hop count.",
+      "expected": {"found": true, "answer": {"path": ["picorv32_axi.axi_adapter.mem_axi_bvalid", "picorv32_axi.axi_adapter.mem_ready", "picorv32_axi.mem_ready", "picorv32_axi.picorv32_core.mem_ready", "picorv32_axi.picorv32_core.mem_xfer", "picorv32_axi.picorv32_core.mem_done", "picorv32_axi.picorv32_core.decoder_trigger", "picorv32_axi.picorv32_core.mem_do_rinst", "picorv32_axi.picorv32_core.mem_la_firstword", "picorv32_axi.picorv32_core.mem_la_use_prefetched_high_word", "picorv32_axi.picorv32_core.mem_valid", "picorv32_axi.mem_valid", "picorv32_axi.axi_adapter.mem_valid"], "hop_count": 12}}
+    },
+    {
+      "id": "p115_axi_s_axi_wstrb",
+      "design": "axi", "snapshot": "p111_axi", "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/axi/axi", "kind": "neighbors",
+      "question": "For `axi_adapter.s_axi_wstrb` in snapshot p111_axi, list all direct drivers and loads at distance 1. Empty driver list is valid.",
+      "expected": {"found": true, "answer": {"drivers": [], "loads": ["axi_adapter.axi_adapter_wr_inst.s_axi_wstrb"]}}
+    },
+    {
+      "id": "p115_serv_evidence_data",
+      "design": "serv", "snapshot": "p111_serv", "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/serv/serv", "kind": "evidence",
+      "question": "Find source evidence for `serv_rf_top.cpu.bufreg.data` in snapshot p111_serv. Return relative file, line, and source_line.",
+      "expected": {"found": true, "answer": {"file": "serv_bufreg.v", "line": 41, "source_contains": "data"}}
+    },
+    {
+      "id": "p115_pico_no_path",
+      "design": "pico", "snapshot": "p111_pico", "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/pico", "kind": "no_path",
+      "question": "Find a directed path from `picorv32_axi.axi_adapter.mem_axi_awvalid` to `picorv32_axi.axi_adapter.mem_valid`. If none exists, report found=false and reason not_found.",
+      "expected": {"found": false, "answer": {"reason": "not_found"}}
+    },
+    {
+      "id": "p115_axi_unknown",
+      "design": "axi", "snapshot": "p111_axi", "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/axi/axi", "kind": "unknown",
+      "question": "Query direct neighbors of `axi_adapter.s_axi_bresp_q` in snapshot p111_axi. If absent, return found=false and reason not_found.",
+      "expected": {"found": false, "answer": {"reason": "not_found"}}
+    }
+  ]
+}
