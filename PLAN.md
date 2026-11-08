@@ -297,6 +297,11 @@ P117 Constrained verify claim <已完成>
 -- P117.2 tool intent=verify <已完成>
 -- P117.3 3 claims ×2 模型 6/6 <已完成>
 
+P118 OpenTitan UART real-project pilot <已完成>
+-- P118.1 filelist + snapshot <已完成>
+-- P118.2 5 real tasks ×2 模型 <已完成>
+-- P118.3 记录 edge-evidence 缺口 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

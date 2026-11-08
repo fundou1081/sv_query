@@ -1,0 +1,254 @@
+{
+  "meta": {
+    "block": "uart",
+    "block_path": "hw/ip/uart",
+    "top_module": "uart",
+    "snapshot": "opentitan_uart",
+    "snapshot_file": "/tmp/opentitan_svq/snapshots/opentitan_uart.json",
+    "snapshot_dir": "/tmp/opentitan_svq/snapshots",
+    "source_root": "/Users/fundou/.dsh/opencode-workers-lite/opentitan-pilot/workspace",
+    "filelist": "/tmp/opentitan_svq/opentitan.f",
+    "opentitan_repo": "/Users/fundou/my_dv_proj/openrtl/opentitan",
+    "opentitan_head": "a82c4892e88253924b3f7af05ce7494232ab263a",
+    "opentitan_head_subject": "[doc] Update ILA debugging documentation",
+    "opentitan_head_date": "Wed Nov 27 16:25:51 2024 +0100",
+    "sv_query_bin": "/Users/fundou/miniconda3/bin/sv_query",
+    "env": "export SVQ_SNAPSHOT_DIR=/tmp/opentitan_svq/snapshots",
+    "snapshot_stats": {
+      "files": 60,
+      "node_count": 4803,
+      "edge_count": 8507,
+      "elaboration_errors": 0,
+      "failed_files": 0,
+      "strict_mode": true,
+      "dynamic_nodes": 1,
+      "function_nodes": 30,
+      "snapshot_bytes": 5343985,
+      "build_time_cold_sec": 7.57,
+      "build_time_warm_sec": 7.80,
+      "query_latency_from_snapshot_sec": 0.30
+    },
+    "notes": [
+      "All signals below are real OpenTitan UART RTL signals; every id was resolved by sv_query against the opentitan_uart snapshot.",
+      "Ground truth was established by reading the RTL source under hw/ip/uart/rtl and hw/ip/prim/rtl and cross-checked with the recorded sv_query CLI commands.",
+      "The snapshot stores the signal graph but NOT source text: file/line evidence (T3) requires re-running with --filelist (or --file) instead of --from-snapshot."
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "block": "uart",
+      "snapshot": "opentitan_uart",
+      "source_root": "/Users/fundou/.dsh/opencode-workers-lite/opentitan-pilot/workspace",
+      "kind": "direct_neighbors",
+      "question": "In the OpenTitan UART block, look at the internal register-block signal that gates the write-enable of the interrupt-test (INTR_TEST) registers. What single signal drives it, and which nine register write-enable signals does it feed? Then look at one of those write-enable signals in turn: which two signals drive it, and does anything load it?",
+      "expected": {
+        "found": true,
+        "answer": {
+          "primary_signal": "uart.u_reg.intr_test_qe",
+          "primary_drivers": [
+            "uart.u_reg.intr_test_flds_we"
+          ],
+          "primary_loads": [
+            "uart.u_reg.reg2hw.intr_test.tx_watermark.qe",
+            "uart.u_reg.reg2hw.intr_test.rx_watermark.qe",
+            "uart.u_reg.reg2hw.intr_test.tx_done.qe",
+            "uart.u_reg.reg2hw.intr_test.rx_overflow.qe",
+            "uart.u_reg.reg2hw.intr_test.rx_frame_err.qe",
+            "uart.u_reg.reg2hw.intr_test.rx_break_err.qe",
+            "uart.u_reg.reg2hw.intr_test.rx_timeout.qe",
+            "uart.u_reg.reg2hw.intr_test.rx_parity_err.qe",
+            "uart.u_reg.reg2hw.intr_test.tx_empty.qe"
+          ],
+          "empty_side_signal": "uart.u_reg.reg2hw.intr_test.tx_watermark.qe",
+          "empty_side_drivers": [
+            "uart.u_reg.intr_test_qe",
+            "uart.u_reg.intr_test_flds_we"
+          ],
+          "empty_side_loads": [],
+          "empty_side_note": "This is the empty-side case: the signal has 2 drivers and 0 loads (it is a register-file output port, so nothing downstream consumes it inside the UART)."
+        },
+        "source_confirmation": {
+          "file": "hw/ip/uart/rtl/uart_reg_top.sv",
+          "lines": "727-729, 744, 760, 776, 792, 808, 824, 840, 856, 872",
+          "detail": "logic intr_test_qe; logic [8:0] intr_test_flds_we; assign intr_test_qe = &intr_test_flds_we; then 'assign reg2hw.intr_test.<field>.qe = intr_test_qe;' for each of the 9 INTR_TEST fields."
+        }
+      },
+      "ground_truth_command": "sv_query drivers --from-snapshot opentitan_uart 'uart.u_reg.intr_test_qe' --json ; sv_query loads --from-snapshot opentitan_uart 'uart.u_reg.intr_test_qe' --json ; sv_query drivers --from-snapshot opentitan_uart 'uart.u_reg.reg2hw.intr_test.tx_watermark.qe' --json ; sv_query loads --from-snapshot opentitan_uart 'uart.u_reg.reg2hw.intr_test.tx_watermark.qe' --json",
+      "verification": {
+        "expected_output": "drivers(intr_test_qe).count == 1 -> [uart.u_reg.intr_test_flds_we]; loads(intr_test_qe).count == 9; drivers(reg2hw.intr_test.tx_watermark.qe).count == 2 -> [intr_test_qe, intr_test_flds_we]; loads(...).count == 0"
+      }
+    },
+    {
+      "id": "T2",
+      "block": "uart",
+      "snapshot": "opentitan_uart",
+      "source_root": "/Users/fundou/.dsh/opencode-workers-lite/opentitan-pilot/workspace",
+      "kind": "directed_path",
+      "question": "Trace the directed (dataflow) path inside the OpenTitan UART from the chip-level receive pin input to the 16-bit shift register that accumulates the incoming byte. Which signals does the data pass through on the way, and how many hops is the path?",
+      "expected": {
+        "found": true,
+        "answer": {
+          "from": "uart.cio_rx_i",
+          "to": "uart.uart_core.rx_val_q",
+          "hop_count": 18,
+          "candidate_count": 48,
+          "path_canonicality_note": "The 18-hop path is the --canonical selection (policy max_nodes_then_lexicographic). WITHOUT --canonical, `paths --directed` returns a 9-hop path for the same pair, and `paths --all` enumerates 48 distinct directed paths (hop counts 10..19). The ground-truth command therefore pins --canonical.",
+          "path": [
+            "uart.cio_rx_i",
+            "uart.uart_core.rx",
+            "uart.uart_core.sync_rx.d_i",
+            "uart.uart_core.sync_rx.d_o",
+            "uart.uart_core.sync_rx.u_sync_1.d_i",
+            "uart.uart_core.sync_rx.u_sync_1.q_o",
+            "uart.uart_core.sync_rx.intq",
+            "uart.uart_core.sync_rx.u_sync_2.d_i",
+            "uart.uart_core.sync_rx.u_sync_2.q_o",
+            "uart.uart_core.sync_rx.q_o",
+            "uart.uart_core.rx_sync",
+            "uart.uart_core.rx_sync_q1",
+            "uart.uart_core.rx_sync_q2",
+            "uart.uart_core.rx_in_maj",
+            "uart.uart_core.rx_in_mx.ternary_rxnf_enable",
+            "uart.uart_core.rx_in_mx",
+            "uart.uart_core.rx_in.ternary_line_loopback",
+            "uart.uart_core.rx_in",
+            "uart.uart_core.rx_val_q"
+          ],
+          "physical_stages": "cio_rx_i -> uart_core.rx port -> prim_flop_2sync (2-stage synchronizer) -> rx_sync -> rx_sync_q1/rx_sync_q2 (majority-vote filter) -> rx_in_maj -> rx_in_mx (noise filter mux) -> rx_in (loopback mux) -> rx_val_q (16-bit shift register)"
+        },
+        "source_confirmation": {
+          "file": "hw/ip/uart/rtl/uart_core.sv",
+          "lines": "235-243 (sync_rx), 249-257 (rx_sync_q1/q2), 259-262 (rx_in_maj/rx_in_mx), 264-266 (rx_in), 305-308 (rx_val_q)",
+          "detail": "The RTL confirms the same order: prim_flop_2sync sync_rx -> always_ff rx_sync_q1/q2 -> assign rx_in_maj/rx_in_mx -> assign rx_in -> always_ff rx_val_q <= {rx_val_q[14:0], rx_in}."
+        }
+      },
+      "ground_truth_command": "sv_query paths --from-snapshot opentitan_uart 'uart.cio_rx_i' 'uart.uart_core.rx_val_q' --directed --canonical --json ; sv_query verify claim --from-snapshot opentitan_uart --claim '{\"type\":\"path\",\"from\":\"uart.cio_rx_i\",\"to\":\"uart.uart_core.rx_val_q\"}' --json",
+      "verification": {
+        "expected_output": "paths (WITH --canonical): found=true hop_count=18 candidate_count=48; verify claim status=verified. WARNING: without --canonical, paths --directed returns hop_count=9 for the same pair.",
+        "all_paths_census": "paths --directed --all --max 200 -> count=48 truncated=false, hop distribution {10:1, 11:3, 12:4, 13:5, 14:7, 15:8, 16:8, 17:7, 18:4, 19:1}"
+      }
+    },
+    {
+      "id": "T3",
+      "block": "uart",
+      "snapshot": "opentitan_uart",
+      "source_root": "/Users/fundou/.dsh/opencode-workers-lite/opentitan-pilot/workspace",
+      "kind": "evidence_file_line",
+      "question": "Find the exact source location in the OpenTitan UART where the 16-bit receive shift register is updated, and quote the statement that loads a new received bit into it. In which file and at which line(s) does that happen, and what is the surrounding always/if structure?",
+      "expected": {
+        "found": true,
+        "answer": {
+          "signal": "uart.uart_core.rx_val_q",
+          "file": "hw/ip/uart/rtl/uart_core.sv",
+          "source_location": {"file": "uart_core.sv", "line_start": 306, "line_end": 306, "column": 3},
+          "source_text": "if (!rst_ni)            rx_val_q <= 16'h0;",
+          "enclosing_always": {
+            "file": "uart_core.sv",
+            "line_start": 305,
+            "line_end": 308,
+            "column": 3,
+            "text": "always_ff @(posedge clk_i or negedge rst_ni) begin\n    if (!rst_ni)            rx_val_q <= 16'h0;\n    else if (tick_baud_x16) rx_val_q <= {rx_val_q[14:0], rx_in};\n  end"
+          },
+          "driver_statement": "rx_val_q <= {rx_val_q[14:0], rx_in};  (uart_core.sv:308, guarded by tick_baud_x16)",
+          "reset_statement": "rx_val_q <= 16'h0;  (uart_core.sv:306, guarded by !rst_ni)",
+          "subgraph_driver_edges": [
+            {"src": "16'd0", "dst": "uart.uart_core.rx_val_q", "kind": "DRIVER", "file": "hw/ip/uart/rtl/uart_core.sv", "line": 307, "condition": "!rst_ni"},
+            {"src": "uart.uart_core.rx_in", "dst": "uart.uart_core.rx_val_q", "kind": "DRIVER", "file": "hw/ip/uart/rtl/uart_core.sv", "line": 308, "condition": "!(!rst_ni) && tick_baud_x16"},
+            {"src": "uart.uart_core.rx_val_q[14:0]", "dst": "uart.uart_core.rx_val_q", "kind": "DRIVER", "file": "hw/ip/uart/rtl/uart_core.sv", "line": 308, "condition": "!(!rst_ni) && tick_baud_x16"}
+          ],
+          "tooling_caveat": "trace evidence and graph subgraph --evidence need --filelist/--file; the saved snapshot carries the graph only, so file/line evidence is null when queried via --from-snapshot."
+        }
+      },
+      "ground_truth_command": "sv_query trace evidence --filelist /tmp/opentitan_svq/opentitan.f 'uart.uart_core.rx_val_q' --json ; sv_query graph subgraph 'uart.uart_core.rx_val_q' --filelist /tmp/opentitan_svq/opentitan.f --depth 1 --direction both --evidence --json",
+      "verification": {
+        "expected_output": "trace evidence: source_location.file='uart_core.sv', line_start=306, line_end=306, source_text=\"if (!rst_ni)            rx_val_q <= 16'h0;\"; enclosing_always spans lines 305-308 of uart_core.sv; subgraph edges carry hw/ip/uart/rtl/uart_core.sv:307 and :308"
+      }
+    },
+    {
+      "id": "T4",
+      "block": "uart",
+      "snapshot": "opentitan_uart",
+      "source_root": "/Users/fundou/.dsh/opencode-workers-lite/opentitan-pilot/workspace",
+      "kind": "verify_claim",
+      "question": "Two claims were made about the OpenTitan UART register block. Claim A: the sticky integrity-error output of the register block is driven by the sticky error flop in the same block. Claim B: that integrity-error output feeds the UART's fatal-alert request. Verify or refute each claim against the design, and also check whether the receive-line signal could possibly drive the TX output register (it should not).",
+      "expected": {
+        "found": true,
+        "answer": {
+          "claim_A": {
+            "type": "driver",
+            "signal": "uart.u_reg.intg_err_o",
+            "driver": "uart.u_reg.err_q",
+            "status": "verified",
+            "reason": "",
+            "evidence": "[{'kind': 'fanin', 'signal': 'uart.u_reg.intg_err_o', 'driver': 'uart.u_reg.err_q', 'transitive': False}]"
+          },
+          "claim_B": {
+            "type": "path",
+            "from": "uart.u_reg.intg_err_o",
+            "to": "uart.alerts[0]",
+            "status": "verified",
+            "reason": "",
+            "evidence": "[{'kind': 'reachable', 'from': 'uart.u_reg.intg_err_o', 'to': 'uart.alerts[0]', 'bidirectional': False}]"
+          },
+          "negative_control": {
+            "type": "driver",
+            "signal": "uart.uart_core.tx_out_q",
+            "driver": "uart.uart_core.rx_in",
+            "status": "contradicted",
+            "reason": "uart.uart_core.rx_in is not in fanin(uart.uart_core.tx_out_q, depth=1)"
+          }
+        },
+        "source_confirmation": {
+          "file": "hw/ip/uart/rtl/uart_reg_top.sv",
+          "lines": "76-87",
+          "detail": "logic err_q; always_ff ... err_q <= '0; else if (intg_err || reg_we_err) err_q <= 1'b1; ... assign intg_err_o = err_q | intg_err | reg_we_err;  -> claim A holds."
+        },
+        "source_confirmation_B": {
+          "file": "hw/ip/uart/rtl/uart.sv",
+          "lines": "57-72",
+          "detail": "uart_reg_top u_reg (... .intg_err_o (alerts[0]) );  -> claim B holds; alerts[0] then drives prim_alert_sender.alert_req_i."
+        }
+      },
+      "ground_truth_command": "sv_query verify claim --from-snapshot opentitan_uart --claim '{\"type\":\"driver\",\"signal\":\"uart.u_reg.intg_err_o\",\"driver\":\"uart.u_reg.err_q\"}' --json ; sv_query verify claim --from-snapshot opentitan_uart --claim '{\"type\":\"path\",\"from\":\"uart.u_reg.intg_err_o\",\"to\":\"uart.alerts[0]\"}' --json ; sv_query verify claim --from-snapshot opentitan_uart --claim '{\"type\":\"driver\",\"signal\":\"uart.uart_core.tx_out_q\",\"driver\":\"uart.uart_core.rx_in\"}' --json",
+      "verification": {
+        "expected_output": "claim A status=verified; claim B status=verified; negative control status=contradicted with reason 'uart.uart_core.rx_in is not in fanin(uart.uart_core.tx_out_q, depth=1)'"
+      }
+    },
+    {
+      "id": "T5",
+      "block": "uart",
+      "snapshot": "opentitan_uart",
+      "source_root": "/Users/fundou/.dsh/opencode-workers-lite/opentitan-pilot/workspace",
+      "kind": "unknown_no_path_missing_signal",
+      "question": "Someone claims there is a directed dataflow path in the OpenTitan UART from the chip-level TX output pin all the way back to the internal TX output register, and also asks whether a signal named 'uart_core.nonexistent_sig' feeds the receive shift register. Check both: is the TX-to-TX-register path real, and does the missing signal exist at all?",
+      "expected": {
+        "found": false,
+        "answer": {
+          "case_1_missing_signal": {
+            "type": "path",
+            "from": "uart.uart_core.nonexistent_sig",
+            "to": "uart.uart_core.rx_val_q",
+            "status": "unknown",
+            "reason": "endpoint unresolved: 'uart.uart_core.nonexistent_sig'/'uart.uart_core.rx_val_q'",
+            "cli_level_behavior": "sv_query paths --from-snapshot opentitan_uart 'uart.uart_core.nonexistent_sig' 'uart.uart_core.rx_val_q' --directed --json  => ok=false, error='signal id not found in graph', unknown=['uart.uart_core.nonexistent_sig'], hint=\"用 `svq graph nodes --json` 列出可用 id\""
+          },
+          "case_2_no_directed_path": {
+            "type": "path",
+            "from": "uart.cio_tx_o",
+            "to": "uart.uart_core.tx_out_q",
+            "status": "contradicted",
+            "reason": "path check failed (forward=False, reverse=True)",
+            "explanation": "There is no directed (dataflow) path from the TX output pin back to the TX output register: tx_out_q drives tx, and tx drives cio_tx_o, so the direction is the other way round. The reverse direction IS structurally connected, which is why the tool reports reverse=True.",
+            "correct_direction": "uart.uart_core.tx_out_q -> uart.uart_core.tx.ternary_line_loopback -> uart.uart_core.tx -> uart.cio_tx_o (3 hops, verified directed)"
+          },
+          "conclusion": "The 'nonexistent_sig' endpoint does not exist in the design, so the path claim cannot be evaluated (unknown, not contradicted). The TX-pin-to-TX-register claim is false in the directed sense (contradicted)."
+        }
+      },
+      "ground_truth_command": "sv_query verify claim --from-snapshot opentitan_uart --claim '{\"type\":\"path\",\"from\":\"uart.uart_core.nonexistent_sig\",\"to\":\"uart.uart_core.rx_val_q\"}' --json ; sv_query paths --from-snapshot opentitan_uart 'uart.uart_core.nonexistent_sig' 'uart.uart_core.rx_val_q' --directed --json ; sv_query verify claim --from-snapshot opentitan_uart --claim '{\"type\":\"path\",\"from\":\"uart.cio_tx_o\",\"to\":\"uart.uart_core.tx_out_q\"}' --json ; sv_query paths --from-snapshot opentitan_uart 'uart.uart_core.tx_out_q' 'uart.cio_tx_o' --directed --canonical --json",
+      "verification": {
+        "expected_output": "missing-signal claim status=unknown with reason 'endpoint unresolved'; paths CLI returns ok=false 'signal id not found in graph'; reverse-direction claim status=contradicted with reason 'path check failed (forward=False, reverse=True)'; forward direction tx_out_q->cio_tx_o found=true hop_count=3"
+      }
+    }
+  ]
+}
