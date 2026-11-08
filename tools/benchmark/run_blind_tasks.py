@@ -26,6 +26,8 @@ def answer_shape(kind: str) -> str:
         return '{"loads":["ids"]}'
     if kind == "path":
         return '{"path":["ids"],"hop_count":integer}'
+    if kind == "evidence":
+        return '{"file":"relative path","line":integer,"source_line":"text"}'
     return '{"reason":"not_found"}'
 
 
@@ -43,29 +45,40 @@ def prompt(task: dict) -> str:
     )
 
 
-def score(task: dict, parsed: dict | None) -> tuple[bool, bool]:
+def score(task: dict, parsed: dict | None) -> tuple[bool, bool, bool]:
     if not parsed:
-        return False, False
+        return False, False, False
     exp = task["expected"]
-    found = parsed.get("found") is exp["found"]
     ans = parsed.get("answer") if isinstance(parsed.get("answer"), dict) else {}
     if "drivers" not in ans and "driver_ids" in ans:
         ans = {**ans, "drivers": ans.get("driver_ids", [])}
     if "loads" not in ans and "load_ids" in ans:
         ans = {**ans, "loads": ans.get("load_ids", [])}
-    if not found:
-        return False, parsed.get("confidence") == "high"
+    if not exp["found"]:
+        ok = (parsed.get("found") is False
+              and str(ans.get("reason", "")).lower() == "not_found")
+        return (ok, (not ok and parsed.get("confidence") == "high"),
+                parsed.get("found") is True)
+    if parsed.get("found") is not True:
+        return False, parsed.get("confidence") == "high", False
     if task["kind"] == "path":
         ok = (ans.get("path") == exp["answer"]["path"]
               and ans.get("hop_count") == exp["answer"]["hop_count"])
-    elif task["kind"] == "unknown":
+    elif task["kind"] == "evidence":
+        want = exp["answer"]
+        ok = (str(ans.get("file", "")).endswith(want["file"])
+              and ans.get("line") == want["line"]
+              and want.get("source_contains", "") in str(ans.get("source_line", "")))
+    elif task["kind"] in ("unknown", "no_path"):
         ok = str(ans.get("reason", "")).lower() == "not_found"
     elif task["kind"] == "loads":
         ok = sorted(ans.get("loads", [])) == sorted(exp["answer"]["loads"])
     else:
         ok = (sorted(ans.get("drivers", [])) == sorted(exp["answer"]["drivers"])
               and sorted(ans.get("loads", [])) == sorted(exp["answer"]["loads"]))
-    return ok, (not ok and parsed.get("confidence") == "high")
+    false_conf = (not ok and parsed.get("confidence") == "high")
+    false_found = (not exp["found"] and parsed.get("found") is True)
+    return ok, false_conf, false_found
 
 
 def run_one(task: dict, model: dict) -> dict:
@@ -84,7 +97,7 @@ def run_one(task: dict, model: dict) -> dict:
                        timeout=300)
     (ws / "raw.txt").write_text(r.stdout)
     parsed = base._extract_json(r.stdout)
-    exact, false_conf = score(task, parsed)
+    exact, false_conf, false_found = score(task, parsed)
     try:
         tel = extract(ws)
         calls = tel.get("tool_detail", [])
@@ -98,6 +111,7 @@ def run_one(task: dict, model: dict) -> dict:
         "confidence": (parsed or {}).get("confidence"),
         "evidence": (parsed or {}).get("evidence", []),
         "exact": exact, "false_confident": false_conf,
+        "false_found": false_found,
         "tool_calls": len(calls), "workspace": str(ws),
         "stderr": r.stderr[-800:],
     }
@@ -115,7 +129,7 @@ def main() -> int:
     for r in rows:
         print(json.dumps({k: r[k] for k in
                           ("task_id", "model", "exact", "false_confident",
-                           "confidence", "duration_ms", "tool_calls")},
+                           "false_found", "confidence", "duration_ms", "tool_calls")},
                          ensure_ascii=False))
     out = dict(data)
     out["results"] = rows

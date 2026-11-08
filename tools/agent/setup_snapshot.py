@@ -57,10 +57,28 @@ def main() -> int:
     ).expanduser().resolve()
     snapshot_dir.mkdir(parents=True, exist_ok=True)
 
-    source_root = Path(
-        args.source_root
-        or (path if path.is_dir() else path.parent)
-    ).expanduser().resolve()
+    if args.source_root:
+        source_root = Path(args.source_root).expanduser().resolve()
+    elif filelist:
+        files = []
+        for line in filelist.read_text().splitlines():
+            line = line.strip()
+            if not line or line.startswith(("//", "#")):
+                continue
+            if line.startswith(("-", "+")):
+                continue
+            f = Path(line.strip('"').strip("'"))
+            if not f.is_absolute():
+                f = filelist.parent / f
+            files.append(f.resolve())
+        if files:
+            source_root = Path(os.path.commonpath([str(f) for f in files]))
+            if source_root.is_file():
+                source_root = source_root.parent
+        else:
+            source_root = path if path.is_dir() else path.parent
+    else:
+        source_root = path if path.is_dir() else path.parent
 
     env = os.environ.copy()
     env["SVQ_SNAPSHOT_DIR"] = str(snapshot_dir)

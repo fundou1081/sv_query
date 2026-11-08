@@ -9,7 +9,8 @@ agent profile with one narrow, reproducible interface.
 | `fanin` | `snapshot`, `signal`, `depth` | `{ ok, intent, snapshot, signal, drivers, count }` |
 | `fanout` | `snapshot`, `signal`, `depth` | `{ ok, intent, snapshot, signal, loads, count }` |
 | `neighbors` | `snapshot`, `signal`, `depth` | `{ ok, intent, snapshot, signal, drivers, loads, count }` |
-| `path` | `snapshot`, `signal`, `dst` | `{ ok, intent, snapshot, path, count }` |
+| `path` | `snapshot`, `signal`, `dst` | `{ ok, intent, snapshot, path, count }` (shortest) |
+| `deep_path` | `snapshot`, `signal`, `dst` | same, longest variant |
 | `neighborhood` | `snapshot`, `signal`, `depth` | `{ ok, intent, snapshot, signal, nodes, edges, op_ternary, conditions, condition_atoms, count, truncated }` |
 | `evidence` | `snapshot`, `signal` | `{ ok, intent, snapshot, signal, evidence: {file,line,source_line,source_context} }` |
 
@@ -85,8 +86,8 @@ or filesystem tools.
 - **No MIG / connections / instances**: the snapshot used here does not expose
   module-instance graph (MIG) data, so `connections`, `instances`, `ports`,
   `params`, and hierarchy queries are unavailable.
-- **Six intents only**: `fanin`, `fanout`, `neighbors`, `path`,
-  `neighborhood`, `evidence`; `path` is directed and requires `dst`;
+- **Seven intents only**: `fanin`, `fanout`, `neighbors`, `path`,
+  `deep_path`, `neighborhood`, `evidence`; `path`/`deep_path` are directed and require `dst`;
   neighborhood is fanin-only and capped at depth 8. Evidence reads a bounded
   source context for returned nodes only; `SVQ_SOURCE_ROOT` must point at the
   source root.
@@ -108,6 +109,9 @@ tools/agent/
   svq-query-tool/
     index.js          # DSH tool registration + sv_query invocation
     compact.js        # pure, dependency-free result compaction
+    failure.js        # pure failure classification
+    evidence.js       # injected source evidence
+    neighborhood.js   # injected bounded BFS
     neighborhood.js   # pure injected-query bounded fanin BFS
     package.json
     test/index.js      # entry so `node --test test/` works across Node versions

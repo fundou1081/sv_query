@@ -9,6 +9,7 @@ import {
   addEvidence as addEvidenceWith,
   collectEvidence as collectEvidenceWith,
 } from "./evidence.js";
+import { failureResult } from "./failure.js";
 import { neighborhood } from "./neighborhood.js";
 
 const execFileP = promisify(execFile);
@@ -65,31 +66,6 @@ async function addEvidence(out, args) {
   return addEvidenceWith(out, args, evidenceDeps());
 }
 
-function failureResult(args, err) {
-  const payload = err.payload || {};
-  const row = payload.result?.signals?.[0] || {};
-  const first = payload.errors?.[0] || {};
-  const code = row.error_code || first.error_code || err.code || "E_QUERY_FAILED";
-  let status = "error";
-  if (row.resolution === "not_found" || code === "E_SIGNAL_NOT_FOUND") {
-    status = "not_found";
-  } else if (row.resolution === "ambiguous" || row.top_ambiguous) {
-    status = "ambiguous";
-  }
-  return {
-    ok: false, status, found: false,
-    intent: args.intent, snapshot: args.snapshot,
-    signal: args.signal || null, dst: args.dst || null,
-    error: {
-      code,
-      message: row.error || first.error || err.message || "query failed",
-      candidates: row.candidates || [],
-      suggestions: row.suggestions || [],
-    },
-    evidence_available: false,
-  };
-}
-
 export function apply(ctx) {
   ctx.tools.register(defineTool({
     name: "svq_query",
@@ -99,7 +75,7 @@ export function apply(ctx) {
     parameters: {
       intent: {
         type: "string", required: true, enum: INTENTS,
-        description: "fanin, fanout, neighbors, path, neighborhood (bounded fanin BFS), or evidence (source file/line context for one node).",
+        description: "fanin, fanout, neighbors, path (shortest), deep_path (longest variant), neighborhood (bounded fanin BFS), or evidence (source file/line context for one node).",
       },
       snapshot: {
         type: "string", required: true,
@@ -127,7 +103,7 @@ export function apply(ctx) {
       },
       granular: {
         type: "boolean",
-        description: "Path only: prefer the longest variant instead of the shortest.",
+        description: "Deprecated; use intent=deep_path for the longest path variant.",
       },
     },
     output: {
@@ -161,6 +137,7 @@ async function executeInner(args) {
           return { ok: false, status: "not_found", found: false,
                    intent: "evidence", snapshot: args.snapshot,
                    signal: args.signal, evidence: rec || {},
+                   evidence_available: false,
                    error: { code: "E_EVIDENCE_NOT_FOUND",
                              message: "no evidence for signal" } };
         }
@@ -171,13 +148,15 @@ async function executeInner(args) {
       const base = ["--from-snapshot", args.snapshot, "--json"];
       const depth = args.depth ?? 1;
       const meta = { snapshot: args.snapshot, signal: args.signal,
-                     details: args.details === true,
-                     granular: args.granular === true };
-      if (args.intent === "path") {
-        if (!args.dst) throw new Error("path requires dst");
+                     details: args.details === true };
+      if (args.intent === "path" || args.intent === "deep_path") {
+        if (!args.dst) throw new Error(`${args.intent} requires dst`);
         const payload = await query(["paths", args.signal, args.dst, "--all", "--max", "20",
                                      "--directed", ...base]);
-        return await addEvidence(compactResult("path", payload, meta), args, payload);
+        return await addEvidence(compactResult("path", payload,
+                                               { ...meta,
+                                                 granular: args.intent === "deep_path" }),
+                                 args, payload);
       }
       if (depth < 1 || depth > 32) throw new Error("depth must be 1..32");
       if (args.intent === "neighborhood") {
