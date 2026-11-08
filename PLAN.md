@@ -233,6 +233,10 @@ P101 neighborhood condition schema <已完成>
 -- P101.1 conditions + condition_atoms <已完成>
 -- P101.2 mux depth5 条件复测 <已完成>
 
+P102 Worker 辅助 BFS 测试 <已完成>
+-- P102.1 可注入 queryFn 的 neighborhood.js <已完成>
+-- P102.2 7 个 BFS Node tests + smoke <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

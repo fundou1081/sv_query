@@ -38,8 +38,9 @@ Runtime requirements:
 
 ## Run the Node tests
 
-The compaction logic lives in `compact.js` and has no third-party
-dependencies. Tests use only `node:test` and `node:assert`.
+The compaction logic lives in `compact.js` and the bounded fanin BFS lives in
+`neighborhood.js`; both have no third-party dependencies. Tests use only
+`node:test` and `node:assert`, and inject a fake query function into the BFS.
 
 ```bash
 node --test tools/agent/svq-query-tool/test/
@@ -52,8 +53,8 @@ cd tools/agent/svq-query-tool && npm test
 ```
 
 Node 20+ is recommended (`node:test` built-in). Tests cover fanin, fanout,
-neighbors, path, empty payloads, and explicit failures for missing/malformed
-payloads. They do not invoke the `sv_query` binary.
+neighbors, path, neighborhood BFS, empty payloads, and explicit failures for
+missing/malformed payloads. They do not invoke the `sv_query` binary.
 
 ## Use the DSH patch
 
@@ -98,7 +99,9 @@ tools/agent/
   svq-query-tool/
     index.js          # DSH tool registration + sv_query invocation
     compact.js        # pure, dependency-free result compaction
+    neighborhood.js   # pure injected-query bounded fanin BFS
     package.json
     test/index.js      # entry so `node --test test/` works across Node versions
     test/compact.test.js
+    test/neighborhood.test.js
 ```
