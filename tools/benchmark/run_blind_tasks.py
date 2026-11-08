@@ -11,6 +11,7 @@ from pathlib import Path
 
 import run_long_range as base
 from session_telemetry import extract
+from answer_json import parse_answer_json
 
 ROOT = base.ROOT
 TOOL_PATCH = ROOT / "tools" / "agent" / "svq_query.patch.yml"
@@ -96,7 +97,7 @@ def run_one(task: dict, model: dict, seed: int = 1) -> dict:
     r = subprocess.run(cmd, cwd=ws, env=env, capture_output=True, text=True,
                        timeout=300)
     (ws / "raw.txt").write_text(r.stdout)
-    parsed = base._extract_json(r.stdout)
+    parsed, repaired = parse_answer_json(r.stdout)
     exact, false_conf, false_found = score(task, parsed)
     try:
         tel = extract(ws)
@@ -107,7 +108,8 @@ def run_one(task: dict, model: dict, seed: int = 1) -> dict:
         "task_id": task["id"], "model": model["label"], "kind": task["kind"],
         "seed": seed,
         "duration_ms": int((time.time() - t0) * 1000), "rc": r.returncode,
-        "parsed": parsed is not None, "found": (parsed or {}).get("found"),
+        "parsed": parsed is not None, "json_repaired": repaired,
+        "found": (parsed or {}).get("found"),
         "answer": (parsed or {}).get("answer"),
         "confidence": (parsed or {}).get("confidence"),
         "evidence": (parsed or {}).get("evidence", []),

@@ -288,6 +288,10 @@ P115 10-task ×2-seed validation <已完成>
 -- P115.1 10 new tasks ×2 seed <已完成>
 -- P115.2 39/40 valid JSON, false 0 <已完成>
 
+P116 Answer JSON format robustness <已完成>
+-- P116.1 tolerant parser + json_repaired <已完成>
+-- P116.2 P115 rescore 40/40 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>
