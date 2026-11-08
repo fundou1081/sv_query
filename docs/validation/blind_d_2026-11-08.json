@@ -1,0 +1,476 @@
+{
+  "protocol": "P114 fresh untouched blind structural/contract validation",
+  "frozen_at": "2026-11-08",
+  "note": "Questions and ground truth frozen before the run. No tool changes after this freeze. Snapshots built by setup_snapshot.py with inferred source roots.",
+  "tasks": [
+    {
+      "id": "blind_d_axi_s_axi_bready",
+      "design": "axi",
+      "snapshot": "p111_axi",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/axi/axi",
+      "kind": "neighbors",
+      "question": "For the AXI adapter top-level handshake input `axi_adapter.s_axi_bready`, list ALL direct driver IDs and ALL direct load IDs at distance 1. Empty lists are valid facts.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "drivers": [],
+          "loads": [
+            "axi_adapter.axi_adapter_wr_inst.s_axi_bready"
+          ]
+        }
+      }
+    },
+    {
+      "id": "blind_d_serv_dbus_cyc",
+      "design": "serv",
+      "snapshot": "p111_serv",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/serv/serv",
+      "kind": "neighbors",
+      "question": "For the SERV state output `serv_rf_top.cpu.state.o_dbus_cyc`, list ALL direct driver IDs and ALL direct load IDs at distance 1.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "drivers": [
+            "serv_rf_top.cpu.state.o_cnt_en",
+            "serv_rf_top.cpu.state.i_mem_misalign",
+            "serv_rf_top.cpu.state.i_dbus_en",
+            "serv_rf_top.cpu.state.init_done"
+          ],
+          "loads": [
+            "serv_rf_top.cpu.o_dbus_cyc"
+          ]
+        }
+      }
+    },
+    {
+      "id": "blind_d_pico_long_path",
+      "design": "pico",
+      "snapshot": "p111_pico",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/pico",
+      "kind": "path",
+      "question": "Find the directed structural path from `picorv32_axi.axi_adapter.mem_axi_rvalid` to `picorv32_axi.axi_adapter.mem_valid` in snapshot p111_pico. Return the ordered canonical path and hop count.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "path": [
+            "picorv32_axi.axi_adapter.mem_axi_rvalid",
+            "picorv32_axi.axi_adapter.mem_ready",
+            "picorv32_axi.mem_ready",
+            "picorv32_axi.picorv32_core.mem_ready",
+            "picorv32_axi.picorv32_core.mem_xfer",
+            "picorv32_axi.picorv32_core.mem_done",
+            "picorv32_axi.picorv32_core.decoder_trigger",
+            "picorv32_axi.picorv32_core.mem_do_rinst",
+            "picorv32_axi.picorv32_core.mem_la_firstword",
+            "picorv32_axi.picorv32_core.mem_la_use_prefetched_high_word",
+            "picorv32_axi.picorv32_core.mem_valid",
+            "picorv32_axi.mem_valid",
+            "picorv32_axi.axi_adapter.mem_valid"
+          ],
+          "hop_count": 12
+        }
+      }
+    },
+    {
+      "id": "blind_d_serv_evidence",
+      "design": "serv",
+      "snapshot": "p111_serv",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/serv/serv",
+      "kind": "evidence",
+      "question": "Find source evidence for `serv_rf_top.cpu.bufreg.o_ext_rs1` in snapshot p111_serv. Return its relative file, line, and the matching source_line.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "file": "serv_rf_top.v",
+          "line": 81,
+          "source_contains": "o_ext_rs1"
+        }
+      }
+    },
+    {
+      "id": "blind_d_axi_unknown",
+      "design": "axi",
+      "snapshot": "p111_axi",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/tmp/lr_ad_prep/axi/axi",
+      "kind": "unknown",
+      "question": "Query direct neighbors of `axi_adapter.s_axi_bresp_q` in snapshot p111_axi. If it does not exist, return found=false with reason not_found; do not invent a name.",
+      "expected": {
+        "found": false,
+        "answer": {
+          "reason": "not_found"
+        }
+      }
+    }
+  ],
+  "results": [
+    {
+      "task_id": "blind_d_axi_s_axi_bready",
+      "model": "MiniMax-M3",
+      "kind": "neighbors",
+      "duration_ms": 6114,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [],
+        "loads": [
+          "axi_adapter.axi_adapter_wr_inst.s_axi_bready"
+        ]
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 1,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/blind_d_axi_s_axi_bready",
+      "stderr": ""
+    },
+    {
+      "task_id": "blind_d_axi_s_axi_bready",
+      "model": "DeepSeek-Flash",
+      "kind": "neighbors",
+      "duration_ms": 6521,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [],
+        "loads": [
+          "axi_adapter.axi_adapter_wr_inst.s_axi_bready"
+        ]
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 3,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/blind_d_axi_s_axi_bready",
+      "stderr": "dsh: reasoning:\nfanin empty, fanout one. Let me also check neighbors to confirm. But the query is sufficient. Let me double-check with neighbors.\n"
+    },
+    {
+      "task_id": "blind_d_serv_dbus_cyc",
+      "model": "MiniMax-M3",
+      "kind": "neighbors",
+      "duration_ms": 6206,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [
+          "serv_rf_top.cpu.state.o_cnt_en",
+          "serv_rf_top.cpu.state.i_mem_misalign",
+          "serv_rf_top.cpu.state.i_dbus_en",
+          "serv_rf_top.cpu.state.init_done"
+        ],
+        "loads": [
+          "serv_rf_top.cpu.o_dbus_cyc"
+        ]
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "intent": "neighbors",
+          "snapshot": "p111_serv",
+          "signal": "serv_rf_top.cpu.state.o_dbus_cyc",
+          "drivers": [
+            {
+              "id": "serv_rf_top.cpu.state.o_cnt_en",
+              "kind": "PORT_OUT",
+              "distance": 1
+            },
+            {
+              "id": "serv_rf_top.cpu.state.i_mem_misalign",
+              "kind": "PORT_IN",
+              "distance": 1
+            },
+            {
+              "id": "serv_rf_top.cpu.state.i_dbus_en",
+              "kind": "PORT_IN",
+              "distance": 1
+            },
+            {
+              "id": "serv_rf_top.cpu.state.init_done",
+              "kind": "REG",
+              "distance": 1
+            }
+          ],
+          "loads": [
+            {
+              "id": "serv_rf_top.cpu.o_dbus_cyc",
+              "kind": "PORT_OUT",
+              "distance": 1
+            }
+          ],
+          "count": 5
+        },
+        {
+          "intent": "fanin",
+          "snapshot": "p111_serv",
+          "signal": "serv_rf_top.cpu.state.o_dbus_cyc",
+          "depth": 1,
+          "drivers": [
+            "serv_rf_top.cpu.state.o_cnt_en",
+            "serv_rf_top.cpu.state.i_mem_misalign",
+            "serv_rf_top.cpu.state.i_dbus_en",
+            "serv_rf_top.cpu.state.init_done"
+          ],
+          "count": 4
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/blind_d_serv_dbus_cyc",
+      "stderr": ""
+    },
+    {
+      "task_id": "blind_d_serv_dbus_cyc",
+      "model": "DeepSeek-Flash",
+      "kind": "neighbors",
+      "duration_ms": 5142,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [
+          "serv_rf_top.cpu.state.o_cnt_en",
+          "serv_rf_top.cpu.state.i_mem_misalign",
+          "serv_rf_top.cpu.state.i_dbus_en",
+          "serv_rf_top.cpu.state.init_done"
+        ],
+        "loads": [
+          "serv_rf_top.cpu.o_dbus_cyc"
+        ]
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "intent": "fanin",
+          "signal": "serv_rf_top.cpu.state.o_dbus_cyc",
+          "count": 4
+        },
+        {
+          "intent": "fanout",
+          "signal": "serv_rf_top.cpu.state.o_dbus_cyc",
+          "count": 1
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/blind_d_serv_dbus_cyc",
+      "stderr": "dsh: reasoning:\nBoth queries returned results. Compose the JSON.\n\nNote: the signal itself is \"o_dbus_cyc\" — drivers include o_cnt_en, i_mem_misalign, i_dbus_en, init_done. Loads: serv_rf_top.cpu.o_dbus_cyc.\n\nReturn one valid JSON object, no markdown.\n"
+    },
+    {
+      "task_id": "blind_d_pico_long_path",
+      "model": "MiniMax-M3",
+      "kind": "path",
+      "duration_ms": 4644,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "path": [
+          "picorv32_axi.axi_adapter.mem_axi_rvalid",
+          "picorv32_axi.axi_adapter.mem_ready",
+          "picorv32_axi.mem_ready",
+          "picorv32_axi.picorv32_core.mem_ready",
+          "picorv32_axi.picorv32_core.mem_xfer",
+          "picorv32_axi.picorv32_core.mem_done",
+          "picorv32_axi.picorv32_core.decoder_trigger",
+          "picorv32_axi.picorv32_core.mem_do_rinst",
+          "picorv32_axi.picorv32_core.mem_la_firstword",
+          "picorv32_axi.picorv32_core.mem_la_use_prefetched_high_word",
+          "picorv32_axi.picorv32_core.mem_valid",
+          "picorv32_axi.mem_valid",
+          "picorv32_axi.axi_adapter.mem_valid"
+        ],
+        "hop_count": 12
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "intent": "path",
+          "snapshot": "p111_pico",
+          "status": "ok",
+          "found": true,
+          "variants": 1,
+          "truncated": false,
+          "note": "unique shortest structural path; 13 nodes / 12 hops"
+        },
+        {
+          "intent": "fanout",
+          "snapshot": "p111_pico",
+          "status": "ok",
+          "found": true,
+          "loads": [
+            "picorv32_axi.axi_adapter.mem_ready"
+          ],
+          "count": 1,
+          "note": "confirms first hop of path"
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/blind_d_pico_long_path",
+      "stderr": ""
+    },
+    {
+      "task_id": "blind_d_pico_long_path",
+      "model": "DeepSeek-Flash",
+      "kind": "path",
+      "duration_ms": 10781,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "path": [
+          "picorv32_axi.axi_adapter.mem_axi_rvalid",
+          "picorv32_axi.axi_adapter.mem_ready",
+          "picorv32_axi.mem_ready",
+          "picorv32_axi.picorv32_core.mem_ready",
+          "picorv32_axi.picorv32_core.mem_xfer",
+          "picorv32_axi.picorv32_core.mem_done",
+          "picorv32_axi.picorv32_core.decoder_trigger",
+          "picorv32_axi.picorv32_core.mem_do_rinst",
+          "picorv32_axi.picorv32_core.mem_la_firstword",
+          "picorv32_axi.picorv32_core.mem_la_use_prefetched_high_word",
+          "picorv32_axi.picorv32_core.mem_valid",
+          "picorv32_axi.mem_valid",
+          "picorv32_axi.axi_adapter.mem_valid"
+        ],
+        "hop_count": 12
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 4,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/blind_d_pico_long_path",
+      "stderr": " was missing! It only used dst. That suggests the tool's CLI got a blank source. Perhaps the source arg was passed but empty. Hmm, \"paths  picorv32_axi...\" double space suggests src empty.\n\nMaybe signal field should be src. Let me try with signal param for src and dst param. Actually the schema requires signal, dst, src all optional. Let me retry including signal as src.\ndsh: reasoning:\nPath found with 13 nodes, 12 hops. Let me validate a bit — but the task says just return. Maybe get evidence? Evidence array can be empty. The answer requires canonical IDs, hop_count = 12.\n\nLet me optionally verify with evidence for a couple nodes, but not necessary. I'll do a quick fanout check on a middle node to sanity check? Not required. Return one JSON object.\n\nhop_count = 12 (edges). Let me output.\n"
+    },
+    {
+      "task_id": "blind_d_serv_evidence",
+      "model": "MiniMax-M3",
+      "kind": "evidence",
+      "duration_ms": 6163,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "file": "serv_rf_top.v",
+        "line": 81,
+        "source_line": "output wire [31:0] o_ext_rs1,"
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "signal": "serv_rf_top.cpu.bufreg.o_ext_rs1",
+          "file": "serv_rf_top.v",
+          "line": 81,
+          "source_line": "output wire [31:0] o_ext_rs1,",
+          "source_context": [
+            {
+              "line": 80,
+              "text": "// Extension"
+            },
+            {
+              "line": 81,
+              "text": "output wire [31:0] o_ext_rs1,"
+            },
+            {
+              "line": 82,
+              "text": "output wire [31:0] o_ext_rs2,"
+            },
+            {
+              "line": 83,
+              "text": "output wire [ 2:0] o_ext_funct3,"
+            }
+          ]
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/blind_d_serv_evidence",
+      "stderr": ""
+    },
+    {
+      "task_id": "blind_d_serv_evidence",
+      "model": "DeepSeek-Flash",
+      "kind": "evidence",
+      "duration_ms": 4376,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "file": "serv_rf_top.v",
+        "line": 81,
+        "source_line": "output wire [31:0] o_ext_rs1,"
+      },
+      "confidence": "high",
+      "evidence": [
+        "serv_rf_top.cpu.bufreg.o_ext_rs1 -> serv_rf_top.v:81 (declaration in // Extension port block, between o_ext_rs2 at line 82 and o_ext_funct3 at line 83)"
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 1,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/blind_d_serv_evidence",
+      "stderr": "dsh: reasoning:\nFound. File relative path \"serv_rf_top.v\", line 81, source_line \"output wire [31:0] o_ext_rs1,\".\n\nReturn one valid JSON object no markdown.\n\nBut wait — the canonical ID is serv_rf_top.cpu.bufreg.o_ext_rs1, and evidence file is serv_rf_top.v line 81. That seems plausible (the signal is declared at the top-level). Return high confidence.\n\nThe evidence array — should include something. Let me include the evidence query details. The task says return ONE valid JSON object with fields file/line/source_line. Evidence array can be empty or contain info. I'll put a small entry.\n\nNeed to be careful: JSON must be single-line valid. Use double quotes.\n"
+    },
+    {
+      "task_id": "blind_d_axi_unknown",
+      "model": "MiniMax-M3",
+      "kind": "unknown",
+      "duration_ms": 5560,
+      "rc": 0,
+      "parsed": true,
+      "found": false,
+      "answer": {
+        "reason": "not_found"
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 1,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/blind_d_axi_unknown",
+      "stderr": ""
+    },
+    {
+      "task_id": "blind_d_axi_unknown",
+      "model": "DeepSeek-Flash",
+      "kind": "unknown",
+      "duration_ms": 5540,
+      "rc": 0,
+      "parsed": true,
+      "found": false,
+      "answer": {
+        "reason": "not_found"
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 1,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/blind_d_axi_unknown",
+      "stderr": "s.\ndsh: reasoning:\nNot found. Could try fanin/fanout too? The task says query direct neighbors; if not exists return found=false with reason not_found. The result gives status not_found, no candidates/suggestions. So return JSON.\n\nThe template: {\"task_id\":'blind_d_axi_unknown',\"found\":true,\"answer\":{\"reason\":\"not_found\"},...}. But instruction says if not found set found:false and answer {\"reason\":\"not_found\"}. Return ONE valid JSON object, no markdown. Note the template uses single quotes; valid JSON requires double quotes. Ensure valid JSON.\n\nConfidence high? Since tool explicitly says not found with no candidates. High.\n\nEvidence [].\n\nShould I do a fanin check to be safe? It's not_found; no need. But maybe the name is a suffix variant; the instruction says do not invent. So just return.\n"
+    }
+  ]
+}
