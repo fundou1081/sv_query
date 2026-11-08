@@ -7,6 +7,7 @@ import {
   compactNeighbors,
   compactPath,
   compactResult,
+  compactVerify,
 } from "../compact.js";
 
 const meta = { snapshot: "ad_axi", signal: "top.u_axi.araddr" };
@@ -300,4 +301,24 @@ test("path defaults to shortest, granular opts into longest", async () => {
   assert.deepEqual(long.path, ["a", "c", "b"]);
   assert.equal(long.count, 2);
   assert.equal(long.variants, 3);
+});
+
+
+test("verify keeps claim status and evidence", () => {
+  const out = compactVerify({
+    ok: true,
+    command: "verify_claim",
+    result: {
+      claim: { type: "driver", signal: "a", driver: "b" },
+      status: "contradicted",
+      reason: "b is not in fanin(a)",
+      evidence: [],
+      counterevidence: [{ actual_drivers: ["c"] }],
+    },
+  }, { snapshot: "s" });
+  assert.equal(out.ok, true);
+  assert.equal(out.status, "ok");
+  assert.equal(out.verify_status, "contradicted");
+  assert.equal(out.claim.type, "driver");
+  assert.deepEqual(out.counterevidence, [{ actual_drivers: ["c"] }]);
 });

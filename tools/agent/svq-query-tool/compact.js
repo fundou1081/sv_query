@@ -6,7 +6,7 @@
  * payloads throw an explicit Error instead of degrading to empty lists.
  */
 
-export const INTENTS = ["fanin", "fanout", "neighbors", "path", "deep_path", "neighborhood", "evidence"];
+export const INTENTS = ["fanin", "fanout", "neighbors", "path", "deep_path", "neighborhood", "evidence", "verify"];
 
 function fail(message, payload = undefined) {
   const err = new Error(`svq compact: ${message}`);
@@ -160,6 +160,32 @@ export function compactPath(payload, meta = {}) {
     intent: "path", snapshot: meta.snapshot,
     path: payload.path || [],
     count: payload.hop_count ?? null,
+  };
+}
+
+/** Compact a verify_claim result. Verification is a successful query even
+ * when the claim is contradicted/unknown, so operational `ok/status` stays
+ * true/ok and the claim result is in `verify_status`.
+ */
+export function compactVerify(payload, meta = {}) {
+  assertSuccess(payload, "verify");
+  const result = payload.result;
+  if (!isPlainObject(result)) {
+    fail("verify payload is missing result object", payload);
+  }
+  const verifyStatus = result.status;
+  if (!["verified", "contradicted", "unknown"].includes(verifyStatus)) {
+    fail(`verify payload has invalid status: ${verifyStatus}`, payload);
+  }
+  return {
+    ok: true,
+    status: "ok",
+    verify_status: verifyStatus,
+    snapshot: meta.snapshot,
+    claim: result.claim || null,
+    reason: result.reason || "",
+    evidence: result.evidence || [],
+    counterevidence: result.counterevidence || [],
   };
 }
 
