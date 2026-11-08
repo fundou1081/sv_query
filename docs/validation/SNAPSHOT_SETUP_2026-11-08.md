@@ -14,9 +14,11 @@ python3 tools/agent/setup_snapshot.py \
   --filelist /tmp/lr_ad_prep/axi/axi.f \
   --tag p111_axi \
   --snapshot-dir /tmp/p111_snaps \
-  --source-root /tmp/lr_ad_prep/axi \
   --install-tool --json
 ```
+
+source root 由 filelist 的实际文件路径自动推导；需要时可用
+`--source-root` 覆盖。
 
 它做四件事：
 

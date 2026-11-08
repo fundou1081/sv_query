@@ -1,0 +1,92 @@
+{
+  "protocol": "P113 blind contract validation (find / not_found / empty / evidence)",
+  "frozen_at": "2026-11-08",
+  "note": "Ground truth frozen before the run; fresh p111 snapshots built by setup_snapshot.py. This set is not used to change tool behavior before the run.",
+  "tasks": [
+    {
+      "id": "contract_axi_unknown",
+      "design": "axi",
+      "snapshot": "p111_axi",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/private/tmp/lr_ad_prep/axi/axi",
+      "kind": "unknown",
+      "question": "For snapshot p111_axi, query direct neighbors of `axi_adapter.s_axi_rresp_q`. If the signal does not exist, report found=false and reason not_found. Do not invent a similar name.",
+      "expected": {
+        "found": false,
+        "answer": {
+          "reason": "not_found"
+        }
+      }
+    },
+    {
+      "id": "contract_axi_empty",
+      "design": "axi",
+      "snapshot": "p111_axi",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/private/tmp/lr_ad_prep/axi/axi",
+      "kind": "neighbors",
+      "question": "For `axi_adapter.s_axi_rready` in snapshot p111_axi, report direct drivers and loads at distance 1. An empty driver list is a valid fact.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "drivers": [],
+          "loads": [
+            "axi_adapter.axi_adapter_rd_inst.s_axi_rready"
+          ]
+        }
+      }
+    },
+    {
+      "id": "contract_axi_no_path",
+      "design": "axi",
+      "snapshot": "p111_axi",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/private/tmp/lr_ad_prep/axi/axi",
+      "kind": "no_path",
+      "question": "Find a directed structural path from `axi_adapter.s_axi_awready` to `axi_adapter.s_axi_rvalid` in snapshot p111_axi. If no path exists, report found=false and reason not_found; do not return a fake path.",
+      "expected": {
+        "found": false,
+        "answer": {
+          "reason": "not_found"
+        }
+      }
+    },
+    {
+      "id": "contract_pico_path",
+      "design": "pico",
+      "snapshot": "p111_pico",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/private/tmp/lr_ad_prep/pico",
+      "kind": "path",
+      "question": "Find the directed structural path from `picorv32_axi.axi_adapter.mem_axi_rvalid` to `picorv32_axi.axi_adapter.xfer_done` in snapshot p111_pico. Return canonical path and hop_count.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "path": [
+            "picorv32_axi.axi_adapter.mem_axi_rvalid",
+            "picorv32_axi.axi_adapter.mem_ready",
+            "picorv32_axi.axi_adapter.xfer_done"
+          ],
+          "hop_count": 2
+        }
+      }
+    },
+    {
+      "id": "contract_axi_evidence",
+      "design": "axi",
+      "snapshot": "p111_axi",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/private/tmp/lr_ad_prep/axi/axi",
+      "kind": "evidence",
+      "question": "Find source evidence for `axi_adapter.axi_adapter_rd_inst.s_axi_rvalid_reg` in snapshot p111_axi. Return its relative file, declaration line, and the matching source_line.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "file": "axi_adapter_rd.v",
+          "line": 597,
+          "source_contains": "s_axi_rvalid_reg"
+        }
+      }
+    }
+  ]
+}

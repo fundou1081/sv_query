@@ -6,7 +6,7 @@
  * payloads throw an explicit Error instead of degrading to empty lists.
  */
 
-export const INTENTS = ["fanin", "fanout", "neighbors", "path", "neighborhood", "evidence"];
+export const INTENTS = ["fanin", "fanout", "neighbors", "path", "deep_path", "neighborhood", "evidence"];
 
 function fail(message, payload = undefined) {
   const err = new Error(`svq compact: ${message}`);
@@ -119,9 +119,7 @@ export function compactNeighbors(driverPayload, loadPayload, meta = {}) {
 
 /** path: canonical node path + hop count. */
 export function compactPath(payload, meta = {}) {
-  if (!isPlainObject(payload)) {
-    fail("path payload must be an object");
-  }
+  assertSuccess(payload, "path");
   if (payload.path !== undefined && payload.path !== null && !Array.isArray(payload.path)) {
     fail("path payload path must be an array or null");
   }

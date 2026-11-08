@@ -260,5 +260,49 @@ test("reports evidence_error when snapshot metadata is unavailable", async () =>
     ok: true,
     drivers: ["top.a"],
     evidence_error: "snapshot metadata unavailable",
+    evidence_available: false,
   });
+});
+
+test("evidence_error reports evidence_available false", async () => {
+  // "Evidence was requested but the snapshot metadata is unavailable" must be
+  // distinguishable from "evidence was not requested": the latter leaves the
+  // result untouched, the former states evidence_available false explicitly.
+  const deps = { ...fakeDeps({ nodes: [] }), readSnapshot: async () => null };
+
+  const result = await addEvidence(
+    { ok: true, status: "ok", found: true, drivers: ["top.a"], count: 1 },
+    { evidence: true, snapshot: "missing" },
+    deps,
+  );
+
+  assert.equal(result.evidence_available, false);
+  assert.equal(result.evidence_error, "snapshot metadata unavailable");
+  // The query result itself is untouched: only the evidence fields are added.
+  assert.equal(result.ok, true);
+  assert.equal(result.status, "ok");
+  assert.equal(result.found, true);
+  assert.deepEqual(result.drivers, ["top.a"]);
+  assert.equal("evidence" in result, false);
+});
+
+test("evidence_available is absent when evidence was not requested", async () => {
+  const out = { ok: true, status: "ok", found: true, drivers: ["top.a"] };
+  const result = await addEvidence(out, { evidence: false, snapshot: "s" }, {});
+
+  assert.equal(result, out);
+  assert.equal("evidence_available" in result, false);
+});
+
+test("evidence_available is false when the snapshot has no matching nodes", async () => {
+  const deps = fakeDeps({ nodes: [{ id: "top.other", file: "top.sv", line: 1 }], sources: { "top.sv": "one" } });
+
+  const result = await addEvidence(
+    { ok: true, drivers: ["top.a"] },
+    { evidence: true, snapshot: "s" },
+    deps,
+  );
+
+  assert.equal(result.evidence_available, false);
+  assert.deepEqual(result.evidence, {});
 });

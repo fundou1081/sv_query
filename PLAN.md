@@ -275,6 +275,11 @@ P112 Explicit unknown/abstention 合同 <已完成>
 -- P112.1 not_found/ambiguous/truncated <已完成>
 -- P112.2 confidence + evidence 绑定 <已完成>
 
+P113 Contract blind + interface fixes <已完成>
+-- P113.1 5 contract tasks <已完成>
+-- P113.2 F1-F4 contract fixes <已完成>
+-- P113.3 deep_path + source-root inference <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

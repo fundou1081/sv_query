@@ -94,6 +94,87 @@ test("path without a route is explicitly not_found", () => {
   assert.equal(out.error.code, "E_PATH_NOT_FOUND");
 });
 
+test("path with no variants is explicitly not_found", () => {
+  // `sv_query paths --all` reports "no route" as `ok:true, count:0,
+  // all_paths:[]` — there is no `found` field in that envelope.
+  const payload = { ok: true, count: 0, truncated: false, all_paths: [] };
+  const out = compactPath(payload, meta);
+  assert.equal(out.ok, false);
+  assert.equal(out.status, "not_found");
+  assert.equal(out.found, false);
+  assert.deepEqual(out.path, []);
+  assert.equal(out.count, null);
+  assert.equal(out.variants, 0);
+  assert.equal(out.error.code, "E_PATH_NOT_FOUND");
+});
+
+test("path rejects an ok=false payload instead of reporting status ok", () => {
+  // `sv_query paths` emits the `fail()` envelope when an endpoint is not in
+  // the graph: `{ ok: false, error, unknown, hint }` with no `result` and no
+  // `errors[]`. That envelope must not be compacted into a success.
+  const payload = {
+    ok: false,
+    error: "signal id not found in graph",
+    unknown: ["top.ghost"],
+    hint: "use `svq graph nodes --json` to list available ids",
+  };
+  assert.throws(() => compactPath(payload, meta), /returned failure: signal id not found in graph/);
+});
+
+test("the rejected path payload is attached to the thrown error", () => {
+  // The failure envelope carries the payload so the tool's failure
+  // classifier can report a stable status and error code.
+  const payload = { ok: false, error: "signal id not found in graph", unknown: ["top.ghost"] };
+  let caught = null;
+  try {
+    compactPath(payload, meta);
+  } catch (err) {
+    caught = err;
+  }
+  assert.ok(caught, "compactPath must throw on an ok=false payload");
+  assert.equal(caught.payload, payload);
+});
+
+test("a path payload that is not an object still throws", () => {
+  for (const payload of [null, undefined, 42, "x", []]) {
+    assert.throws(() => compactPath(payload, meta), /path payload must be an object/);
+  }
+});
+
+test("path result and failure envelopes agree on the status vocabulary", () => {
+  const cases = [
+    { payload: { ok: true, all_paths: [["a", "b"]] }, status: "ok", found: true },
+    { payload: { ok: true, found: true, path: ["a", "b"], hop_count: 1 }, status: "ok", found: true },
+    { payload: { ok: true, found: false, path: null, hop_count: null }, status: "not_found", found: false },
+    { payload: { ok: true, all_paths: [] }, status: "not_found", found: false },
+  ];
+  for (const { payload, status, found } of cases) {
+    const out = compactPath(payload, meta);
+    assert.equal(out.status, status);
+    assert.equal(out.found, found);
+    assert.equal(out.ok, found);
+  }
+});
+
+test("empty success and not_found are distinguishable", () => {
+  // An empty neighbour set is a fact, not a failure: it stays ok/found with
+  // count 0, while a missing signal is not_found with found=false.
+  const empty = compactFanin(signalPayload("drivers", []), meta);
+  assert.equal(empty.ok, true);
+  assert.equal(empty.status, "ok");
+  assert.equal(empty.found, true);
+  assert.equal(empty.count, 0);
+  assert.deepEqual(empty.drivers, []);
+  assert.equal("error" in empty, false);
+
+  const missing = compactPath({ ok: true, all_paths: [] }, meta);
+  assert.equal(missing.ok, false);
+  assert.equal(missing.status, "not_found");
+  assert.equal(missing.found, false);
+  assert.equal(missing.count, null);
+  assert.equal(missing.error.code, "E_PATH_NOT_FOUND");
+});
+
 test("empty signals payload yields an empty list", () => {
   const payload = { ok: true, result: { signals: [] } };
   assert.deepEqual(compactFanin(payload, meta), {

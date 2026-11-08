@@ -84,7 +84,14 @@ export async function collectEvidence({
   return evidence;
 }
 
-/** Add evidence to a compacted query result when `args.evidence` is set. */
+/** Add evidence to a compacted query result when `args.evidence` is set.
+ *
+ * `evidence_available` is always present when evidence was requested:
+ * `true` when at least one record was collected, `false` otherwise. The
+ * `evidence_error` branch reports `false` as well, so callers can tell
+ * "evidence requested but unavailable" from "evidence not requested"
+ * (where the field is absent entirely).
+ */
 export async function addEvidence(out, args, deps) {
   if (!args.evidence) return out;
   const evidence = await collectEvidence({
@@ -92,6 +99,12 @@ export async function addEvidence(out, args, deps) {
     snapshot: args.snapshot,
     ids: wantedIds(out),
   });
-  if (!evidence) return { ...out, evidence_error: "snapshot metadata unavailable" };
+  if (!evidence) {
+    return {
+      ...out,
+      evidence_error: "snapshot metadata unavailable",
+      evidence_available: false,
+    };
+  }
   return { ...out, evidence, evidence_available: Object.keys(evidence).length > 0 };
 }

@@ -1,0 +1,380 @@
+{
+  "protocol": "P113 blind contract validation (find / not_found / empty / evidence)",
+  "frozen_at": "2026-11-08",
+  "note": "Ground truth frozen before the run; fresh p111 snapshots built by setup_snapshot.py. This set is not used to change tool behavior before the run.",
+  "tasks": [
+    {
+      "id": "contract_axi_unknown",
+      "design": "axi",
+      "snapshot": "p111_axi",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/private/tmp/lr_ad_prep/axi/axi",
+      "kind": "unknown",
+      "question": "For snapshot p111_axi, query direct neighbors of `axi_adapter.s_axi_rresp_q`. If the signal does not exist, report found=false and reason not_found. Do not invent a similar name.",
+      "expected": {
+        "found": false,
+        "answer": {
+          "reason": "not_found"
+        }
+      }
+    },
+    {
+      "id": "contract_axi_empty",
+      "design": "axi",
+      "snapshot": "p111_axi",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/private/tmp/lr_ad_prep/axi/axi",
+      "kind": "neighbors",
+      "question": "For `axi_adapter.s_axi_rready` in snapshot p111_axi, report direct drivers and loads at distance 1. An empty driver list is a valid fact.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "drivers": [],
+          "loads": [
+            "axi_adapter.axi_adapter_rd_inst.s_axi_rready"
+          ]
+        }
+      }
+    },
+    {
+      "id": "contract_axi_no_path",
+      "design": "axi",
+      "snapshot": "p111_axi",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/private/tmp/lr_ad_prep/axi/axi",
+      "kind": "no_path",
+      "question": "Find a directed structural path from `axi_adapter.s_axi_awready` to `axi_adapter.s_axi_rvalid` in snapshot p111_axi. If no path exists, report found=false and reason not_found; do not return a fake path.",
+      "expected": {
+        "found": false,
+        "answer": {
+          "reason": "not_found"
+        }
+      }
+    },
+    {
+      "id": "contract_pico_path",
+      "design": "pico",
+      "snapshot": "p111_pico",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/private/tmp/lr_ad_prep/pico",
+      "kind": "path",
+      "question": "Find the directed structural path from `picorv32_axi.axi_adapter.mem_axi_rvalid` to `picorv32_axi.axi_adapter.xfer_done` in snapshot p111_pico. Return canonical path and hop_count.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "path": [
+            "picorv32_axi.axi_adapter.mem_axi_rvalid",
+            "picorv32_axi.axi_adapter.mem_ready",
+            "picorv32_axi.axi_adapter.xfer_done"
+          ],
+          "hop_count": 2
+        }
+      }
+    },
+    {
+      "id": "contract_axi_evidence",
+      "design": "axi",
+      "snapshot": "p111_axi",
+      "snapshot_dir": "/tmp/p111_snaps",
+      "source_root": "/private/tmp/lr_ad_prep/axi/axi",
+      "kind": "evidence",
+      "question": "Find source evidence for `axi_adapter.axi_adapter_rd_inst.s_axi_rvalid_reg` in snapshot p111_axi. Return its relative file, declaration line, and the matching source_line.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "file": "axi_adapter_rd.v",
+          "line": 597,
+          "source_contains": "s_axi_rvalid_reg"
+        }
+      }
+    }
+  ],
+  "results": [
+    {
+      "task_id": "contract_axi_unknown",
+      "model": "MiniMax-M3",
+      "kind": "unknown",
+      "duration_ms": 8290,
+      "rc": 0,
+      "parsed": true,
+      "found": false,
+      "answer": {
+        "reason": "not_found"
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 1,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/contract_axi_unknown",
+      "stderr": ""
+    },
+    {
+      "task_id": "contract_axi_unknown",
+      "model": "DeepSeek-Flash",
+      "kind": "unknown",
+      "duration_ms": 5083,
+      "rc": 0,
+      "parsed": true,
+      "found": false,
+      "answer": {
+        "reason": "not_found"
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 1,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/contract_axi_unknown",
+      "stderr": "dsh: reasoning:\nThe signal does not exist, no candidates. Report found=false with reason not_found. The contract shows found:true example but instruction says if lookup fails set found:false. The requested output format has \"found\":true in template but the instruction says \"If the signal does not exist, report found=false and reason not_found.\" So output found:false.\n\nBut also \"Return ONE valid JSON object\" with task_id contract_axi_unknown. Evidence empty. Confidence high since confirmed not found.\n\nNote task_id uses single quotes in template; I'll use valid JSON double quotes.\n\nShould answer be {\"reason\":\"not_found\"} yes.\n"
+    },
+    {
+      "task_id": "contract_axi_empty",
+      "model": "MiniMax-M3",
+      "kind": "neighbors",
+      "duration_ms": 5103,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [],
+        "loads": [
+          "axi_adapter.axi_adapter_rd_inst.s_axi_rready"
+        ]
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "signal": "axi_adapter.s_axi_rready",
+          "intent": "fanin",
+          "result": "no direct drivers",
+          "count": 0
+        },
+        {
+          "signal": "axi_adapter.axi_adapter_rd_inst.s_axi_rready",
+          "file": "axi_adapter.v",
+          "line": 125,
+          "source_line": "input  wire                     s_axi_rready,"
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/contract_axi_empty",
+      "stderr": ""
+    },
+    {
+      "task_id": "contract_axi_empty",
+      "model": "DeepSeek-Flash",
+      "kind": "neighbors",
+      "duration_ms": 4935,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "drivers": [],
+        "loads": [
+          "axi_adapter.axi_adapter_rd_inst.s_axi_rready"
+        ]
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/contract_axi_empty",
+      "stderr": "dsh: reasoning:\nDrivers empty, loads one canonical id.\n"
+    },
+    {
+      "task_id": "contract_axi_no_path",
+      "model": "MiniMax-M3",
+      "kind": "no_path",
+      "duration_ms": 6970,
+      "rc": 0,
+      "parsed": true,
+      "found": false,
+      "answer": {
+        "reason": "not_found"
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 4,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/contract_axi_no_path",
+      "stderr": ""
+    },
+    {
+      "task_id": "contract_axi_no_path",
+      "model": "DeepSeek-Flash",
+      "kind": "no_path",
+      "duration_ms": 7361,
+      "rc": 0,
+      "parsed": true,
+      "found": false,
+      "answer": {
+        "reason": "not_found"
+      },
+      "confidence": "high",
+      "evidence": [],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 3,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/contract_axi_no_path",
+      "stderr": "ng:\nNeed ensure IDs canonical maybe query nodes? Tool result says no path. But could be that src id invalid? status not_found E_PATH_NOT_FOUND. Asked if no path report false reason not_found. Return exactly JSON, no markdown. Need confidence maybe high. Evidence [].\n\nBut let's perhaps verify source exists to avoid lookup failure. Requirement \"If lookup fails, set found:false...\" However no path is definite. Could do fanout or evidence to ensure ID. Only svq_query. Let's query evidence for both maybe. But not necessary? Better to ensure canonical IDs and not fake. The given IDs likely canonical. Let's inspect evidence.\ndsh: reasoning:\nNow final exact JSON. Task id quoted contract_axi_no_path. found false. answer reason not_found. confidence high. evidence []. Ensure one object no markdown.\n"
+    },
+    {
+      "task_id": "contract_pico_path",
+      "model": "MiniMax-M3",
+      "kind": "path",
+      "duration_ms": 3795,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "path": [
+          "picorv32_axi.axi_adapter.mem_axi_rvalid",
+          "picorv32_axi.axi_adapter.mem_ready",
+          "picorv32_axi.axi_adapter.xfer_done"
+        ],
+        "hop_count": 2
+      },
+      "confidence": "high",
+      "evidence": [
+        "svq_query intent=path on snapshot p111_pico returned found=true with path mem_axi_rvalid -> mem_ready -> xfer_done (2 hops, 2 variants)",
+        "svq_query intent=fanout confirms mem_axi_rvalid loads picorv32_axi.axi_adapter.mem_ready (PORT_OUT, distance 1)"
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 2,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/contract_pico_path",
+      "stderr": ""
+    },
+    {
+      "task_id": "contract_pico_path",
+      "model": "DeepSeek-Flash",
+      "kind": "path",
+      "duration_ms": 8631,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "path": [
+          "picorv32_axi.axi_adapter.mem_axi_rvalid",
+          "picorv32_axi.axi_adapter.mem_ready",
+          "picorv32_axi.axi_adapter.xfer_done"
+        ],
+        "hop_count": 2
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "id": "picorv32_axi.axi_adapter.mem_axi_rvalid",
+          "file": "picorv32.v",
+          "line": 2567,
+          "source_line": "input         mem_axi_rvalid,"
+        },
+        {
+          "id": "picorv32_axi.axi_adapter.mem_ready",
+          "file": "picorv32.v",
+          "line": 2616,
+          "source_line": "wire        mem_ready;"
+        },
+        {
+          "id": "picorv32_axi.axi_adapter.xfer_done",
+          "file": "picorv32.v",
+          "line": 2771,
+          "source_line": "reg xfer_done;"
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 5,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/contract_pico_path",
+      "stderr": ". Let me get evidence to confirm canonical IDs maybe. The tool returned path. hop_count = count = 2. Let me optionally gather evidence for each node.\n\nLet me query evidence for the nodes to include in evidence array. Actually evidence array maybe can be empty. But let's get evidence.\ndsh: reasoning:\nLet me also get evidence for the source node and maybe fanin/fanout to confirm structural adjacency. But the path query suffices. Let me get evidence for mem_axi_rvalid too.\n\nAlso verify with a deep_path maybe same. Just produce answer.\n\nEvidence array — perhaps include file/line strings. Let me query source evidence.\ndsh: reasoning:\nThe direct path (shortest) is 3 nodes, 2 hops. question asks \"directed structural path\" - uses path intent (shortest). So hop_count 2.\n\nOutput single JSON object.\n"
+    },
+    {
+      "task_id": "contract_axi_evidence",
+      "model": "MiniMax-M3",
+      "kind": "evidence",
+      "duration_ms": 8878,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "file": "axi_adapter_rd.v",
+        "line": 597,
+        "source_line": "reg                    s_axi_rvalid_reg = 1'b0, s_axi_rvalid_next;"
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "file": "axi_adapter_rd.v",
+          "line": 597,
+          "source_line": "reg                    s_axi_rvalid_reg = 1'b0, s_axi_rvalid_next;",
+          "context": {
+            "before": [
+              {
+                "line": 595,
+                "text": "reg                    s_axi_rlast_reg  = 1'b0;"
+              },
+              {
+                "line": 596,
+                "text": "reg [RUSER_WIDTH-1:0]  s_axi_ruser_reg  = 1'b0;"
+              }
+            ],
+            "after": [
+              {
+                "line": 599,
+                "text": "reg [ID_WIDTH-1:0]     temp_s_axi_rid_reg    = {ID_WIDTH{1'b0}};"
+              }
+            ]
+          }
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 1,
+      "workspace": "/tmp/blind_pilot/MiniMax-M3/contract_axi_evidence",
+      "stderr": ""
+    },
+    {
+      "task_id": "contract_axi_evidence",
+      "model": "DeepSeek-Flash",
+      "kind": "evidence",
+      "duration_ms": 3849,
+      "rc": 0,
+      "parsed": true,
+      "found": true,
+      "answer": {
+        "file": "axi_adapter_rd.v",
+        "line": 597,
+        "source_line": "reg                    s_axi_rvalid_reg = 1'b0, s_axi_rvalid_next;"
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "signal": "axi_adapter.axi_adapter_rd_inst.s_axi_rvalid_reg",
+          "file": "axi_adapter_rd.v",
+          "line": 597,
+          "source_line": "reg                    s_axi_rvalid_reg = 1'b0, s_axi_rvalid_next;"
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 1,
+      "workspace": "/tmp/blind_pilot/DeepSeek-Flash/contract_axi_evidence",
+      "stderr": "dsh: reasoning:\nThe signal is found. The canonical ID matches exactly. Return JSON with file, line, source_line.\n\nNote the tool result gives file \"axi_adapter_rd.v\". Return as relative path. Output one valid JSON object, no markdown.\n"
+    }
+  ]
+}
