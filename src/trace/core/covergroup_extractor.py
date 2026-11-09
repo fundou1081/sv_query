@@ -7,7 +7,7 @@
 
 import logging
 
-from .compiler import SVCompiler
+from .compiler import CompilationError, SVCompiler
 from .graph.covergroup_models import (
     BinsInfo,
     CoverCrossInfo,
@@ -33,21 +33,53 @@ class CovergroupExtractor:
         self._sources = sources
         self._compiler = compiler
         self._spec_members: dict[str, list] = {}  # [iter_170] 特化成员 (extract 填)
+        self.partial = False
+        self.elaboration_errors: list[dict] = []
 
-    def extract(self) -> list[CovergroupInfo]:
-        """提取所有 covergroup"""
+    def extract(self, allow_partial: bool = False) -> list[CovergroupInfo]:
+        """提取所有 covergroup。
+
+        allow_partial=True: elaboration 失败时仍遍历 partial Semantic root，
+        并把结构化错误挂到每个 CovergroupInfo.errors；result.partial 暴露给
+        调用方。默认 False 保持原严格行为。
+        """
         results = []
         try:
             compiler = self._compiler or SVCompiler(sources=self._sources)
-            root = compiler.get_root()
-            # [iter_170 参数化] GenericClassDef 定义无成员面 → 预扫特化
-            # 符号成员 (实例变量/属性的特化 ClassType, 有语义成员)
-            self._spec_members = self._scan_class_specializations(root)
-            self._find_covergroups(root, results)
-            self._attach_instance_rules(root, results)
+            root = self._resolve_root(compiler, allow_partial)
+            self._collect(root, results)
+        except CompilationError:
+            raise
         except Exception as e:
             logger.warning(f"编译失败: {e}")
         return results
+
+    def _resolve_root(self, compiler, allow_partial: bool):
+        """严格 root；allow_partial 时回落到 pyslang partial root。"""
+        try:
+            return compiler.get_root()
+        except CompilationError:
+            if not allow_partial:
+                raise
+            self.partial = True
+            self.elaboration_errors = compiler.get_elaboration_errors()
+            return compiler.get_partial_root()
+
+    def _collect(self, root, results: list[CovergroupInfo]) -> None:
+        """遍历 root 并标注 partial 错误码。"""
+        self._spec_members = self._scan_class_specializations(root)
+        self._find_covergroups(root, results)
+        self._attach_instance_rules(root, results)
+        if not self.partial:
+            return
+        codes = []
+        for e in self.elaboration_errors:
+            code = str(e.get("code") or "")
+            if code and code not in codes:
+                codes.append(code)
+        for cg in results:
+            if not cg.errors:
+                cg.errors = list(codes)
 
     def _scan_class_specializations(self, root) -> dict[str, list]:
         """扫全树 class 类型变量/成员属性 → {特化类名: [成员符号]} (首见保).

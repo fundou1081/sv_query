@@ -678,6 +678,31 @@ class SVCompiler:
         self._do_compile()
         return self._root
 
+    def get_partial_root(self) -> object:
+        """获取 elaboration 失败时仍可用的 partial Semantic root。
+
+        pyslang 在部分语义错误（例如 covergroup body 内建名遮蔽）后仍会
+        产出可遍历的 RootSymbol。默认 ``get_root`` 恒定严格、不返回残缺 AST；
+        本方法仅给显式的 partial 查询（如 covergroup 定义列表）使用，调用方
+        必须同时读取 ``get_elaboration_errors()`` 并标记 partial。
+        """
+        if self._comp is not None and self._root is None:
+            # _do_compile 已执行且失败: 此时再调 get_root 会因 _comp 非空
+            # 提前返回 _root=None，必须直接取 partial Semantic root。
+            try:
+                return self._comp.getRoot()
+            except Exception:
+                raise
+        try:
+            return self.get_root()
+        except CompilationError:
+            if self._comp is None:
+                raise
+            try:
+                return self._comp.getRoot()
+            except Exception:
+                raise
+
     def get_diagnostics(self) -> list:
         """获取诊断信息"""
         self._do_compile()

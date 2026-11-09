@@ -453,6 +453,23 @@ fault localization / patch 类任务 = 0；不是外部 fault set。
 证据：[任务分布](validation/TASK_DISTRIBUTION_2026-11-09.md) §3、
 [intake 结果](validation/OPENTITAN_INTAKE_RESULTS_2026-11-09.md) §5。
 
+### 3.14 covergroup partial extraction（builtin-shadow）
+
+**事实**：pyslang 对 covergroup body 内 `start`/`stop` 等内建名遮蔽，
+导致 `InvalidCoverageExpr` / `VoidAssignment` / `InvalidBinsTarget`。
+`trace covergroups --partial` 会遍历 partial Semantic root 并返回定义，
+同时把错误码挂到 `result.partial=true` + `elaboration_errors` + 每个 cg 的
+`errors`。
+
+**边界**：
+
+- 只保证定义/coverpoint/bins/cross 结构；
+- 被遮蔽表达式仍是 `void`，语义不完整；
+- `trace covergroup` / `trace coverpoints` 仍要求 graph，未开放 partial；
+- 不是 coverage 数据库，也不代表 bins 命中。
+
+证据：[COVERAGE_PARTIAL_2026-11-09.md](validation/COVERAGE_PARTIAL_2026-11-09.md)。
+
 ---
 
 ## 已修复限制
