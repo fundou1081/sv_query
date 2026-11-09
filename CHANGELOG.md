@@ -3,6 +3,13 @@
 > 完整历史 changelog. README 短版只展示"为什么用 sv_query" + 5 分钟上手.
 > 详细 release notes 看这里.
 
+## 2026-11-09 (freeze v0.3.0-agent-query)
+
+- 冻结 constrained `svq_query` + snapshot edge evidence + verify claim + canonical path + unknown/abstain contract。
+- 基线：Python 2571 passed / 0 failed；Node tool 73 passed。
+- OpenTitan UART 连续 10/10；I2C 6/6；P125 DV intake 6/6；P127 schema 修正后 4/4。
+- 详细边界与冻结规则：[docs/validation/FREEZE_V0_3_0_AGENT_QUERY_2026-11-09.md](docs/validation/FREEZE_V0_3_0_AGENT_QUERY_2026-11-09.md)
+
 ## 2026-09-02 (测试资产扩充 + 缺陷修复: truth 32→130, 全层全绿)
 
 ### Truth 层扩充 T1-T12 (iter_088~100)
