@@ -6,8 +6,8 @@
 
 ## 总览
 
-- 叶子命令总数: **41**
-- 按层: `core`=37, `exp`=4
+- 叶子命令总数: **42**
+- 按层: `core`=37, `exp`=5
 - core 内分组: `semantic`=22, `verify`=3, `scope`=1, `locate`=7, `state`=4
 
 | 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | schema | 说明 |
@@ -60,11 +60,12 @@
 | `verify consistency` | — | — | verify | fact | medium | ✅ | ✅ | ✅ | 双向一致性: fanin/fanout、bit parent/bit_range、connection port↔internal |
 | `verify structural` | — | — | verify | fact | medium | ✅ | ✅ | ✅ | [P61] 结构审查: sibling 端口集合对称性 → findings + evidence + subgraph spec |
 
-## `exp` (4 个)
+## `exp` (5 个)
 
 | 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
 |---|---|---|---|---|---|---|---|---|---|
 | `diagnose` | — | — | diagnose | experimental | cheap | ✅ | ✅ | ✅ | [exp] 只读诊断; --json 干净路径不稳定, 默认不提供, 仅 --include-exp 列出 |
+| `architecture graph` | — | — | render | experimental | medium | ✅ | ✅ | ✅ | [P133] module/instance architecture graph from real net connections; not the retired full signal graph ; [exp] experimental, hidden by default |
 | `review render` | — | — | render | experimental | cheap | ✅ | ✅ | ✅ | [P62] 单个 structural finding 的局部 SVG/HTML; 只消费 subgraph ; [exp] experimental, hidden by default |
 | `trace overview` | — | — | render | experimental | expensive | ✅ | ✅ | ✅ | 两个信号之间的综合叙述 (dataflow + controlflow + evidence) ; [exp] experimental, hidden by default |
 | `audit` | — | — | semantic | experimental | medium | ✅ | ✅ | ✅ | [exp] 设计审计; 启发式/完成度低, 默认不提供, 仅 --include-exp 列出 |

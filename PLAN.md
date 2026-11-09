@@ -364,6 +364,11 @@ P132 constraint neighborhood query <已完成>
 -- P132.2 importance metrics <已完成>
 -- P132.3 synthetic + I2C smoke <已完成>
 
+P133 module/instance architecture graph <已完成>
+-- P133.1 MIG ports + CONNECTION edges <已完成>
+-- P133.2 JSON/DOT/SVG view <已完成>
+-- P133.3 synthetic + I2C smoke <已完成>
+
 
 ## 已完成（保留最近记录，便于核查上一轮）
 

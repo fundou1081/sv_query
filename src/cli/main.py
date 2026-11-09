@@ -70,6 +70,7 @@ from cli.core.semantic.classes import class_cmd  # [iter_237, iter_247 合并 cl
 from cli.core.semantic.scope import scope_cmd
 from cli.core.semantic.audit import audit_cmd  # [iter_288] 设计审计 (P3.3)
 from cli.view.review import review_app  # [iter_364 P62] 局部 review artifact
+from cli.view.architecture import architecture_app  # [P133] module/instance architecture
 import logging
 
 logger = logging.getLogger(__name__)
@@ -111,6 +112,7 @@ app.add_typer(controlflow_app, name="controlflow")
 # [iter_361 / PLAN P59.2] 全设计图可视化退役；旧 visualize/arch/design 已删除。
 # [iter_364 / P62] 局部 finding review artifact（不是全图）:
 app.add_typer(review_app, name="review", hidden=True)
+app.add_typer(architecture_app, name="architecture", hidden=True)
 
 # [iter_252] 删除 `expression` (dev 层 3 命令): 内部调试用, 0 测试, `--file` 路径未实现;
 # 模块已归档到 docs/archive/2026-10-19-src-archived/cli_dev/。构造 expression 节点请用
