@@ -133,6 +133,7 @@ class EdgeKind(Enum):
     RESET = auto()  # 异步复位 (rst_n -> q)
     CONNECTION = auto()  # 模块端口连接
     BIT_SELECT = auto()  # 位选择聚合
+    FIFO = auto()  # 时序 FIFO 数据边界 (write -> read; 非组合路径)
 
     # ═══ 扩展: Class / Constraint 边 (Phase1a) ═══
     CONSTRAINS = auto()  # CLASS_PROPERTY ← 约束管控
