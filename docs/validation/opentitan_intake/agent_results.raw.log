@@ -1,0 +1,11 @@
+{"task_id": "DV-UART-NOISEFILTER-DISCOVERY", "model": "MiniMax-M3", "exact": true, "false_confident": false, "false_found": false, "timeout": false, "confidence": "high", "duration_ms": 96568, "tool_calls": 56}
+{"task_id": "DV-UART-NOISEFILTER-DISCOVERY", "model": "DeepSeek-Flash", "exact": true, "false_confident": false, "false_found": false, "timeout": false, "confidence": "high", "duration_ms": 50859, "tool_calls": 28}
+{"task_id": "DV-I2C-CONTROLLER-HALT-VERIFY", "model": "MiniMax-M3", "exact": true, "false_confident": false, "false_found": false, "timeout": false, "confidence": "high", "duration_ms": 14893, "tool_calls": 12}
+{"task_id": "DV-I2C-CONTROLLER-HALT-VERIFY", "model": "DeepSeek-Flash", "exact": true, "false_confident": false, "false_found": false, "timeout": false, "confidence": "high", "duration_ms": 20939, "tool_calls": 14}
+{"task_id": "DV-UART-SYSLOOPBACK-PATH", "model": "MiniMax-M3", "exact": true, "false_confident": false, "false_found": false, "timeout": false, "confidence": "high", "duration_ms": 16882, "tool_calls": 14}
+{"task_id": "DV-UART-SYSLOOPBACK-PATH", "model": "DeepSeek-Flash", "exact": true, "false_confident": false, "false_found": false, "timeout": false, "confidence": "high", "duration_ms": 23995, "tool_calls": 10}
+wrote /tmp/opentitan_intake_agent.json
+real 224.24
+user 56.67
+sys 11.44
+EXIT_CODE=0

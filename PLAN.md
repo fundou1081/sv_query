@@ -330,10 +330,10 @@ P124 Independent task intake <已完成>
 -- P124.1 从 OpenTitan DV testplan/checklist 提取 3 个任务 <已完成>
 -- P124.2 人工 spec/source ground truth <已完成>
 
-P125 Execute independent intake tasks <待做>
--- P125.1 修正 discovery/direct-driver/unknown/canonical schema <待做>
--- P125.2 3 tasks ×2 模型执行 <待做>
--- P125.3 决定 search/verify/stop <待做>
+P125 Execute independent intake tasks <已完成>
+-- P125.1 修正 discovery/direct-driver/unknown/canonical schema <已完成>
+-- P125.2 3 tasks ×2 模型执行 <已完成>
+-- P125.3 决定 search/verify/stop <已完成>
 
 ## 已完成（保留最近记录，便于核查上一轮）
 
