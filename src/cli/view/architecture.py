@@ -14,7 +14,9 @@ import typer
 from cli._common import _build_tracer, handle_compilation_error
 from cli._output import emit_json
 from trace.core.compiler import CompilationError
-from trace.core.query.architecture import build_architecture, to_dot
+from trace.core.query.architecture import (
+    build_architecture, build_architecture_from_graph, to_dot,
+)
 
 architecture_app = typer.Typer(help="Module/instance-level RTL architecture view")
 
@@ -68,6 +70,9 @@ def _emit_output(arch, json_output: bool, pretty: bool, dot: Path | None,
 def graph_cmd(
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str = typer.Option(None, "--filelist", help="filelist (.f/.fl)"),
+    from_snapshot: str = typer.Option(
+        None, "--from-snapshot",
+        help="load graph from saved snapshot tag (no parse)"),
     module: str = typer.Option(None, "--module", "-m", help="root instance path"),
     depth: int = typer.Option(None, "--depth", "-d", help="max hierarchy depth"),
     include_primitives: bool = typer.Option(
@@ -84,9 +89,19 @@ def graph_cmd(
 ) -> None:
     """Build a module/instance architecture graph from real connections."""
     try:
-        tracer = _build_tracer(file=file, filelist=filelist, log_level="ERROR")
-        arch = build_architecture(tracer, root=module, max_depth=depth,
-                                  include_primitives=include_primitives)
+        if from_snapshot and (file or filelist):
+            raise ValueError("--from-snapshot is mutually exclusive with --file/--filelist")
+        if from_snapshot:
+            from cli.core.semantic.trace_common import _load_tracer_from_snapshot
+            tracer = _load_tracer_from_snapshot(from_snapshot)
+            graph = tracer.get_graph() or tracer.build_graph()
+            arch = build_architecture_from_graph(
+                graph, root=module, max_depth=depth,
+                include_primitives=include_primitives)
+        else:
+            tracer = _build_tracer(file=file, filelist=filelist, log_level="ERROR")
+            arch = build_architecture(tracer, root=module, max_depth=depth,
+                                      include_primitives=include_primitives)
         _emit_output(arch, json_output, pretty, dot, svg,
                      include_boundaries, include_clock_reset)
     except typer.Exit:

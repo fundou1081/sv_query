@@ -197,3 +197,78 @@ def to_dot(arch: Architecture, rankdir: str = "LR",
                          f'[label="{_esc(b["port"])}", dir=none];')
     lines.append("}")
     return "\n".join(lines) + "\n"
+
+
+def _port_metadata_from_graph(graph, owners: list[str], port_sets: dict):
+    """Port direction metadata from graph nodes (snapshot mode, no MIG)."""
+    port_dirs: dict[tuple[str, str], str] = {}
+    direction = {"PORT_IN": "input", "PORT_OUT": "output",
+                 "PORT_INOUT": "inout"}
+    for nid in graph.nodes():
+        node = graph.get_node(nid)
+        if node is None or node.kind.name not in direction:
+            continue
+        owner = _owner(nid, owners, port_sets)
+        if owner is not None:
+            port_dirs[owner] = direction[node.kind.name]
+    return port_dirs
+
+
+def _graph_instance_wanted(nid: str, node, root, max_depth,
+                           include_primitives) -> bool:
+    if node is None or node.kind.name != "INSTANTIATED_MODULE":
+        return False
+    if root and not (nid == root or nid.startswith(root + ".")):
+        return False
+    if max_depth is not None and _depth(nid, root) > max_depth:
+        return False
+    return include_primitives or not str(node.module).startswith("prim_")
+
+
+def _select_graph_instances(graph, root, max_depth, include_primitives):
+    return [graph.get_node(nid) for nid in graph.nodes()
+            if _graph_instance_wanted(nid, graph.get_node(nid), root,
+                                      max_depth, include_primitives)]
+
+
+def _port_sets_from_graph(graph, owners: list[str]) -> dict[str, set[str]]:
+    port_sets: dict[str, set[str]] = {}
+    for nid in graph.nodes():
+        node = graph.get_node(nid)
+        if node is None or not node.kind.name.startswith("PORT_"):
+            continue
+        for inst in owners:
+            prefix = inst + "."
+            if nid.startswith(prefix):
+                suffix = nid[len(prefix):]
+                if "." not in suffix:
+                    port_sets.setdefault(inst, set()).add(suffix)
+                    break
+    return port_sets
+
+
+def _graph_nodes_to_arch(selected, port_sets, root):
+    nodes = [ArchNode(n.id, n.module,
+                      n.id.rsplit(".", 1)[0] if "." in n.id else None,
+                      _depth(n.id, root), len(port_sets.get(n.id, ())))
+             for n in selected]
+    nodes.sort(key=lambda n: (n.depth, n.id))
+    return nodes
+
+
+def build_architecture_from_graph(graph, root: str | None = None,
+                                  max_depth: int | None = None,
+                                  include_primitives: bool = True) -> Architecture:
+    """Architecture graph from a saved SignalGraph (no parse/MIG)."""
+    selected = _select_graph_instances(graph, root, max_depth, include_primitives)
+    selected_ids = {n.id for n in selected}
+    owners = sorted(selected_ids, key=len, reverse=True)
+    port_sets = _port_sets_from_graph(graph, owners)
+    port_dirs = _port_metadata_from_graph(graph, owners, port_sets)
+    attachments = _collect_attachments(graph, owners, port_sets, port_dirs)
+    edges, boundaries = _edges_from_attachments(attachments, port_dirs)
+    nodes = _graph_nodes_to_arch(selected, port_sets, root)
+    stats = {"instances": len(nodes), "connections": len(edges),
+             "boundaries": len(boundaries), "source": "snapshot"}
+    return Architecture(nodes=nodes, edges=edges, boundaries=boundaries,
+                        stats=stats)
