@@ -3,112 +3,62 @@
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **可视化计划**: [structural_review_plan_2026-11-02](docs/architecture/structural_review_plan_2026-11-02.md) — 全设计图退役；动态子图 + 局部 review。
-> **最后更新**: 2026-11-09 GMT+8 (iter_433: P126 文档刷新)
+> **最后更新**: 2026-11-09 GMT+8 (P126 完成；无活跃开发)
 
 ---
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P126.1 CURRENT_TODO 刷新** `<进行中>`
-- P62.2 交互式 debug（gate）：deferred
-- **P63** class / constraint / covergroup 语义增强 ✅（iter_365）
-- **P64** constraint 继承链 + rand 标记 ✅（iter_366）
-- **P65** UVM sequence/factory 静态关系 ✅（iter_367）
-- **P66** 语义提取 regex 纪律（仅 UVM 宏例外）✅（iter_368）
-- **P67** 可用性验证包：性能 + 反幻觉 walkthrough ✅（iter_369）
-- **P68** README 项目描述校准 ✅（iter_370）
-- **P69** 长程结构查询对照基准 ⏳（P69.7 全矩阵待环境）
-- **P71** agent 查询可靠性修复 ✅（iter_376）
-- **P72** filelist 编译失败分类 ✅（iter_377）
-- **P73** 项目目标/计划/测试缺口审计 ✅（iter_378）
-- **P74** 交互式 debug 场景 pilot ✅（iter_379）
-- **P75** covergroup bin_details ✅
-- **P76** interactive debug 后续修复 ✅（iter_380）
-- **P77** port-map ternary expression 子图 ✅（iter_381）
-- **P78** P0 deep_chain 行为验证 ✅（iter_382）
-- **P79** P1 稳定性 ✅（iter_383）
-- **P80** 实验资产盘点 ✅（iter_384）
-- **P81** long-range 统一 runner ✅（iter_385）
-- **P82** 4-task pilot ✅（iter_386）
-- **P83** long-range 查询协议修复 ✅（iter_387）
-- **P84** constraint/mux 邻域场景 ✅（iter_388）
-- **P85** neighborhood source/T2 pilot ✅（iter_389）
-- **P86** 统一双评分 ✅（iter_390）
-- **P87** 12-task fixed protocol ✅（iter_391）
-- **P88** 外部 VeriBug 验证 ⏭️ 放弃（成本/环境）
-- **P89** 最终验证摘要 ✅（iter_392）
-- **P90** agent 查询成本归因 ✅（iter_393）；session telemetry 修正 ✅（iter_394）
-- **P91** 大 filelist top-aware 裁剪 ✅（iter_395）；fallback ✅
-- **P92** snapshot 预构建 D ✅（iter_396）
-- **P93** A/D 充分测试 ✅（iter_397）
-- **P94** A+D vs 原版模型对比 ✅（iter_398）
-- **P95** 严格 A/D agent 协议 ⏭️ 放弃（无法强制工具使用）
-- **P96** sv_query skill pilot ✅（iter_400）：模型未加载 skill，无收益
-- **P97** inline skill prompt pilot ✅（iter_401）：无稳定收益
-- **P98** 受限 svq_query 工具 ✅（iter_403）：48/48，MiniMax 9.0s / DeepSeek 4.7s
-- **P99** Worker 辅助工具硬化 ✅（iter_404）：compact.js + 12 Node tests
-- **P100** svq_query details + neighborhood ✅（iter_406）
-- **P101** neighborhood condition schema ✅（iter_407）
-- **P102** Worker 辅助 BFS 测试 ✅（iter_408）
-- **P103** deep_chain tool probe ✅（负结果）
-- **P104** granular path ✅（iter_410）：deep 除 xor 外正确
-- **P105** evidence intent ✅（iter_411）：deep 7/7
-- **P106** evidence 默认关闭回归 ✅（iter_412）：24/24
-- **P107** Worker evidence tests ✅（36 Node tests）
-- **P108** evidence 成本 ✅（+2.1%）
-- **P109** 默认决策 ✅（opt-in）
-- **P110** Blind realistic validation ✅：fresh 9/10，false-confident 0
-- **P111** Snapshot/evidence 一键化 ✅：新 snapshot 10/10
-- **P112** unknown/abstention 合同 ✅：空 vs not_found 分离
-- **P113** contract regression ✅：10/10，false-found 0
-- **P114** fresh untouched blind ✅：10/10，false 0
-- **P115** 10-task ×2-seed ✅：39/40，false 0
-- **P116** answer JSON repair ✅：P115 重放 40/40
-- **P117** constrained verify ✅：6/6，单次 verify
-- **P118** OpenTitan UART ✅：建图成功；edge evidence 缺口
-- **P119** edge evidence 修复 ✅：T3 复测 2/2
-- **P120** T5 schema 修复 ✅：最终 10/10
-- **P121** OpenTitan 连续 run ✅：9/10；path canonical 歧义
-- **P122** canonical path + runner hardening ✅：10/10
-- **P123** OpenTitan I2C ✅：6/6；纠正 worker 语义误判
-- **P124** independent task intake ✅（worker，3 任务）
-- **P125** 执行 independent intake 任务 ✅：6/6，0 false
+- **当前 item**: **P62.2 交互式 debug（gate）** `<待做>`（deferred；当前无活跃开发）
+- **P126** 文档/运维刷新 ✅（iter_433）
+  - P126.1 CURRENT_TODO 刷新 ✅
+  - P126.2 TESTING 刷新 ✅
+  - P126.3 EXTRACTION_COVERAGE / KNOWN_LIMITATIONS 刷新 ✅
 
-> P71/P72 已完成；P62.2 交互式 debug 保持 gate；外部 VeriBug 明确 deferred/放弃。
+### 长期挂起 / 已放弃（不再作为"下一步"）
+
+| 项 | 状态 | 原因 |
+|---|---|---|
+| P62.2 交互式 debug | `<待做>`（**保持 gate**） | 不是核心 query/verify；保持 gate，不主动排期 |
+| P69.7 硬隔离 12×2 fixed 全矩阵 | `<放弃>` | 环境成本高，产品问题未定 |
+| P88 外部 VeriBug 验证 | `<放弃>` | 成本/环境；已改用 OpenTitan 真实 block + independent intake 替代 |
 
 ---
 
 ## 📦 仓库状态
 
 - **分支**: `main`；最新提交以 `git log -1` 为准
-- **全量基线**: **2571 passed / 0 failed**（`sim/tests/`, `-m "not opensource"`；
-  7 skipped / 119 deselected；iter_397 实测）
+- **全量基线**: 见 [docs/INDEX.md 当前基线](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里)（单一真相源，本文不写死计数）
 - **命令面**: 40 命令 = core 36 + exp 4（class/constraint/covergroup）
-- **当前重点**: 收尾；成本归因显示模型生成主导（P90）
+- **当前重点**: 文档/运维刷新完成（P126）；核心 query/verify 已在真实项目闭环，下一步不是加功能
 
 ---
 
-## ✅ 最近完成（P63~P73）
+## ✅ 最近完成（P124~P126）
 
-| 迭代 | 内容 | 结果 |
+| 项 | 内容 | 结果 |
 |---|---|---|
-| iter_365 | class/constraint/covergroup CLI | ✅ |
-| iter_366 | constraint 继承链 + rand 标记 | ✅ |
-| iter_367 | UVM sequence/factory 静态关系 | ✅ |
-| iter_368 | 语义提取 regex 纪律 | ✅ |
-| iter_369 | 性能基准 + CDC walkthrough | ✅ |
-| iter_370 | README 项目描述校准 | ✅ |
-| iter_371~375 | 12-task 对照 + seed2 + 硬隔离 PoC | ⏳ P69.7 全矩阵待环境 |
-| iter_376 | --top / driver_count / bit_fallback | ✅ |
-| iter_377 | filelist 编译错误分类 | ✅ |
-| iter_378 | 项目目标/计划/测试缺口审计 | ✅ |
+| P124 | Independent task intake（worker） | 从 OpenTitan DV testplan/checklist 提取 3 个任务 + 人工 ground truth |
+| P125 | 执行 independent intake 任务 | 6/6 exact；0 false-confident；0 false-found；结论：核心 query/verify 已够，不加 search |
+| P126 | 文档/运维刷新 | CURRENT_TODO / TESTING / EXTRACTION_COVERAGE / KNOWN_LIMITATIONS 刷新；check_docs/check_plan 通过 |
+
+详见 [P125 intake results](docs/validation/OPENTITAN_INTAKE_RESULTS_2026-11-09.md)。
 
 ---
 
-## 🔜 下一步（审计结论）
+## 📌 上一阶段已完成主线（摘要，详见 PLAN.md）
 
-1. **外部小样本验证**：没有远程 Linux/Docker，优先 VeriBugBench Icarus 10–15 例；
-2. **warm query service**：仅在外部 benchmark 显示多轮查询后进行；
-3. **文档/测试债**：刷新 TESTING / EXTRACTION_COVERAGE / KNOWN_LIMITATIONS。
+| 阶段 | 内容 | 结果 |
+|---|---|---|
+| P118~P120 | OpenTitan UART 首个真实 block + edge evidence 修复 + answer schema | 建图成功；edge evidence 缺口已修；T5 schema 固定 |
+| P121~P123 | 连续 run + canonical path + I2C 第二 block | canonical path 成立；I2C 建图成功 |
+| P98~P117 | 受限工具化与盲测 | 工具调用闭环；false-confident 0 / false-found 0；unknown/abstain 合同分离 |
 
-详见 [项目审计](docs/architecture/project_audit_2026-11-06.md)。
+---
+
+## 🔜 当前状态
+
+**无活跃开发 item**。P126 文档刷新已完成，P125 intake 6/6 通过。
+
+下一阶段按 [待做盘点](docs/architecture/PENDING_INVENTORY_2026-11-09.md) 的优先级决定；
+当前不自动开新功能。计数只写在 [docs/INDEX.md 当前基线](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里)。

@@ -1,11 +1,43 @@
 # sv_query SV 语法抽取覆盖率总表
 
 > **创建日期**: 2026-08-27 23:48
+> **最后评审**: 2026-11-09（内容未重测，仅标注口径与状态）
 > **维护人**: QClaw Agent + 方豆
 > **状态**: 初版
 > **来源**: [memory/2026-08-27.md §Phase 1A](../memory/2026-08-27.md) + 实测修正 + 100+ fixtures 盘点
 > **关联**: [SV_SYNTAX_MAPPING.md](SV_SYNTAX_MAPPING.md) (SV 语法 → sv_query 节点映射) +
 >          [PYSLANG_SEMANTIC_USAGE.md](PYSLANG_SEMANTIC_USAGE.md) (pyslang 11.0 API 用法)
+
+## ⚠️ 2026-11-09 状态说明（重要）
+
+本表是**语法覆盖表**，不是 **agent 任务覆盖表**。两者不可互相替代：
+
+| 本表回答 | 本表**不**回答 |
+|---|---|
+| "某条 SystemVerilog 语法能不能被抽取成图节点/边" | "agent 用 sv_query 能完成哪些任务" |
+| "某个语法构造在 driver/load 方向是精确还是粗粒度" | "任务成功率 / 准确率 / 成本" |
+| "某个语法属于支持 / 部分支持 / 不支持" | "真实 RTL 里的覆盖率是多少" |
+
+要点：
+
+- 本表最后**实测**日期是 **2026-08-27**；此后做的改动（位精度 P5~P12、class/constraint/covergroup
+  语义增强 P63~P65、UVM 静态关系 P65、edge evidence P119 等）**没有**逐条回填到本表。
+  因此本表的 ✅/⚠️/❌ 标记**可能落后于当前实现** —— 遇到冲突时，以
+  [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) 与当期迭代记录为准。
+- 本表**不**声称任何新的语法支持。2026-11-09 的这次刷新只做三件事：
+  标注口径、更新最后评审日期、补充下面的交叉引用。
+- agent 任务侧的实测结果（任务分布、真实项目闭环、false-confident/false-found）
+  见 [validation/](validation/) 目录，尤其是
+  [任务分布](validation/TASK_DISTRIBUTION_2026-11-09.md)、
+  [OpenTitan UART](validation/OPENTITAN_PILOT_2026-11-09.md)、
+  [OpenTitan I2C](validation/OPENTITAN_I2C_2026-11-09.md)、
+  [independent intake 结果](validation/OPENTITAN_INTAKE_RESULTS_2026-11-09.md)。
+- 已知的能力边界（位精度、跨模块、动态索引、snapshot 覆盖面等）集中登记在
+  [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md)；边级证据的边界见
+  [edge evidence 记录](validation/EDGE_EVIDENCE_2026-11-09.md)。
+
+**下一步**（若要刷新本表）：逐条复测 P63~P125 的语法影响面，再重写 ✅/⚠️/❌ 判定。
+在此之前，本表只作历史参考。
 
 ## 📊 总览（实测，2026-08-27）
 
@@ -140,6 +172,11 @@
 
 ## 🔄 状态变更日志
 
+- **2026-11-09** — P126.3 文档刷新：**内容未重测**，只做口径标注。
+  - 顶部新增「2026-11-09 状态说明」：明确本表是**语法覆盖**、不是 agent 任务覆盖。
+  - 最后评审日期更新为 2026-11-09；**最后实测**仍是 2026-08-27。
+  - 交叉引用 [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) 与 [validation/](validation/)。
+  - **未**新增任何语法支持声明，**未**改动任何 ✅/⚠️/❌ 判定。
 - **2026-09-01** — iter_076: #42/#43 修复 (task 调用站点完整形参映射)。
   - 根因: (a) `_parse_invocation_call` 的 token 过滤器把 AssignmentExpression
     (output 实参, 无 `.symbol`/`.expr`) 当 syntax-tree 杂项跳过; (b) flattener

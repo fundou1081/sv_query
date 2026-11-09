@@ -1,21 +1,46 @@
 # TESTING.md — 测试指南
 
-> 最后更新: 2026-07-29
+> 最后更新: 2026-11-09
+
+## 📌 当前基线（**引用** [docs/INDEX.md 当前基线](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里)）
+
+> ⚠️ **单一真相源是 INDEX.md**。下表是它的**镜像快照**，只为方便查测试命令时一眼看到数字；
+> 计数漂移时以 INDEX 为准。**本文件其余部分不写死 passed/测试计数**。
+
+| 项 | 值（引自 INDEX） | 说明 |
+|---|---|---|
+| 全量 (canonical) | **2571 passed / 0 failed** | `sim/tests/`, `-m "not opensource"`；7 skipped / 119 deselected（2026-11-07 实测，iter_397） |
+| 回归基线 (unit + regression) | 见 INDEX | `-m "not opensource"` |
+| CLI / integration | 见 INDEX | `sim/tests/cli sim/tests/integration` |
+
+**Tool（Node）测试 —— 与上面的 Python 基线是两套，互不加总**：
+
+| 项 | 值 | 说明 |
+|---|---|---|
+| Node tests | **73 passed / 0 failed** | `tools/agent/svq-query-tool/`（`npm test` → `node --test test/`）；2026-11-09 实测。**不计入** Python 基线 |
+
+```bash
+# 提交前全量门禁（Python）
+python3 -m pytest sim/tests/ -m "not opensource" -q -p no:randomly
+
+# 提交前全量门禁（Node tool，独立于 Python 基线）
+cd tools/agent/svq-query-tool && npm test
+```
 
 ## 快速启动
 
 ```bash
 # 核心回归测试 (不含 opensource 外部项目)
-python -m pytest sim/tests/ -m "not opensource" -v
+python3 -m pytest sim/tests/ -m "not opensource" -v
 
 # 全量测试 (含外部项目)
-python -m pytest sim/tests/ -v
+python3 -m pytest sim/tests/ -v
 
 # 只跑 golden 标记 (基准对比)
-python -m pytest sim/tests/ -m golden -v
+python3 -m pytest sim/tests/ -m golden -v
 
 # 只跑 unit 测试 (不依赖外部项目)
-python -m pytest sim/tests/unit/ -v
+python3 -m pytest sim/tests/unit/ -v
 ```
 
 ## 测试标记 (pytest markers)
@@ -26,7 +51,7 @@ python -m pytest sim/tests/unit/ -v
 | `opensource` | 依赖外部开源项目 (ventus/picorv32/darkriscv/OpenTitan) | ❌ 本地跳过 |
 | `slow` | 慢速测试 (>10s) | ⚠️ |
 
-**本地开发推荐**: `python -m pytest sim/tests/ -m "not opensource"`
+**本地开发推荐**: `python3 -m pytest sim/tests/ -m "not opensource"`
 
 ## 外部项目 (opensource) 管理
 
@@ -97,7 +122,12 @@ python3 tools/graph_snapshot.py diff a.json b.json [--json]
 
 ---
 
-## 已知限制 (2026-07-29, iter_187 更新)
+## 测试套件已知限制 (2026-07-29, iter_187 更新)
+
+> 本表是 **2026-07-29 当时的状态快照**，保留作历史参照；**当前**的测试基线与已知限制
+> 见 [docs/INDEX.md 当前基线](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里) 与
+> [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md)。
+> 计数请勿从本表引用 —— 它是历史值。
 
 | 限制 | 状态 | 处理方式 |
 |------|------|---------|
@@ -112,10 +142,11 @@ python3 tools/graph_snapshot.py diff a.json b.json [--json]
 
 ### 沙箱 / 受限环境验证手段 (iter_082 定型, iter_086 补警告)
 
-`ast_cache.py:30` 的 `CACHE_DIR = Path.home() / ".svq" / "cache"` — 当运行环境的
-HOME 不可写 (如沙箱), 所有走 `run_cli.py` subprocess 的测试 (human_output /
-tree_output / real_project_viz / trace_include_flags 等) 会报
-`Operation not permitted: ~/.svq/cache/...` 假失败, **不是代码回归**。
+`src/trace/core/cache/ast_cache.py` 的 `resolve_cache_dir()` (顺序: 显式 > `SVQ_CACHE_DIR` >
+`$XDG_CACHE_HOME/svq` > `~/.svq/cache`) — 当运行环境的 HOME 不可写 (如沙箱), 所有走
+`run_cli.py` subprocess 的测试 (human_output / tree_output / real_project_viz /
+trace_include_flags 等) 会报 `Operation not permitted: ~/.svq/cache/...` 假失败,
+**不是代码回归**。
 
 **验证方法** (沙箱内跑 CLI 测试):
 
@@ -135,7 +166,9 @@ real_project_viz 的 2 个真实失败。**判定时必须数清 skip 数量并�
 **判定原则**: 失败信息含 `Operation not permitted` / `~/.svq/cache` → 先按环境
 限制排除, 再判断是否为真回归。可写 HOME 下全绿 = 测试正确。
 
-## 2026-07-29 修复记录
+## 2026-07-29 修复记录（历史快照）
+
+> 以下为 2026-07-29 当日的历史修复记录，保留作追溯用；**不代表当前基线**。
 
 本日共 8 个 commits，修复了 65 个测试失败中的核心问题：
 
