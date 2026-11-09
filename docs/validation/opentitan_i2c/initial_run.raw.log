@@ -1,0 +1,15 @@
+{"task_id": "ot_i2c_intr_test_gate", "model": "MiniMax-M3", "exact": true, "false_confident": false, "false_found": false, "timeout": false, "confidence": "high", "duration_ms": 344198, "tool_calls": 126, "json_repaired": false}
+{"task_id": "ot_i2c_intr_test_gate", "model": "DeepSeek-Flash", "exact": true, "false_confident": false, "false_found": false, "timeout": false, "confidence": "high", "duration_ms": 586195, "tool_calls": 92, "json_repaired": false}
+{"task_id": "ot_i2c_scl_path", "model": "MiniMax-M3", "exact": true, "false_confident": false, "false_found": false, "timeout": false, "confidence": "high", "duration_ms": 15707, "tool_calls": 8, "json_repaired": false}
+{"task_id": "ot_i2c_scl_path", "model": "DeepSeek-Flash", "exact": true, "false_confident": false, "false_found": false, "timeout": false, "confidence": "high", "duration_ms": 44583, "tool_calls": 20, "json_repaired": false}
+Traceback (most recent call last):
+  File "/Users/fundou/my_dv_proj/sv_query/tools/benchmark/run_opentitan_tasks.py", line 148, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/Users/fundou/my_dv_proj/sv_query/tools/benchmark/run_opentitan_tasks.py", line 137, in main
+    print(json.dumps({k: r[k] for k in
+                     ^^^^^^^^^^^^^^^^^
+  File "/Users/fundou/my_dv_proj/sv_query/tools/benchmark/run_opentitan_tasks.py", line 137, in <dictcomp>
+    print(json.dumps({k: r[k] for k in
+                         ~^^^
+KeyError: 'confidence'

@@ -1,0 +1,218 @@
+{
+  "meta": {
+    "block": "i2c",
+    "block_path": "hw/ip/i2c",
+    "top_module": "i2c",
+    "snapshot": "opentitan_i2c",
+    "snapshot_file": "/tmp/opentitan_svq_i2c/snapshots/opentitan_i2c.json",
+    "snapshot_dir": "/tmp/opentitan_svq_i2c/snapshots",
+    "source_root": "/Users/fundou/.dsh/opencode-workers-lite/opentitan-pilot/workspace",
+    "filelist": "/tmp/opentitan_svq_i2c/opentitan_i2c.f",
+    "opentitan_repo": "/Users/fundou/my_dv_proj/openrtl/opentitan",
+    "opentitan_head": "a82c4892e88253924b3f7af05ce7494232ab263a",
+    "opentitan_head_subject": "[doc] Update ILA debugging documentation",
+    "opentitan_head_date": "Wed Nov 27 16:25:51 2024 +0100",
+    "sv_query_bin": "/Users/fundou/miniconda3/bin/sv_query",
+    "env": "export SVQ_SNAPSHOT_DIR=/tmp/opentitan_svq_i2c/snapshots",
+    "snapshot_stats": {
+      "files": 67,
+      "node_count": 9370,
+      "edge_count": 17599,
+      "elaboration_errors": 0,
+      "failed_files": 0,
+      "strict_mode": true,
+      "dynamic_nodes": 247,
+      "function_nodes": 0,
+      "snapshot_bytes": 12739756,
+      "build_time_cold_sec": 16.50,
+      "build_time_warm_sec": 16.41,
+      "query_latency_from_snapshot_sec": 0.45,
+      "elaboration_warnings": 378
+    },
+    "notes": [
+      "All signals below are real OpenTitan I2C RTL signals, resolved by sv_query against the opentitan_i2c snapshot.",
+      "Ground truth established by reading hw/ip/i2c/rtl/*.sv and hw/ip/prim/rtl/*.sv and cross-checked with the recorded sv_query CLI commands.",
+      "The I2C register-file instance is named `u_reg` (i2c.u_reg.*), not `i2c_reg_top`; the module type is i2c_reg_top but the instance path is i2c.u_reg.",
+      "All 3 tasks are answerable from the snapshot alone (--from-snapshot); no task requires source text.",
+      "Compare with the UART pilot at /tmp/opentitan_svq/REPORT.md - the UART artifacts were NOT modified by this work."
+    ]
+  },
+  "tasks": [
+    {
+      "id": "I2C-T1",
+      "block": "i2c",
+      "snapshot": "opentitan_i2c",
+      "source_root": "/Users/fundou/.dsh/opencode-workers-lite/opentitan-pilot/workspace",
+      "snapshot_dir": "/tmp/opentitan_svq_i2c/snapshots",
+      "kind": "direct_neighbors",
+      "question": "In the OpenTitan I2C register block, find the internal signal that gates the write-enable of the interrupt-test (INTR_TEST) registers. Report its canonical id, its single driver, and the complete list of the register write-enable signals it feeds. Then take one of those write-enable outputs in turn: report its canonical id, its two drivers, and its loads (which should be empty).",
+      "expected": {
+        "found": true,
+        "answer": {
+          "primary_signal": "i2c.u_reg.intr_test_qe",
+          "primary_drivers": [
+            "i2c.u_reg.intr_test_flds_we"
+          ],
+          "primary_loads": [
+            "i2c.u_reg.reg2hw.intr_test.fmt_threshold.qe",
+            "i2c.u_reg.reg2hw.intr_test.rx_threshold.qe",
+            "i2c.u_reg.reg2hw.intr_test.acq_threshold.qe",
+            "i2c.u_reg.reg2hw.intr_test.rx_overflow.qe",
+            "i2c.u_reg.reg2hw.intr_test.controller_halt.qe",
+            "i2c.u_reg.reg2hw.intr_test.scl_interference.qe",
+            "i2c.u_reg.reg2hw.intr_test.sda_interference.qe",
+            "i2c.u_reg.reg2hw.intr_test.stretch_timeout.qe",
+            "i2c.u_reg.reg2hw.intr_test.sda_unstable.qe",
+            "i2c.u_reg.reg2hw.intr_test.cmd_complete.qe",
+            "i2c.u_reg.reg2hw.intr_test.tx_stretch.qe",
+            "i2c.u_reg.reg2hw.intr_test.tx_threshold.qe",
+            "i2c.u_reg.reg2hw.intr_test.acq_stretch.qe",
+            "i2c.u_reg.reg2hw.intr_test.unexp_stop.qe",
+            "i2c.u_reg.reg2hw.intr_test.host_timeout.qe"
+          ],
+          "primary_loads_count": 15,
+          "empty_side_signal": "i2c.u_reg.reg2hw.intr_test.fmt_threshold.qe",
+          "empty_side_drivers": [
+            "i2c.u_reg.intr_test_qe",
+            "i2c.u_reg.intr_test_flds_we"
+          ],
+          "empty_side_loads": [],
+          "empty_side_note": "This is the empty-side case: the signal has 2 drivers and 0 loads. It is a register-file output port, so nothing inside the I2C consumes it."
+        },
+        "source_confirmation": {
+          "file": "hw/ip/i2c/rtl/i2c_reg_top.sv",
+          "lines": "1177-1179, 1194, 1210, 1226, 1242, 1258, 1274, 1290, 1306, 1322, 1338, 1354, 1370, 1386, 1402",
+          "detail": "logic intr_test_qe; logic [14:0] intr_test_flds_we; assign intr_test_qe = &intr_test_flds_we; then 'assign reg2hw.intr_test.<field>.qe = intr_test_qe;' for each of the 15 INTR_TEST fields. The 15 fields match the 15 intr_*_o interrupt outputs of i2c_core."
+        }
+      },
+      "ground_truth_command": "sv_query drivers --from-snapshot opentitan_i2c 'i2c.u_reg.intr_test_qe' --json ; sv_query loads --from-snapshot opentitan_i2c 'i2c.u_reg.intr_test_qe' --json ; sv_query drivers --from-snapshot opentitan_i2c 'i2c.u_reg.reg2hw.intr_test.fmt_threshold.qe' --json ; sv_query loads --from-snapshot opentitan_i2c 'i2c.u_reg.reg2hw.intr_test.fmt_threshold.qe' --json",
+      "verification": {
+        "expected_output": "drivers(intr_test_qe).count == 1 -> ['i2c.u_reg.intr_test_flds_we']; loads(intr_test_qe).count == 15; drivers(reg2hw.intr_test.fmt_threshold.qe).count == 2 -> ['i2c.u_reg.intr_test_qe', 'i2c.u_reg.intr_test_flds_we']; loads(...).count == 0"
+      }
+    },
+    {
+      "id": "I2C-T2",
+      "block": "i2c",
+      "snapshot": "opentitan_i2c",
+      "source_root": "/Users/fundou/.dsh/opencode-workers-lite/opentitan-pilot/workspace",
+      "snapshot_dir": "/tmp/opentitan_svq_i2c/snapshots",
+      "kind": "directed_path",
+      "question": "Trace the directed (dataflow) path in the OpenTitan I2C from the internal register that holds the combined SCL drive request, through to the chip-level SCL output-enable pin. Return the canonical ordered path of canonical signal ids and the hop count. Prefer the canonical path rather than the shortest cosmetic path.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "from": "i2c.i2c_core.scl_out_fsm",
+          "to": "i2c.cio_scl_en_o",
+          "hop_count": 4,
+          "candidate_count": 2,
+          "path": [
+            "i2c.i2c_core.scl_out_fsm",
+            "i2c.i2c_core.scl_o.ternary_override",
+            "i2c.i2c_core.scl_o",
+            "i2c.scl_int",
+            "i2c.cio_scl_en_o"
+          ],
+          "path_canonicality_note": "The 4-hop path is the --canonical selection (policy max_nodes_then_lexicographic). WITHOUT --canonical, `paths --directed` returns a 3-hop path for the same pair, and `paths --all` enumerates 2 distinct directed paths (hop counts 4 and 5). The ground-truth command therefore pins --canonical. This is the same class of ambiguity seen in the UART pilot.",
+          "physical_stages": "scl_out_fsm (flop combining controller & target FSM SCL requests) -> scl_o (override ternary: reg2hw.ovrd.sclval vs scl_out_fsm) -> scl_int (top-level internal net) -> cio_scl_en_o (chip-level SCL output-enable pin)"
+        },
+        "source_confirmation": {
+          "file": "hw/ip/i2c/rtl/i2c_core.sv",
+          "lines": "247, 266-275, 534, 590",
+          "detail": "i2c_core.sv:247 `assign scl_o = override ? reg2hw.ovrd.sclval : scl_out_fsm;`; i2c_core.sv:266-275 `always_ff ... scl_out_fsm <= scl_out_controller_fsm & scl_out_target_fsm;`; i2c_core.sv:534/590 instantiate i2c_controller_fsm and i2c_target_fsm driving scl_out_controller_fsm / scl_out_target_fsm. The top level i2c.sv wires scl_o to scl_int and drives cio_scl_en_o."
+        }
+      },
+      "ground_truth_command": "sv_query paths --from-snapshot opentitan_i2c 'i2c.i2c_core.scl_out_fsm' 'i2c.cio_scl_en_o' --directed --canonical --json ; sv_query paths --from-snapshot opentitan_i2c 'i2c.i2c_core.scl_out_fsm' 'i2c.cio_scl_en_o' --directed --all --json",
+      "verification": {
+        "expected_output": "paths WITH --canonical: found=true hop_count=4 candidate_count=2, path exactly as listed; paths WITHOUT --canonical: hop_count=3; paths --all: count=2 truncated=false",
+        "all_paths_census": "paths --directed --all -> count=2 truncated=false, hop distribution {4: 1, 5: 1}"
+      }
+    },
+    {
+      "id": "I2C-T3",
+      "block": "i2c",
+      "snapshot": "opentitan_i2c",
+      "source_root": "/Users/fundou/.dsh/opencode-workers-lite/opentitan-pilot/workspace",
+      "snapshot_dir": "/tmp/opentitan_svq_i2c/snapshots",
+      "kind": "verify_claim",
+      "question": "Five claims about the OpenTitan I2C are made. (A) The sticky integrity-error output of the register block is driven by the sticky error flop in the same register block. (B) That same integrity-error output reaches the I2C's fatal-alert request. (C) The SDA drive register drives the SCL drive register. (D) The SCL drive register drives the internal SCL drive output of the I2C core. (E) The SCL drive register is a direct driver of the chip-level SCL output-enable pin. Verify or refute each claim against the design; each answer is one of verified / contradicted / unknown. Note for claim E: the RTL inverts the SCL line at the top level, so judge E by what the tool reports for the DIRECT fanin of the chip pin.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "claim_A": {
+            "type": "driver",
+            "signal": "i2c.u_reg.intg_err_o",
+            "driver": "i2c.u_reg.err_q",
+            "status": "verified",
+            "reason": "",
+            "evidence": "[{'kind': 'fanin', 'signal': 'i2c.u_reg.intg_err_o', 'driver': 'i2c.u_reg.err_q', 'transitive': False}]"
+          },
+          "claim_B": {
+            "type": "path",
+            "from": "i2c.u_reg.intg_err_o",
+            "to": "i2c.alerts[0]",
+            "status": "verified",
+            "reason": "",
+            "evidence": "[{'kind': 'reachable', 'from': 'i2c.u_reg.intg_err_o', 'to': 'i2c.alerts[0]', 'bidirectional': False}]"
+          },
+          "claim_C": {
+            "type": "driver",
+            "signal": "i2c.i2c_core.scl_out_fsm",
+            "driver": "i2c.i2c_core.sda_out_fsm",
+            "status": "contradicted",
+            "reason": "i2c.i2c_core.sda_out_fsm is not in fanin(i2c.i2c_core.scl_out_fsm, depth=1)"
+          },
+          "claim_D": {
+            "type": "driver",
+            "signal": "i2c.i2c_core.scl_o",
+            "driver": "i2c.i2c_core.scl_out_fsm",
+            "status": "verified",
+            "reason": "",
+            "note": "Claim D asks about the internal SCL drive output `i2c.i2c_core.scl_o`, whose driver IS scl_out_fsm (via the override ternary at i2c_core.sv:247)."
+          },
+          "claim_E_inversion_false_negative": {
+            "type": "driver",
+            "signal": "i2c.cio_scl_en_o",
+            "driver": "i2c.i2c_core.scl_out_fsm",
+            "status": "contradicted",
+            "reason": "i2c.i2c_core.scl_out_fsm is not in fanin(i2c.cio_scl_en_o, depth=1)",
+            "interpretation": "This is a KNOWN TOOL FALSE NEGATIVE, not a real design fact. The RTL at hw/ip/i2c/rtl/i2c.sv:154 is `assign cio_scl_en_o = ~scl_int;` and scl_int is driven from i2c_core.scl_o, which is `override ? reg2hw.ovrd.sclval : scl_out_fsm`. The driver fanin does not traverse the bitwise-NOT, so scl_out_fsm is absent from the fanin of cio_scl_en_o. The PATH claim for the same pair (i2c.i2c_core.scl_out_fsm -> i2c.cio_scl_en_o) IS verified (see I2C-T2), which proves the connectivity exists.",
+            "actual_direct_drivers_of_cio_scl_en_o": [
+              "i2c.scl_int",
+              "i2c.i2c_core.scl_o",
+              "i2c.i2c_core.u_i2c_controller_fsm.scl_d",
+              "i2c.i2c_core.u_i2c_target_fsm.scl_d"
+            ]
+          },
+          "reverse_direction_control": {
+            "type": "driver",
+            "signal": "i2c.u_reg.err_q",
+            "driver": "i2c.u_reg.intg_err_o",
+            "status": "contradicted",
+            "reason": "i2c.u_reg.intg_err_o is not in fanin(i2c.u_reg.err_q, depth=1)"
+          }
+        },
+        "source_confirmation": {
+          "file": "hw/ip/i2c/rtl/i2c_reg_top.sv",
+          "lines": "76-87",
+          "detail": "logic err_q; always_ff ... err_q <= '0; else if (intg_err || reg_we_err) err_q <= 1'b1; ... assign intg_err_o = err_q | intg_err | reg_we_err;  -> claim A holds."
+        },
+        "source_confirmation_B": {
+          "file": "hw/ip/i2c/rtl/i2c.sv",
+          "lines": "84, 101",
+          "detail": "uart_reg_top equivalent: i2c_reg_top u_reg (... .intg_err_o(alerts[0]) ); and prim_alert_sender ... .alert_req_i ( alerts[0] ). -> claim B holds."
+        },
+        "source_confirmation_C": {
+          "file": "hw/ip/i2c/rtl/i2c_core.sv",
+          "lines": "266-275",
+          "detail": "scl_out_fsm and sda_out_fsm are assigned in the same always_ff but from independent signals (scl_out_controller_fsm & scl_out_target_fsm vs sda_out_controller_fsm & sda_out_target_fsm); sda_out_fsm never feeds scl_out_fsm -> claim C is false."
+        }
+      },
+      "ground_truth_command": "sv_query verify claim --from-snapshot opentitan_i2c --claim '{\"type\":\"driver\",\"signal\":\"i2c.u_reg.intg_err_o\",\"driver\":\"i2c.u_reg.err_q\"}' --json ; sv_query verify claim --from-snapshot opentitan_i2c --claim '{\"type\":\"path\",\"from\":\"i2c.u_reg.intg_err_o\",\"to\":\"i2c.alerts[0]\"}' --json ; sv_query verify claim --from-snapshot opentitan_i2c --claim '{\"type\":\"driver\",\"signal\":\"i2c.i2c_core.scl_out_fsm\",\"driver\":\"i2c.i2c_core.sda_out_fsm\"}' --json ; sv_query verify claim --from-snapshot opentitan_i2c --claim '{\"type\":\"driver\",\"signal\":\"i2c.i2c_core.scl_o\",\"driver\":\"i2c.i2c_core.scl_out_fsm\"}' --json ; sv_query verify claim --from-snapshot opentitan_i2c --claim '{\"type\":\"driver\",\"signal\":\"i2c.cio_scl_en_o\",\"driver\":\"i2c.i2c_core.scl_out_fsm\"}' --json",
+      "verification": {
+        "expected_output": "claim A status=verified; claim B status=verified; claim C status=contradicted; claim D status=verified; claim E status=contradicted (documented tool false-negative through the top-level bitwise-NOT); reverse-direction control status=contradicted",
+        "tooling_note": "This task is fully answerable from the snapshot alone (--from-snapshot); no source text is required, unlike the UART T3 evidence task.",
+        "consistency_note": "Claim E contradicted + I2C-T2 path verified together pin down a real tool limitation: `drivers` does not traverse bitwise-NOT, while `paths` does. A grader that treats contradicted as 'wrong answer' would mis-grade claim E; the frozen expectation records the tool's actual output and explains the cause."
+      }
+    }
+  ]
+}

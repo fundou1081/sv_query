@@ -321,6 +321,11 @@ P122 Canonical path + runner hardening <已完成>
 -- P122.2 per-cell timeout/isolation <已完成>
 -- P122.3 continuous 10/10 <已完成>
 
+P123 OpenTitan I2C second-block pilot <已完成>
+-- P123.1 i2c filelist/snapshot <已完成>
+-- P123.2 3 tasks ×2 模型 6/6 <已完成>
+-- P123.3 纠正 worker 两处语义误判 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

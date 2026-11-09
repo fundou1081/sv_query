@@ -1,0 +1,224 @@
+{
+  "protocol": "P123 OpenTitan I2C second-block validation",
+  "frozen_at": "2026-11-09",
+  "note": "Corrected from worker i2c artifacts. Worker's claim-E 'tool false negative' was a task-semantics error: a direct driver of a NOT expression is the NOT operand, not the upstream source. No tool fix is warranted for claim E.",
+  "snapshot": "opentitan_i2c",
+  "snapshot_dir": "/tmp/opentitan_svq_i2c/snapshots",
+  "source_root": "/Users/fundou/.dsh/opencode-workers-lite/opentitan-pilot/workspace",
+  "tasks": [
+    {
+      "id": "ot_i2c_intr_test_gate",
+      "kind": "t1",
+      "question": "In the OpenTitan I2C register block, find the internal signal that gates the write-enable of the interrupt-test (INTR_TEST) registers. Report its canonical id, its single driver, and all of its load ids. Then take the INTR_TEST fmt_threshold qe output: report its canonical id, its two drivers, and its loads (empty is valid). Return exactly {primary_signal, primary_drivers, primary_loads, empty_side_signal, empty_side_drivers, empty_side_loads}.",
+      "expected": {
+        "primary_signal": "i2c.u_reg.intr_test_qe",
+        "primary_drivers": [
+          "i2c.u_reg.intr_test_flds_we"
+        ],
+        "primary_loads": [
+          "i2c.u_reg.reg2hw.intr_test.fmt_threshold.qe",
+          "i2c.u_reg.reg2hw.intr_test.rx_threshold.qe",
+          "i2c.u_reg.reg2hw.intr_test.acq_threshold.qe",
+          "i2c.u_reg.reg2hw.intr_test.rx_overflow.qe",
+          "i2c.u_reg.reg2hw.intr_test.controller_halt.qe",
+          "i2c.u_reg.reg2hw.intr_test.scl_interference.qe",
+          "i2c.u_reg.reg2hw.intr_test.sda_interference.qe",
+          "i2c.u_reg.reg2hw.intr_test.stretch_timeout.qe",
+          "i2c.u_reg.reg2hw.intr_test.sda_unstable.qe",
+          "i2c.u_reg.reg2hw.intr_test.cmd_complete.qe",
+          "i2c.u_reg.reg2hw.intr_test.tx_stretch.qe",
+          "i2c.u_reg.reg2hw.intr_test.tx_threshold.qe",
+          "i2c.u_reg.reg2hw.intr_test.acq_stretch.qe",
+          "i2c.u_reg.reg2hw.intr_test.unexp_stop.qe",
+          "i2c.u_reg.reg2hw.intr_test.host_timeout.qe"
+        ],
+        "empty_side_signal": "i2c.u_reg.reg2hw.intr_test.fmt_threshold.qe",
+        "empty_side_drivers": [
+          "i2c.u_reg.intr_test_qe",
+          "i2c.u_reg.intr_test_flds_we"
+        ],
+        "empty_side_loads": []
+      }
+    },
+    {
+      "id": "ot_i2c_scl_path",
+      "kind": "t2",
+      "question": "Trace the directed structural path in the OpenTitan I2C from `i2c.i2c_core.scl_out_fsm` to the chip-level SCL output-enable pin `i2c.cio_scl_en_o`. Return the canonical ordered path and hop count.",
+      "expected": {
+        "path": [
+          "i2c.i2c_core.scl_out_fsm",
+          "i2c.i2c_core.scl_o.ternary_override",
+          "i2c.i2c_core.scl_o",
+          "i2c.scl_int",
+          "i2c.cio_scl_en_o"
+        ],
+        "hop_count": 4
+      }
+    },
+    {
+      "id": "ot_i2c_verify_claims",
+      "kind": "t4",
+      "question": "Verify these claims in the OpenTitan I2C. A) driver: `i2c.u_reg.err_q` drives `i2c.u_reg.intg_err_o`. B) path: `i2c.u_reg.intg_err_o` reaches `i2c.alerts[0]`. C) driver: `i2c.i2c_core.sda_out_fsm` drives `i2c.i2c_core.scl_out_fsm`. D) driver: `i2c.i2c_core.scl_out_fsm` directly drives `i2c.cio_scl_en_o`. E) driver: `i2c.i2c_core.scl_out_fsm` directly drives `i2c.i2c_core.scl_o`. Return exactly {claim_A, claim_B, claim_C, claim_D, claim_E}, each verified/contradicted/unknown. D is a direct-driver claim; do not substitute transitive connectivity.",
+      "expected": {
+        "claim_A": "verified",
+        "claim_B": "verified",
+        "claim_C": "contradicted",
+        "claim_D": "contradicted",
+        "claim_E": "verified"
+      }
+    }
+  ],
+  "results": [
+    {
+      "task_id": "ot_i2c_verify_claims",
+      "model": "MiniMax-M3",
+      "kind": "t4",
+      "duration_ms": 25474,
+      "rc": 0,
+      "timeout": false,
+      "parsed": true,
+      "json_repaired": false,
+      "found": true,
+      "answer": {
+        "claim_A": "verified",
+        "claim_B": "verified",
+        "claim_C": "contradicted",
+        "claim_D": "contradicted",
+        "claim_E": "verified"
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "claim": "A",
+          "intent": "fanout",
+          "signal": "i2c.u_reg.err_q",
+          "result": "loads=[i2c.u_reg.intg_err_o], count=1, kind=PORT_OUT, distance=1"
+        },
+        {
+          "claim": "B",
+          "intent": "path",
+          "signal": "i2c.u_reg.intg_err_o",
+          "dst": "i2c.alerts[0]",
+          "result": "canonical path=[i2c.u_reg.intg_err_o, i2c.alerts[0]], count=1",
+          "evidence": {
+            "i2c.alerts[0]": {
+              "file": "i2c.sv",
+              "line": 68,
+              "source_line": "logic [NumAlerts-1:0] alert_test, alerts;"
+            }
+          }
+        },
+        {
+          "claim": "C",
+          "intent": "fanout",
+          "signal": "i2c.i2c_core.sda_out_fsm",
+          "result": "loads=[i2c.i2c_core.sda_o], count=1, kind=PORT_OUT, condition=!(override), distance=1; i2c.i2c_core.scl_out_fsm absent from loads"
+        },
+        {
+          "claim": "D",
+          "intent": "fanin",
+          "signal": "i2c.cio_scl_en_o",
+          "result": "drivers=[i2c.scl_int], count=1, kind=SIGNAL, distance=1; i2c.i2c_core.scl_out_fsm is not a direct driver",
+          "transitive_note": "scl_out_fsm -> i2c.i2c_core.scl_o -> i2c.scl_int -> i2c.cio_scl_en_o (transitive only, does not satisfy direct-driver claim)"
+        },
+        {
+          "claim": "D_support",
+          "intent": "fanin",
+          "signal": "i2c.scl_int",
+          "result": "drivers=[i2c.i2c_core.scl_o], count=1, kind=PORT_OUT, distance=1"
+        },
+        {
+          "claim": "E",
+          "intent": "fanin",
+          "signal": "i2c.i2c_core.scl_o",
+          "result": "drivers include i2c.i2c_core.scl_out_fsm, kind=REG, condition=!(override), distance=1",
+          "evidence": {
+            "i2c.i2c_core.scl_out_fsm": {
+              "file": "i2c_core.sv",
+              "line": 84,
+              "source_line": "logic scl_out_fsm;"
+            }
+          }
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 10,
+      "workspace": "/tmp/opentitan_agent/MiniMax-M3/ot_i2c_verify_claims",
+      "stderr": ""
+    },
+    {
+      "task_id": "ot_i2c_verify_claims",
+      "model": "DeepSeek-Flash",
+      "kind": "t4",
+      "duration_ms": 22955,
+      "rc": 0,
+      "timeout": false,
+      "parsed": true,
+      "json_repaired": false,
+      "found": true,
+      "answer": {
+        "claim_A": "verified",
+        "claim_B": "verified",
+        "claim_C": "contradicted",
+        "claim_D": "contradicted",
+        "claim_E": "verified"
+      },
+      "confidence": "high",
+      "evidence": [
+        {
+          "claim": "A",
+          "intent": "verify/driver",
+          "signal": "i2c.u_reg.intg_err_o",
+          "driver": "i2c.u_reg.err_q",
+          "result": "verified",
+          "detail": "err_q is a direct (transitive=false, distance=1) fanin driver of intg_err_o; file i2c_reg_top.sv:76 (logic err_q). Other fanin: intg_err, reg_we_err, so err_q is one of three drivers.",
+          "counterevidence": []
+        },
+        {
+          "claim": "B",
+          "intent": "verify/path",
+          "from": "i2c.u_reg.intg_err_o",
+          "to": "i2c.alerts[0]",
+          "result": "verified",
+          "detail": "canonical path of 2 nodes, candidate_count=1; fanin(i2c.alerts[0]) = [i2c.u_reg.intg_err_o] (PORT_OUT, distance=1) and fanout(intg_err_o)=[i2c.alerts[0]] (i2c.sv:68 logic [NumAlerts-1:0] alert_test, alerts).",
+          "counterevidence": []
+        },
+        {
+          "claim": "C",
+          "intent": "verify/driver",
+          "signal": "i2c.i2c_core.scl_out_fsm",
+          "driver": "i2c.i2c_core.sda_out_fsm",
+          "result": "contradicted",
+          "detail": "not in fanin depth=1; actual drivers: 1'b1, i2c.i2c_core.clk_i, i2c.i2c_core.rst_ni, i2c.i2c_core.scl_out_controller_fsm, i2c.i2c_core.scl_out_target_fsm.",
+          "counterevidence": "i2c.i2c_core.sda_out_fsm is not in fanin(i2c.i2c_core.scl_out_fsm, depth=1)"
+        },
+        {
+          "claim": "D",
+          "intent": "verify/driver",
+          "signal": "i2c.cio_scl_en_o",
+          "driver": "i2c.i2c_core.scl_out_fsm",
+          "result": "contradicted",
+          "detail": "direct driver of i2c.cio_scl_en_o is i2c.scl_int only; scl_out_fsm is not in fanin(cio_scl_en_o, depth=1). Transitive connectivity was not substituted.",
+          "counterevidence": "actual_drivers of i2c.cio_scl_en_o = [i2c.scl_int]"
+        },
+        {
+          "claim": "E",
+          "intent": "verify/driver",
+          "signal": "i2c.i2c_core.scl_o",
+          "driver": "i2c.i2c_core.scl_out_fsm",
+          "result": "verified",
+          "detail": "scl_out_fsm is a direct (transitive=false, distance=1) fanin driver of i2c.i2c_core.scl_o.",
+          "counterevidence": []
+        }
+      ],
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 14,
+      "workspace": "/tmp/opentitan_agent/DeepSeek-Flash/ot_i2c_verify_claims",
+      "stderr": "and fanin alerts[0].\ndsh: reasoning:\nClaim B: path from intg_err_o to alerts[0] confirmed, direct fanin edge. Verified.\n\nBut wait—the verify intent supports path type with \"from\"+\"to\". Let's try to get official verified status: {type:'path', from:'i2c.u_reg.intg_err_o', to:'i2c.alerts[0]'}. Good for evidence consistency.\n\nAlso confirm that direct edge is a net assignment in i2c.sv. Fine.\n\nLet me run that verify.\ndsh: reasoning:\nAll claims settled:\n\nA verified\nB verified\nC contradicted\nD contradicted\nE verified\n\nNow produce JSON object exactly as specified.\n\nEvidence array: include canonical IDs and file/line where available.\n\nFormat: {\"task_id\":\"ot_i2c_verify_claims\",\"found\":true,\"answer\":{...},\"confidence\":\"high\",\"evidence\":[]}\n\nConfidence high.\n\nI'll include evidence entries as objects.\n"
+    }
+  ]
+}

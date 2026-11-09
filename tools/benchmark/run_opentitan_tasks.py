@@ -131,7 +131,9 @@ def main() -> int:
                 rows.append({"task_id": task["id"], "model": model["label"],
                              "kind": task["kind"], "exact": False,
                              "false_confident": False, "false_found": False,
-                             "timeout": False, "parsed": False,
+                             "timeout": False, "parsed": False, "json_repaired": False,
+                             "found": None, "answer": None, "confidence": None,
+                             "evidence": [], "tool_calls": 0, "duration_ms": 0,
                              "rc": 1, "error": str(exc), "workspace": None})
     for r in rows:
         print(json.dumps({k: r[k] for k in
