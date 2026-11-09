@@ -86,7 +86,7 @@
     {
       "id": "ot_uart_unknown_direction",
       "kind": "t5",
-      "question": "Check two things in the OpenTitan UART. For the missing endpoint `uart.uart_core.nonexistent_sig` against `uart.uart_core.rx_val_q`, report `missing_signal_status` as unknown/contradicted/verified. For the directed path claim `uart.cio_tx_o` -> `uart.uart_core.tx_out_q`, report `no_path_status` as unknown/contradicted/verified. Return exactly {missing_signal_status, no_path_status}; both values must be statuses, not IDs or booleans.",
+      "question": "Use svq_query intent=verify for both claims, then report only their verify statuses. Claim 1: {\"type\":\"path\",\"from\":\"uart.uart_core.nonexistent_sig\",\"to\":\"uart.uart_core.rx_val_q\"}. Claim 2: {\"type\":\"path\",\"from\":\"uart.cio_tx_o\",\"to\":\"uart.uart_core.tx_out_q\"}. Return exactly {missing_signal_status, no_path_status}, where each value is verified/contradicted/unknown. Do not return signal ids or booleans.",
       "expected": {
         "missing_signal_status": "unknown",
         "no_path_status": "contradicted"

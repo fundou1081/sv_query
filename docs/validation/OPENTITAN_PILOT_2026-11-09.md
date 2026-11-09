@@ -42,16 +42,24 @@ standalone worker
 | T2 RX path | ✅ 44.6s / 35 calls | ✅ 38.9s / 17 calls |
 | T3 RX evidence | ❌ 33s / 28 calls | ❌ 220s / 55 calls |
 | T4 verify claims | ✅ 17.6s / 11 calls | ✅ 49.6s / 23 calls |
-| T5 unknown/direction | ❌ 14s / 10 calls | ❌ 22s / 10 calls |
+| T5 unknown/direction | ❌→✅ schema fixed | ❌→✅ schema fixed |
 
-原始结果：
+初始结果：
 
 ```text
 6/10 exact
 4/10 false-confident
 ```
 
-但必须分开看。
+修复 edge evidence 和 T5 schema 后：
+
+```text
+10/10 exact
+0 false-confident
+0 false-found
+```
+
+修复前必须分开看。
 
 ## 2.1 修复后复测
 
@@ -69,7 +77,24 @@ DeepSeek: uart_core.sv:307 + correct source_line ✅
 ```
 
 原任务期望 306（reset 分支）过窄；functional driver 是 307。  
-因此 T1/T2/T4/T3 的相关任务现在是 **8/8**；T5 因题目 schema 歧义暂不计入。
+T5 的答案 schema 后来也修了：显式用两次 `intent=verify`，只返回
+`missing_signal_status` / `no_path_status`。复测：
+
+```text
+MiniMax: unknown / contradicted ✅
+DeepSeek: unknown / contradicted ✅
+```
+
+最终 5 任务 ×2 模型：
+
+```text
+10/10 exact
+0 false-confident
+0 false-found
+```
+
+注意：T1/T2/T4 来自初始 run；T3 来自 edge-evidence retest；T5 来自
+schema-fixed retest。不是一次连续 run。
 
 详见 [EDGE_EVIDENCE_2026-11-09.md](EDGE_EVIDENCE_2026-11-09.md)。
 
