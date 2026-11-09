@@ -145,7 +145,7 @@ export function compactPath(payload, meta = {}) {
     const path = variants[0];
     return {
       ok: payload.ok !== false, status: "ok", found: true,
-      intent: "path", snapshot: meta.snapshot,
+      intent: "path", snapshot: meta.snapshot, path_kind: meta.path_kind || "variant",
       path, count: path.length - 1,
       variants: variants.length, truncated: !!payload.truncated,
     };
@@ -158,8 +158,11 @@ export function compactPath(payload, meta = {}) {
   return {
     ok: payload.ok !== false, status: "ok", found: true,
     intent: "path", snapshot: meta.snapshot,
+    path_kind: payload.canonical ? "canonical" : (meta.path_kind || "shortest"),
     path: payload.path || [],
     count: payload.hop_count ?? null,
+    candidate_count: payload.candidate_count ?? null,
+    canonical_policy: payload.canonical_policy || null,
   };
 }
 

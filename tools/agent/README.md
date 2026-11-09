@@ -23,8 +23,10 @@ signal IDs. `count` is the array length for fanin/fanout/neighbors and
 `hop_count` for path.
 `details=true` adds `kind`, `condition`, and `distance` for neighbors.
 `neighborhood` performs a bounded fanin BFS and returns node/edge metadata.
-`path` requests `paths --all` and defaults to the shortest variant. Pass
-`granular=true` to prefer the most-node variant (used by deep-chain tasks).
+`path` requests the deterministic canonical variant:
+`paths --canonical --directed` (max nodes, then lexicographic). `deep_path` is
+a compatibility alias with the same semantics. Results include
+`path_kind`, `candidate_count`, and `canonical_policy`.
 
 ## Install
 

@@ -75,9 +75,19 @@ def run_one(meta: dict, task: dict, model: dict) -> dict:
     cmd = ["dsh", "--profile", "headless", "--patch", str(patch),
            "--patch", str(TOOL_PATCH), prompt(meta, task)]
     t0 = time.time()
-    r = subprocess.run(cmd, cwd=ws, env=env, capture_output=True, text=True, timeout=300)
-    (ws / "raw.txt").write_text(r.stdout)
-    parsed, repaired = parse_answer_json(r.stdout)
+    timeout = getattr(run_one, "timeout", 600)
+    timed_out = False
+    try:
+        r = subprocess.run(cmd, cwd=ws, env=env, capture_output=True, text=True,
+                           timeout=timeout)
+        stdout, stderr, rc = r.stdout, r.stderr, r.returncode
+    except subprocess.TimeoutExpired as exc:
+        timed_out = True
+        stdout = exc.stdout if isinstance(exc.stdout, str) else (exc.stdout or b"").decode("utf-8", "replace")
+        stderr = f"timeout after {timeout}s"
+        rc = 124
+    (ws / "raw.txt").write_text(stdout or "")
+    parsed, repaired = parse_answer_json(stdout or "")
     exact, false_conf, false_found = score(task, parsed)
     try:
         calls = extract(ws).get("tool_detail", [])
@@ -85,7 +95,8 @@ def run_one(meta: dict, task: dict, model: dict) -> dict:
         calls = []
     return {
         "task_id": task["id"], "model": model["label"], "kind": task["kind"],
-        "duration_ms": int((time.time() - t0) * 1000), "rc": r.returncode,
+        "duration_ms": int((time.time() - t0) * 1000), "rc": rc,
+        "timeout": timed_out,
         "parsed": parsed is not None, "json_repaired": repaired,
         "found": (parsed or {}).get("found"),
         "answer": (parsed or {}).get("answer"),
@@ -93,7 +104,7 @@ def run_one(meta: dict, task: dict, model: dict) -> dict:
         "evidence": (parsed or {}).get("evidence", []),
         "exact": exact, "false_confident": false_conf, "false_found": false_found,
         "tool_calls": len(calls), "workspace": str(ws),
-        "stderr": r.stderr[-800:],
+        "stderr": stderr[-800:],
     }
 
 
@@ -102,17 +113,30 @@ def main() -> int:
     ap.add_argument("--models", nargs="*", default=["MiniMax-M3", "DeepSeek-Flash"])
     ap.add_argument("--tasks", type=Path, default=TASKS)
     ap.add_argument("--only", nargs="*", default=None)
+    ap.add_argument("--timeout", type=int, default=600,
+                    help="per-cell DSH timeout in seconds")
     ap.add_argument("--output", type=Path, default=Path("/tmp/opentitan_agent.json"))
     args = ap.parse_args()
     data = json.loads(args.tasks.read_text())
     meta = {k: data[k] for k in ("snapshot", "snapshot_dir", "source_root")}
     models = [m for m in base.MODELS if m["label"] in args.models]
+    run_one.timeout = args.timeout
     tasks = [t for t in data["tasks"] if not args.only or t["id"] in args.only]
-    rows = [run_one(meta, t, m) for t in tasks for m in models]
+    rows = []
+    for task in tasks:
+        for model in models:
+            try:
+                rows.append(run_one(meta, task, model))
+            except Exception as exc:
+                rows.append({"task_id": task["id"], "model": model["label"],
+                             "kind": task["kind"], "exact": False,
+                             "false_confident": False, "false_found": False,
+                             "timeout": False, "parsed": False,
+                             "rc": 1, "error": str(exc), "workspace": None})
     for r in rows:
         print(json.dumps({k: r[k] for k in
                           ("task_id", "model", "exact", "false_confident",
-                           "false_found", "confidence", "duration_ms",
+                           "false_found", "timeout", "confidence", "duration_ms",
                            "tool_calls", "json_repaired")}, ensure_ascii=False))
     out = dict(data); out["results"] = rows
     args.output.write_text(json.dumps(out, ensure_ascii=False, indent=2) + "\n")
