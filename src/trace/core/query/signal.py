@@ -203,6 +203,9 @@ class SignalTracer:
                 continue
 
             if edge.kind != EdgeKind.DRIVER:
+                # FIFO is a sequential boundary; default fanin must not cross.
+                if edge.kind.name == "FIFO":
+                    continue
                 # ④ 控制类边（时钟/复位/分支/case）：不 append、不递归
                 if self._is_control_edge(edge.kind):
                     continue

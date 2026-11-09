@@ -93,22 +93,8 @@ def _member_dict(node) -> dict:
 
 
 def _constraint_info(info, graph) -> dict:
-    rand_vars = []
-    for var in info.vars:
-        node = graph.get_node(var)
-        if node is not None and (node.extra or {}).get("rand"):
-            rand_vars.append(var)
-    return {
-        "id": info.block_id,
-        "vars": list(info.vars),
-        "conditions": list(info.conditions),
-        "expr_count": info.expr_count,
-        "defined_in": info.defined_in,
-        "inherited": info.inherited,
-        "rand_vars": rand_vars,
-        "solve_before": list(getattr(info, "solve_before", []) or []),
-        "dist": list(getattr(info, "dist", []) or []),
-    }
+    from cli.core.semantic.constraints import constraint_dict
+    return constraint_dict(info, graph, id_key="id")
 
 
 def _class_constraint_blocks(tracer, graph, members) -> list[dict]:

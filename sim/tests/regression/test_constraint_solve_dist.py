@@ -28,8 +28,11 @@ class TestConstraintSolveDist(unittest.TestCase):
     def test_dist_weights_are_reported(self):
         blocks = {b['block']: b for b in _constraints('rnd_item.e')}
         dist = blocks['rnd_item.c_de']['dist']
-        self.assertIn('0 := 1', dist[0]['values'])
-        self.assertIn('1 := 3', dist[0]['values'])
+        items = dist[0]['items']
+        self.assertEqual('0', items[0]['value'])
+        self.assertEqual('1', items[0]['weight'])
+        self.assertEqual('1', items[1]['value'])
+        self.assertEqual('3', items[1]['weight'])
 
 
 if __name__ == '__main__':
