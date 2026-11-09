@@ -1,0 +1,909 @@
+{
+  "protocol": "P98 constrained svq_query",
+  "tasks": [
+    {
+      "id": "axi_araddr_neighbors",
+      "cwd": "/tmp/lr_pilot/axi",
+      "input": "/tmp/lr_pilot/axi.f",
+      "question": "For bus `axi_adapter.axi_adapter_rd_inst.m_axi_araddr`, list ALL direct (distance=1) driver node IDs and ALL direct load node IDs. Return exact canonical IDs.",
+      "required": [
+        "drivers",
+        "loads"
+      ],
+      "ground_truth": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ]
+      },
+      "source": {
+        "kind": "filelist",
+        "path": "sim/tests/fixtures/verilog-axi/filelist.f"
+      },
+      "query": {
+        "cmd": "fanin",
+        "signal": "axi_adapter.axi_adapter_rd_inst.m_axi_araddr",
+        "also_loads": true
+      }
+    },
+    {
+      "id": "axi_awvalid_fanout",
+      "cwd": "/tmp/lr_pilot/axi",
+      "input": "/tmp/lr_pilot/axi.f",
+      "question": "List ALL direct (distance=1) loads of `axi_adapter.s_axi_awvalid`, exact canonical IDs and count.",
+      "required": [
+        "loads",
+        "count"
+      ],
+      "ground_truth": {
+        "loads": [
+          "axi_adapter.axi_adapter_wr_inst.s_axi_awvalid"
+        ],
+        "count": 1
+      },
+      "source": {
+        "kind": "filelist",
+        "path": "sim/tests/fixtures/verilog-axi/filelist.f"
+      },
+      "query": {
+        "cmd": "fanout",
+        "signal": "axi_adapter.s_axi_awvalid"
+      }
+    },
+    {
+      "id": "axi_arvalid_fanin",
+      "cwd": "/tmp/lr_pilot/axi",
+      "input": "/tmp/lr_pilot/axi.f",
+      "question": "List ALL direct (distance=1) drivers of `axi_adapter.axi_adapter_rd_inst.m_axi_arvalid`, exact canonical IDs and count.",
+      "required": [
+        "drivers",
+        "count"
+      ],
+      "ground_truth": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_arvalid_reg"
+        ],
+        "count": 1
+      },
+      "source": {
+        "kind": "filelist",
+        "path": "sim/tests/fixtures/verilog-axi/filelist.f"
+      },
+      "query": {
+        "cmd": "fanin",
+        "signal": "axi_adapter.axi_adapter_rd_inst.m_axi_arvalid"
+      }
+    },
+    {
+      "id": "axi_awvalid_fanin",
+      "cwd": "/tmp/lr_pilot/axi",
+      "input": "/tmp/lr_pilot/axi.f",
+      "question": "List ALL direct (distance=1) drivers of `axi_adapter.axi_adapter_wr_inst.m_axi_awvalid`, exact canonical IDs and count.",
+      "required": [
+        "drivers",
+        "count"
+      ],
+      "ground_truth": {
+        "drivers": [
+          "axi_adapter.axi_adapter_wr_inst.m_axi_awvalid_reg"
+        ],
+        "count": 1
+      },
+      "source": {
+        "kind": "filelist",
+        "path": "sim/tests/fixtures/verilog-axi/filelist.f"
+      },
+      "query": {
+        "cmd": "fanin",
+        "signal": "axi_adapter.axi_adapter_wr_inst.m_axi_awvalid"
+      }
+    },
+    {
+      "id": "serv_clk_fanout",
+      "cwd": "/tmp/lr_pilot/serv",
+      "input": "/tmp/lr_pilot/serv.f",
+      "question": "List ALL direct (distance=1) loads of `serv_rf_top.clk`, exact canonical IDs and count.",
+      "required": [
+        "loads",
+        "count"
+      ],
+      "ground_truth": {
+        "loads": [
+          "serv_rf_top.rf_ram_if.i_clk",
+          "serv_rf_top.rf_ram.i_clk",
+          "serv_rf_top.cpu.clk"
+        ],
+        "count": 3
+      },
+      "source": {
+        "kind": "serv"
+      },
+      "query": {
+        "cmd": "fanout",
+        "signal": "serv_rf_top.clk"
+      }
+    },
+    {
+      "id": "serv_alu_clk_fanin",
+      "cwd": "/tmp/lr_pilot/serv",
+      "input": "/tmp/lr_pilot/serv.f",
+      "question": "List ALL direct (distance=1) drivers of `serv_rf_top.cpu.alu.clk`, exact canonical IDs and count.",
+      "required": [
+        "drivers",
+        "count"
+      ],
+      "ground_truth": {
+        "drivers": [
+          "serv_rf_top.cpu.clk"
+        ],
+        "count": 1
+      },
+      "source": {
+        "kind": "serv"
+      },
+      "query": {
+        "cmd": "fanin",
+        "signal": "serv_rf_top.cpu.alu.clk"
+      }
+    },
+    {
+      "id": "serv_cpu_clk_fanout",
+      "cwd": "/tmp/lr_pilot/serv",
+      "input": "/tmp/lr_pilot/serv.f",
+      "question": "List ALL direct (distance=1) loads of `serv_rf_top.cpu.clk`, exact canonical IDs and count.",
+      "required": [
+        "loads",
+        "count"
+      ],
+      "ground_truth": {
+        "loads": [
+          "serv_rf_top.cpu.state.i_clk",
+          "serv_rf_top.cpu.decode.clk",
+          "serv_rf_top.cpu.immdec.i_clk",
+          "serv_rf_top.cpu.bufreg.i_clk",
+          "serv_rf_top.cpu.bufreg2.i_clk",
+          "serv_rf_top.cpu.ctrl.clk",
+          "serv_rf_top.cpu.alu.clk",
+          "serv_rf_top.cpu.mem_if.i_clk"
+        ],
+        "count": 8
+      },
+      "source": {
+        "kind": "serv"
+      },
+      "query": {
+        "cmd": "fanout",
+        "signal": "serv_rf_top.cpu.clk"
+      }
+    },
+    {
+      "id": "serv_clk_path",
+      "cwd": "/tmp/lr_pilot/serv",
+      "input": "/tmp/lr_pilot/serv.f",
+      "question": "Find the shortest structural path from `serv_rf_top.clk` to `serv_rf_top.cpu.alu.clk`; return exact path and hop count.",
+      "required": [
+        "path",
+        "count"
+      ],
+      "ground_truth": {
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      },
+      "source": {
+        "kind": "serv"
+      },
+      "query": {
+        "cmd": "path",
+        "src": "serv_rf_top.clk",
+        "dst": "serv_rf_top.cpu.alu.clk"
+      }
+    },
+    {
+      "id": "pico_mem_valid_fanout",
+      "cwd": "/tmp/lr_pilot/pico",
+      "input": "/tmp/lr_pilot/pico/picorv32.v",
+      "question": "List ALL direct (distance=1) loads of `picorv32_axi.mem_valid`, exact canonical IDs and count.",
+      "required": [
+        "loads",
+        "count"
+      ],
+      "ground_truth": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_valid"
+        ],
+        "count": 1
+      },
+      "source": {
+        "kind": "file",
+        "path": "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v"
+      },
+      "query": {
+        "cmd": "fanout",
+        "signal": "picorv32_axi.mem_valid"
+      }
+    },
+    {
+      "id": "pico_adapter_mem_valid_fanin",
+      "cwd": "/tmp/lr_pilot/pico",
+      "input": "/tmp/lr_pilot/pico/picorv32.v",
+      "question": "List ALL direct (distance=1) drivers of `picorv32_axi.axi_adapter.mem_valid`, exact canonical IDs and count.",
+      "required": [
+        "drivers",
+        "count"
+      ],
+      "ground_truth": {
+        "drivers": [
+          "picorv32_axi.mem_valid"
+        ],
+        "count": 1
+      },
+      "source": {
+        "kind": "file",
+        "path": "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v"
+      },
+      "query": {
+        "cmd": "fanin",
+        "signal": "picorv32_axi.axi_adapter.mem_valid"
+      }
+    },
+    {
+      "id": "pico_adapter_mem_valid_fanout",
+      "cwd": "/tmp/lr_pilot/pico",
+      "input": "/tmp/lr_pilot/pico/picorv32.v",
+      "question": "List ALL direct (distance=1) loads of `picorv32_axi.axi_adapter.mem_valid`, exact canonical IDs and count.",
+      "required": [
+        "loads",
+        "count"
+      ],
+      "ground_truth": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_axi_rready",
+          "picorv32_axi.axi_adapter.xfer_done"
+        ],
+        "count": 6
+      },
+      "source": {
+        "kind": "file",
+        "path": "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v"
+      },
+      "query": {
+        "cmd": "fanout",
+        "signal": "picorv32_axi.axi_adapter.mem_valid"
+      }
+    },
+    {
+      "id": "pico_adapter_rdata_fanin",
+      "cwd": "/tmp/lr_pilot/pico",
+      "input": "/tmp/lr_pilot/pico/picorv32.v",
+      "question": "List ALL direct (distance=1) drivers of `picorv32_axi.axi_adapter.mem_rdata[16]`, exact canonical IDs and count.",
+      "required": [
+        "drivers",
+        "count"
+      ],
+      "ground_truth": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
+        ],
+        "count": 1
+      },
+      "source": {
+        "kind": "file",
+        "path": "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v"
+      },
+      "query": {
+        "cmd": "fanin",
+        "signal": "picorv32_axi.axi_adapter.mem_rdata[16]"
+      }
+    }
+  ],
+  "results": [
+    {
+      "task_id": "axi_araddr_neighbors",
+      "model": "MiniMax-M3",
+      "arm": "tool",
+      "duration_ms": 8326,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ],
+        "count": 2
+      },
+      "queries": [
+        {
+          "tool": "svq_query",
+          "intent": "neighbors",
+          "snapshot": "ad_axi",
+          "signal": "axi_adapter.axi_adapter_rd_inst.m_axi_araddr",
+          "depth": 1
+        }
+      ],
+      "exact": true,
+      "evidence": false,
+      "workspace": "/tmp/svq_tool_pilot/MiniMax-M3/axi_araddr_neighbors",
+      "stderr": ""
+    },
+    {
+      "task_id": "axi_araddr_neighbors",
+      "model": "DeepSeek-Flash",
+      "arm": "tool",
+      "duration_ms": 4333,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_araddr_reg"
+        ],
+        "loads": [
+          "axi_adapter.m_axi_araddr"
+        ],
+        "count": 2
+      },
+      "queries": [
+        {
+          "tool": "svq_query"
+        }
+      ],
+      "exact": true,
+      "evidence": false,
+      "workspace": "/tmp/svq_tool_pilot/DeepSeek-Flash/axi_araddr_neighbors",
+      "stderr": "dsh: reasoning:\nReturn the JSON exactly. Count=2 (total neighbors). Do not add explanation.\n"
+    },
+    {
+      "task_id": "axi_awvalid_fanout",
+      "model": "MiniMax-M3",
+      "arm": "tool",
+      "duration_ms": 4520,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "loads": [
+          "axi_adapter.axi_adapter_wr_inst.s_axi_awvalid"
+        ],
+        "count": 1
+      },
+      "queries": [
+        {
+          "tool": "svq_query"
+        }
+      ],
+      "exact": true,
+      "evidence": false,
+      "workspace": "/tmp/svq_tool_pilot/MiniMax-M3/axi_awvalid_fanout",
+      "stderr": ""
+    },
+    {
+      "task_id": "axi_awvalid_fanout",
+      "model": "DeepSeek-Flash",
+      "arm": "tool",
+      "duration_ms": 4869,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "loads": [
+          "axi_adapter.axi_adapter_wr_inst.s_axi_awvalid"
+        ],
+        "count": 1
+      },
+      "queries": [
+        {
+          "tool": "svq_query"
+        }
+      ],
+      "exact": true,
+      "evidence": false,
+      "workspace": "/tmp/svq_tool_pilot/DeepSeek-Flash/axi_awvalid_fanout",
+      "stderr": "dsh: reasoning:\nThe user asks to call svq_query with intent=fanout, snapshot='ad_axi', signal='axi_adapter.s_axi_awvalid', depth=1. Then return one JSON object. Let me do the call.\n\nNote the final JSON has `\"task_id\":'axi_awvalid_fanout'` — single quotes in the spec, but they require double-quoted keys. I'll produce valid JSON with double quotes.\n"
+    },
+    {
+      "task_id": "axi_arvalid_fanin",
+      "model": "MiniMax-M3",
+      "arm": "tool",
+      "duration_ms": 4679,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_arvalid_reg"
+        ],
+        "count": 1
+      },
+      "queries": [
+        {
+          "tool": "svq_query"
+        }
+      ],
+      "exact": true,
+      "evidence": false,
+      "workspace": "/tmp/svq_tool_pilot/MiniMax-M3/axi_arvalid_fanin",
+      "stderr": ""
+    },
+    {
+      "task_id": "axi_arvalid_fanin",
+      "model": "DeepSeek-Flash",
+      "arm": "tool",
+      "duration_ms": 3620,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_rd_inst.m_axi_arvalid_reg"
+        ],
+        "count": 1
+      },
+      "queries": [
+        {
+          "tool": "svq_query"
+        }
+      ],
+      "exact": true,
+      "evidence": false,
+      "workspace": "/tmp/svq_tool_pilot/DeepSeek-Flash/axi_arvalid_fanin",
+      "stderr": ""
+    },
+    {
+      "task_id": "axi_awvalid_fanin",
+      "model": "MiniMax-M3",
+      "arm": "tool",
+      "duration_ms": 5987,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_wr_inst.m_axi_awvalid_reg"
+        ],
+        "count": 1
+      },
+      "queries": [
+        {
+          "tool": "svq_query"
+        }
+      ],
+      "exact": true,
+      "evidence": false,
+      "workspace": "/tmp/svq_tool_pilot/MiniMax-M3/axi_awvalid_fanin",
+      "stderr": ""
+    },
+    {
+      "task_id": "axi_awvalid_fanin",
+      "model": "DeepSeek-Flash",
+      "arm": "tool",
+      "duration_ms": 3428,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "drivers": [
+          "axi_adapter.axi_adapter_wr_inst.m_axi_awvalid_reg"
+        ],
+        "count": 1
+      },
+      "queries": [
+        {
+          "tool": "svq_query"
+        }
+      ],
+      "exact": true,
+      "evidence": false,
+      "workspace": "/tmp/svq_tool_pilot/DeepSeek-Flash/axi_awvalid_fanin",
+      "stderr": "dsh: reasoning:\nReturn JSON exactly.\n"
+    },
+    {
+      "task_id": "serv_clk_fanout",
+      "model": "MiniMax-M3",
+      "arm": "tool",
+      "duration_ms": 4249,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "loads": [
+          "serv_rf_top.rf_ram_if.i_clk",
+          "serv_rf_top.rf_ram.i_clk",
+          "serv_rf_top.cpu.clk"
+        ],
+        "count": 3
+      },
+      "queries": [
+        {
+          "tool": "svq_query"
+        }
+      ],
+      "exact": true,
+      "evidence": false,
+      "workspace": "/tmp/svq_tool_pilot/MiniMax-M3/serv_clk_fanout",
+      "stderr": ""
+    },
+    {
+      "task_id": "serv_clk_fanout",
+      "model": "DeepSeek-Flash",
+      "arm": "tool",
+      "duration_ms": 3697,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "loads": [
+          "serv_rf_top.rf_ram_if.i_clk",
+          "serv_rf_top.rf_ram.i_clk",
+          "serv_rf_top.cpu.clk"
+        ],
+        "count": 3
+      },
+      "queries": [
+        {
+          "tool": "svq_query"
+        }
+      ],
+      "exact": true,
+      "evidence": false,
+      "workspace": "/tmp/svq_tool_pilot/DeepSeek-Flash/serv_clk_fanout",
+      "stderr": "dsh: reasoning:\nReturn exact JSON. Note the user wrote task_id with single quotes in template but says double-quoted keys. Use double quotes.\n"
+    },
+    {
+      "task_id": "serv_alu_clk_fanin",
+      "model": "MiniMax-M3",
+      "arm": "tool",
+      "duration_ms": 4285,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "drivers": [
+          "serv_rf_top.cpu.clk"
+        ],
+        "count": 1
+      },
+      "queries": [
+        {
+          "tool": "svq_query"
+        }
+      ],
+      "exact": true,
+      "evidence": false,
+      "workspace": "/tmp/svq_tool_pilot/MiniMax-M3/serv_alu_clk_fanin",
+      "stderr": ""
+    },
+    {
+      "task_id": "serv_alu_clk_fanin",
+      "model": "DeepSeek-Flash",
+      "arm": "tool",
+      "duration_ms": 3559,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "drivers": [
+          "serv_rf_top.cpu.clk"
+        ],
+        "count": 1
+      },
+      "queries": [
+        {
+          "tool": "svq_query"
+        }
+      ],
+      "exact": true,
+      "evidence": false,
+      "workspace": "/tmp/svq_tool_pilot/DeepSeek-Flash/serv_alu_clk_fanin",
+      "stderr": ""
+    },
+    {
+      "task_id": "serv_cpu_clk_fanout",
+      "model": "MiniMax-M3",
+      "arm": "tool",
+      "duration_ms": 5794,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "loads": [
+          "serv_rf_top.cpu.state.i_clk",
+          "serv_rf_top.cpu.decode.clk",
+          "serv_rf_top.cpu.immdec.i_clk",
+          "serv_rf_top.cpu.bufreg.i_clk",
+          "serv_rf_top.cpu.bufreg2.i_clk",
+          "serv_rf_top.cpu.ctrl.clk",
+          "serv_rf_top.cpu.alu.clk",
+          "serv_rf_top.cpu.mem_if.i_clk"
+        ],
+        "count": 8
+      },
+      "queries": [
+        {
+          "tool": "svq_query"
+        }
+      ],
+      "exact": true,
+      "evidence": false,
+      "workspace": "/tmp/svq_tool_pilot/MiniMax-M3/serv_cpu_clk_fanout",
+      "stderr": ""
+    },
+    {
+      "task_id": "serv_cpu_clk_fanout",
+      "model": "DeepSeek-Flash",
+      "arm": "tool",
+      "duration_ms": 9961,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "loads": [
+          "serv_rf_top.cpu.state.i_clk",
+          "serv_rf_top.cpu.decode.clk",
+          "serv_rf_top.cpu.immdec.i_clk",
+          "serv_rf_top.cpu.bufreg.i_clk",
+          "serv_rf_top.cpu.bufreg2.i_clk",
+          "serv_rf_top.cpu.ctrl.clk",
+          "serv_rf_top.cpu.alu.clk",
+          "serv_rf_top.cpu.mem_if.i_clk"
+        ],
+        "count": 8
+      },
+      "queries": [
+        {
+          "tool": "svq_query"
+        }
+      ],
+      "exact": true,
+      "evidence": false,
+      "workspace": "/tmp/svq_tool_pilot/DeepSeek-Flash/serv_cpu_clk_fanout",
+      "stderr": "dsh: reasoning:\nReturn one valid JSON object with exactly those IDs. Note task_id uses single quotes in the example? The user wrote {\"task_id\":'serv_cpu_clk_fanout',...} which is invalid JSON. They said \"with double-quoted keys\". The value should be double-quoted too for valid JSON. I'll output valid JSON.\n"
+    },
+    {
+      "task_id": "serv_clk_path",
+      "model": "MiniMax-M3",
+      "arm": "tool",
+      "duration_ms": 5014,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      },
+      "queries": [
+        {
+          "tool": "svq_query"
+        }
+      ],
+      "exact": true,
+      "evidence": false,
+      "workspace": "/tmp/svq_tool_pilot/MiniMax-M3/serv_clk_path",
+      "stderr": ""
+    },
+    {
+      "task_id": "serv_clk_path",
+      "model": "DeepSeek-Flash",
+      "arm": "tool",
+      "duration_ms": 3968,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "path": [
+          "serv_rf_top.clk",
+          "serv_rf_top.cpu.clk",
+          "serv_rf_top.cpu.alu.clk"
+        ],
+        "count": 2
+      },
+      "queries": [
+        {
+          "tool": "svq_query"
+        }
+      ],
+      "exact": true,
+      "evidence": false,
+      "workspace": "/tmp/svq_tool_pilot/DeepSeek-Flash/serv_clk_path",
+      "stderr": "dsh: reasoning:\nReturn one valid JSON object. Note the task_id uses single quotes in the prompt example, but requirement says double-quoted keys. I'll produce valid JSON with double quotes.\n"
+    },
+    {
+      "task_id": "pico_mem_valid_fanout",
+      "model": "MiniMax-M3",
+      "arm": "tool",
+      "duration_ms": 4087,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_valid"
+        ],
+        "count": 1
+      },
+      "queries": [
+        {
+          "tool": "svq_query"
+        }
+      ],
+      "exact": true,
+      "evidence": false,
+      "workspace": "/tmp/svq_tool_pilot/MiniMax-M3/pico_mem_valid_fanout",
+      "stderr": ""
+    },
+    {
+      "task_id": "pico_mem_valid_fanout",
+      "model": "DeepSeek-Flash",
+      "arm": "tool",
+      "duration_ms": 3583,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_valid"
+        ],
+        "count": 1
+      },
+      "queries": [
+        {
+          "tool": "svq_query"
+        }
+      ],
+      "exact": true,
+      "evidence": false,
+      "workspace": "/tmp/svq_tool_pilot/DeepSeek-Flash/pico_mem_valid_fanout",
+      "stderr": ""
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanin",
+      "model": "MiniMax-M3",
+      "arm": "tool",
+      "duration_ms": 3285,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "drivers": [
+          "picorv32_axi.mem_valid"
+        ],
+        "count": 1
+      },
+      "queries": [
+        {
+          "tool": "svq_query"
+        }
+      ],
+      "exact": true,
+      "evidence": false,
+      "workspace": "/tmp/svq_tool_pilot/MiniMax-M3/pico_adapter_mem_valid_fanin",
+      "stderr": ""
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanin",
+      "model": "DeepSeek-Flash",
+      "arm": "tool",
+      "duration_ms": 3556,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "drivers": [
+          "picorv32_axi.mem_valid"
+        ],
+        "count": 1
+      },
+      "queries": [
+        {
+          "tool": "svq_query"
+        }
+      ],
+      "exact": true,
+      "evidence": false,
+      "workspace": "/tmp/svq_tool_pilot/DeepSeek-Flash/pico_adapter_mem_valid_fanin",
+      "stderr": "dsh: reasoning:\nJust return the JSON. But should I include task_id exactly as given: 'pico_adapter_mem_valid_fanin' — but must be valid JSON with double-quoted keys. So task_id value \"pico_adapter_mem_valid_fanin\".\n"
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanout",
+      "model": "MiniMax-M3",
+      "arm": "tool",
+      "duration_ms": 3751,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_axi_rready",
+          "picorv32_axi.axi_adapter.xfer_done"
+        ],
+        "count": 6
+      },
+      "queries": [
+        {
+          "tool": "svq_query",
+          "intent": "fanout",
+          "snapshot": "ad_pico",
+          "signal": "picorv32_axi.axi_adapter.mem_valid",
+          "depth": 1
+        }
+      ],
+      "exact": true,
+      "evidence": false,
+      "workspace": "/tmp/svq_tool_pilot/MiniMax-M3/pico_adapter_mem_valid_fanout",
+      "stderr": ""
+    },
+    {
+      "task_id": "pico_adapter_mem_valid_fanout",
+      "model": "DeepSeek-Flash",
+      "arm": "tool",
+      "duration_ms": 3742,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "loads": [
+          "picorv32_axi.axi_adapter.mem_axi_awvalid",
+          "picorv32_axi.axi_adapter.mem_axi_arvalid",
+          "picorv32_axi.axi_adapter.mem_axi_wvalid",
+          "picorv32_axi.axi_adapter.mem_axi_bready",
+          "picorv32_axi.axi_adapter.mem_axi_rready",
+          "picorv32_axi.axi_adapter.xfer_done"
+        ],
+        "count": 6
+      },
+      "queries": [
+        {
+          "tool": "svq_query"
+        }
+      ],
+      "exact": true,
+      "evidence": false,
+      "workspace": "/tmp/svq_tool_pilot/DeepSeek-Flash/pico_adapter_mem_valid_fanout",
+      "stderr": ""
+    },
+    {
+      "task_id": "pico_adapter_rdata_fanin",
+      "model": "MiniMax-M3",
+      "arm": "tool",
+      "duration_ms": 4088,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
+        ],
+        "count": 1
+      },
+      "queries": [
+        {
+          "tool": "svq_query"
+        }
+      ],
+      "exact": true,
+      "evidence": false,
+      "workspace": "/tmp/svq_tool_pilot/MiniMax-M3/pico_adapter_rdata_fanin",
+      "stderr": ""
+    },
+    {
+      "task_id": "pico_adapter_rdata_fanin",
+      "model": "DeepSeek-Flash",
+      "arm": "tool",
+      "duration_ms": 3784,
+      "rc": 0,
+      "parsed": true,
+      "answer": {
+        "drivers": [
+          "picorv32_axi.axi_adapter.mem_axi_rdata[16]"
+        ],
+        "count": 1
+      },
+      "queries": [
+        {
+          "tool": "svq_query"
+        }
+      ],
+      "exact": true,
+      "evidence": false,
+      "workspace": "/tmp/svq_tool_pilot/DeepSeek-Flash/pico_adapter_rdata_fanin",
+      "stderr": ""
+    }
+  ]
+}

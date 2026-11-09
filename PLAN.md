@@ -350,6 +350,14 @@ P128 Freeze v0.3.0-agent-query <已完成>
 P129 Clean-clone/tag install smoke <已完成>
 -- P129.1 tag clone + setup_snapshot + query/verify smoke <已完成>
 
+P130 冻结后长任务回归 + testbench 角可行性 <已完成>
+-- P130.1 12-task regression 24/24 <已完成>
+-- P130.2 OpenTitan TB 候选调查 <已完成>
+
+P131 covergroup elaboration spike <待做>
+-- P131.1 inherited base member resolution <待做>
+-- P131.2 I2C rcont random+constraint+coverage core CLI <待做>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>
