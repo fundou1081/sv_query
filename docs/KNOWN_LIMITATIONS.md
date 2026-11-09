@@ -470,9 +470,15 @@ sv_query **不绕过** Semantic AST 严格性，也不返回 partial coverage；
 
 证据：[COVERAGE_LIMITATION_2026-11-09.md](validation/COVERAGE_LIMITATION_2026-11-09.md)。
 
----
+### 3.15 FIFO/SRAM 跨边界查询断链
 
-## 已修复限制
+**事实**（P134 实测）：I2C `fmt_fifo_wdata[12]` 有写侧 bit-select 边，
+但父总线 `fmt_fifo_wdata` 没有 driver；FIFO 读侧 `fmt_fifo_rdata[12]`
+与写侧不连通。因此“random 字段 → FIFO → 下游 effect”的路径查询会断在 FIFO。
+
+工具仍能明确返回 not_found，不会伪造路径；但这是结构性缺口，不是任务问题。
+详见：[P134_REAL_USE_2026-11-09.md](validation/P134_REAL_USE_2026-11-09.md)。
+
 
 | 限制 | 修复版本 |
 |------|---------|

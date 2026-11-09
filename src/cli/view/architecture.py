@@ -38,6 +38,32 @@ def _to_dict(arch) -> dict:
     }
 
 
+def _emit_output(arch, json_output: bool, pretty: bool, dot: Path | None,
+                  svg: Path | None, include_boundaries: bool,
+                  include_clock_reset: bool) -> None:
+    if json_output:
+        emit_json({"ok": True, "command": "architecture_graph",
+                   "result": _to_dict(arch), "errors": []}, pretty)
+    if not dot and not svg:
+        if not json_output:
+            typer.echo(to_dot(arch, include_boundaries=include_boundaries,
+                              include_clock_reset=include_clock_reset), nl=False)
+        return
+    dot_src = to_dot(arch, include_boundaries=include_boundaries,
+                     include_clock_reset=include_clock_reset)
+    if dot:
+        dot.write_text(dot_src)
+    if svg:
+        try:
+            proc = subprocess.run(["dot", "-Tsvg"], input=dot_src,
+                                  capture_output=True, text=True, check=True)
+        except FileNotFoundError:
+            raise ValueError("graphviz `dot` not found") from None
+        svg.write_text(proc.stdout)
+        if not json_output:
+            typer.echo(f"wrote {svg} ({arch.stats})")
+
+
 @architecture_app.command("graph")
 def graph_cmd(
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
@@ -61,24 +87,8 @@ def graph_cmd(
         tracer = _build_tracer(file=file, filelist=filelist, log_level="ERROR")
         arch = build_architecture(tracer, root=module, max_depth=depth,
                                   include_primitives=include_primitives)
-        if json_output:
-            emit_json({"ok": True, "command": "architecture_graph",
-                       "result": _to_dict(arch), "errors": []}, pretty)
-            return
-        dot_src = to_dot(arch, include_boundaries=include_boundaries,
-                         include_clock_reset=include_clock_reset)
-        if dot:
-            dot.write_text(dot_src)
-        if svg:
-            try:
-                proc = subprocess.run(["dot", "-Tsvg"], input=dot_src,
-                                      capture_output=True, text=True, check=True)
-            except FileNotFoundError:
-                raise ValueError("graphviz `dot` not found") from None
-            svg.write_text(proc.stdout)
-            typer.echo(f"wrote {svg} ({arch.stats})")
-        elif not dot:
-            typer.echo(dot_src, nl=False)
+        _emit_output(arch, json_output, pretty, dot, svg,
+                     include_boundaries, include_clock_reset)
     except typer.Exit:
         raise
     except CompilationError as e:

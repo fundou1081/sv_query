@@ -369,6 +369,16 @@ P133 module/instance architecture graph <已完成>
 -- P133.2 JSON/DOT/SVG view <已完成>
 -- P133.3 synthetic + I2C smoke <已完成>
 
+P134 real-use three-scenario pilot <已完成>
+-- P134.1 random→constraint→RTL <已完成>
+-- P134.2 verify incl unknown <已完成>
+-- P134.3 architecture/connection <已完成>
+-- P134.4 fix architecture --json --svg <已完成>
+
+P135 FIFO/bus connectivity <待做>
+-- P135.1 FIFO read/write boundary model <待做>
+-- P135.2 parent bus / bit-select aggregation <待做>
+
 
 ## 已完成（保留最近记录，便于核查上一轮）
 
