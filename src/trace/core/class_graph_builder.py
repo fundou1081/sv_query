@@ -11,6 +11,7 @@
 # ==============================================================================
 
 import logging
+import re
 from dataclasses import dataclass, field
 
 from .semantic_adapter import SemanticAdapter
@@ -1006,15 +1007,23 @@ class ClassGraphBuilder:
                         )
                     )
 
+    @staticmethod
+    def _dist_text(node) -> str:
+        text = str(getattr(node, "syntax", None) or node)
+        m = re.search(r"dist\s*\{([^}]*)\}", text, re.S)
+        return m.group(1).strip() if m else ""
+
     def _build_expression_constraint(self, graph, node, block_id, cls_name, idx, direct_vars, result):
         """[铁律15] 处理 ExpressionConstraint → CONSTRAINT_EXPR"""
         expr_node_id = f"{block_id}::expr_{idx}"
+        dist = self._dist_text(node)
         expr_node = TraceNode(
             id=expr_node_id,
             name=f"expr_{idx}",
             module=cls_name,
             kind=NodeKind.CONSTRAINT_EXPR,
             width=(0, 0),
+            extra={"dist": dist} if dist else {},
         )
         graph.add_trace_node(expr_node)
         result.nodes.append(expr_node)
@@ -1091,15 +1100,28 @@ class ClassGraphBuilder:
                 )
             )
 
+    @staticmethod
+    def _solve_parts(node) -> tuple[list[str], list[str]]:
+        """Parse `solve a, b before c;` from syntax text."""
+        text = str(getattr(node, "syntax", None) or node)
+        m = re.search(r"solve\s+(.+?)\s+before\s+(.+?);?", text, re.S)
+        if not m:
+            return [], []
+        def names(part):
+            return [x.strip() for x in part.split(",") if x.strip()]
+        return names(m.group(1)), names(m.group(2))
+
     def _build_solve_before_constraint(self, graph, node, block_id, cls_name, idx, direct_vars, result):
-        """[铁律15] 处理 SolveBeforeConstraint → CONSTRAINT_SOLVE"""
+        """处理 SolveBeforeConstraint → CONSTRAINT_SOLVE + HAS_BEFORE."""
         solve_node_id = f"{block_id}::solve_{idx}"
+        before, after = self._solve_parts(node)
         solve_node = TraceNode(
             id=solve_node_id,
             name=f"solve_{idx}",
             module=cls_name,
             kind=NodeKind.CONSTRAINT_SOLVE,
             width=(0, 0),
+            extra={"before": before, "after": after},
         )
         graph.add_trace_node(solve_node)
         result.nodes.append(solve_node)
@@ -1110,14 +1132,8 @@ class ClassGraphBuilder:
                 kind=EdgeKind.CONSTRAINS,
             )
         )
-
-        self._cv.reset()
-        self._cv.visit(node)
-        for v in self._cv.variables:
-            if v in ["this", "super"]:
-                continue
-            prop_id = f"{cls_name}.{v}"
-            direct_vars.add(prop_id)
+        for name in before:
+            prop_id = f"{cls_name}.{name}" if not name.startswith(f"{cls_name}.") else name
             graph.add_trace_edge(
                 TraceEdge(
                     src=solve_node_id,
@@ -1125,6 +1141,10 @@ class ClassGraphBuilder:
                     kind=EdgeKind.HAS_BEFORE,
                 )
             )
+        for name in after:
+            # solve order is not a value constraint: do not add a block
+            # CONSTRAINS edge via direct_vars.
+            pass
 
     def _build_foreach_constraint(self, graph, node, block_id, cls_name, idx, direct_vars, result):
         """[铁律15] 处理 ForeachConstraint → CONSTRAINT_FOREACH

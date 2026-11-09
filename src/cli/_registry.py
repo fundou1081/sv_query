@@ -933,6 +933,10 @@ JSON_CONTRACT = {
         "defined_in": {"type": "string", "desc": "defining class (base for inherited)"},
         "inherited": {"type": "boolean", "desc": "block comes from an ancestor"},
         "rand_vars": {"type": "array<string>", "desc": "constrained rand properties"},
+        "solve_before": {"type": "array<object>",
+                         "desc": "solve a before b nodes (before vars)"},
+        "dist": {"type": "array<object>",
+                 "desc": "dist weights text per expression constraint"},
     },
     "class_uvm": {
         "role": {"type": "string|null", "desc": "sequence|sequence_item|component|object|null"},
