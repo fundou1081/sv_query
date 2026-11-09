@@ -3,13 +3,13 @@
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **可视化计划**: [structural_review_plan_2026-11-02](docs/architecture/structural_review_plan_2026-11-02.md) — 全设计图退役；动态子图 + 局部 review。
-> **最后更新**: 2026-11-09 GMT+8 (冻结 v0.3.0-agent-query；进入 v0.3.x)
+> **最后更新**: 2026-11-09 GMT+8 (P129 clean smoke 完成；无活跃开发)
 
 ---
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P129.1 tag clone + setup_snapshot + query/verify smoke** `<待做>`
+- **当前 item**: **P62.2 交互式 debug（gate）** `<待做>`（deferred；无活跃开发）
 - **P126** 文档/运维刷新 ✅（iter_433）
   - P126.1 CURRENT_TODO 刷新 ✅
   - P126.2 TESTING 刷新 ✅
@@ -43,6 +43,7 @@
 | P126 | 文档/运维刷新 | CURRENT_TODO / TESTING / EXTRACTION_COVERAGE / KNOWN_LIMITATIONS 刷新；check_docs/check_plan 通过 |
 | P127 | 两个新增 DV 任务 | 初次 2/4；T1 alias schema 修正后 4/4；0 false |
 | P128 | Freeze v0.3.0-agent-query | tagged baseline；规则见 freeze doc |
+| P129 | clean-clone smoke | tag checkout + docs/plan + Node + snapshot/query/verify |
 
 详见 [P125 intake results](docs/validation/OPENTITAN_INTAKE_RESULTS_2026-11-09.md)。
 
