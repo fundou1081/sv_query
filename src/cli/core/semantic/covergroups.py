@@ -94,20 +94,41 @@ def covergroups_cmd(
     class_name: str = typer.Option(None, "--class", help="filter by defining class"),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str = typer.Option(None, "--filelist", help="filelist (.f/.fl)"),
+    allow_partial: bool = typer.Option(
+        False, "--partial",
+        help="allow partial covergroup definitions when elaboration errors exist"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
 ) -> None:
     """列出 covergroup 定义（可按定义 class 过滤）。"""
     try:
         tracer = _build_tracer(file=file, filelist=filelist)
-        tracer.build_graph()
-        items = [_cg_summary(cg) for cg in tracer.list_covergroups()]
+        partial = False
+        elaboration_errors = []
+        if allow_partial:
+            # coverage-definition-only path: do not build the signal graph,
+            # which would fail before the partial root is available.
+            from trace.core.covergroup_extractor import CovergroupExtractor
+            # Reuse the tracer's compiler so filelist +incdir/include paths
+            # are honored; building a fresh compiler from sources alone loses
+            # the include dirs.
+            extractor = CovergroupExtractor(
+                tracer.sources, compiler=tracer._get_compiler())
+            cgs = extractor.extract(allow_partial=True)
+            partial = extractor.partial
+            elaboration_errors = extractor.elaboration_errors
+            items = [_cg_summary(cg) for cg in cgs]
+        else:
+            tracer.build_graph()
+            items = [_cg_summary(cg) for cg in tracer.list_covergroups()]
         if class_name:
             items = [x for x in items if x["in_class"] == class_name]
         data = {"ok": True, "command": "trace_covergroups",
                 "params": {"file": str(file) if file else None, "filelist": filelist,
-                           "class": class_name},
-                "result": {"count": len(items), "covergroups": items},
+                           "class": class_name, "partial": allow_partial},
+                "result": {"count": len(items), "covergroups": items,
+                           "partial": partial,
+                           "elaboration_errors": elaboration_errors},
                 "errors": []}
         if json_output:
             emit_json(data, pretty)
@@ -115,7 +136,8 @@ def covergroups_cmd(
             print(f"Covergroups ({len(items)}):")
             for cg in items:
                 print(f"  {cg['name']} class={cg['in_class']} "
-                      f"coverpoints={len(cg['coverpoints'])} crosses={len(cg['crosses'])}")
+                      f"coverpoints={len(cg['coverpoints'])} crosses={len(cg['crosses'])}"
+                      + (" [partial]" if partial else ""))
     except CompilationError as e:
         handle_compilation_error(e)
     except Exception as e:
@@ -126,6 +148,9 @@ def coverpoints_cmd(
     signal: str = typer.Argument(..., help="top.din / top.e.p.addr / packet.addr"),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str = typer.Option(None, "--filelist", help="filelist (.f/.fl)"),
+    allow_partial: bool = typer.Option(
+        False, "--partial",
+        help="allow partial covergroup definitions when elaboration errors exist"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
 ) -> None:
@@ -165,6 +190,9 @@ def covergroup_cmd(
     rand: bool = typer.Option(False, "--rand", help="show rand property -> constraints"),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str = typer.Option(None, "--filelist", help="filelist (.f/.fl)"),
+    allow_partial: bool = typer.Option(
+        False, "--partial",
+        help="allow partial covergroup definitions when elaboration errors exist"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
 ) -> None:

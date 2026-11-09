@@ -122,6 +122,10 @@ Agent profile：
 
 ## 7. 下一步迭代
 
+> P131 coverage partial extraction 是**冻结后实验**，不属于
+> `v0.3.0-agent-query` tag；见
+> [COVERAGE_PARTIAL_2026-11-09.md](COVERAGE_PARTIAL_2026-11-09.md)。
+
 冻结后进入 **v0.3.x**：
 
 ```text
