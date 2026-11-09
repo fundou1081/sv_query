@@ -1,0 +1,259 @@
+{
+  "meta": {
+    "intake_id": "opentitan_dv_intake_2026-11-09",
+    "created": "2026-11-09",
+    "purpose": "Independent task intake derived from OpenTitan DV artifacts (sim_cfg.hjson, testplan.hjson, RTL/doc). Not derived from tools/benchmark task JSON.",
+    "opentitan_repo": "/Users/fundou/my_dv_proj/openrtl/opentitan",
+    "source_root": "/Users/fundou/.dsh/opencode-workers-lite/opentitan-pilot/workspace",
+    "opentitan_head": "a82c4892e88253924b3f7af05ce7494232ab263a",
+    "opentitan_head_subject": "[doc] Update ILA debugging documentation",
+    "sv_query_bin": "/Users/fundou/miniconda3/bin/sv_query",
+    "snapshots_used": {
+      "uart": {
+        "tag": "opentitan_uart",
+        "file": "/tmp/opentitan_svq/snapshots/opentitan_uart.json",
+        "snapshot_dir": "/tmp/opentitan_svq/snapshots",
+        "nodes": 4803,
+        "edges": 8507
+      },
+      "i2c": {
+        "tag": "opentitan_i2c",
+        "file": "/tmp/opentitan_svq_i2c/snapshots/opentitan_i2c.json",
+        "snapshot_dir": "/tmp/opentitan_svq_i2c/snapshots",
+        "nodes": 9370,
+        "edges": 17599
+      }
+    },
+    "source_artifacts_read": [
+      "hw/ip/uart/dv/uart_sim_cfg.hjson",
+      "hw/ip/uart/data/uart_testplan.hjson",
+      "hw/ip/uart/doc/checklist.md",
+      "hw/ip/uart/doc/registers.md",
+      "hw/ip/uart/doc/theory_of_operation.md",
+      "hw/ip/uart/rtl/uart_core.sv",
+      "hw/ip/uart/rtl/uart_rx.sv",
+      "hw/ip/i2c/dv/i2c_sim_cfg.hjson",
+      "hw/ip/i2c/data/i2c_testplan.hjson",
+      "hw/ip/i2c/doc/checklist.md",
+      "hw/ip/i2c/rtl/i2c_core.sv",
+      "hw/ip/i2c/rtl/i2c_reg_pkg.sv"
+    ],
+    "notes": [
+      "Snapshots were used ONLY to resolve canonical IDs and to cross-check answers. Every ground truth below was independently established by reading the RTL / reggen package / testplan first.",
+      "hw/ip/uart/doc/checklist.md and hw/ip/i2c/doc/checklist.md are project-governance sign-off checklists (D1/D2/D2S/D3, V1/V2/V2S/V3) and contain no per-feature verification intents; the per-feature intents live in the testplan hjson files. Both were read and recorded here.",
+      "No LLM/DSH agents were run. All validation used the sv_query CLI plus direct source inspection."
+    ]
+  },
+  "tasks": [
+    {
+      "id": "DV-UART-NOISEFILTER-DISCOVERY",
+      "block": "uart",
+      "snapshot": "opentitan_uart",
+      "snapshot_dir": "/tmp/opentitan_svq/snapshots",
+      "source_root": "/Users/fundou/.dsh/opencode-workers-lite/opentitan-pilot/workspace",
+      "kind": "discovery",
+      "source_artifact": {
+        "primary": "hw/ip/uart/data/uart_testplan.hjson — testpoint `rx_noise_filter` (stage V2, tests [\"uart_noise_filter\"])",
+        "secondary": "hw/ip/uart/dv/uart_sim_cfg.hjson — test entry `name: uart_noise_filter` / `uvm_test_seq: uart_noise_filter_vseq`",
+        "doc": "hw/ip/uart/doc/registers.md:174-177 — \"CTRL . NF — RX noise filter enable. If the noise filter is enabled, RX line goes through the 3-tap repetition code. It ignores single IP clock period noise.\"",
+        "rtl": "hw/ip/uart/rtl/uart_core.sv:79 (`assign rxnf_enable = reg2hw.ctrl.nf.q;`), :259-262 (`assign rx_in_maj = ...; assign rx_in_mx = rxnf_enable ? rx_in_maj : rx_sync;`), :264-266 (`assign rx_in = sys_loopback ? tx_out : line_loopback ? 1'b1 : rx_in_mx;`)",
+        "dv_env": "hw/ip/uart/dv/env/seq_lib/uart_noise_filter_vseq.sv"
+      },
+      "original_verification_intent": "Enable the RX noise filter and drive many sub-3-clock glitches on uart_rx; confirm the noise is filtered out and does not affect the next normal transaction. To check this in RTL one must first identify which control bit selects the majority-filtered datapath instead of the raw synchronized input, then confirm that bit really reaches that mux.",
+      "question": "I'm debugging the OpenTitan UART's receive path. There's a bit in the block's control register that switches the RX datapath between the raw synchronized input and a 3-tap repetition-code majority filter (the filter that rejects glitches shorter than three IP clocks). Which register bit is that, what is its canonical signal id in the snapshot, and which internal signal does that bit drive on its way to the mux? Please give me the exact canonical ids.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "register_bit": "CTRL.NF",
+          "canonical_signal_id": "uart.uart_core.reg2hw.ctrl.nf.q",
+          "intermediate_signal_id": "uart.uart_core.rxnf_enable",
+          "mux_output_signal_id": "uart.uart_core.rx_in_mx",
+          "majority_filter_output_signal_id": "uart.uart_core.rx_in_maj",
+          "mux_select_node_id": "uart.uart_core.rx_in_mx.ternary_rxnf_enable",
+          "path": [
+            "uart.uart_core.reg2hw.ctrl.nf.q",
+            "uart.uart_core.rxnf_enable",
+            "uart.uart_core.rx_in_mx.ternary_rxnf_enable",
+            "uart.uart_core.rx_in_mx"
+          ],
+          "hop_count": 3
+        }
+      },
+      "ground_truth_confirmation": {
+        "method": "Read the RTL first, then confirmed with the reggen package and the register documentation.",
+        "source_facts": [
+          "hw/ip/uart/rtl/uart_core.sv:79 — `assign rxnf_enable = reg2hw.ctrl.nf.q;` so the CTRL.NF register bit is `reg2hw.ctrl.nf.q` and the local alias is `rxnf_enable`.",
+          "hw/ip/uart/rtl/uart_core.sv:262 — `assign rx_in_mx = rxnf_enable ? rx_in_maj : rx_sync;` so the gated mux output is `rx_in_mx` and the majority-filtered input is `rx_in_maj`.",
+          "hw/ip/uart/rtl/uart_core.sv:259-261 — `assign rx_in_maj = (rx_sync & rx_sync_q1) | (rx_sync & rx_sync_q2) | (rx_sync_q1 & rx_sync_q2);` confirming the 3-tap repetition code described in registers.md.",
+          "hw/ip/uart/rtl/uart_core.sv:266 — `rx_in_mx` is the last term of the `rx_in` assignment, so the noise-filter mux feeds the receiver.",
+          "hw/ip/uart/doc/registers.md:174-177 — CTRL.NF is documented as 'RX noise filter enable' using the 3-tap repetition code, independently matching the RTL."
+        ],
+        "not_derived_from_tool": "The canonical id string was confirmed against the reggen-generated field name in hw/ip/uart/rtl/uart_reg_pkg.sv (ctrl.nf.q inside uart_reg2hw_ctrl_reg_t) and by the RTL local alias at uart_core.sv:79, before any sv_query call."
+      },
+      "requires_search": true,
+      "requires_verify": false,
+      "discovery_notes": "The question deliberately names no canonical id and no register name beyond the human-facing 'RX noise filter'. The agent must locate CTRL.NF / reg2hw.ctrl.nf.q by searching the register file and then follow it to the mux. The answer includes the resolved canonical ids.",
+      "validation_commands": [
+        "sv_query graph nodes --filelist /tmp/opentitan_svq/opentitan.f --match 'nf' --json",
+        "sv_query loads --from-snapshot opentitan_uart 'uart.uart_core.reg2hw.ctrl.nf.q' --json",
+        "sv_query drivers --from-snapshot opentitan_uart 'uart.uart_core.rxnf_enable' --json",
+        "sv_query paths --from-snapshot opentitan_uart 'uart.uart_core.reg2hw.ctrl.nf.q' 'uart.uart_core.rx_in_mx' --directed --canonical --json",
+        "sv_query verify claim --from-snapshot opentitan_uart --claim '{\"type\":\"driver\",\"signal\":\"uart.uart_core.rx_in_mx\",\"driver\":\"uart.uart_core.reg2hw.ctrl.nf.q\"}' --json"
+      ],
+      "expected_cli_results": {
+        "loads(ctrl.nf.q)": "count=1 -> ['uart.uart_core.rxnf_enable']",
+        "drivers(rxnf_enable)": "count=1 -> ['uart.uart_core.reg2hw.ctrl.nf.q']",
+        "paths(ctrl.nf.q -> rx_in_mx)": "found=true hop_count=3, path as listed above",
+        "verify claim (driver ctrl.nf.q -> rx_in_mx)": "status=contradicted, reason 'uart.uart_core.reg2hw.ctrl.nf.q is not in fanin(uart.uart_core.rx_in_mx, depth=1)' — EXPECTED: the mux select is not a direct DRIVER edge, so the DIRECT-driver claim is false even though the path exists. This asymmetry is intentional and documented."
+      }
+    },
+    {
+      "id": "DV-I2C-CONTROLLER-HALT-VERIFY",
+      "block": "i2c",
+      "snapshot": "opentitan_i2c",
+      "snapshot_dir": "/tmp/opentitan_svq_i2c/snapshots",
+      "source_root": "/Users/fundou/.dsh/opencode-workers-lite/opentitan-pilot/workspace",
+      "kind": "verify",
+      "source_artifact": {
+        "primary": "hw/ip/i2c/data/i2c_testplan.hjson — testpoint `host_mode_halt_on_nak` (stage V2, tests [\"i2c_host_may_nack\"]): \"Upon halting in response to observing a NACK, the CONTROLLER_EVENTS.NACK bit is set, and the 'controller_halt' interrupt is asserted.\"",
+        "secondary": "hw/ip/i2c/dv/i2c_sim_cfg.hjson — test entry `name: i2c_host_may_nack`",
+        "also": "hw/ip/i2c/data/i2c_testplan.hjson — testpoint `multi_controller_arbitration_lost_interference`: \"The 'sda_interference' event-type interrupt should assert. The 'controller_halt' interrupt is asserted, and CONTROLLER_EVENTS.LOST_ARBITRATION is set.\"",
+        "also": "hw/ip/i2c/data/i2c_testplan.hjson — testpoint `controller_mode_bus_timeout`: \"Upon the timeout, the controller is halted, and 'controller_halt' is asserted.\"",
+        "rtl": "hw/ip/i2c/rtl/i2c_core.sv:864-869 — `assign status_controller_halt = | { reg2hw.controller_events.nack.q, reg2hw.controller_events.unhandled_nack_timeout.q, reg2hw.controller_events.bus_timeout.q, reg2hw.controller_events.arbitration_lost.q };`",
+        "reg_pkg": "hw/ip/i2c/rtl/i2c_reg_pkg.sv:427-440 — `i2c_reg2hw_controller_events_reg_t` contains exactly four fields: arbitration_lost (:430), bus_timeout (:433), unhandled_nack_timeout (:436), nack (:439). `tx_pending` lives in `i2c_reg2hw_target_events_reg_t` (:442-452)",
+        "dv_env": "hw/ip/i2c/dv/env/seq_lib/i2c_host_may_nack_vseq.sv"
+      },
+      "original_verification_intent": "The testplan requires that several distinct controller-side events each cause the same observable effect: the 'controller_halt' interrupt being asserted. Specifically: a NACK observed during a DUT-controller write transfer (halt on NACK), an unhandled NACK handler timeout, a bus timeout in controller mode, and lost arbitration. The RTL implements this as an OR-reduction of four CONTROLLER_EVENTS bits into one status signal. A reviewer must establish exactly WHICH events can halt the controller, and must be able to distinguish a real event from one that does not exist in the register block.",
+      "question": "For the OpenTitan I2C, the controller can be halted and raise the 'controller_halt' interrupt. I need to know exactly which controller events can cause that halt, so please list the individual event bits that feed it, and for each one tell me whether the design really has that event driving the halt status. Also: TARGET_EVENTS has a bit called TX_PENDING — can that one halt the controller as well? If the bit doesn't exist where I'd expect it, say so rather than guessing.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "halt_status_signal_id": "i2c.i2c_core.status_controller_halt",
+          "interrupt_signal_id": "i2c.i2c_core.intr_controller_halt_o",
+          "events_that_halt_the_controller": [
+            {
+              "event": "nack",
+              "canonical_signal_id": "i2c.i2c_core.reg2hw.controller_events.nack.q",
+              "status": "verified"
+            },
+            {
+              "event": "unhandled_nack_timeout",
+              "canonical_signal_id": "i2c.i2c_core.reg2hw.controller_events.unhandled_nack_timeout.q",
+              "status": "verified"
+            },
+            {
+              "event": "bus_timeout",
+              "canonical_signal_id": "i2c.i2c_core.reg2hw.controller_events.bus_timeout.q",
+              "status": "verified"
+            },
+            {
+              "event": "arbitration_lost",
+              "canonical_signal_id": "i2c.i2c_core.reg2hw.controller_events.arbitration_lost.q",
+              "status": "verified"
+            }
+          ],
+          "tx_pending_probe": {
+            "probed_canonical_signal_id": "i2c.i2c_core.reg2hw.controller_events.tx_pending.q",
+            "status": "unknown",
+            "reason": "driver 'i2c.i2c_core.reg2hw.controller_events.tx_pending.q' not_found",
+            "interpretation": "TX_PENDING does not exist in CONTROLLER_EVENTS. Per hw/ip/i2c/rtl/i2c_reg_pkg.sv it is a field of the TARGET_EVENTS register (i2c_reg2hw_target_events_reg_t), and the RTL halt OR-reduction at i2c_core.sv:864-869 does not include it. So TX_PENDING cannot halt the controller. The tool correctly refuses to invent the node and reports `unknown` rather than `contradicted`."
+          },
+          "summary": "Exactly four CONTROLLER_EVENTS bits feed the controller-halt status: nack, unhandled_nack_timeout, bus_timeout, arbitration_lost. All four verify as drivers. TX_PENDING is a TARGET_EVENTS bit, is not part of the halt OR-reduction, and the probe returns `unknown` (node not found), not `contradicted`."
+        }
+      },
+      "ground_truth_confirmation": {
+        "method": "Read the i2c_core.sv OR-reduction and the reggen package struct definitions first; only then use the CLI to confirm each individual claim.",
+        "source_facts": [
+          "hw/ip/i2c/rtl/i2c_core.sv:864-869 — the halt status is the OR of exactly four CONTROLLER_EVENTS bits: nack.q, unhandled_nack_timeout.q, bus_timeout.q, arbitration_lost.q. No other bit participates.",
+          "hw/ip/i2c/rtl/i2c_reg_pkg.sv:427-440 — `i2c_reg2hw_controller_events_reg_t` declares exactly four fields, in order: arbitration_lost, bus_timeout, unhandled_nack_timeout, nack. This independently matches the four terms of the RTL OR-reduction.",
+          "hw/ip/i2c/rtl/i2c_core.sv:106-108 — `logic event_nak; logic event_unhandled_nak_timeout; logic event_controller_arbitration_lost;` are separate event signals (the hw2reg/event direction), distinct from the sticky reg2hw bits read by the OR-reduction.",
+          "hw/ip/i2c/rtl/i2c_reg_pkg.sv:442-452 — `i2c_reg2hw_target_events_reg_t` contains arbitration_lost, bus_timeout and tx_pending. Therefore `tx_pending` belongs to TARGET_EVENTS and has no place under `controller_events`, exactly as the probe reports.",
+          "hw/ip/i2c/data/i2c_testplan.hjson `host_mode_halt_on_nak` — independently requires 'controller_halt' to be asserted on NACK and on the unhandled-NACK-timeout path, and `multi_controller_arbitration_lost_interference` requires it on arbitration loss — so the four-event list is consistent with the stated verification intent."
+        ],
+        "not_derived_from_tool": "The set of four events was read out of the RTL OR-reduction at i2c_core.sv:864-869 and the struct layout in i2c_reg_pkg.sv; the CLI was used only to confirm each individual driver claim and the not-found probe."
+      },
+      "requires_search": false,
+      "requires_verify": true,
+      "verify_notes": "This task is deliberately verify/abstain-shaped rather than a neighbour list: 4 of 6 sub-answers are claim statuses, and the last is a not-found (`unknown`) outcome where the correct behaviour is to refuse to invent the `controller_events.tx_pending.q` node.",
+      "validation_commands": [
+        "sv_query verify claim --from-snapshot opentitan_i2c --claim '{\"type\":\"driver\",\"signal\":\"i2c.i2c_core.status_controller_halt\",\"driver\":\"i2c.i2c_core.reg2hw.controller_events.nack.q\"}' --json",
+        "sv_query verify claim --from-snapshot opentitan_i2c --claim '{\"type\":\"driver\",\"signal\":\"i2c.i2c_core.status_controller_halt\",\"driver\":\"i2c.i2c_core.reg2hw.controller_events.unhandled_nack_timeout.q\"}' --json",
+        "sv_query verify claim --from-snapshot opentitan_i2c --claim '{\"type\":\"driver\",\"signal\":\"i2c.i2c_core.status_controller_halt\",\"driver\":\"i2c.i2c_core.reg2hw.controller_events.bus_timeout.q\"}' --json",
+        "sv_query verify claim --from-snapshot opentitan_i2c --claim '{\"type\":\"driver\",\"signal\":\"i2c.i2c_core.status_controller_halt\",\"driver\":\"i2c.i2c_core.reg2hw.controller_events.arbitration_lost.q\"}' --json",
+        "sv_query verify claim --from-snapshot opentitan_i2c --claim '{\"type\":\"driver\",\"signal\":\"i2c.i2c_core.status_controller_halt\",\"driver\":\"i2c.i2c_core.reg2hw.controller_events.tx_pending.q\"}' --json",
+        "sv_query drivers --from-snapshot opentitan_i2c 'i2c.i2c_core.status_controller_halt' --json",
+        "sv_query loads --from-snapshot opentitan_i2c 'i2c.i2c_core.status_controller_halt' --json"
+      ],
+      "expected_cli_results": {
+        "nack": "status=verified",
+        "unhandled_nack_timeout": "status=verified",
+        "bus_timeout": "status=verified",
+        "arbitration_lost": "status=verified",
+        "tx_pending": "status=unknown, reason \"driver 'i2c.i2c_core.reg2hw.controller_events.tx_pending.q' not_found\"",
+        "drivers(status_controller_halt)": "count=4 -> the four controller_events.*.q ids",
+        "loads(status_controller_halt)": "count=7, includes 'i2c.i2c_core.intr_controller_halt_o' and 'i2c.i2c_core.intr_hw_controller_halt.event_intr_i'"
+      }
+    },
+    {
+      "id": "DV-UART-SYSLOOPBACK-PATH",
+      "block": "uart",
+      "snapshot": "opentitan_uart",
+      "snapshot_dir": "/tmp/opentitan_svq/snapshots",
+      "source_root": "/Users/fundou/.dsh/opencode-workers-lite/opentitan-pilot/workspace",
+      "kind": "path",
+      "source_artifact": {
+        "primary": "hw/ip/uart/data/uart_testplan.hjson — testpoint `sys_loopback` (stage V2, tests [\"uart_loopback\"]): \"Enable system loopback, then drive uart TX and data will be loopbacked through RX. After loopback is done, uart.RDATA will be equal to the data programmed to uart.WDATA\"",
+        "secondary": "hw/ip/uart/dv/uart_sim_cfg.hjson — test entry `name: uart_loopback` / `uvm_test_seq: uart_loopback_vseq`",
+        "also": "hw/ip/uart/data/uart_testplan.hjson — testpoint `line_loopback`: \"There is not synchronizer register between uart_rx and uart_tx during line loopback\" (a contrast that makes the sys_loopback path identifiable)",
+        "rtl": "hw/ip/uart/rtl/uart_core.sv:214 (`uart_tx uart_tx (... .tx (tx_out) ...)`), :217 (`assign tx = line_loopback ? rx : tx_out_q;`), :264-266 (`assign rx_in = sys_loopback ? tx_out : line_loopback ? 1'b1 : rx_in_mx;`), :307 (`rx_val_q <= {rx_val_q[14:0], rx_in};`)"
+      },
+      "original_verification_intent": "In system-loopback mode the UART must feed its own transmitted serial bit back into its receiver, so that data programmed to WDATA reappears in RDATA. To review this in RTL one must trace how the transmitter's serial output reaches the receiver's input, and confirm that this is a *direct* connection (the line_loopback testpoint explicitly notes there is no synchronizer between rx and tx in line loopback, and the sys_loopback path likewise bypasses the receiver's 2-flop synchronizer).",
+      "question": "In the OpenTitan UART's system-loopback mode, the transmitter's serial output has to get back into the receiver. Can you trace the directed path that the transmitted bit takes to reach the receiver's input? I'd like the exact ordered list of canonical signal ids, and I also want to know whether that connection goes through the receiver's input synchronizer or bypasses it.",
+      "expected": {
+        "found": true,
+        "answer": {
+          "from": "uart.uart_core.tx_out",
+          "to": "uart.uart_core.rx_in",
+          "hop_count": 2,
+          "candidate_count": 2,
+          "path": [
+            "uart.uart_core.tx_out",
+            "uart.uart_core.rx_in.ternary_sys_loopback",
+            "uart.uart_core.rx_in"
+          ],
+          "bypasses_input_synchronizer": true,
+          "synchronizer_instance_not_on_path": "uart.uart_core.sync_rx",
+          "synchronizer_q_o_not_on_path": "uart.uart_core.sync_rx.q_o",
+          "notes": "The path goes through the OP_TERNARY marker node for the `sys_loopback ?` mux, not through the `prim_flop_2sync` synchronizer (uart.uart_core.sync_rx) that the external `cio_rx_i` path uses. This matches the testplan's line_loopback remark that there is no synchronizer between rx and tx, and confirms the loopback is a true in-RTL short."
+        }
+      },
+      "ground_truth_confirmation": {
+        "method": "Read uart_core.sv to establish the RTL connectivity, then confirmed the canonical ids of the two endpoints and the absence of the synchronizer from the path.",
+        "source_facts": [
+          "hw/ip/uart/rtl/uart_core.sv:214 — the `uart_tx` instance output is connected to `tx_out`, so the transmitter's serial bit leaves the block on `tx_out`.",
+          "hw/ip/uart/rtl/uart_core.sv:264-266 — `assign rx_in = sys_loopback ? tx_out : line_loopback ? 1'b1 : rx_in_mx;` so in system-loopback mode `tx_out` feeds `rx_in` directly.",
+          "hw/ip/uart/rtl/uart_core.sv:307 — `rx_val_q <= {rx_val_q[14:0], rx_in};` so `rx_in` is what the RX shift register consumes, closing the loop that the testplan's 'uart.RDATA equals uart.WDATA' check depends on.",
+          "hw/ip/uart/rtl/uart_core.sv:235-243 — the `prim_flop_2sync sync_rx` instance is fed by the `rx` input port, and `rx_in` is the mux output, so the synchronizer is structurally NOT in the tx_out -> rx_in path (it is on the cio_rx_i -> rx_in path).",
+          "hw/ip/uart/data/uart_testplan.hjson `line_loopback` — 'There is not synchronizer register between uart_rx and uart_tx during line loopback' independently corroborates that this class of loopback path is unsynchronized."
+        ],
+        "not_derived_from_tool": "The two endpoints and the bypass conclusion were established from the four RTL line references above before any sv_query call; the tool was used to confirm the exact canonical id spellings and the hop count."
+      },
+      "requires_search": false,
+      "requires_verify": false,
+      "validation_commands": [
+        "sv_query paths --from-snapshot opentitan_uart 'uart.uart_core.tx_out' 'uart.uart_core.rx_in' --directed --canonical --json",
+        "sv_query paths --from-snapshot opentitan_uart 'uart.uart_core.tx_out' 'uart.uart_core.rx_in' --directed --all --json",
+        "sv_query verify claim --from-snapshot opentitan_uart --claim '{\"type\":\"driver\",\"signal\":\"uart.uart_core.rx_in\",\"driver\":\"uart.uart_core.tx_out\"}' --json",
+        "sv_query verify claim --from-snapshot opentitan_uart --claim '{\"type\":\"path\",\"from\":\"uart.uart_core.tx_out\",\"to\":\"uart.uart_core.rx_in\"}' --json",
+        "sv_query loads --from-snapshot opentitan_uart 'uart.uart_core.rx_in' --json"
+      ],
+      "expected_cli_results": {
+        "paths --directed --canonical": "found=true hop_count=2 candidate_count=2, path as listed",
+        "paths --directed --all": "count=2, truncated=false",
+        "verify claim (driver tx_out -> rx_in)": "status=verified",
+        "verify claim (path tx_out -> rx_in)": "status=verified",
+        "loads(rx_in)": "includes 'uart.uart_core.rx_val_q' and 'uart.uart_core.uart_rx.rx' but NOT 'uart.uart_core.sync_rx.q_o'"
+      }
+    }
+  ]
+}
