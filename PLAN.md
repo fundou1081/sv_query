@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P126.1 CURRENT_TODO 刷新 <进行中>
+current item : P62.2 交互式 debug（gate） <待做>
 
 ## 计划树
 
@@ -335,10 +335,10 @@ P125 Execute independent intake tasks <已完成>
 -- P125.2 3 tasks ×2 模型执行 <已完成>
 -- P125.3 决定 search/verify/stop <已完成>
 
-P126 文档/运维刷新 <进行中>
--- P126.1 CURRENT_TODO 刷新 <进行中>
--- P126.2 TESTING 刷新 <待做>
--- P126.3 EXTRACTION_COVERAGE / KNOWN_LIMITATIONS 刷新 <待做>
+P126 文档/运维刷新 <已完成>
+-- P126.1 CURRENT_TODO 刷新 <已完成>
+-- P126.2 TESTING 刷新 <已完成>
+-- P126.3 EXTRACTION_COVERAGE / KNOWN_LIMITATIONS 刷新 <已完成>
 
 ## 已完成（保留最近记录，便于核查上一轮）
 

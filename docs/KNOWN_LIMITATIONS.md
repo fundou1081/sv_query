@@ -1,6 +1,6 @@
 # 已知限制
 
-> 更新: 2026-08-26 23:00 GMT+8 (case27 架构决策生效)
+> 更新: 2026-11-09 (P126.3 文档刷新 — 新增 §3.8~3.13 真实项目边界)
 > 测试状态: 见 [INDEX.md 当前基线](INDEX.md#-当前基线-单一真相源--计数只写在这里)
 >
 > **架构决策**: `docs/architecture/case27_signal_graph_completeness_decision.md` (D1-D5 锁定, 含 v11-only)
@@ -325,6 +325,136 @@ signal 级 `precision` + `coarse_fallback`）；`capabilities.bit_precision` 契
 （✅ iter_308/P14.1 + iter_310/P16）、**条件/时钟/复位/控制依赖**（if/case、计算条件、
 动态 clock/reset；✅ iter_311/P17）。参数/常量索引不误报（同 module 作用域解析）。
 
+---
+
+## 🆕 3.8~3.13 — 2026-11-09 刷新新增（P118~P125 期间的边界）
+
+> 本节由 P126.3 文档刷新新增。全部来自 2026-11-07~11-09 的真实项目验证
+> （OpenTitan UART / I2C、independent intake），**不是**推演。
+
+### 3.8 Snapshot 的边证据：新 snapshot 有，**旧 snapshot 没有**
+
+**事实**：`SignalGraph.to_dict()` 现在保存每条边的 `expression` / `bit_slice` /
+`source_location {file, line_start, line_end, column}`；`from_dict()` 会恢复它们。
+
+| snapshot | 边级证据 | 来源 |
+|---|---|---|
+| P119 之后重建的 | ✅ 有 `expression` / `bit_slice` / `source_location` | `src/trace/core/graph/models.py` |
+| P119 **之前**生成的 | ❌ **没有**（旧格式仍可反序列化，但字段缺失） | 兼容性保留，不回填 |
+
+**可观察后果**：拿旧 snapshot 跑 `intent=evidence`，模型拿到的仍然只是**节点声明行**
+（`uart_core.sv:43`），会像 OpenTitan T3 那样把声明行当成赋值行 → **高置信答错**。
+证据：[edge evidence 记录](validation/EDGE_EVIDENCE_2026-11-09.md) §1。
+
+**怎么办**：改过边证据相关行为后**重建 snapshot**，别复用旧的。
+
+### 3.9 Snapshot **不含源码文本**；CLI evidence 的 fallback **只给位置**
+
+**事实**：snapshot 存的是图（节点/边/位置），**不存 `.sv` 源码**。
+
+| 路径 | 能给什么 | 不能给什么 |
+|---|---|---|
+| `trace evidence --from-snapshot` | 边的 `file` / `line` / `expression` / `condition` | **源码原文**（不伪造 `source_text`） |
+| tool 侧 `intent=evidence` | `edge_evidence[]`：src/dst/file/line/expression/condition/`source_line` | `source_line` 需 `SVQ_SOURCE_ROOT` 下能按 basename 唯一命中 |
+
+**可观察后果**：CLI 的 snapshot 路径**只给位置**，不给源码行；agent 侧要拿到
+`source_line` 必须能访问源码树（`SVQ_SOURCE_ROOT`）。没有源码树时，
+snapshot 路径的 evidence 精度**低于** live 路径。
+
+### 3.10 Path 语义：是 **canonical path**，没有"最短路径"这个意图
+
+**事实**（P122）：`intent=path` / `intent=deep_path` 都走 canonical：
+
+```text
+CLI:  svq paths <src> <dst> --canonical --directed
+      输出 canonical_policy=max_nodes_then_lexicographic + candidate_count
+tool: intent=path / intent=deep_path  →  path_kind=canonical
+```
+
+**canonical 的定义**：在候选结构变体里选**节点数最多**的那条（tie-break 字典序），
+**不是**最短路径。
+
+**可观察后果**：
+- **不存在**"给用户一条最短路"的意图。深度优先/最长优先才是当前语义。
+- 用户拿到的 path 长度**不会**是最短路；OpenTitan T2 曾出现 13-hop vs 18-hop 的
+  歧义，修法就是 pin canonical 而不是选最短。
+- `--canonical` 与 `--all` 互斥；`candidate_count` 让 agent 能知道有几个候选。
+
+证据：[canonical path 记录](validation/CANONICAL_PATH_2026-11-09.md)。
+
+### 3.11 OpenTitan UART/I2C 的**依赖闭包仍是手工整理**的
+
+**事实**：两个 block 的 filelist 都是**人工**整理出来的，`.core` 的依赖是 superset。
+
+| block | 文件数 | 状态 |
+|---|---|---|
+| `hw/ip/uart` | 60 | **4 轮手工依赖整理**才可 elaborate（首次 0 errors 是 4 轮后的结果） |
+| `hw/ip/i2c` | 67 | 复用 UART 规则，**首次即 elaborate**；但仍是手写 filelist |
+
+`.core` 不能直接用：`filelist prune` 会保留 include-only `.svh`，需手工删。
+
+**可观察后果**：
+- 换 HEAD / 换 block 时**不能**假设 filelist 直接可用 —— UART 用了 4 轮。
+- 依赖闭包**没有**自动化；`.core` → 可 elaborate filelist 仍需人工判断。
+- 这是当前真实项目验证最大的**可复现性缺口**。
+
+证据：[UART pilot](validation/OPENTITAN_PILOT_2026-11-09.md) §P2、
+[I2C pilot](validation/OPENTITAN_I2C_2026-11-09.md) §P4。
+
+### 3.12 Snapshot 工具**没有** MIG / connections / instances
+
+**事实**：snapshot 只存 `SignalGraph`。
+
+| 能力 | live | `--from-snapshot` |
+|---|---|---|
+| `drivers` / `loads` / `trace fanin/fanout` / `paths` | ✅ | ✅ |
+| `connections` / `instances` / `hierarchy` | ✅ | ❌ **不支持**（需 live MIG） |
+| evidence 源码原文 | ✅ | ❌（见 §3.9） |
+
+`paths` 之所以可用，是因为 `PathResolver` 只依赖 `SignalGraph`，不依赖 MIG 虚拟跳转。
+
+**可观察后果**：agent 用 snapshot 模式拿不到实例/连接信息，
+必须回落到 live build（付一次 full build 成本）。**不能**伪装支持。
+
+证据：[snapshot 记录](validation/SNAPSHOT_2026-11-07.md) §3。
+
+### 3.13 任务语料是**自撰**的，不是用户研究
+
+**事实**：现有 task corpus（38 个 instance，6 个任务文件）**我们自己 authored/frozen**：
+
+- ground truth 大多由 `sv_query` CLI **反向**产生；
+- 任务选择反映**我们知道怎么问**的内容；
+- 唯一一次 tool 与 source 不一致时，**修正的是 task 而不是 tool**；
+- 没有用户日志、issue、DV failure 的真实分布。
+
+independent intake（P124/P125）是从 OpenTitan DV testplan/checklist 提取的 3 个任务，
+ground truth 由 worker 先从 spec/source 人工确认、再 CLI 交叉验证 —— 比自撰强，但
+**仍然是 task-author 与 tool 作者同一团队**。
+
+**因此不能宣称**：
+
+```text
+用户最需要 discovery
+用户不需要 fault localization
+真实任务 50% 是 direct neighbors
+```
+
+**只能宣称**：
+
+```text
+我们的 benchmark 目前 50% 是 direct neighbors；
+real-project 和 verify 样本不足；
+discovery 只有 2 个，且模式单一。
+```
+
+**其他已知边界**（independent intake 实测）：只有 UART/I2C 两个 block；
+fault localization / patch 类任务 = 0；不是外部 fault set。
+
+证据：[任务分布](validation/TASK_DISTRIBUTION_2026-11-09.md) §3、
+[intake 结果](validation/OPENTITAN_INTAKE_RESULTS_2026-11-09.md) §5。
+
+---
+
 ## 已修复限制
 
 | 限制 | 修复版本 |
@@ -362,3 +492,14 @@ signal 级 `precision` + `coarse_fallback`）；`capabilities.bit_precision` 契
 - 决策文件: `docs/architecture/case27_signal_graph_completeness_decision.md`
 - iter_032 (前置已知问题): `docs/task_tree/iterations/iter_032_case27_semantic_gaps.md`
 - iter_033 (待开工): `docs/task_tree/iterations/iter_033_*.md` (创建中)
+
+### 2026-11-09 新增 §3.8~3.13 的证据文档
+
+| 限制 | 证据 |
+|---|---|
+| §3.8 边证据 / 旧 snapshot | [validation/EDGE_EVIDENCE_2026-11-09.md](validation/EDGE_EVIDENCE_2026-11-09.md) |
+| §3.9 snapshot 无源码 | [validation/EDGE_EVIDENCE_2026-11-09.md](validation/EDGE_EVIDENCE_2026-11-09.md) §6.1 |
+| §3.10 canonical path | [validation/CANONICAL_PATH_2026-11-09.md](validation/CANONICAL_PATH_2026-11-09.md) |
+| §3.11 依赖闭包手工 | [validation/OPENTITAN_PILOT_2026-11-09.md](validation/OPENTITAN_PILOT_2026-11-09.md) §P2、[validation/OPENTITAN_I2C_2026-11-09.md](validation/OPENTITAN_I2C_2026-11-09.md) §P4 |
+| §3.12 snapshot 无 MIG | [validation/SNAPSHOT_2026-11-07.md](validation/SNAPSHOT_2026-11-07.md) §3 |
+| §3.13 语料自撰 | [validation/TASK_DISTRIBUTION_2026-11-09.md](validation/TASK_DISTRIBUTION_2026-11-09.md)、[validation/OPENTITAN_INTAKE_RESULTS_2026-11-09.md](validation/OPENTITAN_INTAKE_RESULTS_2026-11-09.md) |

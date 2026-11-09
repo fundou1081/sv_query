@@ -18,7 +18,7 @@
 | 全量 (canonical) | **2571 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; 7 skipped / 119 deselected) | 2026-11-07 实测 (iter_397): A/D tests +8。历史: iter_396 2563 / iter_395 2561 |
 | CLI / integration | **810 passed / 0 failed** (`sim/tests/cli sim/tests/integration`, `-m "not opensource"`) | 2026-09-08 实测 (iter_185 修复后) |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (419 份, 只增不改) | 每次迭代一份 |
+| 迭代记录 | `docs/task_tree/iterations/` (420 份, 只增不改) | 每次迭代一份 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 | 语义 regex 纪律 | `python3 tools/check_semantic_regex.py` 必须 ✅ | 仅 UVM 宏例外；class/constraint/covergroup 语义走 slang (iter_368) |
@@ -39,7 +39,7 @@
 | [CHANGELOG.md](../CHANGELOG.md) | 变更日志 (历史记录) |
 | [CONTRIBUTING.md](../CONTRIBUTING.md) | 贡献指南 |
 | [DEVELOPMENT.md](../DEVELOPMENT.md) | 开发环境与工作流 |
-| [MEMORY.md](../MEMORY.md) | 经验沉淀索引 (`memory/` 按日) |
+| [memory/](../memory/) | 经验沉淀索引 (`memory/` 按日) |
 
 ## 🛠️ 开发纪律与流程 (`docs/dev/` — 细则层)
 
