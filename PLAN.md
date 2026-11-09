@@ -326,9 +326,14 @@ P123 OpenTitan I2C second-block pilot <已完成>
 -- P123.2 3 tasks ×2 模型 6/6 <已完成>
 -- P123.3 纠正 worker 两处语义误判 <已完成>
 
-P124 Independent task intake <待做>
--- P124.1 从 OpenTitan DV testplan/checklist 提取 3 个任务 <待做>
--- P124.2 人工 spec/source ground truth <待做>
+P124 Independent task intake <已完成>
+-- P124.1 从 OpenTitan DV testplan/checklist 提取 3 个任务 <已完成>
+-- P124.2 人工 spec/source ground truth <已完成>
+
+P125 Execute independent intake tasks <待做>
+-- P125.1 修正 discovery/direct-driver/unknown/canonical schema <待做>
+-- P125.2 3 tasks ×2 模型执行 <待做>
+-- P125.3 决定 search/verify/stop <待做>
 
 ## 已完成（保留最近记录，便于核查上一轮）
 
