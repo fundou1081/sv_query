@@ -6,9 +6,9 @@
 
 ## 总览
 
-- 叶子命令总数: **42**
-- 按层: `core`=37, `exp`=5
-- core 内分组: `semantic`=22, `verify`=3, `scope`=1, `locate`=7, `state`=4
+- 叶子命令总数: **43**
+- 按层: `core`=38, `exp`=5
+- core 内分组: `semantic`=23, `verify`=3, `scope`=1, `locate`=7, `state`=4
 
 | 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | schema | 说明 |
 |---|---|---|---|---|---|---|
@@ -18,7 +18,7 @@
 | `dev` | dev | none | ✅ | — | — | 开发者内部调试 (当前无命令; expression 已于 iter_252 归档) |
 | `out` | none | none | ✅ | — | — | 移出 CLI (会写 RTL/项目文件) → tools/; 不算产品命令 |
 
-## `core` (37 个)
+## `core` (38 个)
 
 | 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
 |---|---|---|---|---|---|---|---|---|---|
@@ -52,6 +52,7 @@
 | `trace lookup` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | 完整 RTL hier path → canonical id (严格; $root/位父回退/aliases; 不做模糊后缀) |
 | `trace manifest` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 批量 waveform manifest: full path → canonical + profile (type/bit/clock/reset/stage) |
 | `trace profile` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | 信号 profile: canonical/aliases/位映射/clock/reset/sequential/source (波形关联) |
+| `trace tb-join` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | TB random field → RTL snapshot 候选 join (name-based; 不宣称唯一) |
 | `snapshot compare` | — | — | state | state | medium | ✅ | — | ✅ | 比较两个快照, 或两个 SV 文件 (文件模式 = 原 diff compare; --signal 看可达性差异) |
 | `snapshot delete` | — | — | state | state | cheap | ✅ | — | ✅ | [iter_231] 已补 --json |
 | `snapshot list` | — | — | state | state | cheap | ✅ | — | ✅ | 列出快照; 给 tag → 该快照详情 (原 snapshot show) |

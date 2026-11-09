@@ -1367,6 +1367,7 @@ from cli.core.semantic.trace_overview import overview, _output_overview_text  # 
 from cli.core.semantic.constraints import (  # noqa: E402
     constraint_neighborhood_cmd, constraints_cmd,
 )
+from cli.core.semantic.tb_join import tb_join_cmd  # noqa: E402
 from cli.core.semantic.covergroups import (  # noqa: E402
     covergroups_cmd, coverpoints_cmd, covergroup_cmd,
 )
@@ -1378,6 +1379,7 @@ trace_app.command("evidence")(evidence)
 trace_app.command("overview", hidden=True)(overview)
 trace_app.command("constraints")(constraints_cmd)
 trace_app.command("constraint-neighborhood")(constraint_neighborhood_cmd)
+trace_app.command("tb-join")(tb_join_cmd)
 trace_app.command("covergroups")(covergroups_cmd)
 trace_app.command("coverpoints")(coverpoints_cmd)
 trace_app.command("covergroup")(covergroup_cmd)

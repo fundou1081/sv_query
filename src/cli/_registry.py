@@ -147,6 +147,8 @@ COMMANDS: list[CommandSpec] = [
     _c("trace constraint-neighborhood", "semantic", cost="medium",
        note="一次查询跨多个 constraint block 的 random 变量关系图 "
             "(co-constraint, 非 fanin; 含重要性指标, 启发式)"),
+    _c("trace tb-join", "semantic", cost="cheap",
+       note="TB random field → RTL snapshot 候选 join (name-based; 不宣称唯一)"),
     _c("trace covergroups", "semantic", cost="cheap",
        note="[P63] 列出 covergroup 定义 (可按 class 过滤)"),
     _c("trace coverpoints", "semantic", cost="cheap",
@@ -262,7 +264,7 @@ _SCOPE_KEYS = {
 _TRACE_KEYS = {
     "drivers", "loads", "trace fanin", "trace fanout", "trace impact",
     "trace evidence", "trace profile", "trace lookup", "trace manifest",
-    "trace constraints", "trace constraint-neighborhood",
+    "trace constraints", "trace constraint-neighborhood", "trace tb-join",
     "trace covergroups", "trace coverpoints", "trace covergroup",
     "paths", "dataflow analyze", "controlflow analyze", "controlflow list-conditioned",
 }
@@ -559,6 +561,10 @@ JSON_CONTRACT = {
         },
         "trace constraint-neighborhood": {
             "result_fields": ["root", "nodes", "relations", "paths", "summary"],
+        },
+        "trace tb-join": {
+            "result_fields": ["tb_field", "leaf", "constraints", "join_status",
+                              "rtl_candidates", "note"],
         },
         "trace covergroups": {
             "result_fields": ["count", "covergroups"],
