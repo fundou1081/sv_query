@@ -61,6 +61,110 @@ class ConstraintTracer:
                 out.append(info)
         return out
 
+    def trace_neighborhood(self, prop_id: str, max_depth: int = 6,
+                           max_nodes: int = 200) -> dict | None:
+        """One-shot constraint neighborhood across multiple constraint blocks.
+
+        Starts at ``prop_id`` and walks every block that constrains the current
+        property (including if-condition variables).  Edges are *co-constraint*
+        relations, not dataflow: two variables are connected when they appear in
+        the same constraint block.  Returns raw importance metrics; do not treat
+        ``degree_centrality`` as a solver-semantic proof.
+        """
+        root = self._resolve_type_prop(prop_id)
+        if not root:
+            return None
+        nodes: dict[str, dict] = {
+            root: {"id": root, "depth": 0, "blocks": [], "neighbors": [],
+                   "path": [root]},
+        }
+        queue = [root]
+        relations: dict[tuple[str, str], set[str]] = {}
+        while queue and len(nodes) < max_nodes:
+            current = queue.pop(0)
+            self._expand_constraint_node(
+                current, nodes, queue, relations, max_depth, max_nodes)
+        return self._build_neighborhood(root, nodes, relations)
+
+    def _expand_constraint_node(self, current: str, nodes: dict, queue: list,
+                                relations: dict, max_depth: int,
+                                max_nodes: int) -> None:
+        """Expand one variable's blocks into co-constraint neighbors."""
+        for info in self.trace(current):
+            members = self._block_members(current, info)
+            for other in members:
+                if other == current:
+                    continue
+                self._link(nodes, relations, current, other, info.block_id)
+                depth = nodes[current]["depth"] + 1
+                if (other not in nodes and depth <= max_depth
+                        and len(nodes) < max_nodes):
+                    nodes[other] = {
+                        "id": other, "depth": depth, "blocks": [],
+                        "neighbors": [], "path": nodes[current]["path"] + [other],
+                    }
+                    queue.append(other)
+
+    @staticmethod
+    def _block_members(current: str, info: ConstraintInfo) -> list[str]:
+        members = []
+        for v in list(info.vars) + list(info.conditions):
+            if v not in members:
+                members.append(v)
+        if current not in members:
+            members.append(current)
+        return members
+
+    @staticmethod
+    def _link(nodes: dict, relations: dict, current: str, other: str,
+              block: str) -> None:
+        key = tuple(sorted((current, other)))
+        relations.setdefault(key, set()).add(block)
+        for a, b in ((current, other), (other, current)):
+            if a in nodes:
+                if b not in nodes[a]["neighbors"]:
+                    nodes[a]["neighbors"].append(b)
+                if block not in nodes[a]["blocks"]:
+                    nodes[a]["blocks"].append(block)
+
+    @staticmethod
+    def _build_neighborhood(root: str, nodes: dict,
+                            relations: dict) -> dict:
+        out_nodes = []
+        for node in nodes.values():
+            node["block_count"] = len(node["blocks"])
+            node["degree"] = len(node["neighbors"])
+            out_nodes.append(node)
+        out_nodes.sort(key=lambda n: (n["depth"], n["id"]))
+        node_ids = set(nodes)
+        out_relations = [
+            {"source": a, "target": b, "blocks": sorted(blocks)}
+            for (a, b), blocks in sorted(relations.items())
+            if a in node_ids and b in node_ids
+        ]
+        total = max(1, len(out_nodes) - 1)
+        root_node = nodes[root]
+        direct = root_node["degree"]
+        paths = {n["id"]: n["path"] for n in out_nodes if n["id"] != root}
+        summary = {
+            "node_count": len(out_nodes),
+            "relation_count": len(out_relations),
+            "direct_degree": direct,
+            "reachable_count": len(out_nodes) - 1,
+            "max_depth": max((n["depth"] for n in out_nodes), default=0),
+            "degree_centrality": round(direct / total, 4),
+            "importance_metrics": {
+                "block_count": root_node["block_count"],
+                "direct_degree": direct,
+                "reachable_count": len(out_nodes) - 1,
+                "degree_centrality": round(direct / total, 4),
+            },
+        }
+        return {
+            "root": root, "nodes": out_nodes, "relations": out_relations,
+            "paths": paths, "summary": summary,
+        }
+
     # ------------------------------------------------------------------
     def _resolve_type_prop(self, prop_id: str) -> str | None:
         """实例属性 (top.p.addr / top.e.p.addr) → 类型属性 (packet.addr).

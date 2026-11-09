@@ -123,3 +123,73 @@ def constraints_cmd(
         else:
             print(f"Error: {e}", file=sys.stderr)
         raise typer.Exit(code=1) from None
+
+
+def _neighborhood_error(exc: Exception, json_output: bool, pretty: bool) -> None:
+    data = {"ok": False, "command": "trace_constraint_neighborhood",
+            "error": str(exc), "errors": [str(exc)]}
+    if json_output:
+        emit_json(data, pretty)
+    else:
+        print(f"Error: {exc}", file=sys.stderr)
+    raise typer.Exit(code=1) from None
+
+
+def _run_neighborhood(property: str, file, filelist, max_depth: int,
+                      max_nodes: int) -> dict:
+    from trace.core.query.constraint import ConstraintTracer
+
+    tracer = _build_tracer(file=file, filelist=filelist)
+    graph = tracer.build_graph()
+    resolved = property
+    r = resolve_signal(graph, property)
+    if r.get("ok") and r.get("resolved") in graph:
+        resolved = r["resolved"]
+    result = ConstraintTracer(
+        graph, tracer.get_class_hierarchy()
+    ).trace_neighborhood(resolved, max_depth=max_depth, max_nodes=max_nodes)
+    if result is None:
+        raise ValueError(f"property {property!r} not_found")
+    return result
+
+
+def _print_neighborhood(result: dict) -> None:
+    summary = result["summary"]
+    print(f"Constraint neighborhood for {result['root']} "
+          f"({summary['node_count']} vars / {summary['relation_count']} relations):")
+    for node in result["nodes"]:
+        print(f"  {node['id']} depth={node['depth']} "
+              f"degree={node['degree']} blocks={node['block_count']}")
+
+
+def constraint_neighborhood_cmd(
+    property: str = typer.Argument(..., help="packet.addr / top.e.p.addr"),
+    file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
+    filelist: str = typer.Option(None, "--filelist", help="filelist (.f/.fl)"),
+    max_depth: int = typer.Option(6, "--max-depth", help="max BFS depth"),
+    max_nodes: int = typer.Option(200, "--max-nodes", help="max variables"),
+    json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON"),
+    pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
+) -> None:
+    """One-shot cross-block constraint neighborhood around a random variable."""
+    try:
+        result = _run_neighborhood(property, file, filelist, max_depth, max_nodes)
+        data = {
+            "ok": True,
+            "command": "trace_constraint_neighborhood",
+            "params": {"file": str(file) if file else None, "filelist": filelist,
+                       "property": property, "max_depth": max_depth,
+                       "max_nodes": max_nodes},
+            "result": result,
+            "errors": [],
+        }
+        if json_output:
+            emit_json(data, pretty)
+        else:
+            _print_neighborhood(result)
+    except typer.Exit:
+        raise
+    except CompilationError as e:
+        handle_compilation_error(e)
+    except Exception as e:
+        _neighborhood_error(e, json_output, pretty)
