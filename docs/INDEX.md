@@ -137,6 +137,7 @@
 | [validation/OPENTITAN_TB_ANGLE_2026-11-09.md](validation/OPENTITAN_TB_ANGLE_2026-11-09.md) | **P130 TB angle**: candidates exist；coverage 阻塞；v0.4 gate |
 | [validation/COVERAGE_LIMITATION_2026-11-09.md](validation/COVERAGE_LIMITATION_2026-11-09.md) | **P131 coverage limitation**: strict；schema 标注 pyslang 限制 |
 | [validation/CONSTRAINT_NEIGHBORHOOD_2026-11-09.md](validation/CONSTRAINT_NEIGHBORHOOD_2026-11-09.md) | **P132 constraint neighborhood**: 跨 block 关系图 + importance |
+| [validation/ARCHITECTURE_GRAPH_2026-11-09.md](validation/ARCHITECTURE_GRAPH_2026-11-09.md) | **P133 architecture graph**: 实例级真实 net 连接 + SVG |
 | [validation/opentitan_intake/REPORT.md](validation/opentitan_intake/REPORT.md) | **P124 intake**: 3 个 OpenTitan DV 任务；discovery/verify/path |
 | [validation/opentitan_uart/WORKER_REPORT.md](validation/opentitan_uart/WORKER_REPORT.md) | **P118 worker onboarding**: filelist/snapshot/tasks/11 issues |
 | [validation/COMPARISON_RECORD_2026-11-05.md](validation/COMPARISON_RECORD_2026-11-05.md) | **对比结果冻结记录**: 哈希、模型、指标、单独复验脚本与已知缺陷 |

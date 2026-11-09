@@ -224,6 +224,9 @@ COMMANDS: list[CommandSpec] = [
        note="两个信号之间的综合叙述 (dataflow + controlflow + evidence)"),
     _v("review render", cost="cheap",
        note="[P62] 单个 structural finding 的局部 SVG/HTML; 只消费 subgraph"),
+    _v("architecture graph", kind="presentation", cost="medium", json=True,
+       note="[P133] module/instance architecture graph from real net connections; "
+            "not the retired full signal graph"),
     # ---- dev (内部调试) ----
 
 
