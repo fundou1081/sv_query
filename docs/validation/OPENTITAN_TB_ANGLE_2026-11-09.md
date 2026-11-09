@@ -53,14 +53,20 @@ sv_query trace constraints i2c_item.rcont --filelist /tmp/i2c_tb.f
 
 ### C1 covergroup elaboration
 
-covergroup 采样继承 base class 的成员时失败：
+根因是 **pyslang CovergroupBody 内建名遮蔽**，不是 inherited base member：
 
 ```text
-UndeclaredIdentifier 'cfg'
-p_sequencer.cfg ...
+coverpoint start;
+coverpoint stop;
+→ InvalidCoverageExpr / VoidAssignment
+binsof(cp_action.start)
+→ InvalidBinsTarget
 ```
 
-这不是 sv_query 的图问题，而是 SystemVerilog class/covergroup elaboration 不完整。
+`start`/`stop` 是 IEEE 1800 §19.6 的内建子程序名，pyslang 在 covergroup body
+的无限定名查找中先命中它们，把外层标识符解析成 `void`。
+
+继承 base member 采样是**对照组**，实测正常，不能归因到这个失败。
 
 ### C2 受限工具没有 testbench intent
 

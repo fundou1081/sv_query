@@ -1,4 +1,4 @@
-// test_covergroup_builtin_name_shadow fixture (bin 名冲突变体)
+// test_covergroup_limitation fixture (bin 名冲突变体)
 // 同一个 coverpoint 的 bin 名与 CovergroupBody 内建成员 `start` / `stop`
 // 冲突 → pyslang 的 binsof 成员查找解析不到该 bin → InvalidBinsTarget。
 //
