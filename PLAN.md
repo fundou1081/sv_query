@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P62.2 交互式 debug（gate） <待做>
+current item : P129.1 tag clone + setup_snapshot + query/verify smoke <待做>
 
 ## 计划树
 
@@ -343,6 +343,12 @@ P126 文档/运维刷新 <已完成>
 P127 两个新增 DV-derived 任务 <已完成>
 -- P127.1 UART TX override + I2C SDA interference <已完成>
 -- P127.2 alias/root schema 修正 <已完成>
+
+P128 Freeze v0.3.0-agent-query <已完成>
+-- P128.1 freeze doc + tag <已完成>
+
+P129 Clean-clone/tag install smoke <待做>
+-- P129.1 tag clone + setup_snapshot + query/verify smoke <待做>
 
 ## 已完成（保留最近记录，便于核查上一轮）
 
