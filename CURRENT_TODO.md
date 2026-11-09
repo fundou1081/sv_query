@@ -3,7 +3,7 @@
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **可视化计划**: [structural_review_plan_2026-11-02](docs/architecture/structural_review_plan_2026-11-02.md) — 全设计图退役；动态子图 + 局部 review。
-> **最后更新**: 2026-11-09 GMT+8 (P131 coverage limitation schema)
+> **最后更新**: 2026-11-09 GMT+8 (P132 constraint neighborhood)
 
 ---
 
@@ -29,7 +29,7 @@
 
 - **分支**: `main`；最新提交以 `git log -1` 为准
 - **全量基线**: 见 [docs/INDEX.md 当前基线](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里)（单一真相源，本文不写死计数）
-- **命令面**: 40 命令 = core 36 + exp 4（class/constraint/covergroup）
+- **命令面**: 41 命令 = core 37 + exp 4（class/constraint/covergroup）
 - **当前重点**: 文档/运维刷新完成（P126）；核心 query/verify 已在真实项目闭环，下一步不是加功能
 
 ---
@@ -46,6 +46,7 @@
 | P129 | clean-clone smoke | tag checkout + docs/plan + Node + snapshot/query/verify |
 | P130 | 长任务回归 + TB 角调查 | 12 tasks 24/24；TB 候选 2/3 层可答，coverage 阻塞 |
 | P131 | coverage limitation schema | 保持严格；schema 标注 pyslang 限制 + 源码位置 |
+| P132 | constraint neighborhood | 跨 block 变量关系图 + 重要度指标 |
 
 详见 [P125 intake results](docs/validation/OPENTITAN_INTAKE_RESULTS_2026-11-09.md)。
 

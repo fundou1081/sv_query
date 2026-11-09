@@ -144,6 +144,9 @@ COMMANDS: list[CommandSpec] = [
        note="批量 waveform manifest: full path → canonical + profile (type/bit/clock/reset/stage)"),
     _c("trace constraints", "semantic", cost="cheap",
        note="[P63] 属性受哪些 constraint 约束 (类型/实例; 独立语义域, 不走 fanin)"),
+    _c("trace constraint-neighborhood", "semantic", cost="medium",
+       note="一次查询跨多个 constraint block 的 random 变量关系图 "
+            "(co-constraint, 非 fanin; 含重要性指标, 启发式)"),
     _c("trace covergroups", "semantic", cost="cheap",
        note="[P63] 列出 covergroup 定义 (可按 class 过滤)"),
     _c("trace coverpoints", "semantic", cost="cheap",
@@ -256,7 +259,8 @@ _SCOPE_KEYS = {
 _TRACE_KEYS = {
     "drivers", "loads", "trace fanin", "trace fanout", "trace impact",
     "trace evidence", "trace profile", "trace lookup", "trace manifest",
-    "trace constraints", "trace covergroups", "trace coverpoints", "trace covergroup",
+    "trace constraints", "trace constraint-neighborhood",
+    "trace covergroups", "trace coverpoints", "trace covergroup",
     "paths", "dataflow analyze", "controlflow analyze", "controlflow list-conditioned",
 }
 _VERIFY_KEYS = {"verify consistency", "verify claim", "verify structural"}
@@ -549,6 +553,9 @@ JSON_CONTRACT = {
         "trace constraints": {
             "result_fields": ["property", "resolved", "count", "constraints"],
             "constraint_fields": "constraint_block",
+        },
+        "trace constraint-neighborhood": {
+            "result_fields": ["root", "nodes", "relations", "paths", "summary"],
         },
         "trace covergroups": {
             "result_fields": ["count", "covergroups"],

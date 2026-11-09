@@ -359,6 +359,11 @@ P131 coverage limitation schema <已完成>
 -- P131.2 explicit CLI/schema limitation <已完成>
 -- P131.3 strict regression tests <已完成>
 
+P132 constraint neighborhood query <已完成>
+-- P132.1 cross-block co-constraint graph <已完成>
+-- P132.2 importance metrics <已完成>
+-- P132.3 synthetic + I2C smoke <已完成>
+
 
 ## 已完成（保留最近记录，便于核查上一轮）
 
