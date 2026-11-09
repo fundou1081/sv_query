@@ -340,6 +340,10 @@ P126 文档/运维刷新 <已完成>
 -- P126.2 TESTING 刷新 <已完成>
 -- P126.3 EXTRACTION_COVERAGE / KNOWN_LIMITATIONS 刷新 <已完成>
 
+P127 两个新增 DV-derived 任务 <已完成>
+-- P127.1 UART TX override + I2C SDA interference <已完成>
+-- P127.2 alias/root schema 修正 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

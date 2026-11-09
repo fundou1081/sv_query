@@ -1,0 +1,245 @@
+{
+  "meta": {
+    "intake_id": "opentitan_dv_intake_p127_2026-11-09",
+    "created": "2026-11-09",
+    "purpose": "Extension of the independent OpenTitan DV intake with exactly 2 NEW tasks, derived from OpenTitan DV artifacts (testplan.hjson + RTL/doc/reggen). Independent of tools/benchmark task JSON.",
+    "opentitan_repo": "/Users/fundou/my_dv_proj/openrtl/opentitan",
+    "source_root": "/Users/fundou/.dsh/opencode-workers-lite/opentitan-pilot/workspace",
+    "opentitan_head": "a82c4892e88253924b3f7af05ce7494232ab263a",
+    "opentitan_head_subject": "[doc] Update ILA debugging documentation",
+    "sv_query_bin": "/Users/fundou/miniconda3/bin/sv_query",
+    "supersedes": "/tmp/opentitan_intake/tasks.json (P125 intake - 3 tasks, separate testpoints, not repeated here)",
+    "testpoints_already_used_not_repeated": {
+      "uart": ["rx_noise_filter", "sys_loopback"],
+      "i2c": ["host_mode_halt_on_nak", "multi_controller_arbitration_lost_interference", "controller_mode_bus_timeout"]
+    },
+    "snapshots_used_read_only": {
+      "uart": {"tag": "opentitan_uart", "file": "/tmp/opentitan_svq/snapshots/opentitan_uart.json", "snapshot_dir": "/tmp/opentitan_svq/snapshots", "nodes": 4803, "edges": 8507},
+      "i2c": {"tag": "opentitan_i2c", "file": "/tmp/opentitan_svq_i2c/snapshots/opentitan_i2c.json", "snapshot_dir": "/tmp/opentitan_svq_i2c/snapshots", "nodes": 9370, "edges": 17599}
+    },
+    "source_artifacts_read": [
+      "hw/ip/uart/data/uart_testplan.hjson",
+      "hw/ip/uart/doc/registers.md",
+      "hw/ip/uart/rtl/uart_core.sv",
+      "hw/ip/uart/rtl/uart_reg_pkg.sv",
+      "hw/ip/i2c/data/i2c_testplan.hjson",
+      "hw/ip/i2c/rtl/i2c_core.sv",
+      "hw/ip/i2c/rtl/i2c_reg_pkg.sv",
+      "hw/ip/i2c/dv/env/seq_lib/i2c_glitch_vseq.sv"
+    ],
+    "method": "For each task: (1) pick a DV verification intent from the testplan; (2) read the RTL + reggen package + register doc to determine the answer; (3) write the expected answer and canonical IDs from that source reading; (4) only then use the sv_query CLI to resolve canonical-ID spellings and cross-check. Ground truth is source-derived; the tool only confirms.",
+    "notes": [
+      "No LLM/DSH agents were run. All validation used the sv_query CLI plus direct source inspection.",
+      "No file outside /tmp/opentitan_intake_p127/ was written. OpenTitan and the sv_query repo are unmodified."
+    ]
+  },
+  "tasks": [
+    {
+      "id": "DV-UART-TXOVERRIDE-DISCOVERY",
+      "block": "uart",
+      "snapshot": "opentitan_uart",
+      "snapshot_dir": "/tmp/opentitan_svq/snapshots",
+      "source_root": "/Users/fundou/.dsh/opencode-workers-lite/opentitan-pilot/workspace",
+      "kind": "discovery",
+      "source_artifact": {
+        "testplan": "hw/ip/uart/data/uart_testplan.hjson — testpoint `tx_overide` (stage V2, tests [\"uart_tx_ovrd\"]): \"Enable override control and use register programming to drive uart output directly.\"",
+        "sim_cfg": "hw/ip/uart/dv/uart_sim_cfg.hjson — test entry `name: uart_tx_ovrd` / `uvm_test_seq: uart_tx_ovrd_vseq`",
+        "doc": "hw/ip/uart/doc/registers.md:316-330 — \"## OVRD — TX pin override control. Gives direct SW control over TX pin state\", offset 0x28, fields TXEN (bit 0) and TXVAL (bit 1)",
+        "rtl": "hw/ip/uart/rtl/uart_core.sv:58 (`logic ovrd_tx_en, ovrd_tx_val;`), :88-89 (`assign ovrd_tx_en = reg2hw.ovrd.txen.q; assign ovrd_tx_val = reg2hw.ovrd.txval.q;`), :217 (`assign tx = line_loopback ? rx : tx_out_q;`), :218-228 (the priority always_ff)",
+        "reggen": "hw/ip/uart/rtl/uart_reg_pkg.sv:220-226 — `uart_reg2hw_ovrd_reg_t` has exactly two fields: txval (:220-222) and txen (:223-225); :336 — `uart_reg2hw_ovrd_reg_t ovrd; // [26:25]`"
+      },
+      "original_verification_intent": "The `tx_overide` testpoint programs the UART's override control and checks that software can drive the UART output pin directly. To review that in RTL one must establish WHICH register bits take part in the override, HOW the override interacts with the other two TX control paths (system loopback and the normal transmitter), and WHICH one wins when several are active at once — the RTL resolves this as a priority chain inside one always_ff, which is not visible from the register documentation alone.",
+      "question": "The OpenTitan UART has a register that lets software take direct control of the TX pin instead of letting the transmitter drive it. I've been asked to confirm that this override really works, and also to work out what happens when the override, the loopback mode and the normal transmitter all want to drive TX at the same time. Can you tell me which register bits are involved, which of them actually puts a value onto the TX pin, and what the priority order is between the three possibilities? Please give me the exact canonical signal ids.",
+      "answer_schema": {
+        "override_enable_register_bit": "string — human name of the OVRD bit that enables the override",
+        "override_enable_canonical_signal_id": "string — canonical id of that bit as seen inside uart_core",
+        "override_enable_alias_canonical_signal_id": "string — canonical id of the local alias assigned from it in uart_core",
+        "override_value_register_bit": "string — human name of the OVRD bit that carries the forced value",
+        "override_value_canonical_signal_id": "string — canonical id of that bit inside uart_core",
+        "override_value_alias_canonical_signal_id": "string — canonical id of the local alias assigned from it",
+        "flop_canonical_signal_id": "string — canonical id of the register that actually holds the TX pin state",
+        "tx_pin_canonical_signal_id": "string — canonical id of the chip-level TX output port",
+        "priority_order": "array of strings — TX drive sources from highest to lowest priority",
+        "priority_evidence": "array of strings — the per-driver conditions, highest priority first",
+        "path_from_override_value_to_tx_pin": "array of strings — canonical path",
+        "path_hop_count": "integer"
+      },
+      "expected": {
+        "found": true,
+        "answer": {
+          "override_enable_register_bit": "OVRD.TXEN",
+          "override_enable_canonical_signal_id": "uart.uart_core.reg2hw.ovrd.txen.q",
+          "override_enable_alias_canonical_signal_id": "uart.uart_core.ovrd_tx_en",
+          "override_value_register_bit": "OVRD.TXVAL",
+          "override_value_canonical_signal_id": "uart.uart_core.reg2hw.ovrd.txval.q",
+          "override_value_alias_canonical_signal_id": "uart.uart_core.ovrd_tx_val",
+          "flop_canonical_signal_id": "uart.uart_core.tx_out_q",
+          "tx_pin_canonical_signal_id": "uart.cio_tx_o",
+          "priority_order": [
+            "uart.uart_core.tx_out_q <= 1'b1  (reset value of the TX flop)",
+            "uart.uart_core.ovrd_tx_val  (OVRD.TXVAL, when OVRD.TXEN is set)",
+            "1'b1  (system loopback, when OVRD.TXEN is clear)",
+            "uart.uart_core.tx_out  (the normal transmitter, when both override and loopback are clear)"
+          ],
+          "priority_evidence": [
+            "driver '1'b1' with condition '!rst_ni'  — reset branch",
+            "driver 'uart.uart_core.ovrd_tx_val' with condition '!(!rst_ni) && ovrd_tx_en'  — override branch (highest priority after reset)",
+            "driver '1'b1' with condition '!(!rst_ni) && !ovrd_tx_en && sys_loopback'  — system-loopback branch",
+            "driver 'uart.uart_core.tx_out' with condition '!(!rst_ni) && !ovrd_tx_en && !sys_loopback'  — normal transmitter branch (lowest priority)"
+          ],
+          "path_from_override_value_to_tx_pin": [
+            "uart.uart_core.reg2hw.ovrd.txval.q",
+            "uart.uart_core.ovrd_tx_val",
+            "uart.uart_core.tx_out_q",
+            "uart.uart_core.tx.ternary_line_loopback",
+            "uart.uart_core.tx",
+            "uart.cio_tx_o"
+          ],
+          "path_hop_count": 5
+        }
+      },
+      "ground_truth_confirmation": {
+        "method": "Read uart_core.sv's always_ff priority chain and the reggen OVRD struct first; only then use the CLI to confirm the canonical ids and the per-driver conditions.",
+        "source_facts": [
+          "hw/ip/uart/rtl/uart_core.sv:218-228 — one always_ff with an else-if chain: `if (!rst_ni) tx_out_q <= 1'b1; else if (ovrd_tx_en) tx_out_q <= ovrd_tx_val; else if (sys_loopback) tx_out_q <= 1'b1; else tx_out_q <= tx_out;`. The if/else-if ordering IS the priority: reset > override > system loopback > normal transmitter.",
+          "hw/ip/uart/rtl/uart_core.sv:88-89 — `assign ovrd_tx_en = reg2hw.ovrd.txen.q;` and `assign ovrd_tx_val = reg2hw.ovrd.txval.q;` — establishes the canonical ids and the local aliases `ovrd_tx_en` / `ovrd_tx_val`.",
+          "hw/ip/uart/rtl/uart_core.sv:217 — `assign tx = line_loopback ? rx : tx_out_q;` — the TX flop `tx_out_q` is what reaches the TX output port in normal (non-line-loopback) operation.",
+          "hw/ip/uart/rtl/uart_reg_pkg.sv:220-226, :336 — `uart_reg2hw_ovrd_reg_t` has exactly two fields (txval, txen) and occupies bits [26:25] of the reg2hw bundle, so OVRD has exactly one enable bit and one value bit — nothing else participates.",
+          "hw/ip/uart/doc/registers.md:316-330 — OVRD = 'TX pin override control. Gives direct SW control over TX pin state', offset 0x28, fields TXEN and TXVAL, reset mask 0x3 — the documentation names the same two bits the RTL uses.",
+          "hw/ip/uart/data/uart_testplan.hjson `tx_overide` — 'Enable override control and use register programming to drive uart output directly' — the intent that the answer must satisfy."
+        ],
+        "not_derived_from_tool": "The four-way priority order and the two involved register bits were read directly out of the always_ff if/else-if chain at uart_core.sv:218-228 and the reggen struct at uart_reg_pkg.sv:220-226. The CLI was used only to confirm canonical-ID spellings and to read back the per-driver conditions the tool derives from that same chain."
+      },
+      "requires_search": true,
+      "requires_verify": false,
+      "caveats": [
+        "DIRECT-DRIVER CAVEAT: `ovrd_tx_en` (the ENABLE) is NOT a driver of `tx_out_q` and the driver claim is CONTRADICTED ('uart.uart_core.ovrd_tx_en is not in fanin(uart.uart_core.tx_out_q, depth=1)'). The enable appears only inside the per-driver CONDITIONS, and `loads(ovrd_tx_en)` is 0. Only the VALUE bit (`ovrd_tx_val` / `reg2hw.ovrd.txval.q`) is a real DRIVER edge. A grader must accept the enable bit as an answer that is expressed via conditions, not via a driver edge.",
+        "REGISTER-BIT CAVEAT: the enable bit resolves to `uart.uart_core.reg2hw.ovrd.txen.q`. The register-file-side nodes `uart.reg2hw.ovrd.txen.q` and `uart.u_reg.reg2hw.ovrd.txen.q` also exist in the graph but are isolated leaves with no edges; only the uart_core-side node is live. The question must be phrased so the agent reports the uart_core-side id.",
+        "CANONICAL CAVEAT: `paths --directed` without `--canonical` returns a 4-hop variant of the override->TX-pin path; `--canonical` returns the 5-hop one, and `--all` shows exactly 2 candidates (5 and 6 hops). Any frozen expectation must pin `--canonical`.",
+        "PRIORITY CAVEAT: the 'reset' branch is reported as a driver condition on the constant 1'b1, so the tool's driver list does not show four separate named sources for the four branches — the priority is only recoverable by reading the CONDITIONS of the 1'b1 constant driver."
+      ],
+      "validation_commands": [
+        "sv_query graph nodes --filelist /tmp/opentitan_svq/opentitan.f --match 'ovrd' --json",
+        "sv_query drivers --from-snapshot opentitan_uart 'uart.uart_core.ovrd_tx_en' --json",
+        "sv_query drivers --from-snapshot opentitan_uart 'uart.uart_core.ovrd_tx_val' --json",
+        "sv_query drivers --from-snapshot opentitan_uart 'uart.uart_core.tx_out_q' --json",
+        "sv_query loads --from-snapshot opentitan_uart 'uart.uart_core.ovrd_tx_en' --json",
+        "sv_query loads --from-snapshot opentitan_uart 'uart.uart_core.tx_out_q' --json",
+        "sv_query paths --from-snapshot opentitan_uart 'uart.uart_core.reg2hw.ovrd.txval.q' 'uart.cio_tx_o' --directed --canonical --json",
+        "sv_query paths --from-snapshot opentitan_uart 'uart.uart_core.reg2hw.ovrd.txval.q' 'uart.cio_tx_o' --directed --all --json",
+        "sv_query verify claim --from-snapshot opentitan_uart --claim '{\"type\":\"driver\",\"signal\":\"uart.uart_core.tx_out_q\",\"driver\":\"uart.uart_core.ovrd_tx_val\"}' --json",
+        "sv_query verify claim --from-snapshot opentitan_uart --claim '{\"type\":\"driver\",\"signal\":\"uart.uart_core.tx_out_q\",\"driver\":\"uart.uart_core.ovrd_tx_en\"}' --json"
+      ],
+      "expected_cli_results": {
+        "drivers(ovrd_tx_en)": "count=1 -> ['uart.uart_core.reg2hw.ovrd.txen.q']",
+        "drivers(ovrd_tx_val)": "count=1 -> ['uart.uart_core.reg2hw.ovrd.txval.q']",
+        "drivers(tx_out_q)": "count=5 -> ['uart.uart_core.tx_out' (cond '!(!rst_ni) && !ovrd_tx_en && !sys_loopback'), 'uart.uart_core.uart_tx.tx' (same cond), 'uart.uart_core.ovrd_tx_val' (cond '!(!rst_ni) && ovrd_tx_en'), 'uart.uart_core.reg2hw.ovrd.txval.q' (same cond), \"1'b1\" (cond = OR of 4 branches incl. '!(!rst_ni) && !ovrd_tx_en && sys_loopback')]",
+        "loads(ovrd_tx_en)": "count=0  <- the enable is condition-only",
+        "loads(tx_out_q)": "count=2 -> ['uart.uart_core.tx' (PORT_OUT), 'uart.cio_tx_o' (PORT_OUT)]",
+        "paths --directed --canonical": "found=true hop_count=5 candidate_count=2, path as listed above",
+        "paths --directed --all": "count=2 truncated=false, hop distribution {5: 1, 6: 1}",
+        "verify claim (driver ovrd_tx_val -> tx_out_q)": "status=verified",
+        "verify claim (driver ovrd_tx_en -> tx_out_q)": "status=contradicted, reason 'uart.uart_core.ovrd_tx_en is not in fanin(uart.uart_core.tx_out_q, depth=1)'  <- EXPECTED, documented caveat"
+      }
+    },
+    {
+      "id": "DV-I2C-SDA-INTERFERENCE-PATH",
+      "block": "i2c",
+      "snapshot": "opentitan_i2c",
+      "snapshot_dir": "/tmp/opentitan_svq_i2c/snapshots",
+      "source_root": "/Users/fundou/.dsh/opencode-workers-lite/opentitan-pilot/workspace",
+      "kind": "path",
+      "source_artifact": {
+        "testplan": "hw/ip/i2c/data/i2c_testplan.hjson — testpoint `host_error_intr` (stage V2, tests [\"i2c_host_error_intr\"]): \"In host transmit mode, device (target/host) forces SDA or SCL signal low within the clock pulse of host SCL that asserts `sda_interference` or `scl_interference` interrupts\" ... Checking: \"Ensure all intr_scl_interference, intr_sda_interference, and intr_sda_unstable interrupts are asserted and stay asserted until cleared\"",
+        "sim_cfg": "hw/ip/i2c/dv/i2c_sim_cfg.hjson — test entry `name: i2c_host_error_intr` / `uvm_test_seq: i2c_host_error_intr_vseq`",
+        "rtl": "hw/ip/i2c/rtl/i2c_core.sv:492 (`assign bus_event_detect = (bus_event_detect_cnt == '0);`), :493 (`assign sda_released_but_low = bus_event_detect && scl_sync && (sda_fsm_q != sda_sync);`), :495 (`assign controller_sda_interference = controller_transmitting && sda_released_but_low;`), :498 (`assign event_sda_interference = controller_sda_interference;`), plus the prim_flop_2sync synchronizer instance `u_i2c_sync_sda` and the `scl_sync`/`sda_sync` nets",
+        "related": "hw/ip/i2c/rtl/i2c_core.sv:730-740 — `prim_intr_hw intr_hw_sda_interference` consumes `event_sda_interference` and produces `intr_sda_interference_o`"
+      },
+      "original_verification_intent": "The `host_error_intr` testpoint has another device pull SDA low while the DUT is transmitting, and requires that the DUT notice the interference and raise the `sda_interference` interrupt (and keep it asserted until cleared). To review this in RTL one must trace how the DUT observes that the bus line went low while it believed it was driving, i.e. how the chip-level SDA pin reaches the interference event — including the input synchronizer, which is where a naive trace would wrongly assume the DUT reacts to a raw asynchronous pin.",
+      "question": "In the OpenTitan I2C, there's an error case where the DUT is transmitting on the bus but another device pulls the SDA line low underneath it, and the DUT is supposed to notice and raise the SDA-interference error. I'd like to understand how that detection is actually wired up: starting from the chip's SDA input pin, what is the ordered chain of internal signals that the DUT goes through before it concludes that the line was pulled down on it? Please give me the exact canonical signal ids and the hop count.",
+      "answer_schema": {
+        "from": "string — canonical id of the starting chip pin",
+        "to": "string — canonical id of the event signal",
+        "path": "array of strings — ordered canonical ids",
+        "hop_count": "integer",
+        "synchronizer_instance_canonical_id": "string — canonical id of the 2-flop synchronizer instance on the path",
+        "key_intermediate_signals": "array of strings — canonical ids of the named intermediate signals between the synchronizer and the event"
+      },
+      "expected": {
+        "found": true,
+        "answer": {
+          "from": "i2c.cio_sda_i",
+          "to": "i2c.i2c_core.event_sda_interference",
+          "hop_count": 13,
+          "candidate_count": 3,
+          "path": [
+            "i2c.cio_sda_i",
+            "i2c.i2c_core.sda_i",
+            "i2c.i2c_core.u_i2c_sync_sda.d_i",
+            "i2c.i2c_core.u_i2c_sync_sda.d_o",
+            "i2c.i2c_core.u_i2c_sync_sda.u_sync_1.d_i",
+            "i2c.i2c_core.u_i2c_sync_sda.u_sync_1.q_o",
+            "i2c.i2c_core.u_i2c_sync_sda.intq",
+            "i2c.i2c_core.u_i2c_sync_sda.u_sync_2.d_i",
+            "i2c.i2c_core.u_i2c_sync_sda.u_sync_2.q_o",
+            "i2c.i2c_core.u_i2c_sync_sda.q_o",
+            "i2c.i2c_core.sda_sync",
+            "i2c.i2c_core.sda_released_but_low",
+            "i2c.i2c_core.controller_sda_interference",
+            "i2c.i2c_core.event_sda_interference"
+          ],
+          "synchronizer_instance_canonical_id": "i2c.i2c_core.u_i2c_sync_sda",
+          "key_intermediate_signals": [
+            "i2c.i2c_core.sda_sync",
+            "i2c.i2c_core.sda_released_but_low",
+            "i2c.i2c_core.controller_sda_interference"
+          ],
+          "notes": "The pin is first resynchronized by the 2-flop prim_flop_2sync instance u_i2c_sync_sda (the DUT never reacts to the raw asynchronous pin). The synchronized SDA is then compared against the DUT's own last-driven SDA value (sda_fsm_q) to produce sda_released_but_low; that is qualified by controller_transmitting to produce controller_sda_interference, which is the event signal consumed by prim_intr_hw intr_hw_sda_interference to raise intr_sda_interference_o."
+        }
+      },
+      "ground_truth_confirmation": {
+        "method": "Read the i2c_core.sv assignment chain and the synchronizer instance first; only then use the CLI to confirm the canonical ids, the hop count and the candidate count.",
+        "source_facts": [
+          "hw/ip/i2c/rtl/i2c_core.sv:493 — `assign sda_released_but_low = bus_event_detect && scl_sync && (sda_fsm_q != sda_sync);` — this is the comparison of the DUT's own last-driven SDA against the synchronized bus level, i.e. the actual 'someone pulled it low' detection.",
+          "hw/ip/i2c/rtl/i2c_core.sv:495 — `assign controller_sda_interference = controller_transmitting && sda_released_but_low;` — qualified by the DUT currently transmitting.",
+          "hw/ip/i2c/rtl/i2c_core.sv:498 — `assign event_sda_interference = controller_sda_interference;` — the event signal the interrupt block consumes.",
+          "hw/ip/i2c/rtl/i2c_core.sv:492 — `assign bus_event_detect = (bus_event_detect_cnt == '0);` — the debounce/settle qualifier on the detection.",
+          "hw/ip/i2c/rtl/i2c_core.sv:730-740 — `prim_intr_hw #(.Width(1)) intr_hw_sda_interference` takes `.event_intr_i(event_sda_interference)` and produces `.intr_o(intr_sda_interference_o)`, closing the loop with the testplan's requirement that the interrupt be asserted and stay asserted until cleared.",
+          "hw/ip/i2c/rtl/i2c_core.sv — the `prim_flop_2sync` instance `u_i2c_sync_sda` feeds `sda_sync`, so the detection path necessarily passes through the 2-flop synchronizer; the RTL order is therefore sda_sync -> sda_released_but_low -> controller_sda_interference -> event_sda_interference.",
+          "hw/ip/i2c/data/i2c_testplan.hjson `host_error_intr` — 'device (target/host) forces SDA or SCL signal low within the clock pulse of host SCL that asserts sda_interference ... interrupts' and 'Ensure all intr_scl_interference, intr_sda_interference, and intr_sda_unstable interrupts are asserted and stay asserted until cleared' — the intent the trace must explain."
+        ],
+        "not_derived_from_tool": "The four-stage chain (sda_sync -> sda_released_but_low -> controller_sda_interference -> event_sda_interference) and the fact that the path must go through the synchronizer were read out of the RTL assignments at i2c_core.sv:492-498 and the `u_i2c_sync_sda` instance before any sv_query call; the tool was used to confirm the canonical id spellings, the exact hop count and the candidate count."
+      },
+      "requires_search": false,
+      "requires_verify": false,
+      "caveats": [
+        "CANONICAL CAVEAT: `paths --directed` WITHOUT `--canonical` returns a 9-hop variant; `--canonical` returns the 13-hop path; `--all` shows 3 candidates (10, 13 and 14 hops). Any frozen expectation must pin `--canonical`.",
+        "DIRECT-DRIVER CAVEAT: the direct-driver claim from the chip pin to the event is CONTRADICTED ('i2c.cio_sda_i is not in fanin(i2c.i2c_core.event_sda_interference, depth=1)') because 13 hops separate them. The task asks for the path, not a direct driver, so this is expected rather than a failure.",
+        "TERMINAL CAVEAT: the path intentionally stops at `event_sda_interference`, not at the chip-level `intr_sda_interference_o`. The final hop event->interrupt goes through the `prim_intr_hw` instance, whose internal `hw2reg_intr_state_q_i` / `intr_o` structure does not produce a directed path to the top-level port. A task wanting the full path to the pin would not be answerable as specified, which is why the expected answer stops at the event.",
+        "SCOPE CAVEAT: `host_error_intr` also covers `scl_interference` and `sda_unstable`, which are separate detections (from `scl_sync` / the controller FSM's unstable-SDA logic). Only the SDA-interference branch is captured by this task; the other two are out of scope and are not claimed to follow this path."
+      ],
+      "validation_commands": [
+        "sv_query paths --from-snapshot opentitan_i2c 'i2c.cio_sda_i' 'i2c.i2c_core.event_sda_interference' --directed --canonical --json",
+        "sv_query paths --from-snapshot opentitan_i2c 'i2c.cio_sda_i' 'i2c.i2c_core.event_sda_interference' --directed --json",
+        "sv_query paths --from-snapshot opentitan_i2c 'i2c.cio_sda_i' 'i2c.i2c_core.event_sda_interference' --directed --all --json",
+        "sv_query drivers --from-snapshot opentitan_i2c 'i2c.i2c_core.sda_released_but_low' --json",
+        "sv_query drivers --from-snapshot opentitan_i2c 'i2c.i2c_core.controller_sda_interference' --json",
+        "sv_query drivers --from-snapshot opentitan_i2c 'i2c.i2c_core.event_sda_interference' --json",
+        "sv_query loads --from-snapshot opentitan_i2c 'i2c.i2c_core.u_i2c_sync_sda.q_o' --json",
+        "sv_query verify claim --from-snapshot opentitan_i2c --claim '{\"type\":\"path\",\"from\":\"i2c.cio_sda_i\",\"to\":\"i2c.i2c_core.event_sda_interference\"}' --json",
+        "sv_query verify claim --from-snapshot opentitan_i2c --claim '{\"type\":\"driver\",\"signal\":\"i2c.i2c_core.event_sda_interference\",\"driver\":\"i2c.cio_sda_i\"}' --json"
+      ],
+      "expected_cli_results": {
+        "paths --directed --canonical": "found=true hop_count=13 candidate_count=3, path exactly as listed above",
+        "paths --directed (no --canonical)": "hop_count=9  <- differs from canonical 13",
+        "paths --directed --all": "count=3 truncated=false, hop distribution {10: 1, 13: 1, 14: 1}",
+        "drivers(sda_released_but_low)": "count=16 (transitive fanin). Distance-1 entries: 'i2c.i2c_core.bus_event_detect', 'i2c.i2c_core.scl_sync', 'i2c.i2c_core.sda_sync', 'i2c.i2c_core.sda_fsm_q'",
+        "drivers(controller_sda_interference)": "count=19 (transitive fanin). Distance-1 entries: 'i2c.i2c_core.controller_transmitting', 'i2c.i2c_core.sda_released_but_low'",
+        "drivers(event_sda_interference)": "count=20 (transitive fanin). Distance-1 entry: 'i2c.i2c_core.controller_sda_interference' (distance 2 also 'i2c.i2c_core.sda_released_but_low')",
+        "loads(u_i2c_sync_sda.q_o)": "count=23 (transitive fanout). Distance-1 entry: 'i2c.i2c_core.sda_sync' (distance 2 also 'i2c.i2c_core.sda_released_but_low')",
+        "verify claim (path)": "status=verified",
+        "verify claim (driver chip-pin -> event)": "status=contradicted, reason 'i2c.cio_sda_i is not in fanin(i2c.i2c_core.event_sda_interference, depth=1)'  <- EXPECTED, documented caveat"
+      }
+    }
+  ]
+}

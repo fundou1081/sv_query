@@ -1,0 +1,141 @@
+{
+  "protocol": "P127 two additional OpenTitan DV intake tasks",
+  "source_root": "/Users/fundou/.dsh/opencode-workers-lite/opentitan-pilot/workspace",
+  "tasks": [
+    {
+      "id": "DV-UART-TXOVERRIDE-DISCOVERY",
+      "kind": "discovery",
+      "snapshot": "opentitan_uart",
+      "snapshot_dir": "/tmp/opentitan_svq/snapshots",
+      "question": "The OpenTitan UART has a register that lets software take direct control of the TX pin. Find the override control register bits and the TX state flop. Use the register-side canonical IDs under `uart.uart_core.reg2hw.ovrd.*` for the two OVRD fields; do not use the `ovrd_tx_en`/`ovrd_tx_val` alias forms. Report: the OVRD enable canonical signal id, the OVRD value canonical signal id, the TX flop canonical id, the chip TX pin canonical id, the priority order of TX drivers from highest to lowest (use labels reset, override, system_loopback, transmitter), and the canonical path/hop count starting at the register-side OVRD value bit and ending at the TX pin.",
+      "expected": {
+        "enable_signal_id": "uart.uart_core.reg2hw.ovrd.txen.q",
+        "value_signal_id": "uart.uart_core.reg2hw.ovrd.txval.q",
+        "flop_signal_id": "uart.uart_core.tx_out_q",
+        "tx_pin_signal_id": "uart.cio_tx_o",
+        "priority_order": [
+          "reset",
+          "override",
+          "system_loopback",
+          "transmitter"
+        ],
+        "path": [
+          "uart.uart_core.reg2hw.ovrd.txval.q",
+          "uart.uart_core.ovrd_tx_val",
+          "uart.uart_core.tx_out_q",
+          "uart.uart_core.tx.ternary_line_loopback",
+          "uart.uart_core.tx",
+          "uart.cio_tx_o"
+        ],
+        "hop_count": 5,
+        "schema_note": "register-side reg2hw.ovrd.* root required; aliases rejected"
+      }
+    },
+    {
+      "id": "DV-I2C-SDA-INTERFERENCE-PATH",
+      "kind": "path",
+      "snapshot": "opentitan_i2c",
+      "snapshot_dir": "/tmp/opentitan_svq_i2c/snapshots",
+      "question": "In the OpenTitan I2C, another device pulls SDA low while the DUT is transmitting. Trace the directed path from the chip SDA input pin `i2c.cio_sda_i` to the internal interference event `i2c.i2c_core.event_sda_interference`. Return the canonical ordered path and hop count.",
+      "expected": {
+        "path": [
+          "i2c.cio_sda_i",
+          "i2c.i2c_core.sda_i",
+          "i2c.i2c_core.u_i2c_sync_sda.d_i",
+          "i2c.i2c_core.u_i2c_sync_sda.d_o",
+          "i2c.i2c_core.u_i2c_sync_sda.u_sync_1.d_i",
+          "i2c.i2c_core.u_i2c_sync_sda.u_sync_1.q_o",
+          "i2c.i2c_core.u_i2c_sync_sda.intq",
+          "i2c.i2c_core.u_i2c_sync_sda.u_sync_2.d_i",
+          "i2c.i2c_core.u_i2c_sync_sda.u_sync_2.q_o",
+          "i2c.i2c_core.u_i2c_sync_sda.q_o",
+          "i2c.i2c_core.sda_sync",
+          "i2c.i2c_core.sda_released_but_low",
+          "i2c.i2c_core.controller_sda_interference",
+          "i2c.i2c_core.event_sda_interference"
+        ],
+        "hop_count": 13
+      }
+    }
+  ],
+  "results": [
+    {
+      "task_id": "DV-UART-TXOVERRIDE-DISCOVERY",
+      "model": "MiniMax-M3",
+      "kind": "discovery",
+      "duration_ms": 38452,
+      "rc": 0,
+      "timeout": false,
+      "parsed": true,
+      "json_repaired": false,
+      "found": true,
+      "answer": {
+        "enable_signal_id": "uart.uart_core.reg2hw.ovrd.txen.q",
+        "value_signal_id": "uart.uart_core.reg2hw.ovrd.txval.q",
+        "flop_signal_id": "uart.uart_core.tx_out_q",
+        "tx_pin_signal_id": "uart.cio_tx_o",
+        "priority_order": [
+          "reset",
+          "override",
+          "system_loopback",
+          "transmitter"
+        ],
+        "path": [
+          "uart.uart_core.reg2hw.ovrd.txval.q",
+          "uart.uart_core.ovrd_tx_val",
+          "uart.uart_core.tx_out_q",
+          "uart.uart_core.tx.ternary_line_loopback",
+          "uart.uart_core.tx",
+          "uart.cio_tx_o"
+        ],
+        "hop_count": 5
+      },
+      "confidence": "high",
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 20,
+      "workspace": "/tmp/opentitan_p127_agent/MiniMax-M3/DV-UART-TXOVERRIDE-DISCOVERY",
+      "stderr": ""
+    },
+    {
+      "task_id": "DV-UART-TXOVERRIDE-DISCOVERY",
+      "model": "DeepSeek-Flash",
+      "kind": "discovery",
+      "duration_ms": 34045,
+      "rc": 0,
+      "timeout": false,
+      "parsed": true,
+      "json_repaired": false,
+      "found": true,
+      "answer": {
+        "enable_signal_id": "uart.uart_core.reg2hw.ovrd.txen.q",
+        "value_signal_id": "uart.uart_core.reg2hw.ovrd.txval.q",
+        "flop_signal_id": "uart.uart_core.tx_out_q",
+        "tx_pin_signal_id": "uart.cio_tx_o",
+        "priority_order": [
+          "reset",
+          "override",
+          "system_loopback",
+          "transmitter"
+        ],
+        "path": [
+          "uart.uart_core.reg2hw.ovrd.txval.q",
+          "uart.uart_core.ovrd_tx_val",
+          "uart.uart_core.tx_out_q",
+          "uart.uart_core.tx.ternary_line_loopback",
+          "uart.uart_core.tx",
+          "uart.cio_tx_o"
+        ],
+        "hop_count": 5
+      },
+      "confidence": "high",
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 18,
+      "workspace": "/tmp/opentitan_p127_agent/DeepSeek-Flash/DV-UART-TXOVERRIDE-DISCOVERY",
+      "stderr": "txval.q\n- flop_signal_id: uart.uart_core.tx_out_q\n- tx_pin_signal_id: uart.cio_tx_o\n- priority_order: [\"reset\",\"override\",\"system_loopback\",\"transmitter\"]\n- path: [\"uart.uart_core.reg2hw.ovrd.txval.q\",\"uart.uart_core.ovrd_tx_val\",\"uart.uart_core.tx_out_q\",\"uart.uart_core.tx.ternary_line_loopback\",\"uart.uart_core.tx\",\"uart.cio_tx_o\"]\n- hop_count: 5\n\nEvidence: uart_core.sv lines 219,221,223 for the always_ff priority mux. Include note about fanin evidence.\n\nReturn single JSON object, no markdown.\n"
+    }
+  ]
+}
