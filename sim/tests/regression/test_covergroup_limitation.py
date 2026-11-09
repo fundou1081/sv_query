@@ -55,6 +55,27 @@ class TestCoverageLimitation(unittest.TestCase):
         self.assertIn('read', lim['agent_action'].lower())
         self.assertIn('InvalidCoverageExpr', {e.get('code') for e in data['errors']})
 
+    def _run_cli(self, *args):
+        fixture = os.path.join(_FIXTURES, 'covergroup_builtin_shadow.sv')
+        return subprocess.run(
+            [sys.executable, os.path.join(_ROOT, 'run_cli.py'), *args,
+             '-f', fixture, '--json'],
+            capture_output=True, text=True, cwd=_ROOT)
+
+    def test_trace_covergroup_parity(self):
+        proc = self._run_cli('trace', 'covergroup', 'cg')
+        self.assertEqual(1, proc.returncode, proc.stderr[-1000:])
+        data = json.loads(proc.stdout)
+        self.assertEqual('trace_covergroup', data['command'])
+        self.assertEqual('unavailable', data['coverage_limitation']['status'])
+
+    def test_trace_coverpoints_parity(self):
+        proc = self._run_cli('trace', 'coverpoints', 'top.fbyte')
+        self.assertEqual(1, proc.returncode, proc.stderr[-1000:])
+        data = json.loads(proc.stdout)
+        self.assertEqual('trace_coverpoints', data['command'])
+        self.assertEqual('unavailable', data['coverage_limitation']['status'])
+
 
 if __name__ == '__main__':
     unittest.main()

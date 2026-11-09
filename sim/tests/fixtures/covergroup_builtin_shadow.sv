@@ -1,4 +1,4 @@
-// test_covergroup_builtin_name_shadow fixture
+// test_covergroup_limitation fixture
 // Covergroup body 里出现与 CovergroupBody 内建成员同名的标识符
 // (IEEE 1800-2017 §19.6: start / stop / sample / get_coverage /
 //  get_inst_coverage / set_inst_name)。

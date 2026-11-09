@@ -100,6 +100,8 @@ def _coverage_limitation(err: CompilationError) -> dict | None:
     errors = list(getattr(err, "errors", []) or [])
     codes = []
     for e in errors:
+        if not isinstance(e, dict):
+            continue
         code = str(e.get("code") or "")
         if code and code not in codes:
             codes.append(code)
@@ -109,7 +111,7 @@ def _coverage_limitation(err: CompilationError) -> dict | None:
         {"file": e.get("file"), "line": e.get("line"),
          "column": e.get("column"), "code": e.get("code")}
         for e in errors
-        if e.get("code") in _COVERAGE_ERROR_CODES
+        if isinstance(e, dict) and e.get("code") in _COVERAGE_ERROR_CODES
     ][:10]
     return {
         "reason": "pyslang_covergroup_elaboration",
