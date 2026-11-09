@@ -81,13 +81,26 @@ def _resolve(graph, sig: str):
 def _claim_result(claim: dict, status: str, *, reason: str = "",
                   evidence: list | None = None,
                   counterevidence: list | None = None) -> dict:
-    return {
+    result = {
         "claim": claim,
         "status": status,
         "reason": reason,
         "evidence": evidence or [],
         "counterevidence": counterevidence or [],
     }
+    if status == "unknown":
+        # Machine-readable distinction: unresolved endpoint vs. unverifiable
+        # relation.  Keep the human reason intact.
+        text = (reason or "").lower()
+        unresolved = any(k in text for k in
+                         ("not_found", "not found", "missing", "does not exist"))
+        result["machine"] = {
+            "status": "unknown",
+            "unknown_kind": ("unresolved_endpoint" if unresolved
+                             else "unverifiable"),
+            "unresolved_endpoint": unresolved,
+        }
+    return result
 
 
 # ----------------------------------------------------------------------------

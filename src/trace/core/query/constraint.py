@@ -21,6 +21,8 @@ class ConstraintInfo:
     expr_count: int = 0      # 块内表达式数
     defined_in: str = ""     # 定义类 (继承块 = 父类)
     inherited: bool = False  # 是否来自父类
+    solve_before: list[dict] = field(default_factory=list)
+    dist: list[dict] = field(default_factory=list)
 
 
 class ConstraintTracer:
@@ -266,11 +268,32 @@ class ConstraintTracer:
         info.defined_in = info.defined_in or prefix
         info.inherited = bool(prefix and info.defined_in != prefix)
 
+        # solve 节点: block -CONSTRAINS-> CONSTRAINT_SOLVE; HAS_BEFORE -> vars
+        for s_node, d_node in self.graph.edges():
+            if s_node != block_id:
+                continue
+            for e in self.graph.get_edges(s_node, d_node):
+                if e.kind != EdgeKind.CONSTRAINS:
+                    continue
+                sn = self.graph.get_node(d_node)
+                if sn is None or sn.kind.name != "CONSTRAINT_SOLVE":
+                    continue
+                before = []
+                for s2, d2 in self.graph.edges():
+                    if s2 != d_node:
+                        continue
+                    for e2 in self.graph.get_edges(s2, d2):
+                        if e2.kind == EdgeKind.HAS_BEFORE and d2 not in before:
+                            before.append(d2)
+                info.solve_before.append({"node": d_node, "before": before})
+
         # 表达式 → 变量 (HAS_LHS) / 条件 (HAS_CONDITION); if → consequent/alternate
         for eid in expr_ids:
             en = self.graph.get_node(eid)
             if en is None:
                 continue
+            if (en.extra or {}).get("dist"):
+                info.dist.append({"node": eid, "values": en.extra["dist"]})
             for s, d in self.graph.edges():
                 if s != eid:
                     continue

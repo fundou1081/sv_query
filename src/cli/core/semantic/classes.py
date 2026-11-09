@@ -106,6 +106,8 @@ def _constraint_info(info, graph) -> dict:
         "defined_in": info.defined_in,
         "inherited": info.inherited,
         "rand_vars": rand_vars,
+        "solve_before": list(getattr(info, "solve_before", []) or []),
+        "dist": list(getattr(info, "dist", []) or []),
     }
 
 
