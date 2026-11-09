@@ -316,6 +316,11 @@ P121 OpenTitan continuous run <已完成>
 -- P121.1 5 tasks ×2 模型连续跑 <已完成>
 -- P121.2 9/10；canonical path 歧义 <已完成>
 
+P122 Canonical path + runner hardening <已完成>
+-- P122.1 path 默认 canonical <已完成>
+-- P122.2 per-cell timeout/isolation <已完成>
+-- P122.3 continuous 10/10 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>

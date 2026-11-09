@@ -122,7 +122,7 @@ export function apply(ctx) {
     parameters: {
       intent: {
         type: "string", required: true, enum: INTENTS,
-        description: "fanin, fanout, neighbors, path (shortest), deep_path (longest), neighborhood, evidence, or verify (verify one claim).",
+        description: "fanin, fanout, neighbors, path (canonical), deep_path (alias), neighborhood, evidence, or verify.",
       },
       snapshot: {
         type: "string", required: true,
@@ -214,11 +214,13 @@ async function executeInner(args) {
                      details: args.details === true };
       if (args.intent === "path" || args.intent === "deep_path") {
         if (!args.dst) throw new Error(`${args.intent} requires dst`);
-        const payload = await query(["paths", args.signal, args.dst, "--all", "--max", "20",
-                                     "--directed", ...base]);
+        // Deterministic canonical path: max nodes, then lexicographic.
+        // `deep_path` is kept as a compatibility alias; it no longer means
+        // "some longest variant" without the canonical tie-break.
+        const payload = await query(["paths", args.signal, args.dst,
+                                     "--canonical", "--directed", ...base]);
         return await addEvidence(compactResult("path", payload,
-                                               { ...meta,
-                                                 granular: args.intent === "deep_path" }),
+                                               { ...meta, path_kind: "canonical" }),
                                  args, payload);
       }
       if (depth < 1 || depth > 32) throw new Error("depth must be 1..32");

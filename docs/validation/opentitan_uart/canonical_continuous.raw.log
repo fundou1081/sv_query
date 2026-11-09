@@ -1,0 +1,11 @@
+{"task_id": "ot_uart_intr_test_gate", "model": "MiniMax-M3", "exact": true, "false_confident": false, "false_found": false, "timeout": false, "confidence": "high", "duration_ms": 104072, "tool_calls": 85, "json_repaired": false}
+{"task_id": "ot_uart_intr_test_gate", "model": "DeepSeek-Flash", "exact": true, "false_confident": false, "false_found": false, "timeout": false, "confidence": "high", "duration_ms": 355574, "tool_calls": 64, "json_repaired": false}
+{"task_id": "ot_uart_rx_path", "model": "MiniMax-M3", "exact": true, "false_confident": false, "false_found": false, "timeout": false, "confidence": "high", "duration_ms": 19695, "tool_calls": 15, "json_repaired": false}
+{"task_id": "ot_uart_rx_path", "model": "DeepSeek-Flash", "exact": true, "false_confident": false, "false_found": false, "timeout": false, "confidence": "high", "duration_ms": 11004, "tool_calls": 4, "json_repaired": false}
+{"task_id": "ot_uart_rx_evidence", "model": "MiniMax-M3", "exact": true, "false_confident": false, "false_found": false, "timeout": false, "confidence": "high", "duration_ms": 15913, "tool_calls": 9, "json_repaired": false}
+{"task_id": "ot_uart_rx_evidence", "model": "DeepSeek-Flash", "exact": true, "false_confident": false, "false_found": false, "timeout": false, "confidence": "high", "duration_ms": 9386, "tool_calls": 2, "json_repaired": false}
+{"task_id": "ot_uart_verify_claims", "model": "MiniMax-M3", "exact": true, "false_confident": false, "false_found": false, "timeout": false, "confidence": "high", "duration_ms": 55437, "tool_calls": 27, "json_repaired": false}
+{"task_id": "ot_uart_verify_claims", "model": "DeepSeek-Flash", "exact": true, "false_confident": false, "false_found": false, "timeout": false, "confidence": "high", "duration_ms": 25469, "tool_calls": 10, "json_repaired": false}
+{"task_id": "ot_uart_unknown_direction", "model": "MiniMax-M3", "exact": true, "false_confident": false, "false_found": false, "timeout": false, "confidence": "high", "duration_ms": 19034, "tool_calls": 2, "json_repaired": false}
+{"task_id": "ot_uart_unknown_direction", "model": "DeepSeek-Flash", "exact": true, "false_confident": false, "false_found": false, "timeout": false, "confidence": "high", "duration_ms": 5572, "tool_calls": 2, "json_repaired": false}
+wrote /tmp/opentitan_canonical_continuous.json

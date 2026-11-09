@@ -80,8 +80,11 @@ test("path keeps canonical path and hop count", () => {
     found: true,
     intent: "path",
     snapshot: "ad_axi",
+    path_kind: "shortest",
     path: ["top.a", "top.mid", "top.b"],
     count: 2,
+    candidate_count: null,
+    canonical_policy: null,
   });
 });
 
@@ -321,4 +324,19 @@ test("verify keeps claim status and evidence", () => {
   assert.equal(out.verify_status, "contradicted");
   assert.equal(out.claim.type, "driver");
   assert.deepEqual(out.counterevidence, [{ actual_drivers: ["c"] }]);
+});
+
+
+test("canonical path keeps policy and candidate count", () => {
+  const payload = {
+    ok: true, canonical: true,
+    canonical_policy: "max_nodes_then_lexicographic",
+    candidate_count: 48, hop_count: 18,
+    path: ["a", "b", "c"],
+  };
+  const out = compactPath(payload, meta);
+  assert.equal(out.path_kind, "canonical");
+  assert.equal(out.candidate_count, 48);
+  assert.equal(out.canonical_policy, "max_nodes_then_lexicographic");
+  assert.equal(out.count, 18);
 });
