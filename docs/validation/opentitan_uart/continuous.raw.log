@@ -1,0 +1,15 @@
+{"task_id": "ot_uart_intr_test_gate", "model": "MiniMax-M3", "exact": true, "false_confident": false, "false_found": false, "confidence": "high", "duration_ms": 87698, "tool_calls": 49, "json_repaired": false}
+{"task_id": "ot_uart_intr_test_gate", "model": "DeepSeek-Flash", "exact": true, "false_confident": false, "false_found": false, "confidence": "high", "duration_ms": 151823, "tool_calls": 49, "json_repaired": false}
+{"task_id": "ot_uart_rx_path", "model": "MiniMax-M3", "exact": false, "false_confident": true, "false_found": false, "confidence": "high", "duration_ms": 46536, "tool_calls": 22, "json_repaired": false}
+{"task_id": "ot_uart_rx_path", "model": "DeepSeek-Flash", "exact": true, "false_confident": false, "false_found": false, "confidence": "high", "duration_ms": 145171, "tool_calls": 39, "json_repaired": false}
+{"task_id": "ot_uart_rx_evidence", "model": "MiniMax-M3", "exact": true, "false_confident": false, "false_found": false, "confidence": "high", "duration_ms": 11126, "tool_calls": 4, "json_repaired": false}
+{"task_id": "ot_uart_rx_evidence", "model": "DeepSeek-Flash", "exact": true, "false_confident": false, "false_found": false, "confidence": "high", "duration_ms": 10299, "tool_calls": 3, "json_repaired": false}
+{"task_id": "ot_uart_verify_claims", "model": "MiniMax-M3", "exact": true, "false_confident": false, "false_found": false, "confidence": "high", "duration_ms": 14784, "tool_calls": 6, "json_repaired": false}
+{"task_id": "ot_uart_verify_claims", "model": "DeepSeek-Flash", "exact": true, "false_confident": false, "false_found": false, "confidence": "high", "duration_ms": 36553, "tool_calls": 18, "json_repaired": false}
+{"task_id": "ot_uart_unknown_direction", "model": "MiniMax-M3", "exact": true, "false_confident": false, "false_found": false, "confidence": "high", "duration_ms": 5052, "tool_calls": 2, "json_repaired": false}
+{"task_id": "ot_uart_unknown_direction", "model": "DeepSeek-Flash", "exact": true, "false_confident": false, "false_found": false, "confidence": "high", "duration_ms": 4174, "tool_calls": 2, "json_repaired": false}
+wrote /tmp/opentitan_continuous.json
+real 513.31
+user 81.15
+sys 17.69
+EXIT_CODE=0

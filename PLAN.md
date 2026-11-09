@@ -312,6 +312,10 @@ P120 OpenTitan T5 answer schema <已完成>
 -- P120.1 explicit verify claims + status-only schema <已完成>
 -- P120.2 T5 2/2 <已完成>
 
+P121 OpenTitan continuous run <已完成>
+-- P121.1 5 tasks ×2 模型连续跑 <已完成>
+-- P121.2 9/10；canonical path 歧义 <已完成>
+
 ## 已完成（保留最近记录，便于核查上一轮）
 
 P5 位级 drive/load 精度修复 <已完成>
