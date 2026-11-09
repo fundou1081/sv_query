@@ -3,13 +3,14 @@
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **可视化计划**: [structural_review_plan_2026-11-02](docs/architecture/structural_review_plan_2026-11-02.md) — 全设计图退役；动态子图 + 局部 review。
-> **最后更新**: 2026-11-09 GMT+8 (iter_432: P125 intake results)
+> **最后更新**: 2026-11-09 GMT+8 (iter_433: P126 文档刷新)
 
 ---
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P62.2 交互式 debug（gate）** `<待做>`
+- **当前 item**: **P126.1 CURRENT_TODO 刷新** `<进行中>`
+- P62.2 交互式 debug（gate）：deferred
 - **P63** class / constraint / covergroup 语义增强 ✅（iter_365）
 - **P64** constraint 继承链 + rand 标记 ✅（iter_366）
 - **P65** UVM sequence/factory 静态关系 ✅（iter_367）
