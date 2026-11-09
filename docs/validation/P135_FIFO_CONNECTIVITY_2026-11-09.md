@@ -1,7 +1,11 @@
+> **已被 P138 取代（2026-11-09）**：自动 FIFO 推断违反铁律 12。
+> `FifoBridgeBuilder` / `--through-fifo` / FIFO visibility 已从 core 删除；
+> FIFO 跨边界改为外部显式 adapter 模板。本文只保留历史记录。
+
 # P135 FIFO / bus connectivity
 
 **日期**: 2026-11-09
-**状态**: P135.1/P135.2 完成
+**状态**: 历史记录（P138 已移除自动 FIFO）
 **结果**: 跨 FIFO 现在需要显式 `--through-fifo`；默认结构查询不变
 
 ---

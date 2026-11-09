@@ -13,8 +13,8 @@ Worker independent discipline audit verdict = BLOCK：
 ## 交付
 
 - semantic syntax AST solve/dist；
-- 统一 `edge_visibility`，FIFO 默认不可见/显式 build；
-- verify/dataflow/paths/fanin 回归；
+- 统一 edge visibility（后被 P138 整体删除：不再自动 FIFO）；
+- verify/dataflow/paths/fanin 回归（P138 删除 FIFO 边后由结构图保证）；
 - unknown_kind 显式、constraint dict 单实现；
 - source-known 用真实 ModuleDeclarationSyntax；
 - task/overview/docs 补齐；

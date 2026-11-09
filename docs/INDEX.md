@@ -18,7 +18,7 @@
 | 全量 (canonical) | **2571 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; 7 skipped / 119 deselected) | 2026-11-07 实测 (iter_397): A/D tests +8。历史: iter_396 2563 / iter_395 2561 |
 | CLI / integration | **810 passed / 0 failed** (`sim/tests/cli sim/tests/integration`, `-m "not opensource"`) | 2026-09-08 实测 (iter_185 修复后) |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (435 份, 只增不改) | 每次迭代一份 |
+| 迭代记录 | `docs/task_tree/iterations/` (436 份, 只增不改) | 每次迭代一份 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 | 语义 regex 纪律 | `python3 tools/check_semantic_regex.py` 必须 ✅ | 仅 UVM 宏例外；class/constraint/covergroup 语义走 slang (iter_368) |
@@ -51,6 +51,7 @@
 | [dev/DISCIPLINE.md](dev/DISCIPLINE.md) | **开发纪律 (强制)**: 产品不变量 I1~I5 + 5 条硬规则 + 归因顺序 + 例外 + 违规处置 |
 | [dev/CODING_STYLE.md](dev/CODING_STYLE.md) | 编码风格与设计决策: 先探索后决策 / 单一实现 / 修根因 / 函数职责 / 结构化数据 / 影响面 / 协作规则 |
 | [dev/WORKFLOW.md](dev/WORKFLOW.md) | 开发流程: 任务生命周期 / 迭代记录 / 文档卫生 / 测试与冒烟 / 机械检查 / ADR / 提交合并 |
+| [dev/PROJECT_ADAPTATION.md](dev/PROJECT_ADAPTATION.md) | **项目适配理念**: core 不自动推断特定项目；外部 adapter 模板 |
 | [dev/REVIEW_CHECKLIST.md](dev/REVIEW_CHECKLIST.md) | 提交前检查清单: 机械检查命令 + 纪律/设计/影响面/记录四组自检 + 反模式表 |
 
 ## 📜 能力与边界 (对外声明)
@@ -145,6 +146,7 @@
 | [validation/P136_TB_JOIN_2026-11-09.md](validation/P136_TB_JOIN_2026-11-09.md) | **P136.3 TB join**: candidate/ambiguous；I2C 实测 |
 | [validation/P136_UNKNOWN_FLAG_2026-11-09.md](validation/P136_UNKNOWN_FLAG_2026-11-09.md) | **P136.4 unknown flag**: machine-readable unknown_kind |
 | [validation/DISCIPLINE_AUDIT_2026-11-09.md](validation/DISCIPLINE_AUDIT_2026-11-09.md) | **Discipline audit remediation**: F1–F14 修复 |
+| [validation/P138_PROJECT_ADAPTATION_2026-11-09.md](validation/P138_PROJECT_ADAPTATION_2026-11-09.md) | **P138**: 删除自动 FIFO；外部 adapter 模板 |
 | [validation/P136_SOLVE_DIST_2026-11-09.md](validation/P136_SOLVE_DIST_2026-11-09.md) | **P136.5 solve/dist**: `solve_before` + `dist` |
 | [validation/opentitan_intake/REPORT.md](validation/opentitan_intake/REPORT.md) | **P124 intake**: 3 个 OpenTitan DV 任务；discovery/verify/path |
 | [validation/opentitan_uart/WORKER_REPORT.md](validation/opentitan_uart/WORKER_REPORT.md) | **P118 worker onboarding**: filelist/snapshot/tasks/11 issues |
