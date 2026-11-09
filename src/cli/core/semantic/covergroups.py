@@ -90,6 +90,74 @@ def _fail(message: str, json_output: bool, pretty: bool) -> None:
     raise typer.Exit(code=1)
 
 
+_COVERAGE_ERROR_CODES = {
+    "InvalidCoverageExpr", "VoidAssignment", "InvalidBinsTarget",
+}
+
+
+def _coverage_limitation(err: CompilationError) -> dict | None:
+    """Build a structured limitation only for coverage-elaboration errors."""
+    errors = list(getattr(err, "errors", []) or [])
+    codes = []
+    for e in errors:
+        code = str(e.get("code") or "")
+        if code and code not in codes:
+            codes.append(code)
+    if not (_COVERAGE_ERROR_CODES & set(codes)):
+        return None
+    locations = [
+        {"file": e.get("file"), "line": e.get("line"),
+         "column": e.get("column"), "code": e.get("code")}
+        for e in errors
+        if e.get("code") in _COVERAGE_ERROR_CODES
+    ][:10]
+    return {
+        "reason": "pyslang_covergroup_elaboration",
+        "status": "unavailable",
+        "upstream": "pyslang",
+        "codes": codes,
+        "source_locations": locations,
+        "agent_action": (
+            "Coverage extraction is unavailable for this source. Read the "
+            "source at these locations (read/grep) and reason from the "
+            "covergroup/coverpoint/bins text; do not infer coverage bins "
+            "from sv_query output."
+        ),
+        "note": (
+            "Known pyslang limitation: covergroup-body builtin names "
+            "start/stop can shadow outer identifiers (InvalidCoverageExpr/"
+            "VoidAssignment/InvalidBinsTarget). Retry after a pyslang update."
+        ),
+    }
+
+
+def _fail_coverage(err: CompilationError, json_output: bool, pretty: bool,
+                   command: str) -> None:
+    limitation = _coverage_limitation(err)
+    if limitation is None:
+        handle_compilation_error(err)
+        return
+    msg = "coverage extraction unavailable: pyslang elaboration failed"
+    data = {
+        "ok": False,
+        "command": command,
+        "error": msg,
+        "error_code": getattr(err, "error_code", "E_ELABORATION_FAILED"),
+        "coverage_limitation": limitation,
+        "errors": list(getattr(err, "errors", []) or []),
+    }
+    if json_output:
+        emit_json(data, pretty)
+    else:
+        typer.echo(f"Error: {msg}", err=True)
+        for loc in limitation["source_locations"]:
+            typer.echo(
+                f"  {loc.get('file')}:{loc.get('line')}:{loc.get('column')} "
+                f"[{loc.get('code')}]", err=True)
+        typer.echo(f"  {limitation['agent_action']}", err=True)
+    raise typer.Exit(code=1)
+
+
 def covergroups_cmd(
     class_name: str = typer.Option(None, "--class", help="filter by defining class"),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
@@ -117,7 +185,7 @@ def covergroups_cmd(
                 print(f"  {cg['name']} class={cg['in_class']} "
                       f"coverpoints={len(cg['coverpoints'])} crosses={len(cg['crosses'])}")
     except CompilationError as e:
-        handle_compilation_error(e)
+        _fail_coverage(e, json_output, pretty, "trace_covergroups")
     except Exception as e:
         _fail(str(e), json_output, pretty)
 
@@ -153,7 +221,7 @@ def coverpoints_cmd(
                 print(f"  {m['covergroup']}.{m['coverpoint']} "
                       f"instance={m['instance'] or '-'}")
     except CompilationError as e:
-        handle_compilation_error(e)
+        _fail_coverage(e, json_output, pretty, "trace_coverpoints")
     except Exception as e:
         _fail(str(e), json_output, pretty)
 
@@ -199,6 +267,6 @@ def covergroup_cmd(
     except typer.Exit:
         raise
     except CompilationError as e:
-        handle_compilation_error(e)
+        _fail_coverage(e, json_output, pretty, "trace_covergroup")
     except Exception as e:
         _fail(str(e), json_output, pretty)
