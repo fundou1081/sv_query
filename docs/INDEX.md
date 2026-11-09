@@ -142,6 +142,7 @@
 | [validation/P135_FIFO_CONNECTIVITY_2026-11-09.md](validation/P135_FIFO_CONNECTIVITY_2026-11-09.md) | **P135 FIFO**: 父总线聚合；`--through-fifo`；I2C 端到端 |
 | [validation/P136_FALSE_MISSING_WARNING_2026-11-09.md](validation/P136_FALSE_MISSING_WARNING_2026-11-09.md) | **P136.1 false warning**: source-known 判定；I2C warning=0 |
 | [validation/P136_ARCH_SNAPSHOT_2026-11-09.md](validation/P136_ARCH_SNAPSHOT_2026-11-09.md) | **P136.2 architecture snapshot**: `--from-snapshot` |
+| [validation/P136_TB_JOIN_2026-11-09.md](validation/P136_TB_JOIN_2026-11-09.md) | **P136.3 TB join**: candidate/ambiguous；I2C 实测 |
 | [validation/opentitan_intake/REPORT.md](validation/opentitan_intake/REPORT.md) | **P124 intake**: 3 个 OpenTitan DV 任务；discovery/verify/path |
 | [validation/opentitan_uart/WORKER_REPORT.md](validation/opentitan_uart/WORKER_REPORT.md) | **P118 worker onboarding**: filelist/snapshot/tasks/11 issues |
 | [validation/COMPARISON_RECORD_2026-11-05.md](validation/COMPARISON_RECORD_2026-11-05.md) | **对比结果冻结记录**: 哈希、模型、指标、单独复验脚本与已知缺陷 |

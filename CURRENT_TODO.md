@@ -3,13 +3,13 @@
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **可视化计划**: [structural_review_plan_2026-11-02](docs/architecture/structural_review_plan_2026-11-02.md) — 全设计图退役；动态子图 + 局部 review。
-> **最后更新**: 2026-11-09 GMT+8 (P136.2 architecture snapshot)
+> **最后更新**: 2026-11-09 GMT+8 (P136.3 TB join)
 
 ---
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P136.3 TB random → RTL snapshot join** `<待做>`（next）
+- **当前 item**: **P136.4 solve/dist + unknown flag** `<待做>`（next）
 - **P126** 文档/运维刷新 ✅（iter_433）
   - P126.1 CURRENT_TODO 刷新 ✅
   - P126.2 TESTING 刷新 ✅
@@ -29,7 +29,7 @@
 
 - **分支**: `main`；最新提交以 `git log -1` 为准
 - **全量基线**: 见 [docs/INDEX.md 当前基线](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里)（单一真相源，本文不写死计数）
-- **命令面**: 42 命令 = core 37 + exp 5（class/constraint/covergroup/architecture）
+- **命令面**: 43 命令 = core 38 + exp 5（class/constraint/covergroup/architecture）
 - **当前重点**: 文档/运维刷新完成（P126）；核心 query/verify 已在真实项目闭环，下一步不是加功能
 
 ---
@@ -52,6 +52,7 @@
 | P135 | FIFO/bus connectivity | 父总线聚合；FIFO 边 + `--through-fifo`；I2C 端到端通过 |
 | P136.1 | false missing-file warning | source-known 判定；I2C warning=0 |
 | P136.2 | architecture snapshot | `--from-snapshot`；5/37/189 |
+| P136.3 | TB→RTL join | `trace tb-join`；candidate/ambiguous 显式 |
 
 详见 [P125 intake results](docs/validation/OPENTITAN_INTAKE_RESULTS_2026-11-09.md)。
 
