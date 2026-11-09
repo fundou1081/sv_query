@@ -453,6 +453,23 @@ fault localization / patch 类任务 = 0；不是外部 fault set。
 证据：[任务分布](validation/TASK_DISTRIBUTION_2026-11-09.md) §3、
 [intake 结果](validation/OPENTITAN_INTAKE_RESULTS_2026-11-09.md) §5。
 
+### 3.14 covergroup elaboration 局限（pyslang builtin shadow）
+
+**事实**：pyslang 对 covergroup body 内 `start`/`stop` 等内建名遮蔽，导致
+`InvalidCoverageExpr` / `VoidAssignment` / `InvalidBinsTarget`。
+sv_query **不绕过** Semantic AST 严格性，也不返回 partial coverage；
+`trace covergroups` 失败时输出 `coverage_limitation` + 源码位置 +
+`agent_action`，要求 agent 自己读 source。
+
+**边界**：
+
+- coverage 定义仍不可提取；
+- 没有 bins 命中/仿真结果；
+- 没有 TB-inclusive snapshot；
+- 等 pyslang 修复后再打开 coverage 语义。
+
+证据：[COVERAGE_LIMITATION_2026-11-09.md](validation/COVERAGE_LIMITATION_2026-11-09.md)。
+
 ---
 
 ## 已修复限制

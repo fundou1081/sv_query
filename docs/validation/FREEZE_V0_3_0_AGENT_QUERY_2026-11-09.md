@@ -122,6 +122,9 @@ Agent profile：
 
 ## 7. 下一步迭代
 
+> P131 coverage limitation schema 是冻结后的**诊断输出**，不属于
+> `v0.3.0-agent-query` tag；不改变 coverage 提取能力。
+
 冻结后进入 **v0.3.x**：
 
 ```text

@@ -71,9 +71,12 @@ from pyslang import DiagnosticEngine
 class CompilationError(Exception):
     """编译错误异常；显式分类供 CLI/agent 区分 filelist 与 elaboration。"""
 
-    def __init__(self, message: str, error_code: str = "E_ELABORATION_FAILED"):
+    def __init__(self, message: str, error_code: str = "E_ELABORATION_FAILED",
+                 errors: list[dict] | None = None):
         super().__init__(message)
         self.error_code = error_code
+        # structured diagnostics (file/line/column/code/message), when available
+        self.errors = list(errors or [])
 
 
 # ---------------------------------------------------------------------------
@@ -482,7 +485,10 @@ class SVCompiler:
             # identifier 匹配某 override 模块 → 移除该 override 重建重编 (限次)。
             if self._try_retry_override_orphan(errors):
                 return
-            raise CompilationError(f"Elaboration errors:\n{report}") from None
+            raise CompilationError(
+                f"Elaboration errors:\n{report}",
+                errors=self._elaboration_errors,
+            ) from None
         else:
             self._elaboration_errors = []
 

@@ -35,18 +35,19 @@ class CovergroupExtractor:
         self._spec_members: dict[str, list] = {}  # [iter_170] 特化成员 (extract 填)
 
     def extract(self) -> list[CovergroupInfo]:
-        """提取所有 covergroup"""
+        """提取所有 covergroup。
+
+        保持 Semantic AST 严格性：elaboration 失败时抛 CompilationError，
+        由调用方输出结构化 limitation，不返回 partial/空结果静默降级。
+        """
         results = []
-        try:
-            compiler = self._compiler or SVCompiler(sources=self._sources)
-            root = compiler.get_root()
-            # [iter_170 参数化] GenericClassDef 定义无成员面 → 预扫特化
-            # 符号成员 (实例变量/属性的特化 ClassType, 有语义成员)
-            self._spec_members = self._scan_class_specializations(root)
-            self._find_covergroups(root, results)
-            self._attach_instance_rules(root, results)
-        except Exception as e:
-            logger.warning(f"编译失败: {e}")
+        compiler = self._compiler or SVCompiler(sources=self._sources)
+        root = compiler.get_root()
+        # [iter_170 参数化] GenericClassDef 定义无成员面 → 预扫特化
+        # 符号成员 (实例变量/属性的特化 ClassType, 有语义成员)
+        self._spec_members = self._scan_class_specializations(root)
+        self._find_covergroups(root, results)
+        self._attach_instance_rules(root, results)
         return results
 
     def _scan_class_specializations(self, root) -> dict[str, list]:

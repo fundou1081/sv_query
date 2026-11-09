@@ -354,9 +354,11 @@ P130 冻结后长任务回归 + testbench 角可行性 <已完成>
 -- P130.1 12-task regression 24/24 <已完成>
 -- P130.2 OpenTitan TB 候选调查 <已完成>
 
-P131 covergroup elaboration spike <待做>
--- P131.1 inherited base member resolution <待做>
--- P131.2 I2C rcont random+constraint+coverage core CLI <待做>
+P131 coverage limitation schema <已完成>
+-- P131.1 builtin-shadow root cause <已完成>
+-- P131.2 explicit CLI/schema limitation <已完成>
+-- P131.3 strict regression tests <已完成>
+
 
 ## 已完成（保留最近记录，便于核查上一轮）
 
