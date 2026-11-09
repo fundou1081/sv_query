@@ -1,7 +1,7 @@
 # Discipline audit remediation（2026-11-09）
 
 **来源**: worker independent audit（BLOCK）
-**结果**: F1–F15 已处理；F12 的 O(E²) 性能 nit 记录
+**结果**: F1–F15 已处理；F2/F3–F6 的自动 FIFO 部分由 P138 整体删除；F12 O(E²) nit 保留
 
 ---
 
@@ -38,8 +38,8 @@
 check_semantic_regex: ✅
 check_except_pass: ✅
 check_docs / check_plan / check_crap / check_cli_layers: ✅
-FIFO visibility: 4 passed
 warning: 2 passed
+（FIFO visibility 测试已随 P138 删除）
 constraint / verify / schema / architecture / tb join: targeted passed
 ```
 

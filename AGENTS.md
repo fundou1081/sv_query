@@ -32,6 +32,10 @@
 10. **登记缺陷写可观察后果** — 什么输入 → 什么错误输出，按输入形态枚举
 11. **语义提取必须 slang** — class/constraint/covergroup/UVM 语义走 pyslang semantic AST；
     仅 UVM 宏相关允许源码 regex（预处理会去掉宏），见 [DISCIPLINE §3.5](docs/dev/DISCIPLINE.md)
+12. **项目适配不进 core 自动推断** — 具体项目（OpenTitan 等）的 FIFO/接口/命名约定
+    不得在 `src/trace` 里按名字建边；适配放 `examples/project_adaptations/` 或外部，
+    显式调用，输出 `src/dst/evidence/confidence` 的 boundary map，见
+    [PROJECT_ADAPTATION](docs/dev/PROJECT_ADAPTATION.md)
 
 ## 1.1 复杂决策参考：ub-mode
 
@@ -101,6 +105,7 @@ git status --porcelain                                               # 只含预
 
 ## 6. 版本
 
+- **v2.6 (2026-11-09)** — 新增铁律 12：项目适配不进 core 自动推断；模板放 `examples/project_adaptations/`
 - **v2.5 (2026-11-06)** — 新增 §1.1 ub-mode 复杂决策参考（前提/数据形状/根因/减法/TDD）
 - **v2.4 (2026-11-04)** — 新增铁律 11：语义提取必须 slang，仅 UVM 宏允许 regex；提交前增加 `check_semantic_regex.py`
 - **v2.3 (2026-10-31)** — 新增 [产品方向](docs/architecture/product_direction_2026-10-31.md)：

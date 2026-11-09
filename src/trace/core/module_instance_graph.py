@@ -241,8 +241,7 @@ class PathResolver:
         self.signal_graph = signal_graph
         self.module_graph = module_graph
 
-    def _neighbors(self, node: str, directed: bool = False,
-                   include_fifo: bool = False) -> list[str]:
+    def _neighbors(self, node: str, directed: bool = False) -> list[str]:
         """统一的邻接定义。
 
         无向模式 (默认, `directed=False`): successors + predecessors +
@@ -255,10 +254,19 @@ class PathResolver:
         [iter_237] 旧实现里 `find_path` 走 successors+predecessors + 进模块映射, 而
         `find_all_paths` 只走 successors → 两者结论互相矛盾。现在两个入口共用本方法。
         """
-        from .edge_visibility import visible_neighbors
+        out: list[str] = []
+        try:
+            out.extend(self.signal_graph.successors(node))
+        except (KeyError, nx.NetworkXError) as _e:
+            logger.debug("图无后继 (正常): %s", _e)
 
-        return visible_neighbors(self.signal_graph, node, directed=directed,
-                                 include_fifo=include_fifo)
+        if directed:
+            return out
+
+        try:
+            out.extend(self.signal_graph.predecessors(node))
+        except (KeyError, nx.NetworkXError) as _e:
+            logger.debug("图无前驱 (正常): %s", _e)
         # [iter_272] MIG 虚拟跳 (进/出模块) 已删除:
         # 图恒为实例级, 跨模块端口边本来就在 SignalGraph 里; 而 MIG 的
         # 旧实现会把端口映射到"模块定义命名空间"的影子 id (不在图里); 单一命名
@@ -266,8 +274,7 @@ class PathResolver:
         # 只会把遍历导向不存在的节点。
         return out
 
-    def find_path(self, src: str, dst: str, directed: bool = False,
-                  include_fifo: bool = False) -> list[str] | None:
+    def find_path(self, src: str, dst: str, directed: bool = False) -> list[str] | None:
         """查找从 src 到 dst 的一条路径 (BFS, 跨模块感知)。
 
         返回**最短跳数**的那一条 (可能经由实例节点而非模块内部); 要走遍所有
@@ -287,8 +294,7 @@ class PathResolver:
         visited = {src}
         while queue:
             current, path = queue.popleft()
-            for neighbor in self._neighbors(current, directed=directed,
-                                            include_fifo=include_fifo):
+            for neighbor in self._neighbors(current, directed=directed):
                 if neighbor in visited:
                     continue
                 if neighbor == dst:
@@ -298,8 +304,7 @@ class PathResolver:
         return None
 
     def find_all_paths(self, src: str, dst: str, max_paths: int = 50,
-                       max_depth: int = 60, directed: bool = False,
-                       include_fifo: bool = False) -> list[list[str]]:
+                       max_depth: int = 60, directed: bool = False) -> list[list[str]]:
         """枚举 src → dst 的所有简单路径 (与 `find_path` 共用邻接定义)。
 
         Args:
@@ -315,8 +320,7 @@ class PathResolver:
             if current == dst and len(path) > 1:
                 paths.append(path.copy())
                 return
-            for nxt in self._neighbors(current, directed=directed,
-                                       include_fifo=include_fifo):
+            for nxt in self._neighbors(current, directed=directed):
                 if nxt in visited:
                     continue
                 visited.add(nxt)

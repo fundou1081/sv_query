@@ -477,7 +477,7 @@ def _verify_path(tracer, graph, claim: dict) -> dict:
                              evidence=[{"kind": "path", "nodes": resolved,
                                         "bidirectional": bool(claim.get("bidirectional"))}])
     # no explicit nodes: check reachability through the path resolver with
-    # FIFO boundaries hidden by default.
+    # PathResolver uses the structural graph only.
     try:
         resolver = tracer.get_path_resolver()
         if resolver is None:

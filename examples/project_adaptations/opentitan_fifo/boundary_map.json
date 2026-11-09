@@ -1,0 +1,14 @@
+{
+  "adapter": "opentitan-i2c-fifo",
+  "project": "opentitan",
+  "version": "0.1",
+  "boundaries": [
+    {
+      "src": "i2c.i2c_core.u_fifos.fmt_fifo_wdata_i",
+      "dst": "i2c.i2c_core.u_fifos.fmt_fifo_rdata_o",
+      "kind": "fifo_state",
+      "evidence": "hw/ip/i2c/rtl/i2c_fifos.sv:115-116",
+      "confidence": "medium"
+    }
+  ]
+}

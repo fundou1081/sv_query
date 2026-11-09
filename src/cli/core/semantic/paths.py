@@ -34,9 +34,6 @@ def paths_cmd(
              "默认无向 = 结构连通性 (逆流也能找到)"),
     evidence: bool = typer.Option(False, "--evidence",
                                   help="[iter_333] attach per-hop edge evidence (file/line/condition)"),
-    through_fifo: bool = typer.Option(
-        False, "--through-fifo",
-        help="cross sequential FIFO write->read boundaries (explicit, non-combinational)"),
     max_paths: int = typer.Option(50, "--max", "-n", help="--all 时的路径数上限"),
     bits: str = typer.Option(
         None, "--bits",
@@ -76,8 +73,6 @@ def paths_cmd(
     if tracer is None:
         return
 
-    if through_fifo:
-        tracer.build_graph(force=True, include_fifo_edges=True)
     resolver = tracer.get_path_resolver()
     if resolver is None:
         fail("path resolver unavailable (graph not built?)", json_output, pretty)
@@ -117,7 +112,7 @@ def paths_cmd(
 
     if all_paths:
         found = resolver.find_all_paths(src_id, dst_id, max_paths=max_paths,
-                                         directed=directed, include_fifo=through_fifo)
+                                         directed=directed)
         data = {"ok": True, "src": src, "dst": dst, "src_resolved": src_id,
                 "dst_resolved": dst_id, "bits": bit_info, "directed": directed,
                 "count": len(found), "truncated": len(found) >= max_paths,
@@ -130,7 +125,7 @@ def paths_cmd(
     if canonical:
         candidates = resolver.find_all_paths(
             src_id, dst_id, max_paths=max_paths, directed=directed,
-            include_fifo=through_fifo)
+)
         # 确定性: 节点数最多, tie-break 用字典序最大; 不依赖图遍历顺序。
         best = max(candidates, key=lambda p: (len(p), tuple(p))) if candidates else None
         data = {
@@ -150,7 +145,7 @@ def paths_cmd(
         return
 
     one = resolver.find_path(src_id, dst_id, directed=directed,
-                             include_fifo=through_fifo)
+                 )
     data = {"ok": True, "src": src, "dst": dst, "src_resolved": src_id,
             "dst_resolved": dst_id, "bits": bit_info, "directed": directed,
             "found": one is not None,

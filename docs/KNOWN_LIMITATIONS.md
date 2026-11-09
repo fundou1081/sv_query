@@ -472,11 +472,14 @@ sv_query **不绕过** Semantic AST 严格性，也不返回 partial coverage；
 
 ### 3.15 FIFO/SRAM 跨边界查询断链
 
-**事实**：FIFO 是时序存储，默认结构路径不跨 FIFO。P135 增加
-`EdgeKind.FIFO` + `--through-fifo` 显式跨边界；父总线 fanin 会聚合 bit driver。
+**事实**：FIFO 是时序存储，core **不做自动 FIFO 识别**，也不在共享图里
+按名字生成 FIFO 边。需要跨 FIFO 的项目必须使用外部
+`examples/project_adaptations/` adapter，显式提供
+`src/dst/evidence/confidence` boundary map。
 
-因此跨 FIFO 必须显式选择，默认 `paths` 仍返回 not_found；这不是静默降级。
-详见：[P135_FIFO_CONNECTIVITY_2026-11-09.md](validation/P135_FIFO_CONNECTIVITY_2026-11-09.md)。
+因此默认路径/verify 不会跨 FIFO，也不会把 OpenTitan 的命名约定写进 core。
+详见：[PROJECT_ADAPTATION.md](dev/PROJECT_ADAPTATION.md) 与
+[P138](validation/P138_PROJECT_ADAPTATION_2026-11-09.md)。
 
 
 | 限制 | 修复版本 |
