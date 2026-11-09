@@ -472,12 +472,11 @@ sv_query **不绕过** Semantic AST 严格性，也不返回 partial coverage；
 
 ### 3.15 FIFO/SRAM 跨边界查询断链
 
-**事实**（P134 实测）：I2C `fmt_fifo_wdata[12]` 有写侧 bit-select 边，
-但父总线 `fmt_fifo_wdata` 没有 driver；FIFO 读侧 `fmt_fifo_rdata[12]`
-与写侧不连通。因此“random 字段 → FIFO → 下游 effect”的路径查询会断在 FIFO。
+**事实**：FIFO 是时序存储，默认结构路径不跨 FIFO。P135 增加
+`EdgeKind.FIFO` + `--through-fifo` 显式跨边界；父总线 fanin 会聚合 bit driver。
 
-工具仍能明确返回 not_found，不会伪造路径；但这是结构性缺口，不是任务问题。
-详见：[P134_REAL_USE_2026-11-09.md](validation/P134_REAL_USE_2026-11-09.md)。
+因此跨 FIFO 必须显式选择，默认 `paths` 仍返回 not_found；这不是静默降级。
+详见：[P135_FIFO_CONNECTIVITY_2026-11-09.md](validation/P135_FIFO_CONNECTIVITY_2026-11-09.md)。
 
 
 | 限制 | 修复版本 |

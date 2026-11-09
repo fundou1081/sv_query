@@ -344,6 +344,8 @@ class UnifiedTracer:
                 PipelineStep("bit_select", self._step_bit_select, inputs=("adapter", "graph")),
                 PipelineStep("module_graph", self._step_module_graph,
                              inputs=("adapter", "graph"), outputs=("module_graph",)),
+                PipelineStep("fifo_bridge", self._step_fifo_bridge,
+                             inputs=("graph", "module_graph")),
                 PipelineStep("path_resolver", self._step_path_resolver,
                              inputs=("graph", "module_graph"), outputs=("path_resolver",)),
                 PipelineStep("tracers", self._step_tracers, inputs=("graph", "module_graph")),
@@ -425,6 +427,12 @@ class UnifiedTracer:
         module_graph.build(ctx["adapter"])
         self._module_graph = module_graph
         return module_graph
+
+    def _step_fifo_bridge(self, ctx):
+        from .core.fifo_bridge import FifoBridgeBuilder
+
+        FifoBridgeBuilder(ctx["graph"], ctx["module_graph"]).build()
+        return None
 
     def _step_path_resolver(self, ctx):
         path_resolver = PathResolver(ctx["graph"], ctx["module_graph"])

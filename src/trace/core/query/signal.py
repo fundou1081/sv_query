@@ -146,6 +146,10 @@ class SignalTracer:
             self._expand_incoming_bit_select(signal_id, drivers, seen_ids,
                                              current_depth, max_depth, allow_cross_module,
                                              bit_filter)
+            if bit_filter is None and not drivers:
+                self._expand_bit_children(signal_id, drivers, seen_ids,
+                                          current_depth, max_depth,
+                                          allow_cross_module)
         self._maybe_lift_to_parent_bus(signal_id, has_driver_edge, drivers, seen_ids,
                                        current_depth, max_depth, allow_cross_module,
                                        bit_filter)
@@ -278,6 +282,30 @@ class SignalTracer:
             if dst == signal_id and self.graph.get_edge(src, dst).kind == EdgeKind.DRIVER:
                 return True
         return False
+
+    def _expand_bit_children(self, signal_id: str, drivers: list[TraceNode], seen_ids: set,
+                             current_depth: int, max_depth: int | None,
+                             allow_cross_module: bool) -> None:
+        """No driver on a packed bus -> aggregate drivers of its bit nodes.
+
+        Some packed-bus assignments only create bit-slice nodes (e.g.
+        ``fmt_fifo_wdata[12] <- ...``) and no incoming edge on the parent
+        bus.  For fanin of the bus, recurse into direct ``bus[`` children.
+        This is a query-level aggregation; it does not add synthetic graph
+        edges (and therefore does not change path semantics).
+        """
+        prefix = signal_id + "["
+        for nid in list(self.graph.nodes()):
+            if nid == signal_id or not nid.startswith(prefix):
+                continue
+            if nid in seen_ids:
+                continue
+            rest = nid[len(prefix):]
+            if "]" not in rest:
+                continue
+            self._trace_drivers_recursive(
+                nid, drivers, seen_ids, current_depth + 1, max_depth,
+                allow_cross_module)
 
     def _expand_incoming_bit_select(self, signal_id, drivers, seen_ids,
                                     current_depth, max_depth, allow_cross_module,
