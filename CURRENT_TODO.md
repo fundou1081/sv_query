@@ -3,13 +3,13 @@
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **可视化计划**: [structural_review_plan_2026-11-02](docs/architecture/structural_review_plan_2026-11-02.md) — 全设计图退役；动态子图 + 局部 review。
-> **最后更新**: 2026-11-09 GMT+8 (P133 architecture graph)
+> **最后更新**: 2026-11-09 GMT+8 (P134 real-use pilot)
 
 ---
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P62.2 交互式 debug（gate）** `<待做>`（deferred；无活跃开发）
+- **当前 item**: **P135.1 FIFO read/write boundary model** `<待做>`（next）
 - **P126** 文档/运维刷新 ✅（iter_433）
   - P126.1 CURRENT_TODO 刷新 ✅
   - P126.2 TESTING 刷新 ✅
@@ -48,6 +48,7 @@
 | P131 | coverage limitation schema | 保持严格；schema 标注 pyslang 限制 + 源码位置 |
 | P132 | constraint neighborhood | 跨 block 变量关系图 + 重要度指标 |
 | P133 | architecture graph | 模块实例级真实 net 连接图 + SVG |
+| P134 | real-use pilot | 3 场景；verify 生产级；FIFO 跨边界断链 |
 
 详见 [P125 intake results](docs/validation/OPENTITAN_INTAKE_RESULTS_2026-11-09.md)。
 

@@ -1,0 +1,47 @@
+# P134 real-use pilot — exact commands + output excerpts
+# cwd: /Users/fundou/.dsh/opencode-workers-lite/opentitan-pilot/workspace
+# env: SVQ_SNAPSHOT_DIR=/tmp/opentitan_svq_i2c/snapshots
+
+=== S1a: class i2c_item (DV filelist) ===
+$ sv_query class i2c_item --filelist /tmp/p134_real_pilot/i2c_dv.f --json
+  class=i2c_item member_count=34
+   RAND i2c_item.fbyte         type=bit[7:0]
+   RAND i2c_item.nakok         type=bit
+   RAND i2c_item.rcont         type=bit
+   RAND i2c_item.read          type=bit
+   RAND i2c_item.stop          type=bit
+   RAND i2c_item.start         type=bit
+
+=== S1b: trace constraints i2c_item.rcont ===
+$ sv_query trace constraints --filelist /tmp/p134_real_pilot/i2c_dv.f i2c_item.rcont --json
+  block=i2c_item.rcont_c vars=['i2c_item.rcont', 'i2c_item.stop'] conditions=['i2c_item.read'] rand_vars=['i2c_item.rcont', 'i2c_item.stop']
+
+=== S1c: trace constraint-neighborhood i2c_item.rcont ===
+$ sv_query trace constraint-neighborhood --filelist /tmp/p134_real_pilot/i2c_dv.f i2c_item.rcont --json
+  nodes=3 relations=3
+    i2c_item.rcont blocks= ['i2c_item.rcont_c'] neighbors= ['i2c_item.stop', 'i2c_item.read']
+    i2c_item.read blocks= ['i2c_item.rcont_c'] neighbors= ['i2c_item.stop', 'i2c_item.rcont']
+    i2c_item.stop blocks= ['i2c_item.rcont_c'] neighbors= ['i2c_item.rcont', 'i2c_item.read']
+
+=== S1d: RTL leg — nakok.q -> fmt_fifo_wdata[12] (snapshot) ===
+$ sv_query paths --from-snapshot opentitan_i2c i2c.i2c_core.reg2hw.fdata.nakok.q i2c.i2c_core.u_fifos.fmt_fifo_wdata[12] --directed --canonical --json
+  found=True hops=3
+    i2c.i2c_core.reg2hw.fdata.nakok.q
+    i2c.i2c_core.fmt_fifo_wdata[12]
+    i2c.i2c_core.u_fifos.fmt_fifo_wdata_i[12]
+    i2c.i2c_core.u_fifos.fmt_fifo_wdata[12]
+
+=== S1e: GAP — nakok.q -> fmt_flag_nak_ok (NOT found) ===
+$ sv_query paths --from-snapshot opentitan_i2c i2c.i2c_core.reg2hw.fdata.nakok.q i2c.i2c_core.fmt_flag_nak_ok --directed --canonical --json
+  found=False hops=None
+
+=== S2: four verify claims ===
+$ sv_query verify claim --from-snapshot opentitan_i2c --claim '{"type":"path","from":"i2c.i2c_core.fmt_fifo_rdata[12]","to":"i2c.i2c_core.u_i2c_controller_fsm.fmt_flag_nak_ok_i"}' --json
+  status=verified reason=''
+$ sv_query verify claim --from-snapshot opentitan_i2c --claim '{"type":"driver","signal":"i2c.i2c_core.fmt_fifo_wdata","driver":"i2c.i2c_core.reg2hw.fdata.nakok.q"}' --json
+  status=contradicted reason='i2c.i2c_core.reg2hw.fdata.nakok.q is not in fanin(i2c.i2c_core.fmt_fifo_wdata, depth=1)'
+  counterevidence=[{"kind": "fanin", "signal": "i2c.i2c_core.fmt_fifo_wdata", "actual_drivers": []}]
+$ sv_query verify claim --from-snapshot opentitan_i2c --claim '{"type":"driver","signal":"i2c.i2c_core.fmt_fifo_wdata_typo","driver":"i2c.i2c_core.reg2hw.fdata.nakok.q"}' --json
+  status=unknown reason="signal 'i2c.i2c_core.fmt_fifo_wdata_typo' not_found"
+$ sv_query verify claim --from-snapshot opentitan_i2c --claim '{"type":"path","from":"i2c.i2c_core.u_i2c_controller_fsm.fmt_flag_nak_ok_i","to":"i2c.i2c_core.reg2hw.fdata.nakok.q"}' --json
+  status=contradicted reason='path check failed (forward=False, reverse=True)'
