@@ -379,8 +379,8 @@ P135 FIFO/bus connectivity <已完成>
 -- P135.1 FIFO read/write boundary model <已完成>
 -- P135.2 parent bus / bit-select aggregation <已完成>
 
-P136 remaining real-use issues <待做>
--- P136.1 false missing-file warning <待做>
+P136 remaining real-use issues <进行中>
+-- P136.1 false missing-file warning <已完成>
 -- P136.2 architecture snapshot/cache <待做>
 -- P136.3 TB random → RTL snapshot join <待做>
 -- P136.4 solve/dist + unknown flag <待做>

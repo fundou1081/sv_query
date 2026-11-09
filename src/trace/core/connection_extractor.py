@@ -98,6 +98,18 @@ class ConnectionExtractor:
                 # 取祖先 generate (iter_134: aes 嵌套 generate 假节点根因).
                 return None
 
+    def _module_source_known(self, module_name: str) -> bool:
+        """True if a loaded source contains a module declaration of this name.
+
+        Port extraction can fail even when the file is loaded (e.g. a package
+        function with the same name shadows the module).  In that case the
+        "missing file" warning is a false positive.
+        """
+        compiler = getattr(self.adapter, "_compiler", None)
+        sources = getattr(compiler, "sources", {}) if compiler is not None else {}
+        pat = re.compile(r"\bmodule\s+" + re.escape(module_name) + r"\b")
+        return any(pat.search(src or "") for src in sources.values())
+
     def _missing_module_warning(self, inst_module_name: str, inst_name: str):
         """输出可能缺少文件的警告信息"""
         import logging
@@ -114,7 +126,8 @@ class ConnectionExtractor:
         # 同时记录到 ExtractorResult.warnings 中
         if not hasattr(self, "_warnings"):
             self._warnings = []
-        self._warnings.append(f"Missing module: {inst_module_name} (instance: {inst_name})")
+        self._warnings.append(
+            f"Unresolved module ports: {inst_module_name} (instance: {inst_name})")
 
     def extract(self) -> ExtractorResult:
         result = ExtractorResult()
@@ -406,8 +419,8 @@ class ConnectionExtractor:
             conns = self.adapter.get_instance_connection(inst)
 
             # [FIX Issue 20] 检测可能缺少文件的情况
-            if not module_ports and conns:
-                # 实例有连接但模块没有端口定义,可能是缺少了实例模块的文件
+            if not module_ports and conns and not self._module_source_known(inst_module_name):
+                # 实例有连接但模块没有端口定义, 且源文件里确实找不到 module
                 self._missing_module_warning(inst_module_name, inst_name)
 
             named_conns = {}
