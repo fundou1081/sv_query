@@ -18,7 +18,7 @@
 | 全量 (canonical) | **2571 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; 7 skipped / 119 deselected) | 2026-11-07 实测 (iter_397): A/D tests +8。历史: iter_396 2563 / iter_395 2561 |
 | CLI / integration | **810 passed / 0 failed** (`sim/tests/cli sim/tests/integration`, `-m "not opensource"`) | 2026-09-08 实测 (iter_185 修复后) |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (412 份, 只增不改) | 每次迭代一份 |
+| 迭代记录 | `docs/task_tree/iterations/` (413 份, 只增不改) | 每次迭代一份 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 | 语义 regex 纪律 | `python3 tools/check_semantic_regex.py` 必须 ✅ | 仅 UVM 宏例外；class/constraint/covergroup 语义走 slang (iter_368) |
@@ -123,6 +123,7 @@
 | [validation/VERIFY_CLAIM_2026-11-08.md](validation/VERIFY_CLAIM_2026-11-08.md) | **P117 verify**: snapshot claim + tool intent；6/6，单次 verify |
 | [validation/OPENTITAN_PILOT_2026-11-09.md](validation/OPENTITAN_PILOT_2026-11-09.md) | **P118 OpenTitan UART**: 4803 nodes；6/10；核心问题是 edge evidence |
 | [validation/EDGE_EVIDENCE_2026-11-09.md](validation/EDGE_EVIDENCE_2026-11-09.md) | **P119 edge evidence**: snapshot edge source_location；OpenTitan T3 2/2 |
+| [validation/opentitan_uart/agent_results_after_fixes.json](validation/opentitan_uart/agent_results_after_fixes.json) | **P120 OpenTitan final**: 10/10；T3 edge evidence + T5 schema 修复 |
 | [validation/opentitan_uart/WORKER_REPORT.md](validation/opentitan_uart/WORKER_REPORT.md) | **P118 worker onboarding**: filelist/snapshot/tasks/11 issues |
 | [validation/COMPARISON_RECORD_2026-11-05.md](validation/COMPARISON_RECORD_2026-11-05.md) | **对比结果冻结记录**: 哈希、模型、指标、单独复验脚本与已知缺陷 |
 | [validation/long_range_12_usage_2026-11-05.json](validation/long_range_12_usage_2026-11-05.json) | **token/tool-call 汇总**: 四臂 token、tool calls、tokens/correct |
