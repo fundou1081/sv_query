@@ -46,6 +46,24 @@ class TestArchitectureGraph(unittest.TestCase):
             self.assertTrue(os.path.isfile(svg))
             self.assertGreater(os.path.getsize(svg), 0)
 
+    def test_from_snapshot(self):
+        with tempfile.TemporaryDirectory() as td:
+            env = dict(os.environ, SVQ_SNAPSHOT_DIR=td)
+            save = subprocess.run(
+                [sys.executable, os.path.join(_ROOT, 'run_cli.py'),
+                 'snapshot', 'save', _FIXTURE, '--tag', 'arch_smoke', '--json'],
+                capture_output=True, text=True, cwd=_ROOT, env=env)
+            self.assertEqual(0, save.returncode, save.stderr[-1000:])
+            proc = subprocess.run(
+                [sys.executable, os.path.join(_ROOT, 'run_cli.py'),
+                 'architecture', 'graph', '--from-snapshot', 'arch_smoke',
+                 '--json'],
+                capture_output=True, text=True, cwd=_ROOT, env=env)
+            self.assertEqual(0, proc.returncode, proc.stderr[-1000:])
+            r = json.loads(proc.stdout)['result']
+            self.assertEqual('snapshot', r['stats']['source'])
+            self.assertEqual(1, r['stats']['connections'])
+
     def test_dot_is_generated(self):
         proc = subprocess.run(
             [sys.executable, os.path.join(_ROOT, 'run_cli.py'),
