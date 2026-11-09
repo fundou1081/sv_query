@@ -98,17 +98,49 @@ class ConnectionExtractor:
                 # 取祖先 generate (iter_134: aes 嵌套 generate 假节点根因).
                 return None
 
-    def _module_source_known(self, module_name: str) -> bool:
-        """True if a loaded source contains a module declaration of this name.
+    @staticmethod
+    def _syntax_declares_module(tree, module_name: str) -> bool:
+        found = []
 
-        Port extraction can fail even when the file is loaded (e.g. a package
-        function with the same name shadows the module).  In that case the
-        "missing file" warning is a false positive.
+        def walk(node):
+            if node is None or found:
+                return
+            if type(node).__name__ == "ModuleDeclarationSyntax":
+                header = getattr(node, "header", None)
+                name = getattr(header, "name", None)
+                if name is not None and str(name).strip() == module_name:
+                    found.append(True)
+                    return
+            try:
+                for child in node:
+                    walk(child)
+            except TypeError:
+                logger.debug("module syntax walk: non-iterable node skipped")
+                return
+
+        walk(tree.root)
+        return bool(found)
+
+    def _module_source_known(self, module_name: str) -> bool:
+        """True if a loaded source actually declares this module.
+
+        Parse loaded source as a syntax tree and inspect module declarations;
+        a commented-out ``module foo`` or a raw text match is not enough.
+        Port extraction can still fail for a real module (same-name package
+        function shadowing), which is why the warning text is neutral.
         """
+        from pyslang import syntax
+
         compiler = getattr(self.adapter, "_compiler", None)
         sources = getattr(compiler, "sources", {}) if compiler is not None else {}
-        pat = re.compile(r"\bmodule\s+" + re.escape(module_name) + r"\b")
-        return any(pat.search(src or "") for src in sources.values())
+        for path, source in sources.items():
+            try:
+                tree = syntax.SyntaxTree.fromText(source or "", path)
+            except Exception:
+                continue
+            if self._syntax_declares_module(tree, module_name):
+                return True
+        return False
 
     def _missing_module_warning(self, inst_module_name: str, inst_name: str):
         """输出可能缺少文件的警告信息"""

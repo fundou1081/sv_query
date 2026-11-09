@@ -17,14 +17,16 @@ from cli.core.semantic.trace_common import resolve_signal
 from trace.core.compiler import CompilationError
 
 
-def _constraint_dict(info, graph) -> dict:
+def constraint_dict(info, graph=None, *, id_key: str = "block") -> dict:
+    """Single canonical constraint-block serialization for all CLI views."""
     rand_vars = []
-    for var in info.vars:
-        node = graph.get_node(var)
-        if node is not None and (node.extra or {}).get("rand"):
-            rand_vars.append(var)
+    if graph is not None:
+        for var in info.vars:
+            node = graph.get_node(var)
+            if node is not None and (node.extra or {}).get("rand"):
+                rand_vars.append(var)
     return {
-        "block": info.block_id,
+        id_key: info.block_id,
         "vars": list(info.vars),
         "conditions": list(info.conditions),
         "expr_count": info.expr_count,
@@ -34,6 +36,10 @@ def _constraint_dict(info, graph) -> dict:
         "solve_before": list(getattr(info, "solve_before", []) or []),
         "dist": list(getattr(info, "dist", []) or []),
     }
+
+
+def _constraint_dict(info, graph) -> dict:
+    return constraint_dict(info, graph)
 
 
 def _relative_hint(property: str, graph) -> dict:

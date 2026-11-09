@@ -299,7 +299,8 @@ class UnifiedTracer:
 
     def build_graph(self, force: bool = False, use_cache: bool = False,
                     target_module: str | None = None,
-                    auto_target_single_top: bool = False) -> SignalGraph:
+                    auto_target_single_top: bool = False,
+                    include_fifo_edges: bool = False) -> SignalGraph:
         """构建信号流图
 
         Args:
@@ -310,6 +311,7 @@ class UnifiedTracer:
                            of auto-detected first top instance). This ensures
                            pipeline/timing/dataflow show signals in user namespace.
         """
+        self._include_fifo_edges = include_fifo_edges
         # [C-Flaky-3b 2026-06-27] reclaim moved to CLI main + conftest (process start).
         # build_graph() 不再调用, 避免 pytest test 内部多次调用累积 OOM.
         if self._graph is None or force:
@@ -356,6 +358,7 @@ class UnifiedTracer:
                 "compiler": self._get_compiler(),
                 "target": target_module,
                 "auto_target_single_top": auto_target_single_top,
+                "include_fifo_edges": include_fifo_edges,
             })
 
             # 保存到缓存
@@ -429,6 +432,8 @@ class UnifiedTracer:
         return module_graph
 
     def _step_fifo_bridge(self, ctx):
+        if not ctx.get("include_fifo_edges"):
+            return None
         from .core.fifo_bridge import FifoBridgeBuilder
 
         FifoBridgeBuilder(ctx["graph"], ctx["module_graph"]).build()

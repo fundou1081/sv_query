@@ -148,7 +148,8 @@ COMMANDS: list[CommandSpec] = [
        note="一次查询跨多个 constraint block 的 random 变量关系图 "
             "(co-constraint, 非 fanin; 含重要性指标, 启发式)"),
     _c("trace tb-join", "semantic", cost="cheap",
-       note="TB random field → RTL snapshot 候选 join (name-based; 不宣称唯一)"),
+       note="TB random field → RTL snapshot candidate join "
+            "(name-based; single_candidate 不是连接证明)"),
     _c("trace covergroups", "semantic", cost="cheap",
        note="[P63] 列出 covergroup 定义 (可按 class 过滤)"),
     _c("trace coverpoints", "semantic", cost="cheap",

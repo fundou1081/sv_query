@@ -15,12 +15,9 @@ from cli._output import emit_json
 from cli.core.semantic.trace_common import _load_tracer_from_snapshot
 from trace.core.compiler import CompilationError
 from cli._common import handle_compilation_error
+from cli.core.semantic.constraints import constraint_dict
 
 
-def _constraint_dict(info) -> dict:
-    return {"block": info.block_id, "vars": list(info.vars),
-            "conditions": list(info.conditions), "expr_count": info.expr_count,
-            "defined_in": info.defined_in, "inherited": info.inherited}
 
 
 def _rtl_candidates(graph, leaf: str) -> list[dict]:
@@ -79,14 +76,14 @@ def _join_payload(field, file, filelist, from_snapshot) -> dict:
     if graph is None:
         raise typer.BadParameter(f"snapshot graph missing: {from_snapshot}")
     candidates = _rtl_candidates(graph, leaf)
-    status = ("unique" if len(candidates) == 1
-              else "ambiguous" if candidates else "not_found")
+    status = ("single_candidate" if len(candidates) == 1
+              else "multiple_candidates" if candidates else "not_found")
     return {
         "ok": True, "command": "trace_tb_join",
         "params": {"field": field, "from_snapshot": from_snapshot},
         "result": {
             "tb_field": field, "leaf": leaf,
-            "constraints": [_constraint_dict(c) for c in constraints],
+            "constraints": [constraint_dict(c) for c in constraints],
             "join_status": status,
             "rtl_candidates": candidates,
             "note": "name-based candidate join; verify against driver/BFM/source",

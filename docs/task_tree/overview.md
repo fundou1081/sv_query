@@ -468,3 +468,18 @@ Each iteration file in `iterations/` follows this format:
 - ✅ Golden regression 5/5
 
 Open-source project visualization is **correct and verified**. Ready for next task.
+---
+
+## P13x recent tasks (2026-11-09)
+
+| # | Date | Level | Task | 方豆输入 | 结果 | 边界 | 状态 |
+|---|---|---|---|---|---|---|---|
+| **340** | **2026-11-09** | **L2** | **P134 real-use 3-scenario pilot (iter_442)** | 跑三个真实场景 | verify 生产级；FIFO 断链 | 后续 P135/P136 | **✅ 完成** |
+| **341** | **2026-11-09** | **L2** | **P135 FIFO/bus connectivity (iter_443)** | 逐个修复 | FIFO 边 + `--through-fifo`；I2C 端到端 | 默认不可见 | **✅ 完成** |
+| **342** | **2026-11-09** | **L2** | **P136.1 false warning (iter_444)** | 逐个修复 | source-known warning | 真实缺失仍 warning | **✅ 完成** |
+| **343** | **2026-11-09** | **L2** | **P136.2 architecture snapshot (iter_445)** | 逐个修复 | `--from-snapshot` | 无 MIG 补端口 | **✅ 完成** |
+| **344** | **2026-11-09** | **L2** | **P136.3 TB→RTL join (iter_446)** | 逐个修复 | candidate join | name-based，不是证明 | **✅ 完成** |
+| **345** | **2026-11-09** | **L2** | **P136.4 unknown flag (iter_447)** | 逐个修复 | `machine.unknown_kind` | verified/contradicted 不变 | **✅ 完成** |
+| **346** | **2026-11-09** | **L2** | **P136.5 solve/dist (iter_448)** | 逐个修复 | semantic syntax AST | dist 是文本 | **✅ 完成** |
+| **347** | **2026-11-09** | **L2** | **Discipline remediation (iter_449)** | worker audit BLOCK | F1–F14 修复/记录 | F15 check_crap range 未改 | **✅ 完成** |
+| **348** | **2026-11-09** | **L2** | **P137 discipline remediation (iter_449)** | worker audit BLOCK | F1–F15 修复/记录 | O(E²) nit 保留 | **✅ 完成** |

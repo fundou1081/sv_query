@@ -26,7 +26,7 @@ class TestTbJoin(unittest.TestCase):
                 capture_output=True, text=True, cwd=_ROOT, env=env)
             self.assertEqual(0, proc.returncode, proc.stderr[-1000:])
             r = json.loads(proc.stdout)['result']
-            self.assertEqual('unique', r['join_status'])
+            self.assertEqual('single_candidate', r['join_status'])
             self.assertEqual('top.rcont', r['rtl_candidates'][0]['signal'])
             self.assertEqual('tb_item.rcont_c', r['constraints'][0]['block'])
 

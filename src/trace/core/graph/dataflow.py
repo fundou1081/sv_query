@@ -269,6 +269,14 @@ class DataFlowGraph:
 
         return segments
 
+    def _has_hidden_fifo(self, path: list[str]) -> bool:
+        from ..edge_visibility import edge_visible
+        for a, b in zip(path, path[1:]):
+            if not any(edge_visible(e, include_fifo=False)
+                       for e in self.signal_graph.get_edges(a, b)):
+                return True
+        return False
+
     def _find_paths(self, from_signal: str, to_signal: str, cutoff: int = 50) -> list[list[str]]:
         """查找所有路径(允许循环)
 
@@ -449,7 +457,7 @@ class DataFlowGraph:
                 except (nx.NetworkXNoPath, nx.NodeNotFound):
                     continue
                 for p in paths:
-                    if not p:
+                    if not p or self._has_hidden_fifo(p):
                         continue
                     key = tuple(p)
                     if key not in seen_paths:
@@ -491,7 +499,7 @@ class DataFlowGraph:
                                 try:
                                     sub_paths = list(nx.all_simple_paths(nx_graph, succ, to_candidate, cutoff=cutoff))
                                     for sp in sub_paths:
-                                        if sp:
+                                        if sp and not self._has_hidden_fifo(sp):
                                             return [[from_signal] + sp]
                                 except (nx.NetworkXNoPath, nx.NodeNotFound) as _e:
                                     logger.debug("图无路径 (正常): %s", _e)
@@ -512,7 +520,7 @@ class DataFlowGraph:
                             try:
                                 sub_paths = list(nx.all_simple_paths(nx_graph, from_candidate, pred, cutoff=cutoff))
                                 for sp in sub_paths:
-                                    if sp:
+                                    if sp and not self._has_hidden_fifo(sp):
                                         return [sp + [dst_parent, to_signal]]
                             except (nx.NetworkXNoPath, nx.NodeNotFound) as _e:
                                 logger.debug("图无路径 (正常): %s", _e)

@@ -255,28 +255,10 @@ class PathResolver:
         [iter_237] 旧实现里 `find_path` 走 successors+predecessors + 进模块映射, 而
         `find_all_paths` 只走 successors → 两者结论互相矛盾。现在两个入口共用本方法。
         """
-        out: list[str] = []
-        try:
-            candidates = list(self.signal_graph.successors(node))
-        except (KeyError, nx.NetworkXError) as _e:
-            logger.debug("图无后继 (正常): %s", _e)
-            candidates = []
-        for nxt in candidates:
-            if include_fifo:
-                out.append(nxt)
-                continue
-            edges = self.signal_graph.get_edges(node, nxt)
-            # FIFO edges are sequential boundaries; only opt-in crossing.
-            if any(e.kind.name != "FIFO" for e in edges):
-                out.append(nxt)
+        from .edge_visibility import visible_neighbors
 
-        if directed:
-            return out
-
-        try:
-            out.extend(self.signal_graph.predecessors(node))
-        except (KeyError, nx.NetworkXError) as _e:
-            logger.debug("图无前驱 (正常): %s", _e)
+        return visible_neighbors(self.signal_graph, node, directed=directed,
+                                 include_fifo=include_fifo)
         # [iter_272] MIG 虚拟跳 (进/出模块) 已删除:
         # 图恒为实例级, 跨模块端口边本来就在 SignalGraph 里; 而 MIG 的
         # 旧实现会把端口映射到"模块定义命名空间"的影子 id (不在图里); 单一命名

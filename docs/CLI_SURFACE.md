@@ -52,7 +52,7 @@
 | `trace lookup` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | 完整 RTL hier path → canonical id (严格; $root/位父回退/aliases; 不做模糊后缀) |
 | `trace manifest` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 批量 waveform manifest: full path → canonical + profile (type/bit/clock/reset/stage) |
 | `trace profile` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | 信号 profile: canonical/aliases/位映射/clock/reset/sequential/source (波形关联) |
-| `trace tb-join` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | TB random field → RTL snapshot 候选 join (name-based; 不宣称唯一) |
+| `trace tb-join` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | TB random field → RTL snapshot candidate join (name-based; single_candidate 不是连接证明) |
 | `snapshot compare` | — | — | state | state | medium | ✅ | — | ✅ | 比较两个快照, 或两个 SV 文件 (文件模式 = 原 diff compare; --signal 看可达性差异) |
 | `snapshot delete` | — | — | state | state | cheap | ✅ | — | ✅ | [iter_231] 已补 --json |
 | `snapshot list` | — | — | state | state | cheap | ✅ | — | ✅ | 列出快照; 给 tag → 该快照详情 (原 snapshot show) |

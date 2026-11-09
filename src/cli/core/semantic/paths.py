@@ -76,6 +76,8 @@ def paths_cmd(
     if tracer is None:
         return
 
+    if through_fifo:
+        tracer.build_graph(force=True, include_fifo_edges=True)
     resolver = tracer.get_path_resolver()
     if resolver is None:
         fail("path resolver unavailable (graph not built?)", json_output, pretty)

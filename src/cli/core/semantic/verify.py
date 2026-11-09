@@ -80,7 +80,8 @@ def _resolve(graph, sig: str):
 
 def _claim_result(claim: dict, status: str, *, reason: str = "",
                   evidence: list | None = None,
-                  counterevidence: list | None = None) -> dict:
+                  counterevidence: list | None = None,
+                  unknown_kind: str = "") -> dict:
     result = {
         "claim": claim,
         "status": status,
@@ -89,16 +90,11 @@ def _claim_result(claim: dict, status: str, *, reason: str = "",
         "counterevidence": counterevidence or [],
     }
     if status == "unknown":
-        # Machine-readable distinction: unresolved endpoint vs. unverifiable
-        # relation.  Keep the human reason intact.
-        text = (reason or "").lower()
-        unresolved = any(k in text for k in
-                         ("not_found", "not found", "missing", "does not exist"))
+        kind = unknown_kind or "unverifiable"
         result["machine"] = {
             "status": "unknown",
-            "unknown_kind": ("unresolved_endpoint" if unresolved
-                             else "unverifiable"),
-            "unresolved_endpoint": unresolved,
+            "unknown_kind": kind,
+            "unresolved_endpoint": kind == "unresolved_endpoint",
         }
     return result
 
@@ -422,11 +418,15 @@ def _verify_driver(tracer, graph, claim: dict) -> dict:
         return _claim_result(claim, "unknown", reason="claim requires signal + driver")
     sr, sid = _resolve(graph, sig)
     if not sid:
-        return _claim_result(claim, "unknown", reason=f"signal {sig!r} {sr['status']}")
+        return _claim_result(claim, "unknown",
+                             reason=f"signal {sig!r} {sr['status']}",
+                             unknown_kind="unresolved_endpoint")
     dr, did = _resolve(graph, drv)
     if not did:
         # 常量/字面量 driver 不在图里 → unknown，不伪造 contradicted
-        return _claim_result(claim, "unknown", reason=f"driver {drv!r} {dr['status']}")
+        return _claim_result(claim, "unknown",
+                             reason=f"driver {drv!r} {dr['status']}",
+                             unknown_kind="unresolved_endpoint")
     depth = None if claim.get("transitive") else 1
     drivers = {x.id for x in tracer.trace_fanin(sid, depth=depth)}
     if did in drivers:
@@ -447,13 +447,16 @@ def _verify_path(tracer, graph, claim: dict) -> dict:
     dr, did = _resolve(graph, dst)
     if not sid or not did:
         return _claim_result(claim, "unknown",
-                             reason=f"endpoint unresolved: {src!r}/{dst!r}")
+                             reason=f"endpoint unresolved: {src!r}/{dst!r}",
+                             unknown_kind="unresolved_endpoint")
     if nodes:
         resolved = []
         for n in nodes:
             r, rid = _resolve(graph, n)
             if not rid:
-                return _claim_result(claim, "unknown", reason=f"path node {n!r} {r['status']}")
+                return _claim_result(claim, "unknown",
+                                     reason=f"path node {n!r} {r['status']}",
+                                     unknown_kind="unresolved_endpoint")
             resolved.append(rid)
         if not resolved or resolved[0] != sid or resolved[-1] != did:
             return _claim_result(claim, "contradicted",
@@ -473,11 +476,15 @@ def _verify_path(tracer, graph, claim: dict) -> dict:
         return _claim_result(claim, "verified",
                              evidence=[{"kind": "path", "nodes": resolved,
                                         "bidirectional": bool(claim.get("bidirectional"))}])
-    # no explicit nodes: check reachability
-    import networkx as nx
+    # no explicit nodes: check reachability through the path resolver with
+    # FIFO boundaries hidden by default.
     try:
-        reachable = nx.has_path(graph, sid, did)
-        reverse = nx.has_path(graph, did, sid) if claim.get("bidirectional") else True
+        resolver = tracer.get_path_resolver()
+        if resolver is None:
+            raise RuntimeError("path resolver unavailable")
+        reachable = resolver.find_path(sid, did, directed=True) is not None
+        reverse = (resolver.find_path(did, sid, directed=True) is not None
+                   if claim.get("bidirectional") else True)
     except Exception as e:
         return _claim_result(claim, "unknown", reason=f"path search failed: {e}")
     if reachable and reverse:
@@ -517,10 +524,12 @@ def _verify_bit(tracer, graph, claim: dict) -> dict:
     if not tid or not sid:
         return _claim_result(claim, "unknown",
                              reason=f"bit endpoint unresolved: {target!r}/{source!r} "
-                                    f"({tr['status']}/{sr['status']})")
+                                    f"({tr['status']}/{sr['status']})",
+                             unknown_kind="unresolved_endpoint")
     if tr["status"] == "bit_base_fallback" or sr["status"] == "bit_base_fallback":
         return _claim_result(claim, "unknown",
-                             reason="bit node missing; only parent bus exists")
+                             reason="bit node missing; only parent bus exists",
+                             unknown_kind="unverifiable")
     if graph.has_edge(sid, tid):
         return _claim_result(claim, "verified",
                              evidence=[{"kind": "edge", "from": sid, "to": tid}])

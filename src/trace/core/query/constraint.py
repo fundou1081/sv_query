@@ -293,7 +293,8 @@ class ConstraintTracer:
             if en is None:
                 continue
             if (en.extra or {}).get("dist"):
-                info.dist.append({"node": eid, "values": en.extra["dist"]})
+                info.dist.append({"node": eid, "items": en.extra["dist"],
+                                  "confidence": en.extra.get("dist_confidence", "")})
             for s, d in self.graph.edges():
                 if s != eid:
                     continue

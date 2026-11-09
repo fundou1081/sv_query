@@ -41,11 +41,19 @@ def _to_dict(arch) -> dict:
 
 
 def _emit_output(arch, json_output: bool, pretty: bool, dot: Path | None,
-                  svg: Path | None, include_boundaries: bool,
+                  svg: Path | None, include_primitives: bool,
+                  include_boundaries: bool,
                   include_clock_reset: bool) -> None:
     if json_output:
+        result = _to_dict(arch)
+        result["view"] = {
+            "include_primitives": include_primitives,
+            "include_boundaries": include_boundaries,
+            "include_clock_reset": include_clock_reset,
+            "note": "view filters affect DOT/SVG; JSON retains full nodes/edges/boundaries",
+        }
         emit_json({"ok": True, "command": "architecture_graph",
-                   "result": _to_dict(arch), "errors": []}, pretty)
+                   "result": result, "errors": []}, pretty)
     if not dot and not svg:
         if not json_output:
             typer.echo(to_dot(arch, include_boundaries=include_boundaries,
@@ -103,7 +111,8 @@ def graph_cmd(
             arch = build_architecture(tracer, root=module, max_depth=depth,
                                       include_primitives=include_primitives)
         _emit_output(arch, json_output, pretty, dot, svg,
-                     include_boundaries, include_clock_reset)
+                     include_primitives, include_boundaries,
+                     include_clock_reset)
     except typer.Exit:
         raise
     except CompilationError as e:

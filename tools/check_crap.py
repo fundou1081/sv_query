@@ -66,11 +66,20 @@ def find_crapper() -> Path | None:
     return Path(which) if which else None
 
 
-def changed_src_files(repo: Path) -> list[str]:
-    """git status 里新增/修改的 src/**/*.py (只看产品代码, 与 check_except_pass.py 同范围)。"""
-    out = subprocess.run(
-        ["git", "status", "--porcelain"], cwd=repo, capture_output=True, text=True
-    ).stdout
+def changed_src_files(repo: Path, base: str | None = None) -> list[str]:
+    """新增/修改的 src/**/*.py；给出 base 时用 commit range，否则工作区。"""
+    if base:
+        out = subprocess.run(
+            ["git", "diff", "--name-only", base, "--", "src"],
+            cwd=repo, capture_output=True, text=True,
+        ).stdout
+    else:
+        out = subprocess.run(
+            ["git", "status", "--porcelain"], cwd=repo, capture_output=True, text=True
+        ).stdout
+    if base:
+        return sorted(p for p in out.splitlines()
+                      if p.startswith("src/") and p.endswith(".py"))
     files: list[str] = []
     for line in out.splitlines():
         if not line.strip():
@@ -84,13 +93,13 @@ def changed_src_files(repo: Path) -> list[str]:
     return sorted(set(files))
 
 
-def git_show(repo: Path, rev_path: str) -> str | None:
+def git_show(repo: Path, rev_path: str, rev: str = "HEAD") -> str | None:
     """取某路径在 HEAD 的内容; HEAD 里没有 (新文件) 返回 None。
 
     rev_path 是**纯路径** (不含 HEAD: 前缀) —— 前缀在这里拼一次。
     """
     r = subprocess.run(
-        ["git", "show", f"HEAD:{rev_path}"], cwd=repo, capture_output=True, text=True
+        ["git", "show", f"{rev}:{rev_path}"], cwd=repo, capture_output=True, text=True
     )
     return r.stdout if r.returncode == 0 else None
 
@@ -160,8 +169,8 @@ def compare(
     return violations, notes
 
 
-def run(repo: Path, threshold: int, crapper: Path) -> dict:
-    files = changed_src_files(repo)
+def run(repo: Path, threshold: int, crapper: Path, base: str | None = None) -> dict:
+    files = changed_src_files(repo, base)
     violations: list[dict] = []
     notes: list[dict] = []
     errors: list[dict] = []
@@ -175,7 +184,7 @@ def run(repo: Path, threshold: int, crapper: Path) -> dict:
             if not (repo / rel).exists():
                 continue
             cur_content = (repo / rel).read_text(encoding="utf-8")
-            head_text = git_show(repo, rel)
+            head_text = git_show(repo, rel, base or "HEAD")
             if head_text is None:
                 baseline: dict = {}
             else:
@@ -219,6 +228,8 @@ def main() -> int:
                     help=f"CC 阈值 (默认 {THRESHOLD_DEFAULT})")
     ap.add_argument("--json", action="store_true", help="机器可读输出")
     ap.add_argument("--repo", default=str(REPO), help="仓库根 (测试用)")
+    ap.add_argument("--base", default=None,
+                    help="compare against a commit (e.g. v0.3.0-agent-query); default worktree")
     args = ap.parse_args()
 
     crapper = find_crapper()
@@ -237,7 +248,7 @@ def main() -> int:
         return 3
 
     repo = Path(args.repo).resolve()
-    result = run(repo, args.threshold, crapper)
+    result = run(repo, args.threshold, crapper, base=args.base)
 
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))

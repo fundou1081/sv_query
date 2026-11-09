@@ -386,6 +386,12 @@ P136 remaining real-use issues <已完成>
 -- P136.4 unknown machine flag <已完成>
 -- P136.5 solve…before / dist extraction <已完成>
 
+P137 discipline remediation <已完成>
+-- P137.1 semantic AST solve/dist (regex gate) <已完成>
+-- P137.2 FIFO edge visibility centralized <已完成>
+-- P137.3 warning/unknown/tb-join cleanup <已完成>
+-- P137.4 check_crap commit range <已完成>
+
 
 ## 已完成（保留最近记录，便于核查上一轮）
 

@@ -82,8 +82,8 @@ def test_bit_claim_unknown_when_only_parent_bus():
     d = _claim(STRUCT, type="bit", target="top.u.y[3]", source="top.u.a[3]")
     assert d["result"]["status"] == "unknown"
     assert d["result"]["machine"]["status"] == "unknown"
-    assert d["result"]["machine"]["unknown_kind"] in (
-        "unresolved_endpoint", "unverifiable")
+    assert d["result"]["machine"]["unknown_kind"] == "unverifiable"
+    assert d["result"]["machine"]["unresolved_endpoint"] is False
 
 
 def test_invalid_claim_is_explicit_error():
