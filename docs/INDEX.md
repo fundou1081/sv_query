@@ -132,6 +132,7 @@
 | [validation/OPENTITAN_INTAKE_RESULTS_2026-11-09.md](validation/OPENTITAN_INTAKE_RESULTS_2026-11-09.md) | **P125 intake results**: 6/6；discovery/verify/path 均通过 |
 | [validation/OPENTITAN_P127_2026-11-09.md](validation/OPENTITAN_P127_2026-11-09.md) | **P127 two more DV tasks**: initial 2/4；alias schema fix 4/4 |
 | [validation/FREEZE_V0_3_0_AGENT_QUERY_2026-11-09.md](validation/FREEZE_V0_3_0_AGENT_QUERY_2026-11-09.md) | **Freeze v0.3.0-agent-query**: baseline/tag/limits/rules |
+| [validation/FREEZE_SMOKE_2026-11-09.md](validation/FREEZE_SMOKE_2026-11-09.md) | **P129 freeze smoke**: clean tag clone + query/verify ✅ |
 | [validation/opentitan_intake/REPORT.md](validation/opentitan_intake/REPORT.md) | **P124 intake**: 3 个 OpenTitan DV 任务；discovery/verify/path |
 | [validation/opentitan_uart/WORKER_REPORT.md](validation/opentitan_uart/WORKER_REPORT.md) | **P118 worker onboarding**: filelist/snapshot/tasks/11 issues |
 | [validation/COMPARISON_RECORD_2026-11-05.md](validation/COMPARISON_RECORD_2026-11-05.md) | **对比结果冻结记录**: 哈希、模型、指标、单独复验脚本与已知缺陷 |
