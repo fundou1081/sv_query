@@ -1,0 +1,209 @@
+{
+  "protocol": "P125 independent OpenTitan DV intake tasks",
+  "note": "Adapted from worker DV intake; schemas fixed to avoid direct-driver/unknown/canonical ambiguities.",
+  "snapshot_dir_uart": "/tmp/opentitan_svq/snapshots",
+  "snapshot_dir_i2c": "/tmp/opentitan_svq_i2c/snapshots",
+  "source_root": "/Users/fundou/.dsh/opencode-workers-lite/opentitan-pilot/workspace",
+  "tasks": [
+    {
+      "id": "DV-UART-NOISEFILTER-DISCOVERY",
+      "kind": "discovery",
+      "snapshot": "opentitan_uart",
+      "snapshot_dir": "/tmp/opentitan_svq/snapshots",
+      "question": "I'm debugging the OpenTitan UART receive path. There is a control-register bit that selects between the raw synchronized RX input and a 3-tap repetition-code majority filter (it rejects glitches shorter than three IP clocks). Which register bit is it? Give the register bit name, the canonical control-bit id, the intermediate enable signal it drives, the mux output id, and the canonical path length from the control bit to the mux output. Use only svq_query; do not guess IDs.",
+      "expected": {
+        "register_bit": "CTRL.NF",
+        "canonical_signal_id": "uart.uart_core.reg2hw.ctrl.nf.q",
+        "intermediate_signal_id": "uart.uart_core.rxnf_enable",
+        "mux_output_signal_id": "uart.uart_core.rx_in_mx",
+        "hop_count": 3
+      }
+    },
+    {
+      "id": "DV-I2C-CONTROLLER-HALT-VERIFY",
+      "kind": "verify",
+      "snapshot": "opentitan_i2c",
+      "snapshot_dir": "/tmp/opentitan_svq_i2c/snapshots",
+      "question": "For the OpenTitan I2C, which CONTROLLER_EVENTS bits can drive the controller-halt status? Verify each of nack, unhandled_nack_timeout, bus_timeout, arbitration_lost as a direct driver of `i2c.i2c_core.status_controller_halt` and report its status. Also probe `i2c.i2c_core.reg2hw.controller_events.tx_pending.q`: if that node does not exist, report unknown (not contradicted). Return exactly {nack, unhandled_nack_timeout, bus_timeout, arbitration_lost, tx_pending}, each verified/contradicted/unknown.",
+      "expected": {
+        "nack": "verified",
+        "unhandled_nack_timeout": "verified",
+        "bus_timeout": "verified",
+        "arbitration_lost": "verified",
+        "tx_pending": "unknown"
+      }
+    },
+    {
+      "id": "DV-UART-SYSLOOPBACK-PATH",
+      "kind": "path",
+      "snapshot": "opentitan_uart",
+      "snapshot_dir": "/tmp/opentitan_svq/snapshots",
+      "question": "In OpenTitan UART system-loopback mode, trace the directed path from the transmitter serial output `uart.uart_core.tx_out` to the receiver input `uart.uart_core.rx_in`. Return the canonical ordered path, hop count, and whether the path bypasses the receiver input synchronizer `uart.uart_core.sync_rx` (true/false).",
+      "expected": {
+        "path": [
+          "uart.uart_core.tx_out",
+          "uart.uart_core.rx_in.ternary_sys_loopback",
+          "uart.uart_core.rx_in"
+        ],
+        "hop_count": 2,
+        "bypasses_input_synchronizer": true
+      }
+    }
+  ],
+  "results": [
+    {
+      "task_id": "DV-UART-NOISEFILTER-DISCOVERY",
+      "model": "MiniMax-M3",
+      "kind": "discovery",
+      "duration_ms": 96568,
+      "rc": 0,
+      "timeout": false,
+      "parsed": true,
+      "json_repaired": false,
+      "found": true,
+      "answer": {
+        "register_bit": "CTRL.NF",
+        "canonical_signal_id": "uart.uart_core.reg2hw.ctrl.nf.q",
+        "intermediate_signal_id": "uart.uart_core.rxnf_enable",
+        "mux_output_signal_id": "uart.uart_core.rx_in_mx",
+        "hop_count": 3
+      },
+      "confidence": "high",
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 56,
+      "workspace": "/tmp/opentitan_intake_agent/MiniMax-M3/DV-UART-NOISEFILTER-DISCOVERY",
+      "stderr": ""
+    },
+    {
+      "task_id": "DV-UART-NOISEFILTER-DISCOVERY",
+      "model": "DeepSeek-Flash",
+      "kind": "discovery",
+      "duration_ms": 50859,
+      "rc": 0,
+      "timeout": false,
+      "parsed": true,
+      "json_repaired": false,
+      "found": true,
+      "answer": {
+        "register_bit": "CTRL.NF",
+        "canonical_signal_id": "uart.uart_core.reg2hw.ctrl.nf.q",
+        "intermediate_signal_id": "uart.uart_core.rxnf_enable",
+        "mux_output_signal_id": "uart.uart_core.rx_in_mx",
+        "hop_count": 3
+      },
+      "confidence": "high",
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 28,
+      "workspace": "/tmp/opentitan_intake_agent/DeepSeek-Flash/DV-UART-NOISEFILTER-DISCOVERY",
+      "stderr": "  \"mux_output_signal_id\":\"uart.uart_core.rx_in_mx\",\n   \"hop_count\":3\n },\n \"confidence\":\"high\",\n \"evidence\":[...]\n}\n\nEvidence array: strings maybe. Use canonical IDs/paths. I'll include file paths? Evidence from tool had null file/line. I can list relevant tool facts as strings. Keep valid JSON. The template evidence is []. I'll add concise evidence items. Perhaps objects or strings. JSON valid either way. Let me include strings describing verify results and path.\n\nNo markdown. Return only JSON.\n"
+    },
+    {
+      "task_id": "DV-I2C-CONTROLLER-HALT-VERIFY",
+      "model": "MiniMax-M3",
+      "kind": "verify",
+      "duration_ms": 14893,
+      "rc": 0,
+      "timeout": false,
+      "parsed": true,
+      "json_repaired": false,
+      "found": true,
+      "answer": {
+        "nack": "verified",
+        "unhandled_nack_timeout": "verified",
+        "bus_timeout": "verified",
+        "arbitration_lost": "verified",
+        "tx_pending": "unknown"
+      },
+      "confidence": "high",
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 12,
+      "workspace": "/tmp/opentitan_intake_agent/MiniMax-M3/DV-I2C-CONTROLLER-HALT-VERIFY",
+      "stderr": ""
+    },
+    {
+      "task_id": "DV-I2C-CONTROLLER-HALT-VERIFY",
+      "model": "DeepSeek-Flash",
+      "kind": "verify",
+      "duration_ms": 20939,
+      "rc": 0,
+      "timeout": false,
+      "parsed": true,
+      "json_repaired": false,
+      "found": true,
+      "answer": {
+        "nack": "verified",
+        "unhandled_nack_timeout": "verified",
+        "bus_timeout": "verified",
+        "arbitration_lost": "verified",
+        "tx_pending": "unknown"
+      },
+      "confidence": "high",
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 14,
+      "workspace": "/tmp/opentitan_intake_agent/DeepSeek-Flash/DV-I2C-CONTROLLER-HALT-VERIFY",
+      "stderr": "both.\n\nLet me try: {type:'driver', signal:'i2c.i2c_core.status_controller_halt', driver:'i2c.i2c_core.reg2hw.controller_events.nack.q'}.\n\nAlso probe tx_pending node existence via fanin/fanout on it.\ndsh: reasoning:\ntx_pending node does not exist — report unknown. Now verify the remaining three with correct claim shape.\ndsh: reasoning:\nAll four verified. tx_pending unknown (node absent). Produce JSON.\n\nEvidence entries: canonical IDs. Use fanin evidence with signal and driver.\n\nConfidence: high.\n"
+    },
+    {
+      "task_id": "DV-UART-SYSLOOPBACK-PATH",
+      "model": "MiniMax-M3",
+      "kind": "path",
+      "duration_ms": 16882,
+      "rc": 0,
+      "timeout": false,
+      "parsed": true,
+      "json_repaired": false,
+      "found": true,
+      "answer": {
+        "path": [
+          "uart.uart_core.tx_out",
+          "uart.uart_core.rx_in.ternary_sys_loopback",
+          "uart.uart_core.rx_in"
+        ],
+        "hop_count": 2,
+        "bypasses_input_synchronizer": true
+      },
+      "confidence": "high",
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 14,
+      "workspace": "/tmp/opentitan_intake_agent/MiniMax-M3/DV-UART-SYSLOOPBACK-PATH",
+      "stderr": ""
+    },
+    {
+      "task_id": "DV-UART-SYSLOOPBACK-PATH",
+      "model": "DeepSeek-Flash",
+      "kind": "path",
+      "duration_ms": 23995,
+      "rc": 0,
+      "timeout": false,
+      "parsed": true,
+      "json_repaired": false,
+      "found": true,
+      "answer": {
+        "path": [
+          "uart.uart_core.tx_out",
+          "uart.uart_core.rx_in.ternary_sys_loopback",
+          "uart.uart_core.rx_in"
+        ],
+        "hop_count": 2,
+        "bypasses_input_synchronizer": true
+      },
+      "confidence": "high",
+      "exact": true,
+      "false_confident": false,
+      "false_found": false,
+      "tool_calls": 10,
+      "workspace": "/tmp/opentitan_intake_agent/DeepSeek-Flash/DV-UART-SYSLOOPBACK-PATH",
+      "stderr": " for path claim maybe. Try claim {\"type\":\"path\",\"signal\":\"uart.uart_core.tx_out\",\"dst\":\"uart.uart_core.rx_in\"}.\ndsh: reasoning:\nLet me try {type:\"path\", from, to}.\ndsh: reasoning:\nNow output one valid JSON object, no markdown. Provide path, hop_count 2, bypasses true, confidence high, evidence array.\n\nEvidence can include the verify evidence plus fanin/fanout conditions. Must be valid JSON. I'll produce compact-ish.\n\nNote \"Return ONE valid JSON object, no markdown\". So final response only JSON.\n"
+    }
+  ]
+}
