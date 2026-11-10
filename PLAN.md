@@ -435,6 +435,7 @@ P146 real-project agent matrix <已完成>
 -- P146.2 UART real-task matrix <已完成>
 -- P146.3 schema/UX adversarial matrix <已完成>
 -- P146.4 issue triage + fixes <已完成>
+-- P146.5 late UART BLOCK findings <已完成>
 
 P147 third block SPI_HOST <已完成>
 -- P147.1 snapshot/filelist <已完成>

@@ -227,6 +227,8 @@
 #### `paths`
 - **canonical 字段**: `--canonical` 追加 `canonical_policy` 与
   `candidate_count`；默认不加。
+- **无向爆炸**: 默认无向，`--max-depth` 默认 50；大规模设计优先
+  `--directed --canonical`，否则搜索空间指数增长。
 - **解决**: 两个信号之间是否存在结构路径；默认无向（逆流也可达），
   `--directed` 只沿数据流方向。
 - **输入**: `paths <src> <dst> [--all] [--directed] [--canonical]
@@ -243,6 +245,8 @@
 - **例**: `sv_query paths top.a top.y --directed --filelist rtl.f --json`
 
 #### `dataflow analyze`
+- **端点合同**: 返回路径最后一项必须等于请求 dst；父/BIT_SELECT 候选
+  不得伪装成到达目标。
 - **解决**: 源→目标的有向数据流：路径、条件、时钟域、寄存器边界
   延迟、异步跨越、timing risk。
 - **输入**: `dataflow analyze <from> <to> [--max-paths N] [--bits s,d]

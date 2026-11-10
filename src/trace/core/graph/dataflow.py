@@ -659,6 +659,9 @@ class DataFlowGraph:
 
         # 1. 查找所有路径
         paths = self._find_paths(from_signal, to_signal)
+        # Endpoint fidelity: parent/BIT_SELECT alternative targets must not be
+        # reported as if they reached the requested destination.
+        paths = [p for p in paths if p and p[-1] == to_signal]
 
         if not paths:
             return DataFlowResult(from_signal=from_signal, to_signal=to_signal, is_reachable=False, paths_count=0)
