@@ -354,8 +354,8 @@ def consistency_cmd(
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str = typer.Option(None, "--filelist", help="filelist (.f/.fl) for multi-file projects"),
     from_snapshot: str = typer.Option(None, "--from-snapshot",
-                                      help="load SignalGraph from saved snapshot; "
-                                           "connection check is unknown (no MIG in snapshot)"),
+                                      help="load snapshot graph; connection check runs when "
+                                           "module_graph is present, legacy snapshots report unknown"),
     checks: str = typer.Option("reciprocity,bit,connection", "--checks",
                                help="comma-separated: reciprocity,bit,connection"),
     signal: str = typer.Option(None, "--signal", "-s", help="limit reciprocity/bit check to one signal"),
