@@ -493,3 +493,4 @@ Open-source project visualization is **correct and verified**. Ready for next ta
 | **356** | **2026-11-09** | **L2** | **P143 agent feature map (iter_457)** | 方豆: worker 盘点 | 40/40 core schema 命令 | 9 个 unresolved 明确记录 | **✅ 完成** |
 | **357** | **2026-11-09** | **L2** | **P144 schema resolutions (iter_458)** | 方豆: 先处理这些 | 9 个歧义全部有合同 | 无未登记歧义 | **✅ 完成** |
 | **358** | **2026-11-10** | **L2** | **P145 validation baseline (iter_459)** | 方豆: 做吧 | full gate + 15 agent tasks | 环境依赖显式 | **✅ 完成** |
+| **359** | **2026-11-10** | **L2** | **P146 real matrix (iter_461)** | 方豆: 几个 worker 一起 | I2C/UART real tasks + 15 issues | 高/中已修；低记录 | **✅ 完成** |

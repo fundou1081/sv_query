@@ -1478,6 +1478,9 @@ class SignalTracer:
             max_depth: None=无限递归, N=最多递归 N 层
             allowed_kinds: [Req-12] 允许的边类型集合, None=默认 DRIVER+CONNECTION
         """
+        _node = self.graph.get_node(signal_id) if signal_id in self.graph.nodes() else None
+        if _node is not None and _node.kind == NodeKind.CONST:
+            return []  # constants have no loads; do not fan out from literals
         loads = []
         seen_ids = set()
         if allowed_kinds is None:

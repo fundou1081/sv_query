@@ -53,9 +53,13 @@ def _probes_for_node(graph, node: str, instance: str) -> tuple[str, list[str]]:
     kind = getattr(getattr(nd, "kind", None), "name", "")
     owner = _owner(node) if kind.startswith("PORT") else ""
     if owner:
-        return owner, [f"connections {owner}", f"instances {owner}",
-                       f"ports {owner}"]
-    return "", [f"drivers {node}", f"loads {node}", f"evidence {node}"]
+        onode = graph.get_node(owner) if hasattr(graph, "get_node") else None
+        if (onode is not None
+                and getattr(onode.kind, "name", "") == "INSTANTIATED_MODULE"):
+            return owner, [f"connections {owner}", f"instances {owner}",
+                           f"ports {owner}"]
+    return "", [f"drivers {node}", f"loads {node}",
+                   f"trace evidence {node}"]
 
 
 def _boundary(graph, node: str, direction: str, path: list[str],

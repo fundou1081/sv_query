@@ -16,8 +16,8 @@ python3 -m pytest sim/tests/ -m "not opensource" -q -p no:randomly
 实测：
 
 ```text
-2615 passed, 12 skipped, 119 deselected, 35 subtests passed (main checkout)
-2614 passed, 13 skipped (foreign worktree without pico fallback)
+canonical run green (main checkout; current count only in INDEX)
+foreign worktree green with explicit skips; counts differ by one pico test
 0 failed / 0 errors
 ~559s
 ```
