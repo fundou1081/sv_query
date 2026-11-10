@@ -150,6 +150,8 @@ COMMANDS: list[CommandSpec] = [
     _c("trace tb-join", "semantic", cost="cheap",
        note="TB random field → RTL snapshot candidate join "
             "(name-based; single_candidate 不是连接证明)"),
+    _c("trace frontier", "semantic", cost="cheap",
+       note="结构 trace 的边界/断点 + 下一步 probe；不分类 FIFO"),
     _c("trace covergroups", "semantic", cost="cheap",
        note="[P63] 列出 covergroup 定义 (可按 class 过滤)"),
     _c("trace coverpoints", "semantic", cost="cheap",
@@ -266,7 +268,7 @@ _TRACE_KEYS = {
     "drivers", "loads", "trace fanin", "trace fanout", "trace impact",
     "trace evidence", "trace profile", "trace lookup", "trace manifest",
     "trace constraints", "trace constraint-neighborhood", "trace tb-join",
-    "trace covergroups", "trace coverpoints", "trace covergroup",
+    "trace frontier", "trace covergroups", "trace coverpoints", "trace covergroup",
     "paths", "dataflow analyze", "controlflow analyze", "controlflow list-conditioned",
 }
 _VERIFY_KEYS = {"verify consistency", "verify claim", "verify structural"}
@@ -566,6 +568,9 @@ JSON_CONTRACT = {
         "trace tb-join": {
             "result_fields": ["tb_field", "leaf", "constraints", "join_status",
                               "rtl_candidates", "note"],
+        },
+        "trace frontier": {
+            "result_fields": ["signal", "frontier", "summary", "note"],
         },
         "trace covergroups": {
             "result_fields": ["count", "covergroups"],
