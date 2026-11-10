@@ -15,7 +15,7 @@ class TestAgentTaskRegression(unittest.TestCase):
                               capture_output=True, text=True, cwd=_ROOT)
         self.assertEqual(0, proc.returncode, proc.stdout[-2000:] + proc.stderr[-1000:])
         data = json.loads(proc.stdout)
-        self.assertEqual(13, data['tasks'])
+        self.assertEqual(15, data['tasks'])
         self.assertEqual(data['tasks'], data['passed'])
         self.assertEqual(0, data['failed'])
         self.assertEqual(0, data['false_confident'])
@@ -23,9 +23,9 @@ class TestAgentTaskRegression(unittest.TestCase):
         self.assertEqual({'deep_path', 'deep_reverse', 'dataflow_deep',
                           'verify_deep', 'constraint_chain',
                           'constraint_not_random', 'constraint_unknown',
-                          'frontier', 'boundary_trace', 'boundary_empty',
+                          'verify_unknown', 'frontier', 'boundary_trace', 'boundary_empty',
                           'schema_envelope', 'neighborhood_truncated',
-                          'coverage_reason'},
+                          'coverage_unknown', 'coverage_reason'},
                          {r['task'] for r in data['results']})
 
 

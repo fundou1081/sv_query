@@ -492,4 +492,4 @@ Open-source project visualization is **correct and verified**. Ready for next ta
 | **355** | **2026-11-09** | **L2** | **P142 constraint chain (iter_456)** | 方豆: random 变量链 | `trace constraint-chain` | 非 solver 证明 | **✅ 完成** |
 | **356** | **2026-11-09** | **L2** | **P143 agent feature map (iter_457)** | 方豆: worker 盘点 | 40/40 core schema 命令 | 9 个 unresolved 明确记录 | **✅ 完成** |
 | **357** | **2026-11-09** | **L2** | **P144 schema resolutions (iter_458)** | 方豆: 先处理这些 | 9 个歧义全部有合同 | 无未登记歧义 | **✅ 完成** |
-| **358** | **2026-11-10** | **L2** | **P145 validation baseline (iter_459)** | 方豆: 做吧 | full gate skip + 13 agent tasks | 环境依赖显式 | **进行中** |
+| **358** | **2026-11-10** | **L2** | **P145 validation baseline (iter_459)** | 方豆: 做吧 | full gate + 15 agent tasks | 环境依赖显式 | **✅ 完成** |
