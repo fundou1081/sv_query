@@ -416,6 +416,10 @@ P142 random constraint chain <已完成>
 -- P142.1 trace constraint-chain <已完成>
 -- P142.2 chain schema/tests <已完成>
 
+P143 agent feature inventory <已完成>
+-- P143.1 40 core JSON command map <已完成>
+-- P143.2 schema/caveat/unresolved inventory <已完成>
+
 
 ## 已完成（保留最近记录，便于核查上一轮）
 

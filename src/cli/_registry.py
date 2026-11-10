@@ -269,8 +269,8 @@ _SCOPE_KEYS = {
 _TRACE_KEYS = {
     "drivers", "loads", "trace fanin", "trace fanout", "trace impact",
     "trace evidence", "trace profile", "trace lookup", "trace manifest",
-    "trace constraints", "trace constraint-neighborhood", "trace tb-join",
-    "trace frontier", "trace covergroups", "trace coverpoints", "trace covergroup",
+    "trace constraints", "trace constraint-neighborhood", "trace constraint-chain",
+    "trace tb-join", "trace frontier", "trace covergroups", "trace coverpoints", "trace covergroup",
     "paths", "dataflow analyze", "controlflow analyze", "controlflow list-conditioned",
 }
 _VERIFY_KEYS = {"verify consistency", "verify claim", "verify structural"}
