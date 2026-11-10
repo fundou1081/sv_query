@@ -495,3 +495,4 @@ Open-source project visualization is **correct and verified**. Ready for next ta
 | **358** | **2026-11-10** | **L2** | **P145 validation baseline (iter_459)** | 方豆: 做吧 | full gate + 15 agent tasks | 环境依赖显式 | **✅ 完成** |
 | **359** | **2026-11-10** | **L2** | **P146 real matrix (iter_461)** | 方豆: 几个 worker 一起 | I2C/UART real tasks + 15 issues | 高/中已修；低记录 | **✅ 完成** |
 | **360** | **2026-11-10** | **L2** | **P147 SPI_HOST (iter_462)** | 方豆: 去做吧 | 7,619 nodes / 6 tasks | 外部 fixture | **✅ 完成** |
+| **361** | **2026-11-10** | **L2** | **P148 verify width (iter_463)** | worker SPI finding | 718→171 bit violations | id_parent 未修 | **✅ 完成** |

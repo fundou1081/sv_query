@@ -261,7 +261,14 @@ def _check_bit_mapping(graph, signals: list[str] | None) -> dict:
                 # but record if width disagrees below.
                 pass
             if node.width and node.width[0] is not None and node.width[1] is not None:
-                nbits = abs(int(node.width[0]) - int(node.width[1])) + 1
+                # A single-bit slice has no real msb/lsb width; graph nodes
+                # may store the (1,0) default sentinel.  Prefer the explicit
+                # bit_range / single-bit parent span in that case.
+                if ((node.bit_range and ":" not in node.bit_range)
+                        or node.parent_bit_start == node.parent_bit_end):
+                    nbits = 1
+                else:
+                    nbits = abs(int(node.width[0]) - int(node.width[1])) + 1
                 want = abs(node.parent_bit_end - node.parent_bit_start) + 1
                 if nbits != want:
                     violations.append({"check": "bit_mapping", "kind": "width_mismatch",

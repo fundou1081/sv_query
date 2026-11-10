@@ -442,6 +442,10 @@ P147 third block SPI_HOST <已完成>
 -- P147.2 SPI task matrix <已完成>
 -- P147.3 worker validation <已完成>
 
+P148 verify consistency single-bit width <已完成>
+-- P148.1 bit_range sentinel fix <已完成>
+-- P148.2 SPI regression <已完成>
+
 
 ## 已完成（保留最近记录，便于核查上一轮）
 
