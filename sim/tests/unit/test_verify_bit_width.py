@@ -23,6 +23,18 @@ class TestVerifyBitWidth(unittest.TestCase):
         result = _check_bit_mapping(g, ["top.bus[3]"])
         self.assertEqual([], result["violations"])
 
+    def test_generate_bracket_in_ancestor_is_not_parent_mismatch(self):
+        g = SignalGraph()
+        parent = TraceNode(id="top.gen[0].u", name="u", module="top",
+                           kind=NodeKind.INSTANTIATED_MODULE, width=(0, 0))
+        child = TraceNode(id="top.gen[0].u.cfg", name="cfg", module="top",
+                          kind=NodeKind.SIGNAL, width=(0, 0),
+                          parent="top.gen[0].u")
+        g.add_trace_node(parent)
+        g.add_trace_node(child)
+        result = _check_bit_mapping(g, ["top.gen[0].u.cfg"])
+        self.assertEqual([], result["violations"])
+
     def test_real_multi_bit_range_still_checks_width(self):
         g = SignalGraph()
         parent = TraceNode(id="top.bus", name="bus", module="top",
