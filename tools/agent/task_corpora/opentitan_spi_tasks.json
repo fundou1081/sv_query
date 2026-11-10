@@ -1,0 +1,98 @@
+{
+  "meta": {
+    "block": "spi_host",
+    "snapshot": "opentitan_spi",
+    "snapshot_dir": "/tmp/opentitan_svq_spi/snapshots",
+    "source_root": "/Users/fundou/.dsh/opencode-workers-lite/opentitan-pilot/workspace",
+    "filelist": "/tmp/opentitan_svq_spi/opentitan_spi.clean.f",
+    "top": "spi_host",
+    "note": "P147 third-block smoke matrix; expected values captured by main from the snapshot, worker must independently verify."
+  },
+  "tasks": [
+    {
+      "id": "SPI-T1",
+      "kind": "direct_neighbors",
+      "signal": "spi_host.u_reg.intr_test_qe",
+      "expected": {
+        "driver_count": 1,
+        "load_count": 2
+      }
+    },
+    {
+      "id": "SPI-T2",
+      "kind": "directed_path",
+      "from": "spi_host.u_spi_core.u_fsm.sck_o",
+      "to": "spi_host.cio_sck_o",
+      "expected": {
+        "found": true,
+        "hop_count": 4,
+        "candidate_count": 2
+      }
+    },
+    {
+      "id": "SPI-T3",
+      "kind": "verify_path",
+      "from": "spi_host.u_spi_core.u_fsm.sck_o",
+      "to": "spi_host.cio_sck_o",
+      "expected": {
+        "status": "verified"
+      }
+    },
+    {
+      "id": "SPI-T4",
+      "kind": "verify_driver",
+      "signal": "spi_host.cio_sck_o",
+      "driver": "spi_host.u_spi_core.u_fsm.sck_o",
+      "expected": {
+        "status": "contradicted"
+      }
+    },
+    {
+      "id": "SPI-T5",
+      "kind": "frontier",
+      "signal": "spi_host.u_data_fifos.u_tx_fifo.wdata_i",
+      "expected": {
+        "frontier_count_gte": 1,
+        "note": "generic frontier; no FIFO classification"
+      }
+    },
+    {
+      "id": "SPI-T6",
+      "kind": "unknown",
+      "signal": "spi_host.no_such_signal",
+      "expected": {
+        "ok": false,
+        "error_contains": "not found"
+      }
+    },
+    {
+      "id": "SPI-T7",
+      "kind": "directed_path",
+      "from": "spi_host.pt_sck",
+      "to": "spi_host.cio_sck_o",
+      "expected": {
+        "found": true,
+        "hop_count": 2,
+        "candidate_count": 2
+      }
+    },
+    {
+      "id": "SPI-T8",
+      "kind": "direct_neighbors",
+      "signal": "spi_host.u_data_fifos.u_rx_fifo.rdata_o",
+      "expected": {
+        "driver_count": 1,
+        "load_count": 8
+      }
+    },
+    {
+      "id": "SPI-T9",
+      "kind": "consistency_connection",
+      "expected": {
+        "status": "pass",
+        "checked": 1734,
+        "violations": 0
+      }
+    }
+  ]
+}

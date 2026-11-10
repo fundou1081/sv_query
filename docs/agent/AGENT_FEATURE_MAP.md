@@ -384,7 +384,9 @@
 - **例**: `sv_query verify consistency --filelist rtl.f --json`
 
 #### `verify claim`
-- **已知边界**: `driver` 与 `path` 对同一声明可能给出不同结论；例如顶层
+- **已知边界**: `trace_fanin(depth=None)` 可能漏掉带 internal self-loop 的
+  PORT_OUT，导致 `--transitive` 假 contradicted（见 P152 N-2）。`driver` 与
+  `path` 对同一声明也可能给出不同结论；例如顶层
   bitwise-NOT 后 `driver` 为 contradicted、`path` 为 verified。不要把
   `driver contradicted` 单独解释成“没有连接”。
 - **解决**: 验证一条 claim（driver/path/connection/bit），输出
