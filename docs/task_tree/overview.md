@@ -484,3 +484,4 @@ Open-source project visualization is **correct and verified**. Ready for next ta
 | **347** | **2026-11-09** | **L2** | **Discipline remediation (iter_449)** | worker audit BLOCK | F1–F14 修复/记录 | F15 check_crap range 未改 | **✅ 完成** |
 | **348** | **2026-11-09** | **L2** | **P137 discipline remediation (iter_449)** | worker audit BLOCK | F1–F15 修复/记录 | O(E²) nit 保留 | **✅ 完成** |
 | **349** | **2026-11-09** | **L2** | **P138 project adaptation policy (iter_450)** | 方豆: 按方案 A | 自动 FIFO 删除；外部模板 | core 不自动跨 FIFO | **✅ 完成** |
+| **350** | **2026-11-09** | **L2** | **P139 guided frontier (iter_451)** | 方豆: 逐级 trace | `trace frontier` + agent protocol | 不自动分类 FIFO | **✅ 完成** |

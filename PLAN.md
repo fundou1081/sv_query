@@ -397,6 +397,11 @@ P138 Project adaptation policy <已完成>
 -- P138.2 external adapter template <已完成>
 -- P138.3 retain parent bus / bit aggregation <已完成>
 
+P139 boundary-aware guided trace <已完成>
+-- P139.1 trace frontier command <已完成>
+-- P139.2 guided trace protocol <已完成>
+-- P139.3 tests <已完成>
+
 
 ## 已完成（保留最近记录，便于核查上一轮）
 

@@ -1,14 +1,14 @@
 # CLI 能力清单 (生成物 — 请勿手改)
 
 > **生成方式**: `python3 tools/gen_cli_surface.py`  (数据源: `src/cli/_registry.py` + typer introspection)
-> **生成日期**: 2026-11-09  |  **漂移校验**: `python3 tools/gen_cli_surface.py --check`
+> **生成日期**: 2026-11-10  |  **漂移校验**: `python3 tools/gen_cli_surface.py --check`
 > **分层检查**: `python3 tools/check_cli_layers.py` (R1~R6)
 
 ## 总览
 
-- 叶子命令总数: **43**
-- 按层: `core`=38, `exp`=5
-- core 内分组: `semantic`=23, `verify`=3, `scope`=1, `locate`=7, `state`=4
+- 叶子命令总数: **44**
+- 按层: `core`=39, `exp`=5
+- core 内分组: `semantic`=24, `verify`=3, `scope`=1, `locate`=7, `state`=4
 
 | 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | schema | 说明 |
 |---|---|---|---|---|---|---|
@@ -18,7 +18,7 @@
 | `dev` | dev | none | ✅ | — | — | 开发者内部调试 (当前无命令; expression 已于 iter_252 归档) |
 | `out` | none | none | ✅ | — | — | 移出 CLI (会写 RTL/项目文件) → tools/; 不算产品命令 |
 
-## `core` (38 个)
+## `core` (39 个)
 
 | 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
 |---|---|---|---|---|---|---|---|---|---|
@@ -48,6 +48,7 @@
 | `trace covergroups` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | [P63] 列出 covergroup 定义 (可按 class 过滤) |
 | `trace coverpoints` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | [P63] 反向查询: 信号被哪些 covergroup/coverpoint 采样 |
 | `trace evidence` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 源码证据 (always/if 块原文) |
+| `trace frontier` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | 结构 trace 的边界/断点 + 下一步 probe；不分类 FIFO |
 | `trace impact` | — | — | semantic | fact | expensive | ✅ | ✅ | ✅ | 传递影响 + 启发式风险分 (未标定, 仅用于同一图内相对排序; 见 KNOWN_LIMITATIONS §3.4) |
 | `trace lookup` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | 完整 RTL hier path → canonical id (严格; $root/位父回退/aliases; 不做模糊后缀) |
 | `trace manifest` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 批量 waveform manifest: full path → canonical + profile (type/bit/clock/reset/stage) |
