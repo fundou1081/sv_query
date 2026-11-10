@@ -3,7 +3,7 @@
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **可视化计划**: [structural_review_plan_2026-11-02](docs/architecture/structural_review_plan_2026-11-02.md) — 全设计图退役；动态子图 + 局部 review。
-> **最后更新**: 2026-11-09 GMT+8 (P139 frontier)
+> **最后更新**: 2026-11-09 GMT+8 (P140 boundary trace)
 
 ---
 
@@ -29,7 +29,7 @@
 
 - **分支**: `main`；最新提交以 `git log -1` 为准
 - **全量基线**: 见 [docs/INDEX.md 当前基线](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里)（单一真相源，本文不写死计数）
-- **命令面**: 43 命令 = core 38 + exp 5（class/constraint/covergroup/architecture）
+- **命令面**: 44 命令 = core 39 + exp 5（class/constraint/covergroup/architecture）
 - **当前重点**: 文档/运维刷新完成（P126）；核心 query/verify 已在真实项目闭环，下一步不是加功能
 
 ---
@@ -58,6 +58,7 @@
 | P137 | discipline remediation | 门禁恢复；F1–F15 |
 | P138 | project adaptation policy | 删除自动 FIFO 推断；外部 adapter 模板 |
 | P139 | boundary-aware guided trace | `trace frontier`；不分类 FIFO |
+| P140 | explicit-boundary guided trace | 外部 map 跑通 I2C S1；core 不变 |
 
 详见 [P125 intake results](docs/validation/OPENTITAN_INTAKE_RESULTS_2026-11-09.md)。
 

@@ -403,6 +403,11 @@ P139 boundary-aware guided trace <已完成>
 -- P139.3 tests <已完成>
 -- P139.4 worker validation nits <已完成>
 
+P140 explicit-boundary guided trace <已完成>
+-- P140.1 external boundary runner <已完成>
+-- P140.2 I2C S1 replay <已完成>
+-- P140.3 negative tests <已完成>
+
 
 ## 已完成（保留最近记录，便于核查上一轮）
 
