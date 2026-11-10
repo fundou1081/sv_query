@@ -33,8 +33,8 @@ def test_extract_json_from_fenced_block():
 
 def test_workspace_filelist_is_local(tmp_path):
     m = _load()
-    if not (Path("/tmp/lr_pilot/axi")).is_dir():
-        pytest.skip("pilot source not available")
+    if not list(Path("/tmp/lr_pilot/axi").glob("*.v")):
+        pytest.skip("pilot .v sources not available")
     fl = m._copy_design("axi", tmp_path)
     text = fl.read_text()
     assert "/tmp/lr_pilot" not in text
@@ -62,6 +62,8 @@ def test_fact_check_matches_pico_ground_truth(tmp_path):
 
 def test_fact_check_serv_path(tmp_path):
     m = _load()
+    if not list(Path("/tmp/lr_pilot/serv").glob("*.v")):
+        pytest.skip("pilot serv .v sources not available")
     import json
     tasks = json.loads((ROOT / "tools" / "benchmark" / "long_range_tasks.json").read_text())["tasks"]
     task = next(t for t in tasks if t["id"] == "serv_clk_path")
