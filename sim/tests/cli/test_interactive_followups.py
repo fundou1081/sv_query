@@ -41,9 +41,10 @@ def test_controlflow_without_edges_is_unknown(tmp_path):
     p = tmp_path / "t.sv"
     p.write_text("module top(input a, b, output y); assign y = a; endmodule\n")
     r = _run("controlflow", "analyze", "top.nope", "-f", str(p))
-    assert r.returncode == 0
-    res = json.loads(r.stdout)["result"]
-    assert res["condition_status"] == "unknown"
+    assert r.returncode == 1
+    data = json.loads(r.stdout)
+    assert data["ok"] is False
+    assert "signal not found" in data["error"]
 
 
 def test_class_relative_name_and_instance_scope_hints():

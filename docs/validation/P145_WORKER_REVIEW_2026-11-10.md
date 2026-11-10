@@ -10,7 +10,7 @@
 
 ```text
 agent corpus: 15 tasks / 15 passed / 0 false_confident / 0 false_found
-full gate: green in worker worktree (0 failed / 0 errors); final main: 2615 passed / 12 skipped after N3 coverage fix
+full gate: green in worker worktree (0 failed / 0 errors); final main green after N3 coverage fix (current count in INDEX)
 ```
 
 ## Worker 发现并修复
