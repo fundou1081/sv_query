@@ -87,7 +87,7 @@ class ConstraintTracer:
             current = queue.pop(0)
             self._expand_constraint_node(
                 current, nodes, queue, relations, max_depth, max_nodes)
-        return self._build_neighborhood(root, nodes, relations)
+        return self._build_neighborhood(root, nodes, relations, bool(queue))
 
     def _expand_constraint_node(self, current: str, nodes: dict, queue: list,
                                 relations: dict, max_depth: int,
@@ -131,8 +131,8 @@ class ConstraintTracer:
                     nodes[a]["blocks"].append(block)
 
     @staticmethod
-    def _build_neighborhood(root: str, nodes: dict,
-                            relations: dict) -> dict:
+    def _build_neighborhood(root: str, nodes: dict, relations: dict,
+                            truncated: bool = False) -> dict:
         out_nodes = []
         for node in nodes.values():
             node["block_count"] = len(node["blocks"])
@@ -155,6 +155,7 @@ class ConstraintTracer:
             "direct_degree": direct,
             "reachable_count": len(out_nodes) - 1,
             "max_depth": max((n["depth"] for n in out_nodes), default=0),
+            "truncated": truncated,
             "degree_centrality": round(direct / total, 4),
             "importance_metrics": {
                 "block_count": root_node["block_count"],

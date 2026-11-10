@@ -420,6 +420,11 @@ P143 agent feature inventory <已完成>
 -- P143.1 40 core JSON command map <已完成>
 -- P143.2 schema/caveat/unresolved inventory <已完成>
 
+P144 schema ambiguity resolution <已完成>
+-- P144.1 envelope/direct + readonly/write_scope <已完成>
+-- P144.2 optional/null + errors union <已完成>
+-- P144.3 constraint id/truncated + coverage reason <已完成>
+
 
 ## 已完成（保留最近记录，便于核查上一轮）
 

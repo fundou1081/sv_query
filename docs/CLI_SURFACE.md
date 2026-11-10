@@ -12,7 +12,7 @@
 
 | 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | schema | 说明 |
 |---|---|---|---|---|---|---|
-| `core` | agent | stable | ✅ | ✅ | 1 | agent 一等公民: 只读 + JSON + 稳定 schema |
+| `core` | agent | stable | ✅ | ✅ | 1 | agent 一等公民: 只读 + JSON + 稳定 schema; readonly = 不改 RTL/项目文件, cache/output 由 write_scope 标记 |
 | `view` | human | stable | ✅ | — | — | 人眼面 (图/叙述); 默认含于 capabilities, 后续重点开发 |
 | `exp` | none | unstable | ✅ | — | — | 降级区: 规范入口 svq exp <组> <子> (老路径为别名); 无 schema 承诺, 只修 bug; --include-exp 才列出 |
 | `dev` | dev | none | ✅ | — | — | 开发者内部调试 (当前无命令; expression 已于 iter_252 归档) |
@@ -31,7 +31,7 @@
 | `stats` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ |  |
 | `scope` | — | — | scope | fact | cheap | ✅ | ✅ | ✅ | [规范入口] scope 聚合: 类型/父/子/端口/参数 (入口层, 不做因果追踪) |
 | `class` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 不给 name → 列出所有 class; 给了 → 成员(类型级)+实例(实例级); --member 查某成员实例 |
-| `connections` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | [规范入口] 连接: 实例→端口↔内部信号 / 模块→四类边+置信度 (输出带 resolved_as) |
+| `connections` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | [规范入口] 连接: 仅接受实例路径 → 端口↔内部信号 (输出带 resolved_as; 模块类型明确报错) |
 | `controlflow analyze` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 信号的驱动条件分析; --conditions-only 只要扁平条件列表 (原 controlflow conditions) |
 | `controlflow list-conditioned` | — | — | semantic | fact | expensive | ✅ | ✅ | ✅ | 列出所有带条件驱动的信号 (枚举, 用于找入口) |
 | `dataflow analyze` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 源→目标路径 (有向, 跨模块; 实例级 id; 与 paths --directed 结论一致) |
