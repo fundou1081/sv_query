@@ -470,6 +470,10 @@ P154 snapshot-executable frontier probes <已完成>
 -- P154.1 snapshot instances/connections/ports <已完成>
 -- P154.2 probe suffix + regression <已完成>
 
+P155 reciprocity BIT_SELECT false positives <已完成>
+-- P155.1 data-edge-only reciprocity <已完成>
+-- P155.2 regression test <已完成>
+
 
 ## 已完成（保留最近记录，便于核查上一轮）
 

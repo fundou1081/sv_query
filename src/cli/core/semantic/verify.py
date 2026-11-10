@@ -117,6 +117,12 @@ def _is_bit_like(node) -> bool:
     return bool(re.search(r"\[[^\]]+\]$", getattr(node, "id", "") or ""))
 
 
+def _has_data_edge(graph, a: str, b: str) -> bool:
+    """Reciprocity is defined on DRIVER/CONNECTION edges only."""
+    return any(e.kind.name in ("DRIVER", "CONNECTION")
+               for e in graph.get_edges(a, b))
+
+
 def _check_reciprocity(tracer, graph, signals: list[str] | None,
                        max_nodes: int, full: bool = False) -> dict:
     """全图/抽样 reciprocity。
@@ -184,6 +190,8 @@ def _check_reciprocity(tracer, graph, signals: list[str] | None,
                     or getattr(d_node, "parent", None) == n):
                 excluded["bit_like"] += 1
                 continue
+            if not _has_data_edge(graph, d, n):
+                continue  # BIT_SELECT/hierarchy edge, not a data-flow pair
             d_out = _fanout(d)
             if n not in d_out:
                 violations.append({"check": "reciprocity", "kind": "fanin_not_reciprocal",
@@ -200,6 +208,8 @@ def _check_reciprocity(tracer, graph, signals: list[str] | None,
                     or getattr(l_node, "parent", None) == n):
                 excluded["bit_like"] += 1
                 continue
+            if not _has_data_edge(graph, n, l):
+                continue  # BIT_SELECT/hierarchy edge, not a data-flow pair
             l_in = _fanin(l)
             if n not in l_in:
                 violations.append({"check": "reciprocity", "kind": "fanout_not_reciprocal",

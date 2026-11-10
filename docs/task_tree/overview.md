@@ -502,3 +502,4 @@ Open-source project visualization is **correct and verified**. Ready for next ta
 | **365** | **2026-11-10** | **L2** | **P152 SPI corpus (iter_467)** | 方豆: 先 p152 | 9 tasks / 16 assertions | APPROVE WITH NITS | **✅ 完成** |
 | **366** | **2026-11-10** | **L2** | **P153 transitive fanin (iter_468)** | P152 N-2 | wrapper PORT_OUT 保留 | depth=1 不变 | **✅ 完成** |
 | **367** | **2026-11-10** | **L2** | **P154 snapshot probes (iter_469)** | P152 N-3 | probes 带 snapshot tag 且可执行 | 旧 snapshot 仍限制 | **✅ 完成** |
+| **368** | **2026-11-10** | **L2** | **P155 reciprocity (iter_470)** | P152 observation | SPI 128→0 | 真数据边仍检查 | **✅ 完成** |
