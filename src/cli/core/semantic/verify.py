@@ -348,6 +348,9 @@ def _check_connections(tracer, graph) -> dict:
 def consistency_cmd(
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str = typer.Option(None, "--filelist", help="filelist (.f/.fl) for multi-file projects"),
+    from_snapshot: str = typer.Option(None, "--from-snapshot",
+                                      help="load SignalGraph from saved snapshot; "
+                                           "connection check is unknown (no MIG in snapshot)"),
     checks: str = typer.Option("reciprocity,bit,connection", "--checks",
                                help="comma-separated: reciprocity,bit,connection"),
     signal: str = typer.Option(None, "--signal", "-s", help="limit reciprocity/bit check to one signal"),
@@ -359,7 +362,7 @@ def consistency_cmd(
 ) -> None:
     """双向一致性检查：fanin/fanout、bit mapping、connection。"""
     try:
-        tracer = _build(file, filelist, log_level)
+        tracer = _build(file, filelist, log_level, from_snapshot=from_snapshot)
         graph = tracer.get_graph()
         wanted = [c.strip() for c in checks.split(",") if c.strip()]
         unknown = [c for c in wanted if c not in ("reciprocity", "bit", "connection")]
@@ -392,6 +395,7 @@ def consistency_cmd(
             "ok": True,
             "command": "verify_consistency",
             "params": {"file": str(file) if file else None, "filelist": filelist,
+                       "from_snapshot": from_snapshot,
                        "checks": wanted, "signal": signal, "max_nodes": max_nodes,
                        "full": full},
             "result": {
