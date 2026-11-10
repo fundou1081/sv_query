@@ -15,10 +15,13 @@
 - 不创建图边、不修改 core、不自动发现 FIFO。
 
 ```bash
-python3 examples/project_adaptations/opentitan_fifo/trace_with_map.py \
+# filelist 路径相对于 OpenTitan source root
+cd /path/to/opentitan
+python3 /path/to/sv_query/examples/project_adaptations/opentitan_fifo/trace_with_map.py \
   i2c.i2c_core.reg2hw.fdata.nakok.q \
   i2c.i2c_core.fmt_flag_nak_ok \
-  --filelist /tmp/opentitan_svq_i2c/opentitan_i2c.f
+  --filelist /tmp/opentitan_svq_i2c/opentitan_i2c.f \
+  --map /path/to/sv_query/examples/project_adaptations/opentitan_fifo/boundary_map.json
 ```
 
 ## 2. I2C S1 结果
@@ -36,21 +39,29 @@ nakok.q
 
 ```json
 {
-  "evidence": "hw/ip/i2c/rtl/i2c_fifos.sv:115-116",
-  "confidence": "medium"
+  "evidence": "hw/ip/i2c/rtl/i2c_fifos.sv:100,104 (fmt FIFO port wiring; explicit assertion)",
+  "confidence": "medium",
+  "proven": false,
+  "asserted_relation": true
 }
 ```
+
+`proven:false` 是核心合同：boundary 是用户显式断言，不是工具证明的 FIFO 语义。
+`boundary_hops` 给出它在 `chain` 中的位置、evidence、confidence。
+
 
 ## 3. 负例
 
 - 空 boundary map：`status=boundary` + frontier；不伪造路径；
 - boundary 缺 evidence：明确失败；
-- 没有匹配的 prefix/suffix：停在 boundary，不猜测。
+- 没有匹配的 prefix/suffix：停在 boundary，不猜测；
+- 多个可行 boundary：`status=ambiguous` + candidates，不静默选第一个；
+- 语法合法但语义不可信的 boundary：`status=traced, proven=false`，不会被宣称为语义证明。
 
 ## 4. 测试
 
 ```text
-test_project_adaptation.py: 2 passed
+test_project_adaptation.py: 6 passed
 ```
 
 ## 5. 边界

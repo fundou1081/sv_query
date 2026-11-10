@@ -12,10 +12,10 @@ Contract:
   "version": "0.1",
   "boundaries": [
     {
-      "src": "i2c.i2c_core.u_fifos.fmt_fifo_wdata_i",
-      "dst": "i2c.i2c_core.u_fifos.fmt_fifo_rdata_o",
+      "src": "i2c.i2c_core.u_fifos.fmt_fifo_wdata_i[12]",
+      "dst": "i2c.i2c_core.u_fifos.fmt_fifo_rdata_o[12]",
       "kind": "fifo_state",
-      "evidence": "hw/ip/i2c/rtl/i2c_fifo_sync_sram_adapter.sv:80",
+      "evidence": "hw/ip/i2c/rtl/i2c_fifos.sv:100,104 (explicit port assertion)",
       "confidence": "medium"
     }
   ]
