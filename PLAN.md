@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P145.3 independent worker replay <进行中>
+current item : P62.2 交互式 debug（gate） <待做>
 
 ## 计划树
 
@@ -425,10 +425,10 @@ P144 schema ambiguity resolution <已完成>
 -- P144.2 optional/null + errors union <已完成>
 -- P144.3 constraint id/truncated + coverage reason <已完成>
 
-P145 reproducible validation baseline + agent tasks <进行中>
+P145 reproducible validation baseline + agent tasks <已完成>
 -- P145.1 reproducible full gate <已完成>
 -- P145.2 agent task regression corpus <已完成>
--- P145.3 independent worker replay <进行中>
+-- P145.3 independent worker replay <已完成>
 
 
 ## 已完成（保留最近记录，便于核查上一轮）

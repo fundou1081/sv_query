@@ -46,11 +46,18 @@ class TestSchemaContractResolution(unittest.TestCase):
         self.assertEqual('no_match_in_filter', result['reason'])
 
     def test_coverpoints_empty_reason_is_machine_readable(self):
-        proc = _run('trace', 'coverpoints', 'no.such.signal', '-f', _COVER)
+        proc = _run('trace', 'coverpoints', 'coverage_demo.other_q', '-f', _COVER)
         self.assertEqual(0, proc.returncode, proc.stderr[-1000:])
         result = json.loads(proc.stdout)['result']
         self.assertEqual('no_sampling_refs', result['reason'])
         self.assertTrue(result['complete'])
+
+    def test_coverpoints_unknown_signal_is_explicit(self):
+        proc = _run('trace', 'coverpoints', 'no.such.signal', '-f', _COVER)
+        self.assertEqual(1, proc.returncode)
+        data = json.loads(proc.stdout)
+        self.assertFalse(data['ok'])
+        self.assertIn('signal not found', data['error'])
 
 
 if __name__ == '__main__':

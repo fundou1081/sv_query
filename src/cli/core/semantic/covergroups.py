@@ -11,6 +11,7 @@ import typer
 
 from cli._common import _build_tracer, handle_compilation_error
 from cli._output import emit_json
+from cli.core.semantic.trace_common import resolve_signal
 from trace.core.compiler import CompilationError
 
 
@@ -80,8 +81,9 @@ def _rand_dict(item, graph) -> dict:
     }
 
 
-def _fail(message: str, json_output: bool, pretty: bool) -> None:
-    data = {"ok": False, "command": "trace_covergroup", "error": message,
+def _fail(message: str, json_output: bool, pretty: bool,
+          command: str = "trace_covergroup") -> None:
+    data = {"ok": False, "command": command, "error": message,
             "errors": [message]}
     if json_output:
         emit_json(data, pretty)
@@ -195,6 +197,42 @@ def covergroups_cmd(
         _fail(str(e), json_output, pretty)
 
 
+def _is_relative_class_property(graph, signal: str) -> bool:
+    if "." not in signal:
+        return False
+    member = signal.rsplit(".", 1)[-1]
+    for nid in graph.nodes():
+        node = graph.get_node(nid)
+        if (node is not None and getattr(node.kind, "name", "") == "CLASS_PROPERTY"
+                and nid.endswith("." + member)):
+            return True
+    return False
+
+
+def _coverpoints_payload(tracer, graph, signal: str, json_output: bool,
+                         pretty: bool) -> dict:
+    resolved = resolve_signal(graph, signal)
+    if not resolved.get("ok") or resolved.get("resolved") not in graph:
+        if not _is_relative_class_property(graph, signal):
+            _fail(f"signal not found: {signal!r}", json_output, pretty,
+                  command="trace_coverpoints")
+        # class-relative coverpoint property (p.addr): keep old empty+hint
+        return {"signal": signal, "count": 0, "matches": [],
+                "complete": True, "reason": "relative_class_property",
+                "hint": ("class-relative property; use an instance-qualified "
+                         "path (e.g. top.e.p.addr) for a concrete match")}
+    items = [_coverpoint_ref(x) for x in tracer.trace_coverpoints(resolved["resolved"])]
+    result = {"signal": signal, "count": len(items), "matches": items,
+              "complete": True,
+              "reason": "found" if items else "no_sampling_refs"}
+    if not items:
+        result["hint"] = (
+            "use an instance-qualified property path (e.g. top.e.p.addr) "
+            "for class coverpoints; `trace covergroups` lists definition refs"
+        )
+    return result
+
+
 def coverpoints_cmd(
     signal: str = typer.Argument(..., help="top.din / top.e.p.addr / packet.addr"),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
@@ -205,16 +243,9 @@ def coverpoints_cmd(
     """反向查询：信号被哪些 covergroup/coverpoint 采样。"""
     try:
         tracer = _build_tracer(file=file, filelist=filelist)
-        tracer.build_graph()
-        items = [_coverpoint_ref(x) for x in tracer.trace_coverpoints(signal)]
-        result = {"signal": signal, "count": len(items), "matches": items,
-                  "complete": True,
-                  "reason": "found" if items else "no_sampling_refs"}
-        if not items:
-            result["hint"] = (
-                "use an instance-qualified property path (e.g. top.e.p.addr) "
-                "for class coverpoints; `trace covergroups` lists definition refs"
-            )
+        graph = tracer.build_graph()
+        result = _coverpoints_payload(tracer, graph, signal, json_output, pretty)
+        items = result["matches"]
         data = {"ok": True, "command": "trace_coverpoints",
                 "params": {"file": str(file) if file else None, "filelist": filelist,
                            "signal": signal},
@@ -227,6 +258,8 @@ def coverpoints_cmd(
             for m in items:
                 print(f"  {m['covergroup']}.{m['coverpoint']} "
                       f"instance={m['instance'] or '-'}")
+    except typer.Exit:
+        raise
     except CompilationError as e:
         _fail_coverage(e, json_output, pretty, "trace_coverpoints")
     except Exception as e:
