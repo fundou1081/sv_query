@@ -174,10 +174,13 @@ def covergroups_cmd(
         items = [_cg_summary(cg) for cg in tracer.list_covergroups()]
         if class_name:
             items = [x for x in items if x["in_class"] == class_name]
+        reason = ("found" if items else
+                  "no_match_in_filter" if class_name else "no_covergroups_in_scope")
         data = {"ok": True, "command": "trace_covergroups",
                 "params": {"file": str(file) if file else None, "filelist": filelist,
                            "class": class_name},
-                "result": {"count": len(items), "covergroups": items},
+                "result": {"count": len(items), "covergroups": items,
+                           "complete": True, "reason": reason},
                 "errors": []}
         if json_output:
             emit_json(data, pretty)
@@ -204,7 +207,9 @@ def coverpoints_cmd(
         tracer = _build_tracer(file=file, filelist=filelist)
         tracer.build_graph()
         items = [_coverpoint_ref(x) for x in tracer.trace_coverpoints(signal)]
-        result = {"signal": signal, "count": len(items), "matches": items}
+        result = {"signal": signal, "count": len(items), "matches": items,
+                  "complete": True,
+                  "reason": "found" if items else "no_sampling_refs"}
         if not items:
             result["hint"] = (
                 "use an instance-qualified property path (e.g. top.e.p.addr) "
@@ -228,6 +233,16 @@ def coverpoints_cmd(
         _fail(str(e), json_output, pretty)
 
 
+def _covergroup_result(covergroup_obj, items, rand: bool) -> dict:
+    if rand:
+        return {"mode": "rand", "covergroup": _cg_summary(covergroup_obj),
+                "count": len(items), "links": items,
+                "complete": True, "reason": "found" if items else "no_links"}
+    return {"mode": "sampling", "covergroup": _cg_summary(covergroup_obj),
+            "count": len(items), "samples": items,
+            "complete": True, "reason": "found" if items else "no_samples"}
+
+
 def covergroup_cmd(
     covergroup: str = typer.Argument(..., help="covergroup definition name"),
     coverpoint: str = typer.Option(None, "--coverpoint", help="filter by coverpoint"),
@@ -248,13 +263,10 @@ def covergroup_cmd(
         if rand:
             items = [_rand_dict(x, tracer.get_graph()) for x in tracer.trace_covergroup_rand_linkage(
                 covergroup, coverpoint, instance)]
-            result = {"mode": "rand", "covergroup": _cg_summary(cgs[0]),
-                      "count": len(items), "links": items}
         else:
             items = [_sampling_dict(x) for x in tracer.trace_covergroup_sampling(
                 covergroup, coverpoint, instance)]
-            result = {"mode": "sampling", "covergroup": _cg_summary(cgs[0]),
-                      "count": len(items), "samples": items}
+        result = _covergroup_result(cgs[0], items, rand)
         data = {"ok": True, "command": "trace_covergroup",
                 "params": {"file": str(file) if file else None, "filelist": filelist,
                            "covergroup": covergroup, "coverpoint": coverpoint,

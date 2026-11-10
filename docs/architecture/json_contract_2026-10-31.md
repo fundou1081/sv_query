@@ -735,3 +735,54 @@ fanin signal 新增：
 - graph cache v14 强制失效旧位选图。
 
 位级一致性剩余 `parent_range_out_of_bounds` 主要是 parent width 元数据问题。
+
+## P144 schema 决议（2026-11-09）
+
+这些不是新 schema 版本，而是对既有 v1 歧义的显式登记；新增字段均为可选
+（`id`、`truncated`、`complete`、`reason`、`envelope`、`write_scope`）。
+
+### envelope
+
+- 标准：`ok/command/params/result/errors`
+- direct：命令自定义顶层；目前为 `capabilities`、`search`、`snapshot list`、
+  `snapshot compare`
+- 机器可读位置：`capabilities.commands[].envelope`
+- `json_contract.envelope_policy` 是唯一规则源。
+
+### optional/null
+
+- 已知空值：字段存在且为 `null`
+- 不适用：字段可省略，但必须由命令 schema 标明
+- 缺失不等于 `false`/`0`
+
+### errors[]
+
+允许 `string | error_entry`；`error_entry` 至少含 `error`。
+trace 命令的 `error_entry` 还含 `signal/index/error_code/resolution/candidates`。
+`json_contract.errors_policy` 为唯一规则源。
+
+### write scope
+
+`core.readonly=true` 表示不改 RTL/项目源文件，不是“绝不写盘”。
+`capabilities.commands[].write_scope`：
+
+```text
+none    不写盘
+cache   只写 svq cache/snapshot
+output  只写显式指定的输出文件
+```
+
+### constraint block
+
+`trace constraints` 输出 canonical `id`，`block` 保留为 v1 alias；
+`constraint_block` 两者均已登记。
+
+### constraint neighborhood
+
+`summary.truncated`：`--max-nodes` 触发预算截断时为 true。
+
+### coverage
+
+`trace covergroups` / `trace coverpoints` / `trace covergroup` 输出
+`complete:true` + `reason`；解析失败仍为 `ok:false`。
+`complete` 只表示命令完成，不证明覆盖语义完整。

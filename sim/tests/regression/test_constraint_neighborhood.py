@@ -30,6 +30,13 @@ class TestConstraintNeighborhood(unittest.TestCase):
         self.assertEqual(['rnd_item.b', 'rnd_item.c', 'rnd_item.d'],
                          r['paths']['rnd_item.d'])
         self.assertIn('rnd_item.b', r['paths']['rnd_item.a'])
+        self.assertFalse(r['summary']['truncated'])
+
+    def test_budget_hit_sets_truncated(self):
+        proc = _run('rnd_item.b', '--max-nodes', '1')
+        self.assertEqual(0, proc.returncode, proc.stderr[-1000:])
+        r = json.loads(proc.stdout)['result']
+        self.assertTrue(r['summary']['truncated'])
 
     def test_isolated_variable_has_no_relations(self):
         proc = _run('rnd_item.e')

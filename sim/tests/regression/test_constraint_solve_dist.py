@@ -24,6 +24,7 @@ class TestConstraintSolveDist(unittest.TestCase):
         blocks = {b['block']: b for b in _constraints('rnd_item.b')}
         solve = blocks['rnd_item.c_ab']['solve_before']
         self.assertEqual(['rnd_item.a'], solve[0]['before'])
+        self.assertEqual('rnd_item.c_ab', blocks['rnd_item.c_ab']['id'])
 
     def test_dist_weights_are_reported(self):
         blocks = {b['block']: b for b in _constraints('rnd_item.e')}

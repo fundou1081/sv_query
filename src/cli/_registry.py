@@ -48,7 +48,8 @@ LAYERS: dict[str, LayerSpec] = {
     "core": LayerSpec(
         name="core", consumer="agent", stability="stable", readonly=True,
         json_required=True, in_capabilities=True, schema_version="1",
-        note="agent 一等公民: 只读 + JSON + 稳定 schema",
+        note="agent 一等公民: 只读 + JSON + 稳定 schema; readonly = 不改 RTL/项目文件, "
+             "cache/output 由 write_scope 标记",
     ),
     "view": LayerSpec(
         name="view", consumer="human", stability="stable", readonly=True,
@@ -95,14 +96,18 @@ class CommandSpec:
     stateful: bool = False
     recommended: bool = False   # agent 默认优先使用 (capabilities --recommended)
     planned_name: str | None = None   # 已定的改名 (P1 执行, 老名保留 alias)
+    envelope: str = "standard"       # standard | direct
+    write_scope: str = "none"        # none | cache | output
     note: str = ""
 
 
 def _c(key, group, kind="fact", cost="medium", json=True, *, stateful=False,
-       recommended=False, planned=None, note="") -> CommandSpec:
+       recommended=False, planned=None, envelope="standard", write_scope="none",
+       note="") -> CommandSpec:
     return CommandSpec(key=key, layer="core", group=group, kind=kind, cost=cost,
                        json=json, stateful=stateful, recommended=recommended,
-                       planned_name=planned, note=note)
+                       planned_name=planned, envelope=envelope,
+                       write_scope=write_scope, note=note)
 
 
 def _v(key, kind="presentation", cost="expensive", json=False, note="") -> CommandSpec:
@@ -177,20 +182,25 @@ COMMANDS: list[CommandSpec] = [
     _c("scope", "scope", kind="fact", cost="cheap", recommended=True,
        note="[规范入口] scope 聚合: 类型/父/子/端口/参数 (入口层, 不做因果追踪)"),
     _c("instances", "semantic", cost="cheap", recommended=True,
+       envelope="direct",
        note="列出实例; 给实例路径 → 详情 (类型/父/子/端口); 支持 --filelist"),
     _c("connections", "semantic", cost="medium", recommended=True,
-       note="[规范入口] 连接: 实例→端口↔内部信号 / 模块→四类边+置信度 (输出带 resolved_as)"),
+       envelope="direct",
+       note="[规范入口] 连接: 仅接受实例路径 → 端口↔内部信号 (输出带 resolved_as; 模块类型明确报错)"),
     _c("hierarchy", "semantic", cost="medium", recommended=True,
+       envelope="direct",
        note="[规范入口] 实例层级树 (机器可读版 arch show)"),
     # [iter_237] 语义查询补全 (参数 override / 端口总览 / 跨模块路径 / class)
     _c("params", "semantic", cost="cheap", recommended=True,
+       envelope="direct",
        note="[规范入口] 实例的**生效**参数值 (含 is_overridden: 区分 override 与默认)"),
     _c("ports", "semantic", cost="cheap", recommended=True,
+       envelope="direct",
        note="[规范入口] 模块端口总览 (方向/位宽/入边数/出边数)"),
     _c("paths", "semantic", cost="medium", recommended=True,
        note="[规范入口] 图上路径 (实例级 id; --all 枚举; "
             "--directed 只沿数据流方向, 与 dataflow analyze 结论一致)"),
-    _c("class", "semantic", cost="medium",
+    _c("class", "semantic", cost="medium", envelope="direct",
        note="不给 name → 列出所有 class; 给了 → 成员(类型级)+实例(实例级); --member 查某成员实例"),
     CommandSpec(key="audit", layer="exp", group="semantic", kind="experimental",
                 cost="medium", json=True, recommended=False,
@@ -199,12 +209,13 @@ COMMANDS: list[CommandSpec] = [
     # ---- core / locate (枚举与统计) ----
     _c("stats", "locate", kind="primitive", cost="cheap", recommended=True),
     _c("search", "locate", kind="primitive", cost="cheap",
-       note="文本/正则搜索; [iter_231] 已补 --json"),
+       envelope="direct", note="文本/正则搜索; [iter_231] 已补 --json"),
     _c("graph nodes", "locate", kind="primitive", cost="cheap",
        note="列图节点 (kind/module/--match 过滤; --detail 给表达式等富字段); 支持 --file / --filelist"),
     _c("graph edges", "locate", kind="primitive", cost="cheap",
        note="列出图边; 支持 --file / --filelist (iter_236 补)"),
     _c("filelist prune", "locate", kind="primitive", cost="cheap",
+       write_scope="output",
        note="[P91] top-aware 保守 filelist 裁剪; 只输出候选/可选写新 filelist，不改源文件"),
     _c("graph subgraph", "locate", kind="primitive", cost="cheap",
        note="[P60] seed 的 k-hop 局部子图; depth/direction/edge-kinds/budget; JSON boundary/truncated"),
@@ -212,16 +223,21 @@ COMMANDS: list[CommandSpec] = [
                 cost="cheap", json=True, recommended=False,
                 note="[exp] 只读诊断; --json 干净路径不稳定, 默认不提供, 仅 --include-exp 列出"),
     _c("capabilities", "locate", kind="primitive", cost="cheap", recommended=True,
+       envelope="direct",
        note="本清单自身 (agent 应先读它再决定调什么)"),
 
     # ---- core / state (你已定: graph 比较算 core) ----
     _c("snapshot save", "state", kind="state", cost="medium", stateful=True,
+       envelope="direct", write_scope="cache",
        note="[iter_239 1b] 默认写缓存目录 (~/.svq/cache/snapshots; 可用 SVQ_SNAPSHOT_DIR 覆盖)"),
     _c("snapshot list", "state", kind="state", cost="cheap", stateful=True,
+       envelope="direct",
        note="列出快照; 给 tag → 该快照详情 (原 snapshot show)"),
     _c("snapshot compare", "state", kind="state", cost="medium", recommended=True,
+       envelope="direct",
        note="比较两个快照, 或两个 SV 文件 (文件模式 = 原 diff compare; --signal 看可达性差异)"),
     _c("snapshot delete", "state", kind="state", cost="cheap", stateful=True,
+       envelope="direct", write_scope="cache",
        note="[iter_231] 已补 --json"),
 
     # ---- core / diagnose (原 fix 只读部分) ----
@@ -334,13 +350,45 @@ JSON_CONTRACT = {
     "policy": (
         "v1 allows additive optional fields; removing/renaming a field, changing a "
         "field type, or adding a required field requires a schema_version bump. "
-        "Nullable values use JSON null (not omission)."
+        "Nullable values use JSON null when the field is present; optional fields "
+        "may be omitted only when the command schema marks them optional. Absence "
+        "is not false/zero."
     ),
     "scope": (
-        "Top-level envelope + core semantic commands: trace fanin/fanout, paths, "
-        "dataflow analyze, trace impact, graph nodes. Other core commands share the "
-        "top-level envelope; command-specific fields are added incrementally."
+        "Core commands are readonly with respect to project/RTL files. Standard "
+        "envelope applies unless the command is explicitly marked envelope=direct "
+        "in capabilities; direct commands document their own success/error shape."
     ),
+    "envelope_policy": {
+        "standard": "ok/command/params/result/errors",
+        "direct": "command-specific top-level object or array; may omit result/errors",
+        "exceptions": ["capabilities", "search", "instances", "hierarchy", "ports",
+                       "params", "connections", "class", "snapshot save",
+                       "snapshot list", "snapshot compare", "snapshot delete"],
+        "rule": "capabilities.commands[].envelope is the machine-readable source of truth",
+    },
+    "nullable_policy": {
+        "present_null": "known-but-empty value is JSON null",
+        "optional_omission": "not-applicable optional fields may be omitted when "
+                             "documented in the command schema",
+        "absence_is_not_false": True,
+    },
+    "errors_policy": {
+        "union": "array<string|error_entry>",
+        "error_entry_required": ["error"],
+        "trace_entry_fields": ["signal", "index", "error", "error_code",
+                               "resolution", "candidates"],
+        "direct_error_fields": ["error", "path", "hint"],
+        "rule": "consumers must accept strings and objects; error is always present "
+                "on an error_entry; error_code is optional outside trace commands",
+    },
+    "write_scope_policy": {
+        "none": "no disk writes",
+        "cache": "writes only the svq cache/snapshot directory",
+        "output": "writes only a caller-specified output file, never source RTL",
+        "contract": "core.readonly means no project/RTL mutation; write_scope labels "
+                    "the explicit cache/output exceptions",
+    },
     "top_level": {
         "ok": {"type": "boolean", "desc": "false if any per-signal error was recorded"},
         "command": {"type": "string", "desc": "command name, e.g. trace_fanin"},
@@ -938,7 +986,8 @@ JSON_CONTRACT = {
         "type": {"type": "string|null", "desc": "declared data type"},
     },
     "constraint_block": {
-        "id": {"type": "string", "desc": "constraint block node id"},
+        "id": {"type": "string", "desc": "constraint block node id (canonical)"},
+        "block": {"type": "string", "desc": "legacy alias of id (additive, v1)"},
         "vars": {"type": "array<string>", "desc": "constrained properties"},
         "conditions": {"type": "array<string>", "desc": "if/cover conditions"},
         "expr_count": {"type": "integer", "desc": "expressions in block"},
@@ -1433,6 +1482,8 @@ def to_json(*, include_exp: bool = False, recommended_only: bool = False) -> dic
             "stability": lay.stability,
             "schema_version": lay.schema_version,
             "recommended": c.recommended,
+            "envelope": c.envelope,
+            "write_scope": c.write_scope,
             "note": c.note,
         })
     return {

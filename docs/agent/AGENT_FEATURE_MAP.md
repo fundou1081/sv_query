@@ -433,7 +433,8 @@
   node：`id/depth/blocks[]/neighbors[]/path[]/block_count/degree`。
   relation：`source/target/blocks[]`。
   summary：`node_count/relation_count/direct_degree/reachable_count/
-  max_depth/degree_centrality/importance_metrics`。
+  max_depth/truncated/degree_centrality/importance_metrics`。
+  `truncated=true` 表示 `--max-nodes` 预算命中，邻域不完整。
 - **坑**: `degree_centrality` 与 `importance_metrics` 是启发式指标，
   不是统计显著性。`max_nodes` 触顶时结果不完整（summary 里没有单独
   truncated 字段，需对比 `max_nodes`，见 U5）。
@@ -474,10 +475,10 @@
 - **解决**: 列出 covergroup 定义（可 `--class` 过滤），含 coverpoint、
   bins、crosses、clock、实例规则。
 - **输入**: `trace covergroups [--class <c>]`
-- **result**: `count`, `covergroups[]`。covergroup：
+- **result**: `count`, `covergroups[]`, `complete`, `reason`。covergroup：
   `name/in_class/host_module/clock/coverpoints[]/crosses[]/
   instance_rule/file/line`；coverpoint 含 `name/signal/iff/bins/sampled/
-  bin_details[]`。
+  bin_details[]`。`reason` 为 `found/no_match_in_filter/no_covergroups_in_scope`。
 - **坑**: 空结果 `count:0` 是正常的（该文件无 covergroup）。
   `in_class` 为空表示 module-scope 定义；`host_module` 为空表示 class
   scope 定义。按 `in_class` + `host_module` 一起判断归属。
@@ -730,48 +731,29 @@
 
 ---
 
-## 4. Unresolved（未解决的 schema 歧义）
+## 4. Schema ambiguities: resolved（P144）
 
-> 以下均为"实际输出 / 注册表 / 文档"三方不一致，未擅自选择解释。
+Worker 原始盘点列出了 9 个三方不一致；现在都已在 registry/contract 或输出中给出明确决定。
+没有未登记的“消费者必须猜”的项。
 
-- **U1 `trace constraint-chain` 的 `mode` 漂移（已修）**：
-  旧输出 `group:"semantic"` 但 `mode:"locate"`；P143 已把 key 加入
-  `_TRACE_KEYS`，现在 `mode:"trace"`。见 `src/cli/_registry.py`。
-- **U2 `snapshot list` / `snapshot compare` 不是标准信封**：
-  `snapshot list`（无 tag）输出裸 JSON 数组，`snapshot compare` 输出
-  裸对象，二者都没有 `ok/command/result/errors`；`search` 同样无 `ok`。
-  这与 `LayerSpec.core.json_required=True` 和
-  `JSON_CONTRACT.top_level` 的描述冲突。消费者必须特判。
-- **U3 `connections` 的 registry note 与实现不一致**：
-  note 写"模块→四类边+置信度"，实测给模块类型返回
-  `ok:false, error:"target is not an instance path"`（只接受实例路径）。
-  哪个是目标契约未定。
-- **U4 可选键"省略" vs "null"**：
-  v1 策略写"可空值用 JSON null，不用字段缺失"，但 `trace covergroup`
-  的 `links` 为空时直接省略该键；`trace evidence` 的顶层 `evidence`
-  也是可选出现。是否算契约允许的 additive optional，未登记。
-- **U5 `errors[]` 形状不统一**：
-  trace 类为 `{signal,index,error,error_code,resolution,candidates}`；
-  `scope` 为 `{error,path,hint}`；`paths` 为顶层
-  `{ok:false,error,unknown[],hint}`；`trace constraints` 的 `errors`
-  是字符串数组。`JSON_CONTRACT` 允许 `array<string|error_entry>`，
-  但没有统一的 error_entry 必填字段集。
-- **U6 `trace constraints` 的 block 字段名**：
-  实际输出用 `block`，`JSON_CONTRACT.constraint_block` 声明的是 `id`。
-  同一语义两个名字，且未标 alias。
-- **U7 `filelist prune --output` 与 core `readonly:true` 冲突**：
-  core 层声明禁止写文件，但该命令在显式 `--output` 时写新 filelist
-  （不写源文件）。`snapshot save` 也写自有缓存目录。`readonly` 的准确
-  含义（"不写项目文件" vs "完全不写盘"）未在注册表说明。
-- **U8 `trace constraint-neighborhood` 无 `truncated` 字段**：
-  有 `--max-nodes`，但 `summary` 只有 `node_count`，无法机器判断是否
-  被预算截断；只能与请求的 `max_nodes` 比较。
-- **U9 `trace covergroups` / `trace coverpoints` 的空结果语义**：
-  空 `count` 既可能是"确实没有定义"，也可能是"该文件未被完整解析"
-  （例如 class coverpoint 需要实例路径）。输出没有 `complete`/`reason`
-  字段，无法区分。`trace coverpoints` 仅部分情况给 `hint`。
+| # | 原歧义 | 现在的事实/合同 | 位置 |
+|---|---|---|---|
+| U1 | `trace constraint-chain` mode 漂移 | `_TRACE_KEYS` 已包含，`mode:"trace"` | `src/cli/_registry.py` |
+| U2 | snapshot list/compare/search 无标准 envelope | 不强行改历史形状；`capabilities.commands[].envelope="direct"` 明确例外，`json_contract.envelope_policy` 给出规则 | `JSON_CONTRACT` |
+| U3 | `connections` note 说支持模块 | note 改为“仅实例路径”；模块类型仍显式报错 | `src/cli/_registry.py` |
+| U4 | 可选键省略 vs null | `nullable_policy`：已知空值用 null；不适用可选字段可省略，但必须由命令 schema 标注；缺失不等于 false/zero | `JSON_CONTRACT` |
+| U5 | `errors[]` 形状不统一 | `errors_policy`：允许 string 或 `error_entry`；error_entry 必有 `error`，trace 额外字段固定 | `JSON_CONTRACT` |
+| U6 | `trace constraints` 用 block，contract 用 id | 输出同时有 canonical `id` 和兼容 alias `block`；`constraint_block` 两者都登记 | `constraints.py` |
+| U7 | core readonly 与写文件冲突 | `readonly` 定义为不改 RTL/项目文件；新增 `write_scope` (`none/cache/output`) 标记例外 | `LayerSpec` / `CommandSpec` |
+| U8 | constraint-neighborhood 无 truncated | `summary.truncated` 已输出；预算命中为 true | `constraint.py` |
+| U9 | 空 coverage 结果不可区分 | `complete:true` + `reason` (`found/no_covergroups_in_scope/no_match_in_filter/no_sampling_refs/no_links/no_samples`)；解析失败仍 `ok:false` | `covergroups.py` |
 
----
+### 4.1 仍需注意的边界
+
+- `envelope="direct"` 是显式例外，不是推荐新命令效仿的形态。
+- `errors[]` 仍是 union；消费者必须按 `typeof` 分支，不能假设对象。
+- `complete:true` 表示命令已完成，不等于证明覆盖点/covergroup 语义完整。
+- `summary.truncated=true` 时不要声称邻域完整。
 
 ## 5. 来源（schema 事实的出处）
 

@@ -26,6 +26,8 @@ def constraint_dict(info, graph=None, *, id_key: str = "block") -> dict:
             if node is not None and (node.extra or {}).get("rand"):
                 rand_vars.append(var)
     return {
+        "id": info.block_id,
+        "block": info.block_id,
         id_key: info.block_id,
         "vars": list(info.vars),
         "conditions": list(info.conditions),
