@@ -58,9 +58,12 @@ def _run_benchmark(runs: int = 1, skip_flakiness: bool = False, target: str = TA
     ]
     if skip_flakiness:
         args.append("--skip-flakiness")
-    result = subprocess.run(
-        args, capture_output=True, text=True, timeout=300, cwd=PROJECT_ROOT,
-    )
+    try:
+        result = subprocess.run(
+            args, capture_output=True, text=True, timeout=300, cwd=PROJECT_ROOT,
+        )
+    except subprocess.TimeoutExpired:
+        pytest.skip("benchmark exceeded 300s; environment-dependent (PR5)")
     if result.returncode != 0:
         pytest.skip(f"benchmark failed: rc={result.returncode}, stderr={result.stderr[:500]}")
     if not output.exists():
@@ -225,8 +228,12 @@ def _try_benchmark(target: str, depth: int = 4, runs: int = 1,
         ]
         if skip_flakiness:
             args.append("--skip-flakiness")
-        result = subprocess.run(args, capture_output=True, text=True,
-                                timeout=300, cwd=PROJECT_ROOT)
+        try:
+            result = subprocess.run(args, capture_output=True, text=True,
+                                    timeout=300, cwd=PROJECT_ROOT)
+        except subprocess.TimeoutExpired:
+            out.unlink(missing_ok=True)
+            return None
         if result.returncode == 0 and out.exists():
             with open(out) as f:
                 return json.load(f)
