@@ -401,22 +401,24 @@ tool: intent=path / intent=deep_path  →  path_kind=canonical
 证据：[UART pilot](validation/OPENTITAN_PILOT_2026-11-09.md) §P2、
 [I2C pilot](validation/OPENTITAN_I2C_2026-11-09.md) §P4。
 
-### 3.12 Snapshot 工具**没有** MIG / connections / instances
+### 3.12 Snapshot 的 MIG 兼容性
 
-**事实**：snapshot 只存 `SignalGraph`。
+**新事实（P151/P156）**：新 snapshot 同时保存 `SignalGraph` 和
+`ModuleInstanceGraph`（`module_graph`）。
 
-| 能力 | live | `--from-snapshot` |
-|---|---|---|
-| `drivers` / `loads` / `trace fanin/fanout` / `paths` | ✅ | ✅ |
-| `connections` / `instances` / `hierarchy` | ✅ | ❌ **不支持**（需 live MIG） |
-| evidence 源码原文 | ✅ | ❌（见 §3.9） |
+| 能力 | live | 新 snapshot | 旧 snapshot（无 module_graph） |
+|---|---|---|---|
+| `drivers` / `loads` / `paths` | ✅ | ✅ | ✅ |
+| `connections` / `instances` / `hierarchy` / `ports` | ✅ | ✅ | ❌ 显式 unknown/失败 |
+| `verify consistency` bit/reciprocity | ✅ | ✅ | ✅ |
+| `verify consistency` connection | ✅ | ✅ | ❌ unknown |
+| evidence 源码原文 | ✅ | ❌ | ❌（见 §3.9） |
 
-`paths` 之所以可用，是因为 `PathResolver` 只依赖 `SignalGraph`，不依赖 MIG 虚拟跳转。
+旧 snapshot 不会静默 fallback；`snapshot list` 的
+`module_graph_present=false` 可用于预检。
 
-**可观察后果**：agent 用 snapshot 模式拿不到实例/连接信息，
-必须回落到 live build（付一次 full build 成本）。**不能**伪装支持。
-
-证据：[snapshot 记录](validation/SNAPSHOT_2026-11-07.md) §3。
+证据：[P151](validation/P151_SNAPSHOT_MIG_2026-11-10.md)、
+[P156](validation/P156_SNAPSHOT_MIG_METADATA_2026-11-11.md)。
 
 ### 3.13 任务语料是**自撰**的，不是用户研究
 

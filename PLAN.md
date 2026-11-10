@@ -474,6 +474,10 @@ P155 reciprocity BIT_SELECT false positives <已完成>
 -- P155.1 data-edge-only reciprocity <已完成>
 -- P155.2 regression test <已完成>
 
+P156 snapshot MIG metadata <已完成>
+-- P156.1 show module_graph presence <已完成>
+-- P156.2 legacy compatibility test <已完成>
+
 
 ## 已完成（保留最近记录，便于核查上一轮）
 
