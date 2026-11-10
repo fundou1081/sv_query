@@ -18,7 +18,7 @@
 | 全量 (canonical) | **2571 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; 7 skipped / 119 deselected) | 2026-11-07 实测 (iter_397): A/D tests +8。历史: iter_396 2563 / iter_395 2561 |
 | CLI / integration | **810 passed / 0 failed** (`sim/tests/cli sim/tests/integration`, `-m "not opensource"`) | 2026-09-08 实测 (iter_185 修复后) |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (438 份, 只增不改) | 每次迭代一份 |
+| 迭代记录 | `docs/task_tree/iterations/` (439 份, 只增不改) | 每次迭代一份 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 | 语义 regex 纪律 | `python3 tools/check_semantic_regex.py` 必须 ✅ | 仅 UVM 宏例外；class/constraint/covergroup 语义走 slang (iter_368) |
@@ -55,6 +55,7 @@
 | [agent/GUIDED_TRACE.md](agent/GUIDED_TRACE.md) | **P139 guided trace**: frontier + next probes；不分类 FIFO |
 | [validation/P139_FRONTIER_2026-11-09.md](validation/P139_FRONTIER_2026-11-09.md) | **P139 frontier**: 断点 + next probes；不分类 FIFO |
 | [validation/P139_WORKER_REVIEW_2026-11-09.md](validation/P139_WORKER_REVIEW_2026-11-09.md) | **P139 worker review**: APPROVE WITH NITS；nits 已修 |
+| [validation/P140_GUIDED_BOUNDARY_2026-11-09.md](validation/P140_GUIDED_BOUNDARY_2026-11-09.md) | **P140**: 显式 boundary map 跑通 I2C S1 |
 | [dev/REVIEW_CHECKLIST.md](dev/REVIEW_CHECKLIST.md) | 提交前检查清单: 机械检查命令 + 纪律/设计/影响面/记录四组自检 + 反模式表 |
 
 ## 📜 能力与边界 (对外声明)

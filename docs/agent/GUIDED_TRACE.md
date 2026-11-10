@@ -77,3 +77,20 @@ next: connections u_inp_buf / instances ...
 P139 是手动/agent 逐级追踪。
 P140 可以在**显式 boundary map**之上提供 two-endpoint relationship report；
 它仍然遇 boundary 停，不自动推断 FIFO。
+
+## 6. 显式 boundary runner（P140）
+
+```bash
+python3 examples/project_adaptations/opentitan_fifo/trace_with_map.py \
+  <src> <dst> --filelist ... --map boundary_map.json
+```
+
+它只做：
+
+```text
+prefix path + explicit boundary + suffix path
+```
+
+空 map → `status=boundary` + frontier；
+缺 evidence → 显式失败；
+不会自动识别 FIFO。
