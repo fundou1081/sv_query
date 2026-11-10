@@ -35,8 +35,7 @@ before: 718 bit violations
 after:  171 bit violations
 ```
 
-减少 547 条 false `width_mismatch`；剩余 162 条 `id_parent_mismatch`
-是另一类 struct/generate 命名问题，未在 P148 修。
+减少 547 条 false `width_mismatch`；剩余 `id_parent_mismatch` 已由 P150 修复。
 
 Connection check：
 

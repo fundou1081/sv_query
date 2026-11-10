@@ -297,7 +297,12 @@ def _check_bit_mapping(graph, signals: list[str] | None) -> dict:
                                        "node": n, "bit_range": node.bit_range,
                                        "parent_bits": [node.parent_bit_start,
                                                        node.parent_bit_end]})
-        if n.startswith("[") or ("[" in n and not n.startswith(node.parent + "[")):
+        # Only the node's immediate relation to its parent matters.  A bracketed
+        # segment earlier in the hierarchy (generate/array) is not a bit-select
+        # mismatch.
+        direct_child = (n.startswith(node.parent + ".")
+                        or n.startswith(node.parent + "["))
+        if not direct_child:
             violations.append({"check": "bit_mapping", "kind": "id_parent_mismatch",
                                "node": n, "parent": node.parent})
     return {"check": "bit_mapping", "status": "fail" if violations else "pass",
