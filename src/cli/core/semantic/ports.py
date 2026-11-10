@@ -12,12 +12,14 @@ from pathlib import Path
 import typer
 
 from cli.core.semantic._common import build_tracer, emit, fail
+from cli.core.semantic.trace_common import _load_tracer_from_snapshot
 
 
 def ports_cmd(
     module: str = typer.Argument(..., help="模块名 (如 dma_top)"),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str = typer.Option(None, "--filelist", help="filelist (.f/.fl) for multi-file projects"),
+    from_snapshot: str = typer.Option(None, "--from-snapshot", help="load graph from snapshot tag"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     log_level: str = typer.Option("WARNING", "--log-level"),
@@ -27,7 +29,8 @@ def ports_cmd(
 注意: in_edges/out_edges 是**信号图原始邻接计数**, 不是语义上的 driver/load 判定
 (要看语义用 `svq connections <模块>` / `svq drivers`)。
 """
-    tracer = build_tracer(file, filelist, log_level)
+    tracer = (_load_tracer_from_snapshot(from_snapshot) if from_snapshot
+              else build_tracer(file, filelist, log_level))
     if tracer is None:
         return
 

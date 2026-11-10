@@ -466,6 +466,10 @@ P153 transitive wrapper fanin <已完成>
 -- P153.1 append wrapper source <已完成>
 -- P153.2 regression test <已完成>
 
+P154 snapshot-executable frontier probes <已完成>
+-- P154.1 snapshot instances/connections/ports <已完成>
+-- P154.2 probe suffix + regression <已完成>
+
 
 ## 已完成（保留最近记录，便于核查上一轮）
 
