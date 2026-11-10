@@ -33,8 +33,8 @@ def _structural_neighbors(graph, node: str, direction: str) -> list[str]:
     try:
         nxts = (graph.successors(node) if direction == "fanout"
                 else graph.predecessors(node))
-    except Exception:
-        return []
+    except Exception as e:
+        raise ValueError(f"frontier traversal failed: {e}") from e
     out = []
     for nxt in nxts:
         edges = (graph.get_edges(node, nxt) if direction == "fanout"
@@ -46,9 +46,8 @@ def _structural_neighbors(graph, node: str, direction: str) -> list[str]:
 
 
 def _boundary(graph, node: str, direction: str, path: list[str],
-              reason: str) -> Frontier:
-    nd = graph.get_node(node) if hasattr(graph, "get_node") else None
-    owner = _owner(node)
+              reason: str, instance: str = "") -> Frontier:
+    owner = instance or _owner(node)
     probes = ([f"connections {owner}", f"instances {owner}", f"ports {owner}"]
               if owner else [f"drivers {node}", f"loads {node}",
                              f"evidence {node}"])
@@ -59,10 +58,33 @@ def _boundary_for_step(graph, nxt: str, direction: str, path: list[str],
                        depth: int, max_depth: int) -> Frontier | None:
     nd = graph.get_node(nxt) if hasattr(graph, "get_node") else None
     if nd is not None and getattr(nd, "kind", None).name == "INSTANTIATED_MODULE":
-        return _boundary(graph, nxt, direction, path + [nxt], "instance_boundary")
-    if depth + 1 >= max_depth:
+        return _boundary(graph, nxt, direction, path + [nxt],
+                         "instance_boundary", instance=nxt)
+    if depth + 1 > max_depth:
         return _boundary(graph, nxt, direction, path + [nxt], "depth_limit")
     return None
+
+
+def _consume_neighbors(graph, cur: str, nxts: list[str], direction: str,
+                        path: list[str], depth: int, max_depth: int,
+                        max_frontier: int, seen: set[str],
+                        queue: deque, frontier: list[Frontier]) -> tuple[bool, bool]:
+    progress = False
+    for nxt in nxts:
+        if nxt in seen:
+            continue
+        boundary = _boundary_for_step(graph, nxt, direction, path,
+                                      depth, max_depth)
+        if boundary is not None:
+            if len(frontier) >= max_frontier:
+                return True, True
+            frontier.append(boundary)
+            progress = True
+            continue
+        seen.add(nxt)
+        queue.append((nxt, path + [nxt], depth + 1))
+        progress = True
+    return progress, False
 
 
 def _walk_direction(graph, signal: str, direction: str,
@@ -82,32 +104,59 @@ def _walk_direction(graph, signal: str, direction: str,
         if not nxts:
             frontier.append(_boundary(graph, cur, direction, path, "no_structural_edge"))
             continue
-        for nxt in nxts:
-            if nxt in seen:
-                continue
-            boundary = _boundary_for_step(graph, nxt, direction, path,
-                                          depth, max_depth)
-            if boundary is not None:
-                frontier.append(boundary)
-                continue
-            seen.add(nxt)
-            queue.append((nxt, path + [nxt], depth + 1))
+        progress, capped = _consume_neighbors(
+            graph, cur, nxts, direction, path, depth, max_depth,
+            max_frontier, seen, queue, frontier)
+        if capped:
+            truncated = True
+            break
+        if not progress:
+            if len(frontier) >= max_frontier:
+                truncated = True
+                break
+            frontier.append(_boundary(graph, cur, direction, path,
+                                      "cycle_or_all_seen"))
     return frontier, truncated
+
+def _dedupe_frontier(frontier: list[Frontier]) -> list[Frontier]:
+    best: dict[tuple[str, str], Frontier] = {}
+    for item in frontier:
+        key = (item.direction, item.node)
+        old = best.get(key)
+        if old is None or len(item.path) < len(old.path):
+            best[key] = item
+    return list(best.values())
+
+
+def _validate_limits(max_depth: int, max_frontier: int) -> None:
+    if max_depth < 1:
+        raise ValueError("--max-depth must be >= 1")
+    if max_frontier < 1:
+        raise ValueError("--max-frontier must be >= 1")
+
+
 
 def analyze_frontier(graph, signal: str, direction: str = "both",
                      max_depth: int = 8, max_frontier: int = 50) -> dict:
+    _validate_limits(max_depth, max_frontier)
     directions = ["fanin", "fanout"] if direction == "both" else [direction]
-    rows = []
+    found_all: list[Frontier] = []
     truncated = False
     for d in directions:
-        found, cut = _walk_direction(graph, signal, d, max_depth, max_frontier)
-        truncated = truncated or cut
-        rows.extend({
-            "direction": f.direction, "node": f.node, "reason": f.reason,
-            "instance": f.instance, "path": f.path,
-            "next_probes": f.next_probes,
-        } for f in found)
+        remaining = max_frontier - len(found_all)
+        if remaining <= 0:
+            truncated = True
+            break
+        found, cut = _walk_direction(graph, signal, d, max_depth, remaining)
+        found_all.extend(found)
+        truncated = truncated or cut or len(found_all) >= max_frontier
+    found_all = _dedupe_frontier(found_all)
+    rows = [{
+        "direction": f.direction, "node": f.node, "reason": f.reason,
+        "instance": f.instance, "path": f.path,
+        "next_probes": f.next_probes,
+    } for f in found_all]
     return {"signal": signal, "frontier": rows,
             "summary": {"frontier_count": len(rows), "truncated": truncated,
-                        "max_depth": max_depth},
-            "note": "generic boundary frontier; not a FIFO classification"}
+                        "max_depth": max_depth, "max_frontier": max_frontier},
+            "note": "generic boundary frontier; no semantic classification"}

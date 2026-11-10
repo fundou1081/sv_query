@@ -56,7 +56,8 @@ def frontier_cmd(
         result = _frontier_payload(signal, direction, max_depth, max_frontier,
                                    file, filelist, from_snapshot)
         data = {"ok": True, "command": "trace_frontier",
-                "params": {"direction": direction, "max_depth": max_depth},
+                "params": {"direction": direction, "max_depth": max_depth,
+                           "max_frontier": max_frontier},
                 "result": result, "errors": []}
         if json_output:
             emit_json(data, pretty)

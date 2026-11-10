@@ -401,6 +401,7 @@ P139 boundary-aware guided trace <已完成>
 -- P139.1 trace frontier command <已完成>
 -- P139.2 guided trace protocol <已完成>
 -- P139.3 tests <已完成>
+-- P139.4 worker validation nits <已完成>
 
 
 ## 已完成（保留最近记录，便于核查上一轮）
