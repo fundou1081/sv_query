@@ -483,16 +483,20 @@ def _verify_path(tracer, graph, claim: dict) -> dict:
         if resolver is None:
             raise RuntimeError("path resolver unavailable")
         reachable = resolver.find_path(sid, did, directed=True) is not None
+        bidirectional = bool(claim.get("bidirectional"))
         reverse = (resolver.find_path(did, sid, directed=True) is not None
-                   if claim.get("bidirectional") else True)
+                   if bidirectional else None)
     except Exception as e:
         return _claim_result(claim, "unknown", reason=f"path search failed: {e}")
-    if reachable and reverse:
+    if reachable and (reverse is None or reverse):
         return _claim_result(claim, "verified", evidence=[{"kind": "reachable",
                                                            "from": sid, "to": did,
-                                                           "bidirectional": bool(claim.get("bidirectional"))}])
-    return _claim_result(claim, "contradicted",
-                         reason=f"path check failed (forward={reachable}, reverse={reverse})")
+                                                           "bidirectional": bidirectional}])
+    if reverse is None:
+        reason = f"path check failed (forward={reachable})"
+    else:
+        reason = f"path check failed (forward={reachable}, reverse={reverse})"
+    return _claim_result(claim, "contradicted", reason=reason)
 
 
 def _verify_connection(tracer, graph, claim: dict) -> dict:

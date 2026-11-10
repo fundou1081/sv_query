@@ -37,6 +37,15 @@ class TestP146Issues(unittest.TestCase):
         self.assertEqual(0, p.returncode, p.stderr[-1000:])
         self.assertEqual(0, json.loads(p.stdout)['result']['signals'][0]['count'])
 
+    def test_path_claim_reason_does_not_claim_reverse_checked(self):
+        claim = json.dumps({"type": "path", "from": "top.y", "to": "top.x"})
+        p = _run('verify', 'claim', '--claim', claim,
+                 '-f', os.path.join(_FIX, 'arch_pair.sv'))
+        self.assertEqual(0, p.returncode, p.stderr[-1000:])
+        r = json.loads(p.stdout)['result']
+        self.assertEqual('contradicted', r['status'])
+        self.assertNotIn('reverse=True', r['reason'])
+
     def test_dataflow_unknown_has_json_error(self):
         p = _run('dataflow', 'analyze', 'no.such.sig', 'calc_chain.y',
                  '-f', os.path.join(_FIX, 'golden_mini', 'calc_chain.sv'))

@@ -15,7 +15,7 @@
 | 源码规模 | 163 文件 / 63,146 行 | `find src -name "*.py"` |
 | 测试规模 | 368 测试文件 / 78,847 行 + 117 SV fixture | `find sim/tests -name "*.py"` |
 | 回归基线 | **2129 passed + 35 subtests** (unit + regression, `-m "not opensource"`) | 2026-09-08 实测 (iter_190 后) |
-| 全量 (canonical) | **2624 passed / 0 failed** (main) / **2623 passed / 0 failed** (foreign worktree) ✅ (`sim/tests/`, `-m "not opensource"`; 12–13 skipped / 119 deselected; 35 subtests) | 2026-11-10 实测 (P145): 环境依赖显式 skip；count 随 pico fallback 是否可用 |
+| 全量 (canonical) | **2627 passed / 0 failed** (main) / **2626 passed / 0 failed** (foreign worktree) ✅ (`sim/tests/`, `-m "not opensource"`; 12–13 skipped / 119 deselected; 35 subtests) | 2026-11-10 实测 (P145): 环境依赖显式 skip；count 随 pico fallback 是否可用 |
 | CLI / integration | **810 passed / 0 failed** (`sim/tests/cli sim/tests/integration`, `-m "not opensource"`) | 2026-09-08 实测 (iter_185 修复后) |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 迭代记录 | `docs/task_tree/iterations/` (448 份, 只增不改) | 每次迭代一份 |

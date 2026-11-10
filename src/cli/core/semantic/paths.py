@@ -35,6 +35,7 @@ def paths_cmd(
     evidence: bool = typer.Option(False, "--evidence",
                                   help="[iter_333] attach per-hop edge evidence (file/line/condition)"),
     max_paths: int = typer.Option(50, "--max", "-n", help="--all 时的路径数上限"),
+    max_depth: int = typer.Option(50, "--max-depth", help="路径最大节点数 (防无向指数爆炸)"),
     bits: str = typer.Option(
         None, "--bits",
         help="[iter_309 P15] 位级端点: 两个逗号分隔位索引（src_bit,dst_bit）；"
@@ -112,7 +113,7 @@ def paths_cmd(
 
     if all_paths:
         found = resolver.find_all_paths(src_id, dst_id, max_paths=max_paths,
-                                         directed=directed)
+                                         max_depth=max_depth, directed=directed)
         data = {"ok": True, "src": src, "dst": dst, "src_resolved": src_id,
                 "dst_resolved": dst_id, "bits": bit_info, "directed": directed,
                 "count": len(found), "truncated": len(found) >= max_paths,
@@ -124,7 +125,8 @@ def paths_cmd(
 
     if canonical:
         candidates = resolver.find_all_paths(
-            src_id, dst_id, max_paths=max_paths, directed=directed,
+            src_id, dst_id, max_paths=max_paths, max_depth=max_depth,
+            directed=directed,
 )
         # 确定性: 节点数最多, tie-break 用字典序最大; 不依赖图遍历顺序。
         best = max(candidates, key=lambda p: (len(p), tuple(p))) if candidates else None
