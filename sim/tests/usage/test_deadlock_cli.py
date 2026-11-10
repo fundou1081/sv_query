@@ -13,8 +13,9 @@ from pathlib import Path
 
 import pytest
 
-# [V6.9] 全模块标记：V6.9 semantic AST 重构导致行为/输出变更，需逐测试更新期望值
-pytestmark = pytest.mark.skip(reason="[V6.9] Subprocess OOM / OpenTitan unavailable on 8GB MBA")
+# [P145] exp backpressure deadlock command was retired; these tests are obsolete,
+# not environment failures.  Keep the file for history but skip explicitly.
+pytestmark = pytest.mark.skip(reason="[P145] exp backpressure deadlock command retired (obsolete)")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 

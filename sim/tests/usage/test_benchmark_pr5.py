@@ -273,7 +273,7 @@ class TestBenchmarkWrapperDepth:
         # 单独由 TestBenchmarkStability 测)。iter_185 起复跑退化已消失。
         cls.data = _try_benchmark(WRAP_TARGET, depth=4, runs=1, attempts=3)
         if cls.data is None:
-            pytest.skip("wrapper benchmark 3 次均失败 (rc≠0 或无输出)")
+            pytest.skip("wrapper benchmark failed or exceeded 300s timeout")
 
     def test_l1_instance_chain(self):
         l1 = self.data["L1_module_extraction"]

@@ -52,6 +52,10 @@ def test_direct_query_spec_uses_depth_one():
 
 def test_fact_check_matches_pico_ground_truth(tmp_path):
     m = _load()
+    pilot_pico = Path("/tmp/lr_pilot/pico/picorv32.v")
+    fallback = ROOT.parent / "openrtl" / "picorv32" / "picorv32.v"
+    if not pilot_pico.exists() and not fallback.exists():
+        pytest.skip("pico .v sources not available (pilot/fallback)")
     import json
     tasks = json.loads((ROOT / "tools" / "benchmark" / "long_range_tasks.json").read_text())["tasks"]
     task = next(t for t in tasks if t["id"] == "pico_adapter_mem_valid_fanout")
