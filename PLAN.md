@@ -462,6 +462,10 @@ P152 SPI_HOST 9-task corpus <已完成>
 -- P152.1 corpus file + 9 tasks <已完成>
 -- P152.2 worker validation <已完成>
 
+P153 transitive wrapper fanin <已完成>
+-- P153.1 append wrapper source <已完成>
+-- P153.2 regression test <已完成>
+
 
 ## 已完成（保留最近记录，便于核查上一轮）
 
