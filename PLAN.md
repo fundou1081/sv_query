@@ -436,6 +436,11 @@ P146 real-project agent matrix <已完成>
 -- P146.3 schema/UX adversarial matrix <已完成>
 -- P146.4 issue triage + fixes <已完成>
 
+P147 third block SPI_HOST <已完成>
+-- P147.1 snapshot/filelist <已完成>
+-- P147.2 SPI task matrix <已完成>
+-- P147.3 worker validation <已完成>
+
 
 ## 已完成（保留最近记录，便于核查上一轮）
 
