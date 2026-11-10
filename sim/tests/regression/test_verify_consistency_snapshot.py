@@ -24,6 +24,9 @@ class TestConsistencySnapshot(unittest.TestCase):
             save = _run(['snapshot', 'save', _FIX, '--tag', 'p149',
                          '--json'], env)
             self.assertEqual(0, save.returncode, save.stderr[-1000:])
+            meta = json.loads(_run(['snapshot', 'list', 'p149'], env).stdout)
+            self.assertTrue(meta['module_graph_present'])
+            self.assertGreater(meta['module_graph_instances'], 0)
             p = _run(['verify', 'consistency', '--from-snapshot', 'p149',
                       '--checks', 'bit,connection'], env)
             self.assertEqual(0, p.returncode, p.stderr[-1000:])

@@ -191,6 +191,8 @@ class SnapshotManager:
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
 
+        mig = data.get("module_graph") or {}
+        mig_instances = mig.get("instances") or {}
         # 只返回元数据，不返回 nodes/edges（可能很大）
         return {
             "tag": data.get("tag", tag),
@@ -200,6 +202,10 @@ class SnapshotManager:
             "files": data.get("files", []),
             "node_count": data.get("node_count", 0),
             "edge_count": data.get("edge_count", 0),
+            "module_graph_present": bool(mig_instances),
+            "module_graph_instances": len(mig_instances),
+            "module_graph_ports": sum(len(i.get("ports") or {})
+                                      for i in mig_instances.values()),
         }
 
     def compare(self, tag1: str, tag2: str) -> dict | None:
