@@ -289,7 +289,7 @@ class SignalTracer:
         """No driver on a packed bus -> aggregate drivers of its bit nodes.
 
         Some packed-bus assignments only create bit-slice nodes (e.g.
-        ``fmt_fifo_wdata[12] <- ...``) and no incoming edge on the parent
+        ``packed_bus[12] <- ...``) and no incoming edge on the parent
         bus.  For fanin of the bus, recurse into direct ``bus[`` children.
         This is a query-level aggregation; it does not add synthetic graph
         edges (and therefore does not change path semantics).

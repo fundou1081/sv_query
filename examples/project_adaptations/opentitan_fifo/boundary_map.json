@@ -7,7 +7,7 @@
       "src": "i2c.i2c_core.u_fifos.fmt_fifo_wdata_i[12]",
       "dst": "i2c.i2c_core.u_fifos.fmt_fifo_rdata_o[12]",
       "kind": "fifo_state",
-      "evidence": "hw/ip/i2c/rtl/i2c_fifos.sv:115-116",
+      "evidence": "hw/ip/i2c/rtl/i2c_fifos.sv:100,104 (fmt FIFO port wiring; explicit assertion)",
       "confidence": "medium"
     }
   ]

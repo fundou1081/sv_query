@@ -10,9 +10,11 @@ confidence.
 ## Runner
 
 ```bash
-python3 trace_with_map.py <src> <dst> \
+# filelist 路径相对于 source root；--map 用绝对路径或 runner 同目录
+cd /path/to/project
+python3 /path/to/trace_with_map.py <src> <dst> \
   --filelist path/to/project.f \
-  --map boundary_map.json
+  --map /path/to/boundary_map.json
 ```
 
 Behavior:
@@ -21,4 +23,14 @@ Behavior:
 - only explicit `src -> dst` boundaries are joined;
 - empty map stops at `trace frontier`;
 - missing evidence is rejected;
+- multiple viable boundaries return `status=ambiguous`, not first-wins;
+- `proven:false` and `boundary_hops` mark asserted boundaries;
 - no auto FIFO detection, no graph mutation.
+
+Exit codes:
+
+```text
+0 traced
+2 boundary or ambiguous
+1 explicit error
+```

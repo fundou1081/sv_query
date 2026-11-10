@@ -21,12 +21,19 @@ REQUIRED = {"src", "dst", "kind", "evidence", "confidence"}
 def _run(args: list[str]) -> dict:
     proc = subprocess.run([sys.executable, str(CLI), *args],
                           capture_output=True, text=True)
-    if proc.returncode != 0:
-        raise RuntimeError(proc.stderr.strip() or f"CLI exit {proc.returncode}")
     try:
-        return json.loads(proc.stdout)
+        data = json.loads(proc.stdout)
     except json.JSONDecodeError as e:
+        if proc.returncode != 0:
+            raise RuntimeError(proc.stderr.strip() or f"CLI exit {proc.returncode}") from e
         raise RuntimeError(f"CLI returned non-JSON: {e}") from e
+    if proc.returncode != 0 or data.get("ok") is False:
+        message = data.get("error") or proc.stderr.strip() or f"CLI exit {proc.returncode}"
+        unknown = data.get("unknown")
+        if unknown:
+            message = f"{message}; unknown={unknown}"
+        raise RuntimeError(message)
+    return data
 
 
 def _common_args(args) -> list[str]:
@@ -47,12 +54,30 @@ def _frontier(args, signal: str) -> dict:
 
 
 def _validate_map(data: dict) -> list[dict]:
+    if not isinstance(data, dict):
+        raise ValueError("boundary map must be a JSON object")
     errors = []
     boundaries = data.get("boundaries") or []
+    if not isinstance(boundaries, list):
+        raise ValueError("boundary map 'boundaries' must be a list")
+    seen = set()
     for i, b in enumerate(boundaries):
+        if not isinstance(b, dict):
+            errors.append(f"boundary[{i}] must be an object")
+            continue
         missing = REQUIRED - set(b)
         if missing:
             errors.append(f"boundary[{i}] missing {sorted(missing)}")
+            continue
+        for key in ("src", "dst", "kind"):
+            if not str(b.get(key, "")).strip():
+                errors.append(f"boundary[{i}] empty {key}")
+        if b["src"] == b["dst"]:
+            errors.append(f"boundary[{i}] src == dst")
+        pair = (b["src"], b["dst"])
+        if pair in seen:
+            errors.append(f"boundary[{i}] duplicate pair")
+        seen.add(pair)
         if not str(b.get("evidence", "")).strip():
             errors.append(f"boundary[{i}] empty evidence")
         if b.get("confidence") not in {"low", "medium", "high"}:
@@ -64,6 +89,7 @@ def _validate_map(data: dict) -> list[dict]:
 
 def _compose(args, boundaries: list[dict]) -> dict:
     failures = []
+    viable = []
     for b in boundaries:
         pre = _path(args, args.src, b["src"])
         if not pre.get("found"):
@@ -73,6 +99,29 @@ def _compose(args, boundaries: list[dict]) -> dict:
         if not post.get("found"):
             failures.append({"dst": b["dst"], "stage": "suffix"})
             continue
+        viable.append((b, pre, post))
+    if len(viable) > 1:
+        return {
+            "ok": True,
+            "status": "ambiguous",
+            "from": args.src,
+            "to": args.dst,
+            "adapter": args.map.get("adapter", ""),
+            "proven": False,
+            "ambiguous": True,
+            "candidates": [
+                {"src": b["src"], "dst": b["dst"],
+                 "evidence": b["evidence"], "confidence": b["confidence"]}
+                for b, _, _ in viable
+            ],
+            "chain": [],
+            "segments": [],
+            "boundaries_used": 0,
+            "note": "multiple explicit boundaries produced prefix+suffix; no silent choice",
+        }
+    if len(viable) == 1:
+        b, pre, post = viable[0]
+        boundary_index = len(pre["path"])
         chain = list(pre["path"]) + [b["dst"]] + list(post["path"][1:])
         return {
             "ok": True,
@@ -80,7 +129,15 @@ def _compose(args, boundaries: list[dict]) -> dict:
             "from": args.src,
             "to": args.dst,
             "adapter": args.map.get("adapter", ""),
+            "proven": False,
+            "asserted_relation": True,
             "chain": chain,
+            "boundary_hops": [{
+                "index": boundary_index,
+                "src": b["src"], "dst": b["dst"],
+                "boundary_kind": b["kind"], "evidence": b["evidence"],
+                "confidence": b["confidence"],
+            }],
             "segments": [
                 {"kind": "structural", "path": pre["path"]},
                 {"kind": "explicit_boundary", "src": b["src"], "dst": b["dst"],
@@ -89,6 +146,7 @@ def _compose(args, boundaries: list[dict]) -> dict:
                 {"kind": "structural", "path": post["path"]},
             ],
             "boundaries_used": 1,
+            "note": "boundary is an explicit assertion, not a proven semantic relation",
         }
     frontier = _frontier(args, args.src)
     return {
@@ -97,13 +155,13 @@ def _compose(args, boundaries: list[dict]) -> dict:
         "from": args.src,
         "to": args.dst,
         "adapter": args.map.get("adapter", ""),
+        "proven": False,
         "chain": [],
         "segments": [],
         "failures": failures,
         "frontier": frontier.get("result", frontier),
         "note": "no explicit boundary produced both a prefix and suffix; trace stopped",
     }
-
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
