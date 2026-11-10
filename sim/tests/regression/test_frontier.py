@@ -12,7 +12,7 @@ _FIXTURE = os.path.join(os.path.dirname(__file__), '..', 'fixtures', 'arch_pair.
 def _run(*extra):
     return subprocess.run(
         [sys.executable, os.path.join(_ROOT, 'run_cli.py'), 'trace', 'frontier',
-         'top.din', '-f', _FIXTURE, '--json', *extra],
+         'top.x', '-f', _FIXTURE, '--json', *extra],
         capture_output=True, text=True, cwd=_ROOT)
 
 
@@ -26,6 +26,14 @@ class TestFrontier(unittest.TestCase):
         self.assertEqual('no_structural_edge', row['reason'])
         self.assertTrue(row['next_probes'])
         self.assertIn('not a FIFO classification', result['note'])
+
+    def test_unknown_signal_is_explicit(self):
+        proc = subprocess.run(
+            [sys.executable, os.path.join(_ROOT, 'run_cli.py'), 'trace', 'frontier',
+             'top.nope', '-f', _FIXTURE, '--json'],
+            capture_output=True, text=True, cwd=_ROOT)
+        self.assertEqual(1, proc.returncode)
+        self.assertFalse(json.loads(proc.stdout)['ok'])
 
     def test_invalid_direction_is_explicit(self):
         proc = _run('--direction', 'sideways')

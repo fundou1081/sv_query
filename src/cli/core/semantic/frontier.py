@@ -22,11 +22,10 @@ def _frontier_payload(signal, direction, max_depth, max_frontier,
               if from_snapshot else _build_tracer(
                   file=file, filelist=filelist, log_level="ERROR"))
     graph = tracer.get_graph() or tracer.build_graph()
-    resolved = signal
     r = resolve_signal(graph, signal)
-    if r.get("ok") and r.get("resolved") in graph:
-        resolved = r["resolved"]
-    return analyze_frontier(graph, resolved, direction=direction,
+    if not r.get("ok") or r.get("resolved") not in graph:
+        raise ValueError(f"signal {signal!r} not found")
+    return analyze_frontier(graph, r["resolved"], direction=direction,
                             max_depth=max_depth,
                             max_frontier=max_frontier)
 
