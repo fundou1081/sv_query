@@ -24,9 +24,9 @@ python3 -m pytest sim/tests/ -m "not opensource" -q -p no:randomly
 skip 原因：
 
 ```text
-2  long-range runner: /tmp/lr_pilot 无 .v
+2  long-range runner: pilot 无 .v 且 fallback 不可用
 3  benchmark PR5 wrapper: 300s 超时
-7  deadlock CLI: OpenTitan/OOM 环境限制
+7  deadlock CLI: `exp backpressure deadlock` 命令已退休（历史测试保留）
 ```
 
 环境性测试现在显式 skip，不再以 ERROR/FAILED 形式混入：

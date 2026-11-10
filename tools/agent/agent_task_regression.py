@@ -55,8 +55,10 @@ def task_deep_path() -> dict:
 
 def task_deep_reverse() -> dict:
     d, err = run(["paths", "top.y", "top.x", "--directed", "-f", str(DEEP)])
-    ok = bool(err == "" and d and d.get("found") is False)
-    return {"passed": ok, "expected": "reverse not_found", "error": err}
+    found = bool((d or {}).get("found"))
+    ok = bool(err == "" and d and found is False)
+    return {"passed": ok, "expected": "reverse not_found", "error": err,
+            "negative": True, "observed_found": found}
 
 
 def task_dataflow_deep() -> dict:
@@ -96,8 +98,11 @@ def task_constraint_not_random() -> dict:
 def task_constraint_unknown() -> dict:
     d, err = run(["trace", "constraint-chain", "rnd_item.a", "rnd_item.nope",
                   "-f", str(CONSTRAINT)])
-    ok = bool(d and d.get("ok") is False and not (d.get("result") or {}).get("found"))
-    return {"passed": ok, "expected": "explicit unknown", "error": err}
+    found = bool(((d or {}).get("result") or {}).get("found"))
+    ok = bool(d and d.get("ok") is False and "constraint endpoint not found"
+              in str(d.get("error", "")) and not found)
+    return {"passed": ok, "expected": "explicit unknown endpoint", "error": err,
+            "negative": True, "observed_found": found}
 
 
 def task_frontier() -> dict:
@@ -141,9 +146,12 @@ def task_boundary_empty() -> dict:
     try:
         d = json.loads(p.stdout)
     except json.JSONDecodeError:
-        return {"passed": False, "expected": "stop at frontier", "error": "non-JSON"}
-    ok = bool(p.returncode == 2 and d.get("status") == "boundary" and not d.get("chain"))
-    return {"passed": ok, "expected": "boundary/no chain", "error": ""}
+        return {"passed": False, "expected": "stop at frontier", "error": "non-JSON",
+                "negative": True, "observed_found": None}
+    found = bool(d.get("chain")) or d.get("status") == "traced"
+    ok = bool(p.returncode == 2 and d.get("status") == "boundary" and not found)
+    return {"passed": ok, "expected": "boundary/no chain", "error": "",
+            "negative": True, "observed_found": found}
 
 
 def task_schema_envelope() -> dict:
@@ -164,7 +172,8 @@ def task_neighborhood_truncated() -> dict:
 
 
 def task_coverage_reason() -> dict:
-    d, err = run(["trace", "coverpoints", "no.such.signal", "-f", str(COVER)])
+    # existing signal with no coverpoint, not an unknown signal
+    d, err = run(["trace", "coverpoints", "coverage_demo.other_q", "-f", str(COVER)])
     r = (d or {}).get("result", {})
     return {"passed": bool(err == "" and r.get("complete") is True
                            and r.get("reason") == "no_sampling_refs"),
@@ -204,12 +213,11 @@ def main() -> int:
     # A failing negative task is the only way this corpus can produce a false
     # positive; individual tasks already check explicit negative outcomes.
     false_found = sum(1 for r in results
-                      if r["task"] in {"deep_reverse", "boundary_empty",
-                                       "constraint_unknown"}
-                      and not r["passed"])
+                      if r.get("negative") and r.get("observed_found") is True)
+    false_confident = false_found
     data = {"tasks": len(results), "passed": passed,
             "failed": len(results) - passed,
-            "false_confident": 0 if passed == len(results) else None,
+            "false_confident": false_confident,
             "false_found": false_found,
             "results": results}
     if args.json:

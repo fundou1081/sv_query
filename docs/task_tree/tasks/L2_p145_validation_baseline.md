@@ -1,6 +1,6 @@
 # Task: P145 reproducible validation baseline
 
-**状态**: ✅ 完成
+**状态**: 进行中（worker replay pending）
 **日期**: 2026-11-10
 
 ## 交付
