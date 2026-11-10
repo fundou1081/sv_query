@@ -488,3 +488,5 @@ Open-source project visualization is **correct and verified**. Ready for next ta
 | **351** | **2026-11-09** | **L2** | **P139 worker review nits (iter_452)** | worker independent | 5 nits 修复 | APPROVE WITH NITS | **✅ 完成** |
 | **352** | **2026-11-09** | **L2** | **P140 explicit boundary trace (iter_453)** | 方豆: 去做吧 | I2C S1 链条；外部 map | core 不自动 FIFO | **✅ 完成** |
 | **353** | **2026-11-09** | **L2** | **P140 worker review nits (iter_454)** | DeepSeek worker | 6 tests; trust boundary 标记 | APPROVE WITH NITS | **✅ 完成** |
+| **354** | **2026-11-09** | **L2** | **P141 deep paths (iter_455)** | 方豆: 多测场景 | 6-hop 三模块 | 不改语义 | **✅ 完成** |
+| **355** | **2026-11-09** | **L2** | **P142 constraint chain (iter_456)** | 方豆: random 变量链 | `trace constraint-chain` | 非 solver 证明 | **✅ 完成** |

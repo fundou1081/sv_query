@@ -147,6 +147,8 @@ def _run_neighborhood(property: str, file, filelist, max_depth: int,
                       max_nodes: int) -> dict:
     from trace.core.query.constraint import ConstraintTracer
 
+    if max_depth < 1 or max_nodes < 1:
+        raise ValueError("--max-depth and --max-nodes must be >= 1")
     tracer = _build_tracer(file=file, filelist=filelist)
     graph = tracer.build_graph()
     resolved = property
@@ -201,3 +203,67 @@ def constraint_neighborhood_cmd(
         handle_compilation_error(e)
     except Exception as e:
         _neighborhood_error(e, json_output, pretty)
+
+
+def _run_constraint_chain(source: str, target: str, file, filelist,
+                          max_depth: int, max_nodes: int) -> dict:
+    from trace.core.query.constraint import ConstraintTracer
+
+    if max_depth < 1 or max_nodes < 1:
+        raise ValueError("--max-depth and --max-nodes must be >= 1")
+    tracer = _build_tracer(file=file, filelist=filelist)
+    graph = tracer.build_graph()
+    result = ConstraintTracer(graph, tracer.get_class_hierarchy()).trace_chain(
+        source, target, max_depth=max_depth, max_nodes=max_nodes)
+    if result.get("reason") == "endpoint_not_found":
+        raise ValueError(f"constraint endpoint not found: {source!r} or {target!r}")
+    return result
+
+
+def _print_constraint_chain(result: dict) -> None:
+    if not result.get("found"):
+        print(f"No constraint chain: {result.get('reason')}")
+        return
+    print(f"Constraint chain {result['source']} -> {result['target']} "
+          f"({result['hop_count']} hops):")
+    for item in result["chain"]:
+        if item["kind"] == "variable":
+            print(f"  var {item['id']}")
+        else:
+            print(f"  block {item['id']} via {item['via']}")
+
+
+def constraint_chain_cmd(
+    source: str = typer.Argument(..., help="random property (type/instance)"),
+    target: str = typer.Argument(..., help="random property (type/instance)"),
+    file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
+    filelist: str = typer.Option(None, "--filelist", help="filelist (.f/.fl)"),
+    max_depth: int = typer.Option(6, "--max-depth"),
+    max_nodes: int = typer.Option(200, "--max-nodes"),
+    json_output: bool = typer.Option(False, "--json", "-j"),
+    pretty: bool = typer.Option(False, "--pretty", "-p"),
+) -> None:
+    """Random variable -> random variable constraint chain (co-membership)."""
+    try:
+        result = _run_constraint_chain(source, target, file, filelist,
+                                       max_depth, max_nodes)
+        data = {"ok": True, "command": "trace_constraint_chain",
+                "params": {"source": source, "target": target,
+                           "max_depth": max_depth, "max_nodes": max_nodes},
+                "result": result, "errors": []}
+        if json_output:
+            emit_json(data, pretty)
+        else:
+            _print_constraint_chain(result)
+    except typer.Exit:
+        raise
+    except CompilationError as e:
+        handle_compilation_error(e)
+    except Exception as e:
+        data = {"ok": False, "command": "trace_constraint_chain",
+                "error": str(e), "errors": [str(e)]}
+        if json_output:
+            emit_json(data, pretty)
+        else:
+            print(f"Error: {e}", file=sys.stderr)
+        raise typer.Exit(code=1) from None

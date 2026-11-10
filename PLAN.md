@@ -409,6 +409,13 @@ P140 explicit-boundary guided trace <已完成>
 -- P140.3 negative tests <已完成>
 -- P140.4 worker validation nits <已完成>
 
+P141 deep from/to scenarios <已完成>
+-- P141.1 deep cross-module path tests <已完成>
+
+P142 random constraint chain <已完成>
+-- P142.1 trace constraint-chain <已完成>
+-- P142.2 chain schema/tests <已完成>
+
 
 ## 已完成（保留最近记录，便于核查上一轮）
 

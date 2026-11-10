@@ -6,6 +6,7 @@
 #
 # 回答: "这个 (rand) 属性受哪些约束?" / "约束块约束了哪些变量?"
 # ==============================================================================
+from collections import deque
 from dataclasses import dataclass, field
 
 from ..graph.models import EdgeKind, NodeKind, SignalGraph
@@ -166,6 +167,103 @@ class ConstraintTracer:
             "root": root, "nodes": out_nodes, "relations": out_relations,
             "paths": paths, "summary": summary,
         }
+
+    # ------------------------------------------------------------------
+    def trace_chain(self, source: str, target: str, max_depth: int = 6,
+                    max_nodes: int = 200) -> dict:
+        """Shortest co-constraint chain between two random properties.
+
+        Edges are constraint-block membership, not dataflow.  A chain includes
+        the variables and the blocks/conditions that connect them; it is a
+        syntactic constraint relation, not a solver proof.
+        """
+        src = self._resolve_type_prop(source)
+        dst = self._resolve_type_prop(target)
+        if not src or not dst:
+            return {"found": False, "reason": "endpoint_not_found",
+                    "source": source, "target": target}
+        rand = {src: self._is_rand(src), dst: self._is_rand(dst)}
+        if not all(rand.values()):
+            return {"found": False, "reason": "endpoint_not_random",
+                    "source": src, "target": dst, "rand": rand}
+        parent, depth, truncated = self._bfs_chain(src, dst, max_depth, max_nodes)
+        if dst not in depth:
+            return {"found": False, "reason": "no_constraint_path",
+                    "source": src, "target": dst, "rand": rand,
+                    "summary": {"node_count": len(depth), "truncated": truncated}}
+        return self._chain_result(src, dst, parent, depth, rand, truncated, max_depth)
+
+    def _chain_neighbors(self, current: str):
+        for info in self.trace(current):
+            for other in self._block_members(current, info):
+                if other != current:
+                    via = "condition" if current in info.conditions else "var"
+                    yield other, info.block_id, via
+
+    def _bfs_chain(self, src: str, dst: str, max_depth: int,
+                   max_nodes: int):
+        parent: dict[str, tuple[str, str, str]] = {}
+        depth = {src: 0}
+        queue = deque([src])
+        truncated = False
+        while queue:
+            current = queue.popleft()
+            if current == dst:
+                break
+            if depth[current] >= max_depth:
+                truncated = True
+                continue
+            for other, block, via in self._chain_neighbors(current):
+                if other in depth:
+                    continue
+                parent[other] = (current, block, via)
+                depth[other] = depth[current] + 1
+                if other == dst:
+                    break
+                if len(depth) >= max_nodes:
+                    truncated = True
+                    break
+                queue.append(other)
+            if dst in depth:
+                break
+        return parent, depth, truncated
+
+    @staticmethod
+    def _chain_result(src: str, dst: str, parent: dict, depth: dict,
+                      rand: dict, truncated: bool, max_depth: int) -> dict:
+        steps = []
+        cur = dst
+        while cur != src:
+            prev, block, via = parent[cur]
+            steps.append({"from": prev, "to": cur, "blocks": [block], "via": via})
+            cur = prev
+        steps.reverse()
+        chain = [{"kind": "variable", "id": src}]
+        blocks = []
+        for step in steps:
+            chain.append({"kind": "constraint_block", "id": step["blocks"][0],
+                          "from": step["from"], "to": step["to"],
+                          "via": step["via"]})
+            chain.append({"kind": "variable", "id": step["to"]})
+            if step["blocks"][0] not in blocks:
+                blocks.append(step["blocks"][0])
+        return {
+            "found": True,
+            "source": src,
+            "target": dst,
+            "rand": rand,
+            "hop_count": len(steps),
+            "chain": chain,
+            "segments": steps,
+            "blocks": blocks,
+            "summary": {"node_count": len(depth), "block_count": len(blocks),
+                        "truncated": truncated, "max_depth": max_depth},
+            "note": "constraint co-membership only; not a solver proof",
+        }
+
+    def _is_rand(self, prop_id: str) -> bool:
+        node = self.graph.get_node(prop_id)
+        return bool(node is not None and (node.extra or {}).get("rand"))
 
     # ------------------------------------------------------------------
     def _resolve_type_prop(self, prop_id: str) -> str | None:

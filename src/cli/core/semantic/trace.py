@@ -1369,6 +1369,7 @@ from cli.core.semantic.constraints import (  # noqa: E402
 )
 from cli.core.semantic.tb_join import tb_join_cmd  # noqa: E402
 from cli.core.semantic.frontier import frontier_cmd  # noqa: E402
+from cli.core.semantic.constraints import constraint_chain_cmd  # noqa: E402
 from cli.core.semantic.covergroups import (  # noqa: E402
     covergroups_cmd, coverpoints_cmd, covergroup_cmd,
 )
@@ -1382,6 +1383,7 @@ trace_app.command("constraints")(constraints_cmd)
 trace_app.command("constraint-neighborhood")(constraint_neighborhood_cmd)
 trace_app.command("tb-join")(tb_join_cmd)
 trace_app.command("frontier")(frontier_cmd)
+trace_app.command("constraint-chain")(constraint_chain_cmd)
 trace_app.command("covergroups")(covergroups_cmd)
 trace_app.command("coverpoints")(coverpoints_cmd)
 trace_app.command("covergroup")(covergroup_cmd)

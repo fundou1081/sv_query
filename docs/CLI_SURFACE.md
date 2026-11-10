@@ -6,9 +6,9 @@
 
 ## 总览
 
-- 叶子命令总数: **44**
-- 按层: `core`=39, `exp`=5
-- core 内分组: `semantic`=24, `verify`=3, `scope`=1, `locate`=7, `state`=4
+- 叶子命令总数: **45**
+- 按层: `core`=40, `exp`=5
+- core 内分组: `semantic`=25, `verify`=3, `scope`=1, `locate`=7, `state`=4
 
 | 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | schema | 说明 |
 |---|---|---|---|---|---|---|
@@ -18,7 +18,7 @@
 | `dev` | dev | none | ✅ | — | — | 开发者内部调试 (当前无命令; expression 已于 iter_252 归档) |
 | `out` | none | none | ✅ | — | — | 移出 CLI (会写 RTL/项目文件) → tools/; 不算产品命令 |
 
-## `core` (39 个)
+## `core` (40 个)
 
 | 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
 |---|---|---|---|---|---|---|---|---|---|
@@ -42,6 +42,7 @@
 | `params` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | [规范入口] 实例的**生效**参数值 (含 is_overridden: 区分 override 与默认) |
 | `paths` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | [规范入口] 图上路径 (实例级 id; --all 枚举; --directed 只沿数据流方向, 与 dataflow analyze 结论一致) |
 | `ports` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | [规范入口] 模块端口总览 (方向/位宽/入边数/出边数) |
+| `trace constraint-chain` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | 两个 random 变量之间的最短 constraint 链 (co-membership; 非 solver 证明) |
 | `trace constraint-neighborhood` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 一次查询跨多个 constraint block 的 random 变量关系图 (co-constraint, 非 fanin; 含重要性指标, 启发式) |
 | `trace constraints` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | [P63] 属性受哪些 constraint 约束 (类型/实例; 独立语义域, 不走 fanin) |
 | `trace covergroup` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | [P63] covergroup 采样链; --rand 查属性→约束链 |
