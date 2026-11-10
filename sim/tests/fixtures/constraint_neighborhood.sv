@@ -1,5 +1,6 @@
 class rnd_item;
   rand int a, b, c, d, e;
+  int k;
   constraint c_ab { a < b; solve a before b; }
   constraint c_bc { b == c + 1; }
   constraint c_cd { if (c > 0) d inside {[1:10]}; }

@@ -152,6 +152,8 @@ COMMANDS: list[CommandSpec] = [
             "(name-based; single_candidate 不是连接证明)"),
     _c("trace frontier", "semantic", cost="cheap",
        note="结构 trace 的边界/断点 + 下一步 probe；不分类 FIFO"),
+    _c("trace constraint-chain", "semantic", cost="cheap",
+       note="两个 random 变量之间的最短 constraint 链 (co-membership; 非 solver 证明)"),
     _c("trace covergroups", "semantic", cost="cheap",
        note="[P63] 列出 covergroup 定义 (可按 class 过滤)"),
     _c("trace coverpoints", "semantic", cost="cheap",
@@ -571,6 +573,10 @@ JSON_CONTRACT = {
         },
         "trace frontier": {
             "result_fields": ["signal", "frontier", "summary", "note"],
+        },
+        "trace constraint-chain": {
+            "result_fields": ["found", "source", "target", "rand", "hop_count",
+                              "chain", "segments", "blocks", "summary", "note"],
         },
         "trace covergroups": {
             "result_fields": ["count", "covergroups"],
