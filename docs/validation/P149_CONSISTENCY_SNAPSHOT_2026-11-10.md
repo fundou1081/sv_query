@@ -49,5 +49,4 @@ test_verify_consistency_snapshot.py: 1 passed
 
 ## 5. 边界
 
-真正支持 `connection` 需要 snapshot 存 MIG，或从 snapshot 重建
-instance/port 映射；本轮只做显式 unknown，不伪装成功。
+P151 已让新 snapshot 持久化 MIG；本文件保留 P149 的历史行为（旧 snapshot 无 MIG 时 unknown）。

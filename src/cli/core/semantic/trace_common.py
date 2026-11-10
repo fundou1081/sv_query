@@ -885,7 +885,7 @@ def _load_tracer_from_snapshot(
         ValueError: snapshot tag not found.
     """
     from trace.core.graph.models import SignalGraph
-    from trace.core.module_instance_graph import PathResolver
+    from trace.core.module_instance_graph import ModuleInstanceGraph, PathResolver
     from trace.core.query.signal import SignalTracer
     from trace.core.snapshot_manager import SnapshotManager
 
@@ -903,9 +903,12 @@ def _load_tracer_from_snapshot(
     tracer = UnifiedTracer(
         sources={}, log_level=log_level, preprocess_macros=preprocess_macros,
     )
+    mig = (ModuleInstanceGraph.from_dict(snap["module_graph"])
+           if snap.get("module_graph") else None)
     tracer._graph = graph
-    tracer._signal_tracer = SignalTracer(graph, mig=None)
-    # Snapshot carries SignalGraph only. PathResolver's RTL traversal uses the
-    # graph (no MIG virtual hops since iter_272), so paths remain answerable.
-    tracer._path_resolver = PathResolver(graph, None)
+    tracer._module_graph = mig
+    tracer._signal_tracer = SignalTracer(graph, mig=mig)
+    # PathResolver's RTL traversal uses the graph; MIG is only needed by
+    # connection/consistency consumers when present.
+    tracer._path_resolver = PathResolver(graph, mig)
     return tracer

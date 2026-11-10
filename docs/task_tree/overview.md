@@ -498,3 +498,4 @@ Open-source project visualization is **correct and verified**. Ready for next ta
 | **361** | **2026-11-10** | **L2** | **P148 verify width (iter_463)** | worker SPI finding | 718→171 bit violations | id_parent 未修 | **✅ 完成** |
 | **362** | **2026-11-10** | **L2** | **P149 consistency snapshot (iter_464)** | P147 worker finding | bit/reciprocity 可用；connection unknown | 不伪造 pass | **✅ 完成** |
 | **363** | **2026-11-10** | **L2** | **P150 id_parent (iter_465)** | P148 residual | SPI bit 171→0 | parent 检查收窄 | **✅ 完成** |
+| **364** | **2026-11-10** | **L2** | **P151 snapshot MIG (iter_466)** | P149 限制 | MIG 持久化；connection 离线可查 | 旧 snapshot 仍 unknown | **✅ 完成** |

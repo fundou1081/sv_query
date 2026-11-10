@@ -121,6 +121,8 @@ def save(
         # 保存快照
         manager = SnapshotManager()
         graph_data = graph.to_dict()
+        mig = tracer.get_module_graph()
+        graph_data["module_graph"] = mig.to_dict() if mig is not None else None
         graph_data["elaboration_errors"] = elaboration_errors
         graph_data["failed_files"] = failed_files
         graph_data["strict_mode"] = True  # [iter_224] strict 已彻底移除, 语义恒为 True

@@ -28,10 +28,10 @@ class TestConsistencySnapshot(unittest.TestCase):
                       '--checks', 'bit,connection'], env)
             self.assertEqual(0, p.returncode, p.stderr[-1000:])
             r = json.loads(p.stdout)['result']
-            self.assertEqual(['connection'], r['unknown_checks'])
+            self.assertEqual([], r['unknown_checks'])
             connection = next(c for c in r['checks'] if c['check'] == 'connection')
-            self.assertEqual('unknown', connection['status'])
-            self.assertIn('module instance graph', connection['error'])
+            self.assertEqual('pass', connection['status'])
+            self.assertGreater(connection['checked'], 0)
 
 
 if __name__ == '__main__':

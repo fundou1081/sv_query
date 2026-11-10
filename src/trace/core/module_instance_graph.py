@@ -65,6 +65,49 @@ class ModuleInstanceGraph:
         self.instances: dict[str, ModuleInstanceNode] = {}  # instance_id → Node
 
 
+    def to_dict(self) -> dict:
+        """Serialize instance/port mapping for snapshots (P151)."""
+        return {
+            "instances": {
+                iid: {
+                    "id": inst.id,
+                    "module_type": inst.module_type,
+                    "parent": inst.parent,
+                    "ports": {
+                        name: {
+                            "name": port.name,
+                            "direction": port.direction,
+                            "width": list(port.width) if port.width else None,
+                            "internal_signal": port.internal_signal,
+                            "module_type": port.module_type,
+                        }
+                        for name, port in inst.ports.items()
+                    },
+                }
+                for iid, inst in self.instances.items()
+            }
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "ModuleInstanceGraph":
+        """Rehydrate a snapshot MIG without a semantic adapter (P151)."""
+        mig = cls(adapter=None)
+        for iid, raw in (data or {}).get("instances", {}).items():
+            ports = {}
+            for name, p in (raw.get("ports") or {}).items():
+                width = tuple(p.get("width") or (0, 0))
+                ports[name] = PortInfo(
+                    name=p.get("name", name), direction=p.get("direction", ""),
+                    width=width,
+                    internal_signal=p.get("internal_signal", ""),
+                    module_type=p.get("module_type", ""),
+                )
+            mig.instances[iid] = ModuleInstanceNode(
+                id=raw.get("id", iid), module_type=raw.get("module_type", ""),
+                parent=raw.get("parent"), ports=ports,
+            )
+        return mig
+
     def build(self, trees: dict[str, Any] | None = None, instance_source: str = "auto") -> None:
         """构建模块实例图.
 
