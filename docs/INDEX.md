@@ -15,10 +15,10 @@
 | 源码规模 | 163 文件 / 63,146 行 | `find src -name "*.py"` |
 | 测试规模 | 368 测试文件 / 78,847 行 + 117 SV fixture | `find sim/tests -name "*.py"` |
 | 回归基线 | **2129 passed + 35 subtests** (unit + regression, `-m "not opensource"`) | 2026-09-08 实测 (iter_190 后) |
-| 全量 (canonical) | **2632 passed / 0 failed** (main) / **2631 passed / 0 failed** (foreign worktree) ✅ (`sim/tests/`, `-m "not opensource"`; 12–13 skipped / 119 deselected; 35 subtests) | 2026-11-10 实测 (P145): 环境依赖显式 skip；count 随 pico fallback 是否可用 |
+| 全量 (canonical) | **2633 passed / 0 failed** (main) / **2632 passed / 0 failed** (foreign worktree) ✅ (`sim/tests/`, `-m "not opensource"`; 12–13 skipped / 119 deselected; 35 subtests) | 2026-11-10 实测 (P145): 环境依赖显式 skip；count 随 pico fallback 是否可用 |
 | CLI / integration | **810 passed / 0 failed** (`sim/tests/cli sim/tests/integration`, `-m "not opensource"`) | 2026-09-08 实测 (iter_185 修复后) |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (454 份, 只增不改) | 每次迭代一份 |
+| 迭代记录 | `docs/task_tree/iterations/` (455 份, 只增不改) | 每次迭代一份 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 | 语义 regex 纪律 | `python3 tools/check_semantic_regex.py` 必须 ✅ | 仅 UVM 宏例外；class/constraint/covergroup 语义走 slang (iter_368) |
@@ -65,6 +65,7 @@
 | [validation/P151_SNAPSHOT_MIG_2026-11-10.md](validation/P151_SNAPSHOT_MIG_2026-11-10.md) | **P151**: snapshot 持久化 MIG；connection 可离线检查 |
 | [validation/P152_SPI_CORPUS_2026-11-10.md](validation/P152_SPI_CORPUS_2026-11-10.md) | **P152**: SPI_HOST 9-task corpus |
 | [validation/P153_TRANSITIVE_FANIN_2026-11-10.md](validation/P153_TRANSITIVE_FANIN_2026-11-10.md) | **P153**: wrapper_passthrough transitive fanin 修复 |
+| [validation/P154_SNAPSHOT_PROBES_2026-11-10.md](validation/P154_SNAPSHOT_PROBES_2026-11-10.md) | **P154**: snapshot probes 可执行 |
 | [validation/P139_FRONTIER_2026-11-09.md](validation/P139_FRONTIER_2026-11-09.md) | **P139 frontier**: 断点 + next probes；不分类 FIFO |
 | [validation/P139_WORKER_REVIEW_2026-11-09.md](validation/P139_WORKER_REVIEW_2026-11-09.md) | **P139 worker review**: APPROVE WITH NITS；nits 已修 |
 | [validation/P140_GUIDED_BOUNDARY_2026-11-09.md](validation/P140_GUIDED_BOUNDARY_2026-11-09.md) | **P140**: 显式 boundary map 跑通 I2C S1 |

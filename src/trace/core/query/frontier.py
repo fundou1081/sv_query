@@ -150,7 +150,8 @@ def _validate_limits(max_depth: int, max_frontier: int) -> None:
 
 
 def analyze_frontier(graph, signal: str, direction: str = "both",
-                     max_depth: int = 8, max_frontier: int = 50) -> dict:
+                     max_depth: int = 8, max_frontier: int = 50,
+                     probe_suffix: str = "") -> dict:
     _validate_limits(max_depth, max_frontier)
     directions = ["fanin", "fanout"] if direction == "both" else [direction]
     found_all: list[Frontier] = []
@@ -167,7 +168,7 @@ def analyze_frontier(graph, signal: str, direction: str = "both",
     rows = [{
         "direction": f.direction, "node": f.node, "reason": f.reason,
         "instance": f.instance, "path": f.path,
-        "next_probes": f.next_probes,
+        "next_probes": [p + probe_suffix for p in f.next_probes],
     } for f in found_all]
     return {"signal": signal, "frontier": rows,
             "summary": {"frontier_count": len(rows), "truncated": truncated,

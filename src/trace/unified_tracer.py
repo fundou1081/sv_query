@@ -715,6 +715,17 @@ class UnifiedTracer:
     # =========================================================================
     # 实例提取 API (Req-1: API 简化)
     # =========================================================================
+    def _instances_from_mig(self, module: str | None) -> list[InstanceInfo]:
+        """Snapshot tracer: MIG is the authoritative instance source."""
+        result = []
+        for iid, inst in sorted(self._module_graph.instances.items()):
+            if module is None or inst.parent == module or iid == module:
+                result.append(InstanceInfo(
+                    name=iid.rsplit(".", 1)[-1], module_type=inst.module_type,
+                    full_path=iid, parent=inst.parent,
+                ))
+        return result
+
     def get_instances(self, module: str = None) -> list[InstanceInfo]:
         """获取模块实例列表
 
@@ -747,6 +758,8 @@ class UnifiedTracer:
         #      → native 实例枚举访问 `self._root.topInstances` 直接 AttributeError;
         #   ② `_parse_instance_node` 期望**原始** InstanceSymbol (`hasattr(node,'kind')`),
         #      而 native/生产路径返回的是 `SemanticInstanceWrapper` → 永远解析不出东西。
+        if self._module_graph is not None and getattr(self, "_adapter", None) is None:
+            return self._instances_from_mig(module)
         adapter = self._get_adapter()  # SemanticAdapter (已 wrap pyslang root)
         seen: set[str] = set()
         result: list[InstanceInfo] = []

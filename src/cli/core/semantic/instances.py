@@ -21,6 +21,7 @@ import typer
 
 from cli._common import _build_tracer, handle_compilation_error
 from trace.core.compiler import CompilationError
+from cli.core.semantic.trace_common import _load_tracer_from_snapshot
 
 instance_app = typer.Typer(help="实例与层级查询 (只读, JSON-first)")
 
@@ -28,7 +29,9 @@ instance_app = typer.Typer(help="实例与层级查询 (只读, JSON-first)")
 # ----------------------------------------------------------------------------
 # 共享: 构建 tracer + 取实例/MIG
 # ----------------------------------------------------------------------------
-def _tracer(file, filelist, log_level: str = "WARNING"):
+def _tracer(file, filelist, log_level: str = "WARNING", from_snapshot: str | None = None):
+    if from_snapshot:
+        return _load_tracer_from_snapshot(from_snapshot)
     return _build_tracer(file=file, filelist=filelist, log_level=log_level)
 
 
@@ -76,6 +79,7 @@ def instances_cmd(
     path: str = typer.Argument(None, help="[iter_250] 给实例路径 → 显示详情; 省略 → 列出所有实例"),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str = typer.Option(None, "--filelist", help="filelist (.f/.fl) for multi-file projects"),
+    from_snapshot: str = typer.Option(None, "--from-snapshot", help="load graph/MIG from snapshot tag"),
     module: str = typer.Option(None, "--module", "-m", help="只看该模块(实例)下的直接实例"),
     depth: int = typer.Option(None, "--depth", "-d", help="相对 root 的最大层数"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON"),
@@ -91,7 +95,7 @@ def instances_cmd(
         svq instances top.u_dut --filelist project.f --json
     """
     try:
-        tracer = _tracer(file, filelist, log_level)
+        tracer = _tracer(file, filelist, log_level, from_snapshot)
         tracer.build_graph()
     except CompilationError as e:
         handle_compilation_error(e)
@@ -144,6 +148,7 @@ def connections_cmd(
     target: str = typer.Argument(..., help="实例路径 (top.u_dut) 或模块名 (dut)"),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str = typer.Option(None, "--filelist", help="filelist (.f/.fl) for multi-file projects"),
+    from_snapshot: str = typer.Option(None, "--from-snapshot", help="load graph/MIG from snapshot tag"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     log_level: str = typer.Option("WARNING", "--log-level"),
@@ -156,7 +161,7 @@ def connections_cmd(
     输出里带 `resolved_as` 字段, 不让你猜是哪一种。
     """
     try:
-        tracer = _tracer(file, filelist, log_level)
+        tracer = _tracer(file, filelist, log_level, from_snapshot)
         tracer.build_graph()
     except CompilationError as e:
         handle_compilation_error(e)
@@ -197,6 +202,7 @@ def connections_cmd(
 def hierarchy_cmd(
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str = typer.Option(None, "--filelist", help="filelist (.f/.fl) for multi-file projects"),
+    from_snapshot: str = typer.Option(None, "--from-snapshot", help="load graph/MIG from snapshot tag"),
     module: str = typer.Option(None, "--module", "-m", help="以该实例为根 (默认全部顶层)"),
     depth: int = typer.Option(None, "--depth", "-d", help="最大层数"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON"),
@@ -205,7 +211,7 @@ def hierarchy_cmd(
 ) -> None:
     """实例层级树 (机器可读版 `arch show`)。"""
     try:
-        tracer = _tracer(file, filelist, log_level)
+        tracer = _tracer(file, filelist, log_level, from_snapshot)
         tracer.build_graph()
     except CompilationError as e:
         handle_compilation_error(e)

@@ -25,9 +25,10 @@ def _frontier_payload(signal, direction, max_depth, max_frontier,
     r = resolve_signal(graph, signal)
     if not r.get("ok") or r.get("resolved") not in graph:
         raise ValueError(f"signal {signal!r} not found")
+    suffix = f" --from-snapshot {from_snapshot}" if from_snapshot else ""
     return analyze_frontier(graph, r["resolved"], direction=direction,
-                            max_depth=max_depth,
-                            max_frontier=max_frontier)
+                            max_depth=max_depth, max_frontier=max_frontier,
+                            probe_suffix=suffix)
 
 
 def _print_frontier(result: dict) -> None:
