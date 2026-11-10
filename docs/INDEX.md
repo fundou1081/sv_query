@@ -18,7 +18,7 @@
 | 全量 (canonical) | **2631 passed / 0 failed** (main) / **2630 passed / 0 failed** (foreign worktree) ✅ (`sim/tests/`, `-m "not opensource"`; 12–13 skipped / 119 deselected; 35 subtests) | 2026-11-10 实测 (P145): 环境依赖显式 skip；count 随 pico fallback 是否可用 |
 | CLI / integration | **810 passed / 0 failed** (`sim/tests/cli sim/tests/integration`, `-m "not opensource"`) | 2026-09-08 实测 (iter_185 修复后) |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (451 份, 只增不改) | 每次迭代一份 |
+| 迭代记录 | `docs/task_tree/iterations/` (452 份, 只增不改) | 每次迭代一份 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 | 语义 regex 纪律 | `python3 tools/check_semantic_regex.py` 必须 ✅ | 仅 UVM 宏例外；class/constraint/covergroup 语义走 slang (iter_368) |
@@ -62,6 +62,7 @@
 | [validation/P148_VERIFY_WIDTH_2026-11-10.md](validation/P148_VERIFY_WIDTH_2026-11-10.md) | **P148**: single-bit width sentinel 修复 |
 | [validation/P149_CONSISTENCY_SNAPSHOT_2026-11-10.md](validation/P149_CONSISTENCY_SNAPSHOT_2026-11-10.md) | **P149**: consistency --from-snapshot；MIG 缺失显式 unknown |
 | [validation/P150_ID_PARENT_2026-11-10.md](validation/P150_ID_PARENT_2026-11-10.md) | **P150**: id_parent 误报修复；SPI bit 171→0 |
+| [validation/P151_SNAPSHOT_MIG_2026-11-10.md](validation/P151_SNAPSHOT_MIG_2026-11-10.md) | **P151**: snapshot 持久化 MIG；connection 可离线检查 |
 | [validation/P139_FRONTIER_2026-11-09.md](validation/P139_FRONTIER_2026-11-09.md) | **P139 frontier**: 断点 + next probes；不分类 FIFO |
 | [validation/P139_WORKER_REVIEW_2026-11-09.md](validation/P139_WORKER_REVIEW_2026-11-09.md) | **P139 worker review**: APPROVE WITH NITS；nits 已修 |
 | [validation/P140_GUIDED_BOUNDARY_2026-11-09.md](validation/P140_GUIDED_BOUNDARY_2026-11-09.md) | **P140**: 显式 boundary map 跑通 I2C S1 |

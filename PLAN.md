@@ -454,6 +454,10 @@ P150 verify id_parent false positives <已完成>
 -- P150.1 direct-child relation fix <已完成>
 -- P150.2 SPI regression <已完成>
 
+P151 snapshot MIG persistence <已完成>
+-- P151.1 MIG serialize/rehydrate <已完成>
+-- P151.2 consistency connection from snapshot <已完成>
+
 
 ## 已完成（保留最近记录，便于核查上一轮）
 
