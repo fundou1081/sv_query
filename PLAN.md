@@ -446,6 +446,10 @@ P148 verify consistency single-bit width <已完成>
 -- P148.1 bit_range sentinel fix <已完成>
 -- P148.2 SPI regression <已完成>
 
+P149 verify consistency from snapshot <已完成>
+-- P149.1 --from-snapshot option <已完成>
+-- P149.2 explicit MIG-unknown test <已完成>
+
 
 ## 已完成（保留最近记录，便于核查上一轮）
 
