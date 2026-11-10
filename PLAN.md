@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P62.2 交互式 debug（gate） <待做>
+current item : P146.1 I2C real-task matrix <进行中>
 
 ## 计划树
 
@@ -429,6 +429,12 @@ P145 reproducible validation baseline + agent tasks <已完成>
 -- P145.1 reproducible full gate <已完成>
 -- P145.2 agent task regression corpus <已完成>
 -- P145.3 independent worker replay <已完成>
+
+P146 real-project agent matrix <进行中>
+-- P146.1 I2C real-task matrix <进行中>
+-- P146.2 UART real-task matrix <待做>
+-- P146.3 schema/UX adversarial matrix <待做>
+-- P146.4 issue triage + fixes <待做>
 
 
 ## 已完成（保留最近记录，便于核查上一轮）

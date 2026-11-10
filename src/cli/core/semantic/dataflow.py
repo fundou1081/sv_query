@@ -113,6 +113,16 @@ def output_text(data: dict, human: bool = False, tree: bool = False) -> None:
 dataflow_app = typer.Typer(help="Analyze dataflow paths between signals")
 
 
+def _fail_analyze(message: str, json_output: bool, pretty: bool, code: int = 1) -> None:
+    data = {"ok": False, "command": "dataflow_analyze", "error": message,
+            "errors": [message]}
+    if json_output:
+        emit_json(data, pretty)
+    else:
+        typer.echo(f"Error: {message}", err=True)
+    raise typer.Exit(code=code)
+
+
 @dataflow_app.command("analyze")
 def analyze(
     from_signal: str = typer.Argument(..., help="Source signal (e.g., top.clk)"),
@@ -134,8 +144,7 @@ def analyze(
 ) -> None:
     """Analyze dataflow path from source signal to target signal"""
     if not file and not filelist:
-        typer.echo("Error: --file or --filelist is required", err=True)
-        raise typer.Exit(code=1)
+        _fail_analyze("--file or --filelist is required", json_output, pretty)
 
     try:
         tracer = _build_tracer(
@@ -157,8 +166,7 @@ def analyze(
         src_info = normalize_endpoint(tracer.get_graph(), from_signal, spec.get(0, "src"))
         dst_info = normalize_endpoint(tracer.get_graph(), to_signal, spec.get(1, "dst"))
     except ValueError as e:
-        typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(code=2) from None
+        _fail_analyze(str(e), json_output, pretty, code=2)
     from_id, to_id = src_info["resolved"], dst_info["resolved"]
 
     dfg = DataFlowGraph(tracer._graph, tracer._module_graph)
@@ -167,8 +175,7 @@ def analyze(
     except ValueError as e:
         # [ADD 2026-06-11 Req-11] 信号名不存在的友好错误 (Issue 20)
         # ValueError 已含 hint 和 available signals, 不暴露 traceback
-        typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(code=1) from None
+        _fail_analyze(str(e), json_output, pretty)
 
     # [Stage 5] (可选) evidence 召回 - 每个 segment 的 to_signal 独立解析
     evidence_resolver = None

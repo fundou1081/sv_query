@@ -90,9 +90,10 @@
   `schema_version`, `layers`, `core_groups`, `counts`, `planned_new`,
   `bit_precision`, `json_contract`, `commands[]`。
   每个 command：`name/planned_name/aliases/layer/group/mode/kind/cost/json/
-  stateful/readonly/stability/schema_version/recommended/note`。
+  stateful/readonly/stability/schema_version/recommended/envelope/write_scope/note`。
 - **坑**: 默认不列 `exp`；`--include-exp` 才出现。`mode` 由
-  `mode_of()` 推断，个别命令存在漂移（见 Unresolved U1）。
+  `mode_of()` 推断。`envelope` 为 `standard|direct`，`write_scope` 为
+  `none|cache|output`；不要把 direct 当标准信封。
 - **例**: `sv_query capabilities --json`
 
 #### `scope`
@@ -224,6 +225,8 @@
 - **例**: `sv_query loads top.u.a --filelist rtl.f --json`
 
 #### `paths`
+- **canonical 字段**: `--canonical` 追加 `canonical_policy` 与
+  `candidate_count`；默认不加。
 - **解决**: 两个信号之间是否存在结构路径；默认无向（逆流也可达），
   `--directed` 只沿数据流方向。
 - **输入**: `paths <src> <dst> [--all] [--directed] [--canonical]
@@ -377,6 +380,9 @@
 - **例**: `sv_query verify consistency --filelist rtl.f --json`
 
 #### `verify claim`
+- **已知边界**: `driver` 与 `path` 对同一声明可能给出不同结论；例如顶层
+  bitwise-NOT 后 `driver` 为 contradicted、`path` 为 verified。不要把
+  `driver contradicted` 单独解释成“没有连接”。
 - **解决**: 验证一条 claim（driver/path/connection/bit），输出
   `verified|contradicted|unknown`，带支持证据与反证。
 - **输入**: `verify claim --claim '<json>' | --claim-file f`

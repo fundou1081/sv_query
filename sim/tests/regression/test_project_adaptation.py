@@ -12,6 +12,8 @@ _RUNNER = os.path.join(_ROOT, 'examples', 'project_adaptations',
 _FIXTURE = os.path.join(os.path.dirname(__file__), '..', 'fixtures',
                         'explicit_boundary.sv')
 _EVIDENCE = "sim/tests/fixtures/explicit_boundary.sv:1"
+_VALIDATE = os.path.join(_ROOT, 'examples', 'project_adaptations',
+                         'opentitan_fifo', 'validate_map.py')
 
 
 def _entry(src, dst, **extra):
@@ -43,6 +45,28 @@ class TestProjectAdaptation(unittest.TestCase):
         self.assertEqual('boundary', data['status'])
         self.assertEqual([], data['chain'])
         self.assertTrue(data['frontier']['frontier'])
+
+    def test_direct_structural_path_needs_no_boundary(self):
+        proc = _run([], src='top.x', dst='top.p')
+        self.assertEqual(0, proc.returncode, proc.stderr[-1000:])
+        data = json.loads(proc.stdout)
+        self.assertEqual('traced', data['status'])
+        self.assertTrue(data['proven'])
+        self.assertEqual(0, data['boundaries_used'])
+        self.assertEqual([], data['boundary_hops'])
+
+    def test_validate_map_script_is_executable(self):
+        with tempfile.NamedTemporaryFile('w', suffix='.json', delete=False) as f:
+            json.dump({"adapter": "test", "boundaries": [
+                _entry('top.p', 'top.q')]}, f)
+            path = f.name
+        try:
+            proc = subprocess.run([sys.executable, _VALIDATE, path],
+                                  capture_output=True, text=True, cwd=_ROOT)
+        finally:
+            os.unlink(path)
+        self.assertEqual(0, proc.returncode, proc.stderr[-1000:])
+        self.assertIn('validated 1', proc.stdout)
 
     def test_explicit_boundary_composes_marked_chain(self):
         proc = _run([_entry('top.p', 'top.q')])

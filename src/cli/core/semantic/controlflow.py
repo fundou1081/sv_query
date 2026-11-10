@@ -141,6 +141,15 @@ def analyze(
     graph_builder._module_graph = tracer._module_graph
 
     analyzer = ControlFlowAnalyzer(graph_builder)
+    if signal not in graph.nodes():
+        msg = f"signal not found: {signal!r}"
+        data = {"ok": False, "command": "controlflow", "error": msg,
+                "errors": [msg]}
+        if json_output:
+            emit_json(data, pretty)
+        else:
+            print(f"Error: {msg}", file=sys.stderr)
+        raise typer.Exit(code=1)
 
     # [iter_261] 子视图: 只输出扁平条件列表 (原 `controlflow conditions`)
     if conditions_only:

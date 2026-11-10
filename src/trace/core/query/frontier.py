@@ -45,14 +45,23 @@ def _structural_neighbors(graph, node: str, direction: str) -> list[str]:
     return out
 
 
+def _probes_for_node(graph, node: str, instance: str) -> tuple[str, list[str]]:
+    if instance:
+        return instance, [f"connections {instance}", f"instances {instance}",
+                          f"ports {instance}"]
+    nd = graph.get_node(node) if hasattr(graph, "get_node") else None
+    kind = getattr(getattr(nd, "kind", None), "name", "")
+    owner = _owner(node) if kind.startswith("PORT") else ""
+    if owner:
+        return owner, [f"connections {owner}", f"instances {owner}",
+                       f"ports {owner}"]
+    return "", [f"drivers {node}", f"loads {node}", f"evidence {node}"]
+
+
 def _boundary(graph, node: str, direction: str, path: list[str],
               reason: str, instance: str = "") -> Frontier:
-    owner = instance or _owner(node)
-    probes = ([f"connections {owner}", f"instances {owner}", f"ports {owner}"]
-              if owner else [f"drivers {node}", f"loads {node}",
-                             f"evidence {node}"])
+    owner, probes = _probes_for_node(graph, node, instance)
     return Frontier(direction, node, path, reason, owner, probes)
-
 
 def _boundary_for_step(graph, nxt: str, direction: str, path: list[str],
                        depth: int, max_depth: int) -> Frontier | None:
