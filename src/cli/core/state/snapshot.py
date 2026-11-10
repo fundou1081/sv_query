@@ -279,6 +279,16 @@ def _looks_like_file(arg: str) -> bool:
     return arg.endswith((".sv", ".v", ".svh"))
 
 
+def _snapshot_compare_error(tag: str, json_output: bool, pretty: bool) -> None:
+    if json_output:
+        print(json.dumps({"ok": False, "command": "snapshot_compare",
+                          "error": f"Snapshot not found: {tag}"},
+                         indent=2 if pretty else None, ensure_ascii=False))
+    else:
+        print(f"Snapshot not found: {tag}")
+    raise typer.Exit(code=1)
+
+
 @snapshot_app.command()
 def compare(
     tag1: str = typer.Argument(..., help="快照 tag, 或 SV 文件路径 (两个都是文件时走文件模式)"),
@@ -305,11 +315,9 @@ def compare(
     snap2 = manager.load(tag2)
 
     if not snap1:
-        print(f"Snapshot not found: {tag1}")
-        raise typer.Exit(code=1)
+        _snapshot_compare_error(tag1, json_output, pretty)
     if not snap2:
-        print(f"Snapshot not found: {tag2}")
-        raise typer.Exit(code=1)
+        _snapshot_compare_error(tag2, json_output, pretty)
 
     # [FIX 2026-06-12] 直接用 SnapshotManager.compare (内置逻辑)
     result = manager.compare(tag1, tag2) or {}

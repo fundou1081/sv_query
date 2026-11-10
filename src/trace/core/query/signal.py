@@ -1393,6 +1393,9 @@ class SignalTracer:
                     bit_index: int | None = None) -> list[TraceNode]:
         if signal_id not in self.graph.nodes():
             return []
+        _node = self.graph.get_node(signal_id)
+        if _node is not None and _node.kind == NodeKind.CONST:
+            return []  # constants have no loads; do not fan out from literals
 
         if bit_index is None:
             bit_index = self._bit_index_of(signal_id)

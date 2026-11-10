@@ -627,15 +627,16 @@ JSON_CONTRACT = {
                               "chain", "segments", "blocks", "summary", "note"],
         },
         "trace covergroups": {
-            "result_fields": ["count", "covergroups"],
+            "result_fields": ["count", "covergroups", "complete", "reason"],
             "covergroup_fields": "class_covergroup",
         },
         "trace coverpoints": {
-            "result_fields": ["signal", "count", "matches"],
+            "result_fields": ["signal", "count", "matches", "complete", "reason"],
             "match_fields": "coverpoint_ref",
         },
         "trace covergroup": {
-            "result_fields": ["mode", "covergroup", "count", "samples", "links"],
+            "result_fields": ["mode", "covergroup", "count", "links", "samples",
+                              "complete", "reason"],
             "sample_fields": "covergroup_sampling",
             "link_fields": "covergroup_rand",
         },
@@ -1412,6 +1413,11 @@ JSON_CONTRACT = {
         "unknown/coarse_fallback are intentional downgrades, not failures."
     ),
 }
+
+# [P146] canonical command names are the agent-facing keys; aliases remain for
+# older consumers that index json_contract.commands by `trace fanin`/`trace fanout`.
+JSON_CONTRACT["commands"]["drivers"] = JSON_CONTRACT["commands"]["trace fanin"]
+JSON_CONTRACT["commands"]["loads"] = JSON_CONTRACT["commands"]["trace fanout"]
 
 
 BIT_PRECISION = {

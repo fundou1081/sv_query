@@ -61,6 +61,8 @@ def tb_join_cmd(
         handle_compilation_error(e)
     except typer.BadParameter as e:
         _fail_join(str(e), json_output, pretty)
+    except (ValueError, OSError) as e:
+        _fail_join(f"snapshot error: {e}", json_output, pretty)
 
 
 def _join_payload(field, file, filelist, from_snapshot) -> dict:

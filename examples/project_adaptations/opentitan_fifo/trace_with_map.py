@@ -88,6 +88,22 @@ def _validate_map(data: dict) -> list[dict]:
 
 
 def _compose(args, boundaries: list[dict]) -> dict:
+    direct = _path(args, args.src, args.dst)
+    if direct.get("found"):
+        return {
+            "ok": True,
+            "status": "traced",
+            "from": args.src,
+            "to": args.dst,
+            "adapter": args.map.get("adapter", ""),
+            "proven": True,
+            "asserted_relation": False,
+            "chain": direct["path"],
+            "boundary_hops": [],
+            "segments": [{"kind": "structural", "path": direct["path"]}],
+            "boundaries_used": 0,
+            "note": "direct structural path; no boundary map needed",
+        }
     failures = []
     viable = []
     for b in boundaries:
