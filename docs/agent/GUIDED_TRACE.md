@@ -27,8 +27,9 @@ sv_query trace frontier <signal> --filelist ... --json
 {
   "node": "...",
   "direction": "fanin|fanout",
-  "reason": "no_structural_edge | instance_boundary | depth_limit",
+  "reason": "no_structural_edge | instance_boundary | cycle_or_all_seen | depth_limit",
   "instance": "...",
+  "path": ["..."],
   "next_probes": ["connections ...", "instances ...", "ports ..."]
 }
 ```
@@ -36,9 +37,10 @@ sv_query trace frontier <signal> --filelist ... --json
 重要：
 
 ```text
-frontier 不分类 FIFO
+frontier 不做语义分类
 frontier 不创建边
 frontier 只报告断点和下一步 probe
+frontier 的 instance_boundary 的 instance/next_probes 指向实例本身
 ```
 
 ## 3. 跨项目边界

@@ -1,6 +1,6 @@
 # Task: P139 boundary-aware guided trace
 
-**状态**: ✅ 完成
+**状态**: ✅ 完成（worker independent review: APPROVE WITH NITS，nits 已修）
 **日期**: 2026-11-09
 
 ## 交付
@@ -9,7 +9,8 @@
 - 通用 boundary reason + next probes；
 - 不自动分类 FIFO、不添加图边；
 - agent 协议 `docs/agent/GUIDED_TRACE.md`；
-- 2 个回归测试。
+- 5 个回归测试；
+- worker 独立验证（MiniMax `svq-p139-review2`）。
 
 ## 边界
 

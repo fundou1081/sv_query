@@ -25,7 +25,26 @@ class TestFrontier(unittest.TestCase):
         row = result['frontier'][0]
         self.assertEqual('no_structural_edge', row['reason'])
         self.assertTrue(row['next_probes'])
-        self.assertIn('not a FIFO classification', result['note'])
+        self.assertIn('no semantic classification', result['note'])
+
+    def test_max_frontier_is_global(self):
+        proc = _run('--max-frontier', '1')
+        self.assertEqual(0, proc.returncode, proc.stderr[-1000:])
+        result = json.loads(proc.stdout)['result']
+        self.assertLessEqual(result['summary']['frontier_count'], 1)
+        self.assertEqual(1, result['summary']['max_frontier'])
+
+    def test_pure_cycle_is_reported(self):
+        fixture = os.path.join(os.path.dirname(__file__), '..', 'fixtures',
+                               'frontier_cycle.sv')
+        proc = subprocess.run(
+            [sys.executable, os.path.join(_ROOT, 'run_cli.py'), 'trace', 'frontier',
+             'top.x', '-f', fixture, '--direction', 'fanout', '--json'],
+            capture_output=True, text=True, cwd=_ROOT)
+        self.assertEqual(0, proc.returncode, proc.stderr[-1000:])
+        result = json.loads(proc.stdout)['result']
+        self.assertGreaterEqual(result['summary']['frontier_count'], 1)
+        self.assertEqual('cycle_or_all_seen', result['frontier'][0]['reason'])
 
     def test_unknown_signal_is_explicit(self):
         proc = subprocess.run(
