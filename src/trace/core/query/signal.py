@@ -1157,8 +1157,10 @@ class SignalTracer:
             # 实例内部有驱动：只沿 wrapper_passthrough 源继续
             # （continuous/nonblocking = 真模块内部 assign，粒度停在此端口）
             for ps in self._wrapper_passthrough_sources(src):
-                self._recurse_if_unseen(ps, drivers, seen_ids, current_depth + 1,
-                                        max_depth, allow_cross_module)
+                # The wrapper passthrough source is a real driver-node itself;
+                # append it before recursing so transitive fanin includes it.
+                self._append_source(ps, drivers, seen_ids, current_depth + 1,
+                                    max_depth, allow_cross_module)
         else:
             # 真 wrapper 端口（无内部驱动）：跨到同模块类型的兄弟实例同名端口
             for sib in self._sibling_ports(inst_path, port_name):
