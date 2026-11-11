@@ -64,11 +64,14 @@ def test_dataflow_only_first_invalid_signal_reported():
 
 
 def test_dataflow_valid_hierarchical_works():
-    """有效 hierarchical name 正常工作"""
+    """有效 hierarchical name 正常工作；CLOCK 不是数据路径。"""
     r = _run("dataflow", "analyze", "top.clk", "top.dout", "-f", "sim/test_simple.sv", "--log-level", "ERROR")
     assert r.returncode == 0
+    assert "Reachable: False" in r.stdout
+    r = _run("dataflow", "analyze", "top.din", "top.dout", "-f", "sim/test_simple.sv", "--log-level", "ERROR")
+    assert r.returncode == 0
     assert "Reachable: True" in r.stdout
-    print("✅ dataflow valid: 正常输出")
+    print("✅ dataflow valid: 数据路径可达，CLOCK 不可达")
 
 
 if __name__ == "__main__":

@@ -99,6 +99,9 @@ class SemanticAdapter(
         self._genvar_context = {}  # id(assign) → dict
         # [iter_112] id(primitive) → genvar ctx (generate-for 内的门, 同 assign 模式)
         self._primitive_genvar_context = {}
+        # [P158.3] pyslang wrapper 是临时对象; id() 只有在对象存活期间才唯一。
+        # 这里集中持有登记过的 wrapper, 防止 GC 复用地址 → context key 撞车。
+        self._ast_ctx_refs: list[object] = []
 
     @property
     def root(self) -> object:

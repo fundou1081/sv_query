@@ -4,6 +4,21 @@
 
 from .controlflow import ControlFlowGraph
 
+# Edge 分类契约 (P158.1) —— 唯一实现
+from .contracts import (
+    CLASS_EDGE_KINDS,
+    CONTROL_EDGE_KINDS,
+    DATA_EDGE_KINDS,
+    SIGNAL_EDGE_KINDS,
+    STRUCTURAL_EDGE_KINDS,
+    data_edge_view,
+    filter_edges,
+    has_data_edge,
+    is_control_edge,
+    is_data_edge,
+    is_structural_edge,
+)
+
 # ControlFlow
 from .controlflow_models import (
     Branch,
@@ -49,6 +64,18 @@ __all__ = [
     "TraceEdge",
     "NodeKind",
     "EdgeKind",
+    # Edge 分类契约 (P158.1)
+    "DATA_EDGE_KINDS",
+    "CONTROL_EDGE_KINDS",
+    "STRUCTURAL_EDGE_KINDS",
+    "CLASS_EDGE_KINDS",
+    "SIGNAL_EDGE_KINDS",
+    "is_data_edge",
+    "is_control_edge",
+    "is_structural_edge",
+    "has_data_edge",
+    "filter_edges",
+    "data_edge_view",
     # Diff
     "GraphDiff",
     "diff_graph",

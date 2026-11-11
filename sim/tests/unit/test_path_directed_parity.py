@@ -40,6 +40,10 @@ PAIRS = [
     ("synchronizer.async_i", "synchronizer.sync1"),            # 同步器链
     ("top_minimal.data_o", "top_minimal.valid_i"),             # 逆流
     ("synchronizer.sync0", "synchronizer.async_i"),            # 逆流
+    # [P158.1] CLOCK 边: 有向 (数据) 模式必须**不可达**, 且与 dataflow 一致。
+    # fixture 事实: sub.sv 里 ready_q <= leaf_ready (数据来自 leaf_ready),
+    # clk 与 ready_q 之间只有 CLOCK 边 → 不是数据路径。
+    ("top_minimal.sa1.clk", "top_minimal.sa1.ready_q"),
 ]
 
 

@@ -176,6 +176,7 @@ def _create_always_edges(module, result, module_name, genvar_ctx: dict | None = 
             gv = ctx.get("_genvar")
             if gv:
                 try:
+                    h.adapter._ast_ctx_refs.append(stmt)  # [P158.3] keep id() unique
                     h.adapter._genvar_context[id(stmt)] = dict(gv)
                 except Exception as e:
                     logger.debug("genvar 登记失败: %s", e)

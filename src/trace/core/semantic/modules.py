@@ -429,6 +429,7 @@ class ModulesMixin:
             ctx = genvar_ctx if genvar_ctx is not None else {}
             # 门级原语本身: 收集 + 记 ctx, 不再下钻 (无 body)
             if "PrimitiveInstance" in kind:
+                self._ast_ctx_refs.append(node)  # [P158.3] keep id() unique
                 self._primitive_genvar_context[id(node)] = dict(ctx)
                 primitives.append(node)
                 return

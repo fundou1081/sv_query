@@ -22,10 +22,11 @@ def test_paths_canonical_chooses_maximal_variant():
     d = json.loads(r.stdout)
     assert d["canonical"] is True
     assert d["canonical_policy"] == "max_nodes_then_lexicographic"
-    assert d["candidate_count"] == 2
-    assert d["hop_count"] == 11
+    # P158.1: ternary select is a control edge, not a data segment.
+    assert d["candidate_count"] == 1
+    assert d["hop_count"] == 10
     assert d["path"][2] == "top.u_mid.u_stage.d"
-    assert d["path"][3] == "top.u_mid.u_stage.u_leaf.d.ternary_sel"
+    assert d["path"][3] == "top.u_mid.u_stage.u_leaf.d"
 
 
 def test_controlflow_reads_port_ternary():

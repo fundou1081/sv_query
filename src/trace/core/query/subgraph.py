@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
+from ..graph.contracts import DATA_EDGE_KINDS
 from ..graph.models import EdgeKind, SignalGraph, TraceEdge, TraceNode
 
 
@@ -16,6 +17,9 @@ class SubgraphError(ValueError):
     """非法参数或未知 seed。"""
 
 
+# [P158.1] 这张表是 **CLI 名字 → edge kind** 的映射 (用户可见词汇),
+# 不是"什么算数据"的策略 —— 策略的唯一实现在 trace.core.graph.contracts。
+# `_DEFAULT_KINDS` 由 contracts.DATA_EDGE_KINDS 推导, 避免两份定义。
 _EDGE_NAMES = {
     "driver": {EdgeKind.DRIVER},
     "connection": {EdgeKind.CONNECTION},
@@ -30,7 +34,11 @@ _EDGE_NAMES = {
     },
 }
 _ALLOWED = set(_EDGE_NAMES) | {"control"}
-_DEFAULT_KINDS = ("driver", "connection")
+#: 默认 = 数据边 (driver + connection) —— 派生自 contracts.DATA_EDGE_KINDS
+_DEFAULT_KINDS = tuple(
+    name for name, kinds in _EDGE_NAMES.items()
+    if kinds and kinds <= DATA_EDGE_KINDS and kinds
+)
 
 
 @dataclass(frozen=True)

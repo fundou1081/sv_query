@@ -6,6 +6,7 @@
 
 from dataclasses import dataclass, field
 
+from .contracts import DATA_EDGE_KINDS
 from .models import EdgeKind, SignalGraph
 
 # ==============================================================================
@@ -122,7 +123,8 @@ def forward_reachability(
             for succ in graph.successors(node):
                 edge = graph.get_edge(node, succ)
                 # 只沿数据流边传播，CLOCK 边不参与数据依赖
-                if edge and edge.kind not in (EdgeKind.DRIVER, EdgeKind.CONNECTION):
+                # [P158.1] 数据边集合的唯一实现是 contracts.DATA_EDGE_KINDS
+                if edge and edge.kind not in DATA_EDGE_KINDS:
                     continue
                 if succ not in impacted:
                     impacted.add(succ)
@@ -211,7 +213,8 @@ def _max_impact_depth(start_nodes: list[str], graph: SignalGraph) -> int:
             node = queue.pop(0)
             for succ in graph.successors(node):
                 edge = graph.get_edge(node, succ)
-                if edge and edge.kind not in (EdgeKind.DRIVER, EdgeKind.CONNECTION):
+                # [P158.1] 数据边集合的唯一实现是 contracts.DATA_EDGE_KINDS
+                if edge and edge.kind not in DATA_EDGE_KINDS:
                     continue
                 if succ not in impacted:
                     impacted.add(succ)

@@ -10,8 +10,10 @@
 //   * `top.u0.b` has exactly 1 driver (the `sub` instance port `b`) and
 //     exactly 3 loads (`top.w`, `top.q`, `top.z`).
 //   * the canonical directed path top.x -> top.z is
-//     x -> u0.a -> u0.b -> w -> q -> z.ternary_y -> z
-//     (7 nodes = 6 hops; the last hop is the ternary select).
+//     x -> u0.a -> u0.b -> w -> q -> z
+//     (6 nodes = 5 hops). The ternary select is a BRANCH_* control edge and
+//     is not part of the data path after P158.1; the second data candidate
+//     is the direct w -> z data edge.  candidate_count=2.
 //   * `top.z` is driven by `top.q` (assign z = y ? q : w).
 
 module sub(input logic a, output logic b);

@@ -16,6 +16,7 @@ module_instance_graph.py - 模块实例层级图
 """
 
 import logging
+import time
 from typing import Any
 
 from collections import deque
@@ -23,6 +24,7 @@ from collections import deque
 import networkx as nx
 
 from .._safe import _safe_attr, _safe_str, safe_attr, safe_str
+from .graph import contracts
 
 logger = logging.getLogger(__name__)
 
@@ -273,48 +275,180 @@ class ModuleInstanceGraph:
         return list(self.instances.keys())
 
 
+@dataclass
+class PathSearchResult:
+    """有界路径枚举的结果 (P158.2)。
+
+    Attributes:
+        paths: 找到的路径 (可能为空)
+        truncated: 是否因预算耗尽而**不完整**
+        truncation_reason: 截断原因 (max_paths_reached / max_depth_reached /
+            max_expansions_reached / deadline_reached); 未截断时为 ""
+        expansions: 实际 DFS 展开次数 (work 计量)
+        mode: "data" (directed, 只走 DRIVER/CONNECTION) 或 "structural" (无向)
+    """
+
+    paths: list[list[str]] = field(default_factory=list)
+    truncated: bool = False
+    truncation_reason: str = ""
+    expansions: int = 0
+    mode: str = "structural"
+
+
+class _SearchBudget:
+    """路径枚举的 work budget + wall-clock deadline (P158.2)。
+
+    只做**记账**: 谁耗尽了预算、为什么耗尽。截断必须显式可见,
+    不允许静默 cap。
+
+    原因优先级 (硬预算 > 软上限):
+      1. `deadline_reached`     — wall-clock 超时 (搜索被中止)
+      2. `max_expansions_reached` — work budget 耗尽 (搜索被中止)
+      3. `max_paths_reached`    — 结果数收满, 但确认还有更多路径
+      4. `max_depth_reached`    — 深度上限剪掉分支 (可能漏路径)
+    """
+
+    #: 硬预算 (中止搜索) 优先于软上限 (剪枝/收满)
+    _HARD = ("deadline_reached", "max_expansions_reached")
+    _SOFT = ("max_paths_reached", "max_depth_reached")
+
+    def __init__(self, max_expansions: int, deadline: float | None,
+                 max_paths: int, max_depth: int):
+        self.max_expansions = max_expansions
+        self.deadline = deadline
+        self.max_paths = max_paths
+        self.max_depth = max_depth
+        self.expansions = 0
+        self._reasons: set[str] = set()
+        self._start = time.monotonic()
+
+    def note(self, reason: str) -> None:
+        """记录截断原因 (可多个; 优先级见类 docstring)。"""
+        self._reasons.add(reason)
+
+    @property
+    def reason(self) -> str:
+        """返回优先级最高的截断原因 (空串 = 未截断)。"""
+        for candidate in self._HARD + self._SOFT:
+            if candidate in self._reasons:
+                return candidate
+        if self.deadline is not None and time.monotonic() > self.deadline:
+            return "deadline_reached"
+        return ""
+
+    @property
+    def exhausted(self) -> bool:
+        """预算是否耗尽 (work budget 或 wall-clock deadline)。"""
+        if self.expansions >= self.max_expansions:
+            self.note("max_expansions_reached")
+            return True
+        if self.deadline is not None and time.monotonic() > self.deadline:
+            self.note("deadline_reached")
+            return True
+        return False
+
+    @property
+    def truncated(self) -> bool:
+        return bool(self.reason)
+
+
 class PathResolver:
     """跨模块路径解析器
 
     协调 SignalGraph 和 ModuleInstanceGraph
     实现跨模块边界路径查找
+
+    [P158.1] 两种模式语义**不同**, 由 edge 契约区分 (见
+    `trace.core.graph.contracts`):
+
+    - `directed=True`  → **数据路径**: 只走 data 边 (DRIVER / CONNECTION)。
+      CLOCK / RESET / BIT_SELECT / MEMBER_SELECT 一律不走 → `clk → ready_q`
+      不再被判为数据路径 (SEMANTIC_CONTRACTS §2.2)。
+    - `directed=False` → **结构连通性**: 走全部硬件信号边 (data + control +
+      structural), 双向。回答"图上是否连通", **不能**用来证明数据关系。
     """
 
     def __init__(self, signal_graph, module_graph: ModuleInstanceGraph):
         self.signal_graph = signal_graph
         self.module_graph = module_graph
 
+    # ------------------------------------------------------------------
+    # edge 契约 (P158.1) —— 唯一实现, 不在命令里另写一份
+    # ------------------------------------------------------------------
+    def _allowed_edge_kinds(self, directed: bool) -> frozenset:
+        """该模式下允许穿越的 edge kind 集合。
+
+        [P158.1] 引用 contracts 的唯一实现 (运行时读取, 不复制常量值) ——
+        这样 edge 契约只有一个真源, 改契约即刻对所有消费者生效。
+        """
+        if directed:
+            return contracts.DATA_EDGE_KINDS
+        return contracts.SIGNAL_EDGE_KINDS
+
     def _neighbors(self, node: str, directed: bool = False) -> list[str]:
         """统一的邻接定义。
 
-        无向模式 (默认, `directed=False`): successors + predecessors +
-        跨模块端口映射(两个方向) —— 回答**结构连通性**。
+        无向模式 (默认, `directed=False`): successors + predecessors ——
+        回答**结构连通性**。
 
         有向模式 (`directed=True`): 只走 successors, 且**不**做 MIG 虚拟跳转 ——
         SignalGraph 本身已含跨模块端口边 (父网 ↔ 实例端口), 与 `dataflow analyze`
         走同一张有向图, 因此两者结论一致 (iter_268)。
 
+        [P158.1] 两种模式都**按 edge kind 过滤**:
+        - directed 只走 data 边 (DRIVER/CONNECTION) → 不是数据路径的边被排除;
+        - undirected 走全部硬件信号边 (含 CLOCK/RESET/BIT_SELECT),
+          语义是结构连通性, 调用方必须标注 mode。
+
         [iter_237] 旧实现里 `find_path` 走 successors+predecessors + 进模块映射, 而
         `find_all_paths` 只走 successors → 两者结论互相矛盾。现在两个入口共用本方法。
         """
+        allowed = self._allowed_edge_kinds(directed)
         out: list[str] = []
         try:
-            out.extend(self.signal_graph.successors(node))
+            succ = list(self.signal_graph.successors(node))
         except (KeyError, nx.NetworkXError) as _e:
             logger.debug("图无后继 (正常): %s", _e)
+            succ = []
+        out.extend(self._filter_neighbors(node, succ, allowed, forward=True))
 
         if directed:
             return out
 
         try:
-            out.extend(self.signal_graph.predecessors(node))
+            pred = list(self.signal_graph.predecessors(node))
         except (KeyError, nx.NetworkXError) as _e:
             logger.debug("图无前驱 (正常): %s", _e)
+            pred = []
+        out.extend(self._filter_neighbors(node, pred, allowed, forward=False))
         # [iter_272] MIG 虚拟跳 (进/出模块) 已删除:
         # 图恒为实例级, 跨模块端口边本来就在 SignalGraph 里; 而 MIG 的
         # 旧实现会把端口映射到"模块定义命名空间"的影子 id (不在图里); 单一命名
         # 空间后端口 id 就是图节点, 这两跳
         # 只会把遍历导向不存在的节点。
+        return out
+
+    def _filter_neighbors(self, node: str, candidates: list[str],
+                          allowed: frozenset, forward: bool = True) -> list[str]:
+        """保留与 `node` 之间存在**允许 kind** 的边的邻居。
+
+        `forward=True`  → 边方向是 node → cand (successors)
+        `forward=False` → 边方向是 cand → node (predecessors)
+
+        注意: 一对节点之间可能有多种 kind 的边 (如 CONNECTION + DRIVER),
+        只要**存在**一条允许 kind 的边就算连通; 但若某邻居只靠
+        CLOCK/RESET/BIT_SELECT 边连接, 则在 directed 模式下被排除。
+        """
+        out: list[str] = []
+        for cand in candidates:
+            src, dst = (node, cand) if forward else (cand, node)
+            try:
+                edges = self.signal_graph.get_edges(src, dst)
+            except (KeyError, nx.NetworkXError) as _e:
+                logger.debug("取边失败 (正常): %s", _e)
+                continue
+            if any(getattr(e, "kind", None) in allowed for e in edges):
+                out.append(cand)
         return out
 
     def find_path(self, src: str, dst: str, directed: bool = False) -> list[str] | None:
@@ -347,23 +481,90 @@ class PathResolver:
         return None
 
     def find_all_paths(self, src: str, dst: str, max_paths: int = 50,
-                       max_depth: int = 60, directed: bool = False) -> list[list[str]]:
+                       max_depth: int = 60, directed: bool = False,
+                       max_expansions: int = 200_000,
+                       deadline: float | None = None) -> list[list[str]]:
         """枚举 src → dst 的所有简单路径 (与 `find_path` 共用邻接定义)。
 
+        [P158.2] 枚举**必须有界**: `max_expansions` (work budget) + 可选
+        `deadline` (wall-clock 秒)。耗尽时**不静默截断** —— 用
+        `find_all_paths_detailed` 拿 `truncated` / `truncation_reason`。
+
         Args:
-            max_paths: 结果上限 (有环图里防爆; 调用方应据此标注 truncated)
+            max_paths: 结果上限 (有环图里防爆)
             max_depth: 单条路径最大节点数
+            directed: True = 数据路径 (只走 data 边); False = 结构连通性
+            max_expansions: DFS 展开次数上限 (work budget)
+            deadline: wall-clock 截止时间 (monotonic 秒); None = 不限时
+        """
+        return self.find_all_paths_detailed(
+            src, dst, max_paths=max_paths, max_depth=max_depth,
+            directed=directed, max_expansions=max_expansions, deadline=deadline,
+        ).paths
+
+    def find_all_paths_detailed(
+        self, src: str, dst: str, max_paths: int = 50,
+        max_depth: int = 60, directed: bool = False,
+        max_expansions: int = 200_000,
+        deadline: float | None = None,
+    ) -> "PathSearchResult":
+        """有界枚举 src → dst 的所有简单路径, 并显式报告截断。
+
+        [P158.2] SEMANTIC_CONTRACTS §3: 超限**不能**伪装成 `found:false` ——
+        必须返回 `truncated:true` + `truncation_reason`。
+
+        截断原因 (三选一, 互斥, 按发生顺序):
+          - `max_paths_reached`   : 找到的路径数达到 `max_paths`
+          - `max_depth_reached`   : 某条路径超过 `max_depth` (可能还有更长路径)
+          - `max_expansions_reached`: DFS 展开次数耗尽 (work budget)
+          - `deadline_reached`    : 超过 wall-clock deadline
         """
         paths: list[list[str]] = []
         # [iter_268] 与 find_path 一致: 端点就是用户给的 dst, 不做影子节点规范化。
+        state = _SearchBudget(max_expansions=max_expansions, deadline=deadline,
+                              max_paths=max_paths, max_depth=max_depth)
+        self._dfs_paths(src, dst, paths, state, directed)
+        return PathSearchResult(
+            paths=paths,
+            truncated=state.truncated,
+            truncation_reason=state.reason,
+            expansions=state.expansions,
+            mode="data" if directed else "structural",
+        )
 
+    def _dfs_paths(self, src: str, dst: str, paths: list[list[str]],
+                   state: "_SearchBudget", directed: bool) -> None:
+        """DFS 枚举简单路径 (work budget 受限)。
+
+        [P158.2] 收满 `max_paths` 后**继续搜索**: 只有确认还有更多路径时
+        才标记 `max_paths_reached` —— 否则"恰好 N 条"会被误报成截断。
+
+        Args:
+            src/dst: 端点 (路径必须以 dst 结尾)
+            paths: 结果收集器 (原地追加)
+            state: 预算记账器
+            directed: True = 数据路径 (只走 data 边)
+        """
         def _dfs(current: str, path: list[str], visited: set) -> None:
-            if len(paths) >= max_paths or len(path) > max_depth:
+            if state.exhausted:
+                return
+            if len(path) > state.max_depth:
+                # 深度上限: 可能有更长的路径没被枚举 → 截断可见
+                state.note("max_depth_reached")
                 return
             if current == dst and len(path) > 1:
-                paths.append(path.copy())
+                if len(paths) < state.max_paths:
+                    paths.append(path.copy())
+                else:
+                    # 已经收满 max_paths, 又找到一条 → 确实还有更多路径
+                    state.note("max_paths_reached")
                 return
             for nxt in self._neighbors(current, directed=directed):
+                if state.exhausted:
+                    return
+                state.expansions += 1
+                if state.exhausted:
+                    return
                 if nxt in visited:
                     continue
                 visited.add(nxt)
@@ -373,4 +574,3 @@ class PathResolver:
                 visited.discard(nxt)
 
         _dfs(src, [src], {src})
-        return paths
