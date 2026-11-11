@@ -17,6 +17,27 @@ def _run(args, env):
 
 
 class TestConsistencySnapshot(unittest.TestCase):
+    def test_legacy_snapshot_without_mig_is_explicit_unknown(self):
+        with tempfile.TemporaryDirectory() as td:
+            env = os.environ.copy()
+            env['SVQ_SNAPSHOT_DIR'] = td
+            save = _run(['snapshot', 'save', _FIX, '--tag', 'legacy'], env)
+            self.assertEqual(0, save.returncode, save.stderr[-1000:])
+            path = os.path.join(td, 'legacy.json')
+            data = json.load(open(path))
+            data.pop('module_graph', None)
+            with open(path, 'w') as f:
+                json.dump(data, f)
+            meta = json.loads(_run(['snapshot', 'list', 'legacy'], env).stdout)
+            self.assertFalse(meta['module_graph_present'])
+            p = _run(['verify', 'consistency', '--from-snapshot', 'legacy',
+                      '--checks', 'connection'], env)
+            self.assertEqual(0, p.returncode, p.stderr[-1000:])
+            r = json.loads(p.stdout)['result']
+            self.assertFalse(r['verified'])
+            self.assertEqual(['connection'], r['unknown_checks'])
+            self.assertEqual('unknown', r['checks'][0]['status'])
+
     def test_bit_and_connection_statuses_are_explicit(self):
         with tempfile.TemporaryDirectory() as td:
             env = os.environ.copy()

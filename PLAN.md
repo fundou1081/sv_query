@@ -492,7 +492,7 @@ P158 review remediation backlog <待做>
 -- P158.5 filelist 写入安全 <已完成>
 -- P158.6 truncated/verified 状态机 <已完成>
 -- P158.7 snapshot 构造与损坏输入 <待做>
--- P158.8 测试真实性 / legacy / true-positive <待做>
+-- P158.8 测试真实性 / legacy / true-positive <已完成>
 -- P158.9 snapshot surface + schema + capabilities <待做>
 -- P158.10 CI/gate 咬合 <待做>
 -- P158.11 dataflow/snapshot/frontier 性能与界限 <待做>

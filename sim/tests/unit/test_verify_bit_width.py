@@ -23,6 +23,22 @@ class TestVerifyBitWidth(unittest.TestCase):
         result = _check_bit_mapping(g, ["top.bus[3]"])
         self.assertEqual([], result["violations"])
 
+    def test_real_width_mismatch_is_reported(self):
+        g = SignalGraph()
+        parent = TraceNode(id="top.bus", name="bus", module="top",
+                           kind=NodeKind.SIGNAL, width=(7, 0))
+        child = TraceNode(id="top.bus[4:3]", name="bus[4:3]", module="top",
+                          kind=NodeKind.SIGNAL, width=(4, 3),
+                          parent="top.bus", bit_range="[4:3]",
+                          parent_bit_start=4, parent_bit_end=4)
+        g.add_trace_node(parent)
+        g.add_trace_node(child)
+        result = _check_bit_mapping(g, ["top.bus[4:3]"])
+        # A malformed range span is caught by the range check; either kind is a
+        # true positive (the point is that a real inconsistency is reported).
+        self.assertTrue({"width_mismatch", "bit_range_mismatch"}
+                        & {v["kind"] for v in result["violations"]})
+
     def test_generate_bracket_in_ancestor_is_not_parent_mismatch(self):
         g = SignalGraph()
         parent = TraceNode(id="top.gen[0].u", name="u", module="top",
