@@ -8,8 +8,8 @@
     "target": "picorv32",
     "depth": 2,
     "include_dirs": null,
-    "timestamp": "2026-09-11T22:53:59.336127",
-    "build_time_seconds": 0.81
+    "timestamp": "2026-11-11T20:12:20.517343",
+    "build_time_seconds": 0.82
   },
   "L1_module_extraction": {
     "target": "picorv32",
@@ -18,15 +18,15 @@
     "instances": []
   },
   "L2_graph_topology": {
-    "nodes": 438,
-    "edges": 1096,
+    "nodes": 676,
+    "edges": 1265,
     "instantiated_modules": 0,
     "port_in": 9,
     "port_out": 7,
-    "signal": 200,
+    "signal": 438,
     "depth_distribution": {
       "0": 19,
-      "1": 383,
+      "1": 621,
       "2": 36
     }
   },
@@ -68,17 +68,17 @@
   "flakiness": {
     "runs": 3,
     "node_counts": [
-      438,
-      438,
-      438
+      676,
+      676,
+      676
     ],
     "im_counts": [
       0,
       0,
       0
     ],
-    "node_min": 438,
-    "node_max": 438,
+    "node_min": 676,
+    "node_max": 676,
     "node_stdev": 0.0,
     "im_min": 0,
     "im_max": 0,

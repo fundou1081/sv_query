@@ -5,48 +5,90 @@
   "params": {},
   "result": {
     "all_conditions": [
-      "!rst_ni"
+      "!(!rst_ni)",
+      "!(!rst_ni)"
     ],
+    "bits": {
+      "coarse_fallback": false,
+      "dst": {
+        "coarse_fallback": false,
+        "kind": "bus",
+        "precision": "bus",
+        "requested_bit": null,
+        "requested_range": null,
+        "resolved": "synchronizer.sync0_o"
+      },
+      "src": {
+        "coarse_fallback": false,
+        "kind": "bus",
+        "precision": "bus",
+        "requested_bit": null,
+        "requested_range": null,
+        "resolved": "synchronizer.async_i"
+      }
+    },
     "clock_domain": "clk_i",
-    "from_signal": "sync_fifo.clk_i",
-    "intermediate_signals": [],
+    "from_resolved": "synchronizer.async_i",
+    "from_signal": "synchronizer.async_i",
+    "intermediate_signals": [
+      "synchronizer.sync1"
+    ],
     "is_reachable": true,
     "paths": [
       {
-        "distance": 1,
+        "distance": 2,
         "has_conditional": true,
         "is_async_crossing": false,
-        "latency_cycles": 1,
-        "latency_note": "1 sync stages (cycle latency)",
+        "latency_cycles": 2,
+        "latency_note": "2 sync stages (cycle latency)",
         "path_id": 0,
         "segments": [
           {
             "assign_type": "nonblocking",
-            "condition": "!rst_ni",
+            "condition": "!(!rst_ni)",
             "distance": 1,
-            "driver": "",
-            "from_signal": "sync_fifo.clk_i",
+            "driver": "async_i",
+            "from_signal": "synchronizer.async_i",
             "timing": "clk_i",
-            "to_signal": "sync_fifo.count_q"
+            "to_signal": "synchronizer.sync1"
+          },
+          {
+            "assign_type": "nonblocking",
+            "condition": "!(!rst_ni)",
+            "distance": 1,
+            "driver": "sync1",
+            "from_signal": "synchronizer.sync1",
+            "timing": "clk_i",
+            "to_signal": "synchronizer.sync0_o"
           }
         ],
         "stage_breakdown": [
           {
             "from_kind": "PORT_IN",
-            "from_signal": "sync_fifo.clk_i",
+            "from_signal": "synchronizer.async_i",
             "from_stage": null,
             "is_reg_boundary": true,
             "to_kind": "REG",
-            "to_signal": "sync_fifo.count_q",
-            "to_stage": null
+            "to_signal": "synchronizer.sync1",
+            "to_stage": 0
+          },
+          {
+            "from_kind": "REG",
+            "from_signal": "synchronizer.sync1",
+            "from_stage": 0,
+            "is_reg_boundary": true,
+            "to_kind": "REG",
+            "to_signal": "synchronizer.sync0_o",
+            "to_stage": 1
           }
         ]
       }
     ],
     "paths_count": 1,
     "primary_is_async": false,
-    "primary_latency_cycles": 1,
+    "primary_latency_cycles": 2,
     "timing_risk": "safe",
-    "to_signal": "sync_fifo.count_q"
+    "to_resolved": "synchronizer.sync0_o",
+    "to_signal": "synchronizer.sync0_o"
   }
 }

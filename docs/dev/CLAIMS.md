@@ -30,7 +30,7 @@
 | C-07 | `verify consistency` 的 verified 覆盖全部请求证据 | fixture/snapshot | `test_verify_truncated` | `verified` |
 | C-08 | 新 snapshot 可从 MIG 离线执行 connection 检查 | fixture | `test_verify_consistency_snapshot` / `test_snapshot_robust` | `verified` |
 | C-09 | 旧 snapshot 缺 MIG 时显式 unknown，不静默 fallback | fixture | `test_verify_consistency_snapshot` legacy case | `verified` |
-| C-10 | canonical 0 skipped 代表测试健康 | CI | 无 | **known-broken**（P157 移出失败测试） |
+| C-10 | canonical 0 skipped 代表测试健康 | CI | `run_gates.sh` + opensource 114/17/0 | `scoped`（canonical 与 opensource 分开；0 skip 仍不是健康指标） |
 | C-11 | SPI `verify consistency` 的 bit/connection/reciprocity 全绿 | real-corpus | `--full` 实测 3152/3261/1734，0 violations | `scoped`（外部 snapshot） |
 | C-12 | worker `APPROVE` 等于真实项目通过 | 过程 | 无 | **known-broken**（需主会话复现） |
 

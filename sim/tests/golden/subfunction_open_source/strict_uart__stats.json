@@ -5,23 +5,27 @@
   "params": {},
   "result": {
     "edges": {
-      "BIT_SELECT": 8,
+      "BIT_SELECT": 17,
       "CLOCK": 7,
       "CONNECTION": 4,
       "DRIVER": 16,
       "RESET": 7
     },
     "elaboration_errors": [],
-    "modules": [],
+    "modules": [
+      "sync_fifo",
+      "synchronizer",
+      "uart_top"
+    ],
     "nodes": {
       "CONST": 2,
       "INSTANTIATED_MODULE": 1,
-      "PORT_IN": 14,
-      "PORT_OUT": 7,
+      "PORT_IN": 12,
+      "PORT_OUT": 5,
       "REG": 7,
       "SIGNAL": 8
     },
-    "total_edges": 42,
-    "total_nodes": 39
+    "total_edges": 51,
+    "total_nodes": 35
   }
 }

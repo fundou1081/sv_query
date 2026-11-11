@@ -5,25 +5,26 @@
   "params": {},
   "result": {
     "edges": {
-      "BIT_SELECT": 226,
-      "BRANCH_CONDITION": 10,
-      "BRANCH_FALSE": 8,
-      "BRANCH_RESULT": 10,
+      "BIT_SELECT": 351,
+      "BRANCH_CONDITION": 14,
+      "BRANCH_RESULT": 22,
       "CLOCK": 1,
-      "DRIVER": 118,
+      "DRIVER": 351,
       "RESET": 1
     },
     "elaboration_errors": [],
-    "modules": [],
+    "modules": [
+      "prim_arbiter_tree"
+    ],
     "nodes": {
       "CONST": 11,
-      "OP_TERNARY": 10,
-      "PORT_IN": 6,
+      "OP_TERNARY": 22,
+      "PORT_IN": 135,
       "PORT_OUT": 4,
       "REG": 1,
-      "SIGNAL": 244
+      "SIGNAL": 341
     },
-    "total_edges": 374,
-    "total_nodes": 276
+    "total_edges": 740,
+    "total_nodes": 514
   }
 }

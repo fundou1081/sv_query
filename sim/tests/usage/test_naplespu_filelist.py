@@ -14,9 +14,11 @@ timing / verify gap / coverage suggest / controlflow / dataflow / visualize.
 
 import pytest
 
-# [V6.9] 全模块标记：V6.9 semantic AST 重构导致行为/输出变更，需逐测试更新期望值
-pytestmark = pytest.mark.skip(reason="[V6.9] 行为/输出变更，待逐测试对齐 semantic AST")
+# P160: only the retired `exp` subcommands are skipped; m01/m10/m11 still run.
 pytestmark = pytest.mark.opensource  # NaplesPU filelist dependency
+_RETIRED_EXP = pytest.mark.skip(
+    reason="P160: `exp` sva/timing/cdc/risk/verify commands were retired; "
+           "migrated coverage lives in current commands/corpus")
 
 import subprocess
 import sys
@@ -59,6 +61,7 @@ def test_m01_stats_filelist():
     print("✅ m01 stats on minimal_3module: clean compile + graph built")
 
 
+@_RETIRED_EXP
 def test_m02_risk_filelist():
     """risk analyze: 真实风险信号统计"""
     r = _run("exp", "risk", "analyze", "--filelist", FILELIST_PATH)
@@ -69,6 +72,7 @@ def test_m02_risk_filelist():
     print("✅ risk analyze on minimal_3module: 风险分析 + 无'编译失败'误报")
 
 
+@_RETIRED_EXP
 def test_m03_cdc_filelist():
     """cdc analyze: CDC 路径分析"""
     r = _run("exp", "cdc", "analyze", "--filelist", FILELIST_PATH)
@@ -77,6 +81,7 @@ def test_m03_cdc_filelist():
     print("✅ cdc analyze on minimal_3module: 时钟域分析")
 
 
+@_RETIRED_EXP
 def test_m04_sva_extract_filelist():
     """sva extract"""
     r = _run("exp", "sva", "extract", "--filelist", FILELIST_PATH)
@@ -85,6 +90,7 @@ def test_m04_sva_extract_filelist():
     print("✅ sva extract on minimal_3module: 跑通")
 
 
+@_RETIRED_EXP
 def test_m05_sva_coverage_filelist():
     """sva coverage: 应输出覆盖率, 不应再报'编译失败'"""
     r = _run("exp", "sva", "coverage", "--filelist", FILELIST_PATH)
@@ -94,6 +100,7 @@ def test_m05_sva_coverage_filelist():
     print("✅ sva coverage on minimal_3module: 覆盖率分析 + 无'编译失败'误报")
 
 
+@_RETIRED_EXP
 def test_m06_sva_timing_filelist():
     """sva timing"""
     r = _run("exp", "sva", "timing", "--filelist", FILELIST_PATH)
@@ -101,6 +108,7 @@ def test_m06_sva_timing_filelist():
     print("✅ sva timing on minimal_3module: 跑通")
 
 
+@_RETIRED_EXP
 def test_m07_timing_filelist():
     """timing analyze: 关键路径"""
     r = _run("exp", "timing", "analyze", "--filelist", FILELIST_PATH)
@@ -109,6 +117,7 @@ def test_m07_timing_filelist():
     print("✅ timing analyze on minimal_3module: 关键路径分析")
 
 
+@_RETIRED_EXP
 def test_m08_verify_gap_filelist():
     """verify gap: 验证缺口, 不应再报'编译失败'"""
     r = _run("exp", "verify", "gap", "--filelist", FILELIST_PATH)
@@ -118,6 +127,7 @@ def test_m08_verify_gap_filelist():
     print("✅ verify gap on minimal_3module: 高风险缺口 + 无'编译失败'误报")
 
 
+@_RETIRED_EXP
 def test_m09_coverage_suggest_filelist():
     """coverage suggest"""
     r = _run("exp", "coverage", "suggest", "-s", "synchronizer.sync0", "--filelist", FILELIST_PATH)

@@ -491,6 +491,12 @@ P160 opensource failure triage <已完成>
 -- P160.1 classify 38 failures <已完成>
 -- P160.2 CI visible policy <已完成>
 
+P161 opensource remediation <已完成>
+-- P161.1 retire obsolete exp tests <已完成>
+-- P161.2 fix stale IDs/assertions <已完成>
+-- P161.3 review golden/baseline <已完成>
+-- P161.4 explicit external-fixture skips <已完成>
+
 P158 review remediation backlog <待做>
 -- P158.0 纪律语义契约升级 <已完成>
 -- P158.1 数据边策略 + CLOCK/RESET 反例 <已完成>
