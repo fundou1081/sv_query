@@ -72,6 +72,7 @@
 | [validation/P156_SNAPSHOT_MIG_METADATA_2026-11-11.md](validation/P156_SNAPSHOT_MIG_METADATA_2026-11-11.md) | **P156**: snapshot MIG 可用性元数据 |
 | [validation/P157_SKIP_CLEANUP_2026-11-11.md](validation/P157_SKIP_CLEANUP_2026-11-11.md) | **P157**: canonical skip 清理；12→0 |
 | [validation/P158_REMEDIATION_2026-11-11.md](validation/P158_REMEDIATION_2026-11-11.md) | **P158 wave1**: data-edge / bounds / determinism / corpus |
+| [validation/P160_OPENSOURCE_TRIAGE_2026-11-11.md](validation/P160_OPENSOURCE_TRIAGE_2026-11-11.md) | **P160**: 38 opensource failures classified |
 | [lessons/2026-11-11_pitfalls.md](lessons/2026-11-11_pitfalls.md) | **P159**: 22 个踩坑/误判/经验，含对外分享版 |
 | [validation/REVIEW_2026-11-11.md](validation/REVIEW_2026-11-11.md) | **P158 输入**: 4-angle review + 28 项修复账本 |
 | [validation/P139_FRONTIER_2026-11-09.md](validation/P139_FRONTIER_2026-11-09.md) | **P139 frontier**: 断点 + next probes；不分类 FIFO |
