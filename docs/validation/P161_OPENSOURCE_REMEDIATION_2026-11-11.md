@@ -109,7 +109,7 @@ pytest sim/tests/ -m opensource -q -p no:randomly
 canonical 不受影响：
 
 ```text
-2677 passed, 0 failed
+2678 passed, 0 failed
 ```
 
 ---

@@ -519,3 +519,4 @@ Open-source project visualization is **correct and verified**. Ready for next ta
 | **383** | **2026-11-11** | **L3** | **P160 opensource triage (iter_485)** | 用户: 试 triage | 38 失败分类 | worker 429，主会话完成 | **✅ 完成** |
 | **384** | **2026-11-11** | **L3** | **P161 opensource remediation (iter_486)** | P160 triage | 0 failed / 114 passed / 17 skipped | 8 retired exp skips | **✅ 完成** |
 | **385** | **2026-11-11** | **L3** | **P158.11.2a snapshot size (iter_487)** | 评审 R-017 | size guard/metadata | timeout 待做 | **✅ 完成** |
+| **386** | **2026-11-11** | **L3** | **P162 handoff (iter_488)** | 用户: 交接文档 | 状态/剩余/协议 | 交回 checklist | **✅ 完成** |
