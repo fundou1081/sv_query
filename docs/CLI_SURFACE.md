@@ -7,8 +7,8 @@
 ## 总览
 
 - 叶子命令总数: **45**
-- 按层: `core`=40, `exp`=5
-- core 内分组: `semantic`=25, `verify`=3, `scope`=1, `locate`=7, `state`=4
+- 按层: `core`=39, `exp`=6
+- core 内分组: `semantic`=24, `verify`=3, `scope`=1, `locate`=7, `state`=4
 
 | 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | schema | 说明 |
 |---|---|---|---|---|---|---|
@@ -18,7 +18,7 @@
 | `dev` | dev | none | ✅ | — | — | 开发者内部调试 (当前无命令; expression 已于 iter_252 归档) |
 | `out` | none | none | ✅ | — | — | 移出 CLI (会写 RTL/项目文件) → tools/; 不算产品命令 |
 
-## `core` (40 个)
+## `core` (39 个)
 
 | 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
 |---|---|---|---|---|---|---|---|---|---|
@@ -50,7 +50,6 @@
 | `trace coverpoints` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | [P63] 反向查询: 信号被哪些 covergroup/coverpoint 采样 |
 | `trace evidence` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 源码证据 (always/if 块原文) |
 | `trace frontier` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | 结构 trace 的边界/断点 + 下一步 probe；不分类 FIFO |
-| `trace impact` | — | — | semantic | fact | expensive | ✅ | ✅ | ✅ | 传递影响 + 启发式风险分 (未标定, 仅用于同一图内相对排序; 见 KNOWN_LIMITATIONS §3.4) |
 | `trace lookup` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | 完整 RTL hier path → canonical id (严格; $root/位父回退/aliases; 不做模糊后缀) |
 | `trace manifest` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 批量 waveform manifest: full path → canonical + profile (type/bit/clock/reset/stage) |
 | `trace profile` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | 信号 profile: canonical/aliases/位映射/clock/reset/sequential/source (波形关联) |
@@ -63,7 +62,7 @@
 | `verify consistency` | — | — | verify | fact | medium | ✅ | ✅ | ✅ | 双向一致性: fanin/fanout、bit parent/bit_range、connection port↔internal |
 | `verify structural` | — | — | verify | fact | medium | ✅ | ✅ | ✅ | [P61] 结构审查: sibling 端口集合对称性 → findings + evidence + subgraph spec |
 
-## `exp` (5 个)
+## `exp` (6 个)
 
 | 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
 |---|---|---|---|---|---|---|---|---|---|
@@ -72,6 +71,7 @@
 | `review render` | — | — | render | experimental | cheap | ✅ | ✅ | ✅ | [P62] 单个 structural finding 的局部 SVG/HTML; 只消费 subgraph ; [exp] experimental, hidden by default |
 | `trace overview` | — | — | render | experimental | expensive | ✅ | ✅ | ✅ | 两个信号之间的综合叙述 (dataflow + controlflow + evidence) ; [exp] experimental, hidden by default |
 | `audit` | — | — | semantic | experimental | medium | ✅ | ✅ | ✅ | [exp] 设计审计; 启发式/完成度低, 默认不提供, 仅 --include-exp 列出 |
+| `trace impact` | — | — | semantic | experimental | expensive | ✅ | ✅ | ✅ | [exp] 传递影响 + 启发式风险分 (未标定, 仅同一图内相对排序; 见 KNOWN_LIMITATIONS §3.4); [P158.12/R-025 2026-11-11] 未标定启发式按铁律 9 降级 exp, 不伪装稳定 |
 
 ## 兼容别名 (老名保留, 同一实现)
 

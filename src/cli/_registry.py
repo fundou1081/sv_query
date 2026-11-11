@@ -139,8 +139,6 @@ COMMANDS: list[CommandSpec] = [
        note="[规范入口] 谁驱动这个信号 (上游; DRIVER 边反向遍历); 兼容别名 trace fanin"),
     _c("loads", "semantic", recommended=True, cost="medium",
        note="[规范入口] 这个信号被谁使用 (下游; DRIVER 边正向遍历); 兼容别名 trace fanout"),
-    _c("trace impact", "semantic", recommended=True, cost="expensive",
-       note="传递影响 + 启发式风险分 (未标定, 仅用于同一图内相对排序; 见 KNOWN_LIMITATIONS §3.4)"),
     _c("trace evidence", "semantic", recommended=True, note="源码证据 (always/if 块原文)"),
     _c("trace profile", "semantic", recommended=True, cost="cheap",
        note="信号 profile: canonical/aliases/位映射/clock/reset/sequential/source (波形关联)"),
@@ -206,6 +204,10 @@ COMMANDS: list[CommandSpec] = [
     CommandSpec(key="audit", layer="exp", group="semantic", kind="experimental",
                 cost="medium", json=True, recommended=False,
                 note="[exp] 设计审计; 启发式/完成度低, 默认不提供, 仅 --include-exp 列出"),
+    CommandSpec(key="trace impact", layer="exp", group="semantic", kind="experimental",
+                cost="expensive", json=True, recommended=False,
+                note="[exp] 传递影响 + 启发式风险分 (未标定, 仅同一图内相对排序; 见 KNOWN_LIMITATIONS §3.4); "
+                     "[P158.12/R-025 2026-11-11] 未标定启发式按铁律 9 降级 exp, 不伪装稳定"),
 
     # ---- core / locate (枚举与统计) ----
     _c("stats", "locate", kind="primitive", cost="cheap", recommended=True),

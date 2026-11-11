@@ -131,6 +131,10 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 
 ### 3.4 `trace impact` 的风险分是**未标定的启发式** (iter_266)
 
+> ✅ **2026-11-11 处置（P158.12.1 / R-025）**：已从 core 降级到 **exp 层**
+> （默认从 capabilities 隐藏，`--include-exp` 才列出；`kind=experimental`）。
+> 未标定启发式不得伪装稳定（铁律 9 / 不变量 I4）。本节保留作为降级依据。
+
 **可观察后果** — 同一个设计，风险分的绝对值没有物理含义，只有**同一份图内的相对排序**有意义：
 
 | 场景 | 实测输出 |
