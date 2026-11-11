@@ -283,14 +283,19 @@ endmodule
                       "时序自更新 state 自环应保留 (A3 只排除 internal 标记)")
 
     def test_graph_edge_kept_for_other_tools(self):
-        # 图结构不改: internal 自环边仍在图中 (out_edges/可视化使用)
+        # [P158.12.4 / R-026 2026-11-12] 决策翻转: internal 恒自环边
+        # (child_signal_id == inst_port_id, expression 空, 零信息) **不再
+        # 保留在图**。旧 A3 "图保留标记 + 查询层过滤" 的代价: 假
+        # cycles_detected (golden 实证 true→false)、DRIVER 计数虚增。
+        # 真实模块内驱动边 (assign_type='continuous', 带 expression) 仍在,
+        # A3 查询层过滤保留 (兼容仍含旧自环的历史快照)。
         tr = UnifiedTracer(sources={'test.sv': self.BUSFIX}, log_level='ERROR')
         g = tr.build_graph(use_cache=False, target_module='top')
         loops = [1 for s, d in g.edges()
                  if s == d == 'top.u_sub.y'
                  and any(getattr(e, 'assign_type', '') == 'internal'
                          for e in g._edge_data.get((s, d), []))]
-        self.assertTrue(loops, "internal 自环边应保留在图 (A3 只改查询层)")
+        self.assertFalse(loops, "internal 恒自环不得再进图 (R-026)")
 
 
 class TestAuditCandidates(unittest.TestCase):

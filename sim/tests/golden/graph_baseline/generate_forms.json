@@ -85,20 +85,6 @@
       "src": "top.G[0].u_leaf.y"
     },
     {
-      "assign_type": "internal",
-      "bit_slice": "",
-      "clock_domain": "",
-      "condition": "",
-      "confidence": "high",
-      "dst": "top.G[0].u_leaf.y",
-      "effective_condition": "",
-      "expression": "",
-      "function_return": false,
-      "is_function_call": false,
-      "kind": "DRIVER",
-      "src": "top.G[0].u_leaf.y"
-    },
-    {
       "assign_type": "connection",
       "bit_slice": "",
       "clock_domain": "",
@@ -194,20 +180,6 @@
       "function_return": false,
       "is_function_call": false,
       "kind": "BIT_SELECT",
-      "src": "top.G[1].u_leaf.y"
-    },
-    {
-      "assign_type": "internal",
-      "bit_slice": "",
-      "clock_domain": "",
-      "condition": "",
-      "confidence": "high",
-      "dst": "top.G[1].u_leaf.y",
-      "effective_condition": "",
-      "expression": "",
-      "function_return": false,
-      "is_function_call": false,
-      "kind": "DRIVER",
       "src": "top.G[1].u_leaf.y"
     },
     {
@@ -309,20 +281,6 @@
       "src": "top.G[2].u_leaf.y"
     },
     {
-      "assign_type": "internal",
-      "bit_slice": "",
-      "clock_domain": "",
-      "condition": "",
-      "confidence": "high",
-      "dst": "top.G[2].u_leaf.y",
-      "effective_condition": "",
-      "expression": "",
-      "function_return": false,
-      "is_function_call": false,
-      "kind": "DRIVER",
-      "src": "top.G[2].u_leaf.y"
-    },
-    {
       "assign_type": "connection",
       "bit_slice": "",
       "clock_domain": "",
@@ -418,20 +376,6 @@
       "function_return": false,
       "is_function_call": false,
       "kind": "BIT_SELECT",
-      "src": "top.G[3].u_leaf.y"
-    },
-    {
-      "assign_type": "internal",
-      "bit_slice": "",
-      "clock_domain": "",
-      "condition": "",
-      "confidence": "high",
-      "dst": "top.G[3].u_leaf.y",
-      "effective_condition": "",
-      "expression": "",
-      "function_return": false,
-      "is_function_call": false,
-      "kind": "DRIVER",
       "src": "top.G[3].u_leaf.y"
     },
     {
@@ -1233,9 +1177,9 @@
     "edge_kinds": {
       "BIT_SELECT": 24,
       "CONNECTION": 8,
-      "DRIVER": 14
+      "DRIVER": 10
     },
-    "edges": 46,
+    "edges": 42,
     "node_kinds": {
       "GENERATE_BLOCK": 4,
       "INSTANTIATED_MODULE": 4,

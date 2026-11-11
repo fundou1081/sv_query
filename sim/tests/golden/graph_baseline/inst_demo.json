@@ -169,20 +169,6 @@
       "src": "inst_demo.u_adder.sum"
     },
     {
-      "assign_type": "internal",
-      "bit_slice": "",
-      "clock_domain": "",
-      "condition": "",
-      "confidence": "high",
-      "dst": "inst_demo.u_adder.sum",
-      "effective_condition": "",
-      "expression": "",
-      "function_return": false,
-      "is_function_call": false,
-      "kind": "DRIVER",
-      "src": "inst_demo.u_adder.sum"
-    },
-    {
       "assign_type": "connection",
       "bit_slice": "",
       "clock_domain": "",
@@ -208,20 +194,6 @@
       "function_return": false,
       "is_function_call": false,
       "kind": "BIT_SELECT",
-      "src": "inst_demo.u_mult.prod"
-    },
-    {
-      "assign_type": "internal",
-      "bit_slice": "",
-      "clock_domain": "",
-      "condition": "",
-      "confidence": "high",
-      "dst": "inst_demo.u_mult.prod",
-      "effective_condition": "",
-      "expression": "",
-      "function_return": false,
-      "is_function_call": false,
-      "kind": "DRIVER",
       "src": "inst_demo.u_mult.prod"
     },
     {
@@ -582,9 +554,9 @@
     "edge_kinds": {
       "BIT_SELECT": 7,
       "CONNECTION": 6,
-      "DRIVER": 7
+      "DRIVER": 5
     },
-    "edges": 20,
+    "edges": 18,
     "node_kinds": {
       "INSTANTIATED_MODULE": 2,
       "PORT_IN": 9,

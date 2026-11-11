@@ -48,6 +48,7 @@ dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "pytest-asyncio>=0.21",
+    "pytest-randomly>=3.12",  # [P158.12 / R-024] 让 -p no:randomly 真正生效（默认禁用随机）
     "ruff>=0.1.0",
 ]
 all = [
@@ -123,6 +124,9 @@ addopts = [
     "--strict-markers",
     "--strict-config",
     "--tb=short",
+    # [P158.12 / R-024] pytest-randomly 装为 dev 依赖后默认禁用随机顺序,
+    # 保持 canonical/本机顺序确定; 需要随机压力时 CLI 传 "-p randomly" 覆盖。
+    "-p no:randomly",
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",

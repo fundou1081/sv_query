@@ -188,20 +188,6 @@
       "clock_domain": "",
       "condition": "",
       "confidence": "high",
-      "dst": "wrapper_chain.inner_proc_dut.addr_o",
-      "effective_condition": "",
-      "expression": "",
-      "function_return": false,
-      "is_function_call": false,
-      "kind": "DRIVER",
-      "src": "wrapper_chain.inner_proc_dut.addr_o"
-    },
-    {
-      "assign_type": "internal",
-      "bit_slice": "",
-      "clock_domain": "",
-      "condition": "",
-      "confidence": "high",
       "dst": "wrapper_chain.inner_proc_dut",
       "effective_condition": "",
       "expression": "clk",
@@ -376,20 +362,6 @@
       "function_return": false,
       "is_function_call": false,
       "kind": "BIT_SELECT",
-      "src": "wrapper_chain.inner_proc_dut.data_o"
-    },
-    {
-      "assign_type": "internal",
-      "bit_slice": "",
-      "clock_domain": "",
-      "condition": "",
-      "confidence": "high",
-      "dst": "wrapper_chain.inner_proc_dut.data_o",
-      "effective_condition": "",
-      "expression": "",
-      "function_return": false,
-      "is_function_call": false,
-      "kind": "DRIVER",
       "src": "wrapper_chain.inner_proc_dut.data_o"
     },
     {
@@ -1346,10 +1318,10 @@
       "BIT_SELECT": 10,
       "CLOCK": 8,
       "CONNECTION": 6,
-      "DRIVER": 22,
+      "DRIVER": 20,
       "RESET": 8
     },
-    "edges": 54,
+    "edges": 52,
     "node_kinds": {
       "CONST": 2,
       "INSTANTIATED_MODULE": 1,

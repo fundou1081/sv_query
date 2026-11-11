@@ -29,7 +29,7 @@ from pathlib import Path
 warnings.filterwarnings("ignore")
 
 RUN_CLI = "python3"
-REPO_ROOT = Path(".")
+REPO_ROOT = Path(__file__).resolve().parents[3]
 RUN_CLI_PATH = str(REPO_ROOT / "run_cli.py")
 
 # 测试 SV: 一个 counter module (简单, 没有 SVA/Covergroup)

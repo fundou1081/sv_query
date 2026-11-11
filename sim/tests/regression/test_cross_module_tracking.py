@@ -1200,15 +1200,18 @@ endmodule'''
             f"top.data 的直接 driver 应是 top.u_driver.data，实际: {driver_ids}")
 
         # 第2跳: top.u_driver.data 的直接 driver
-        # [FIX 2026-07-08] 治本后 child_signal_id 用 inst_path, self-loop
-        # 实际 driver 是 top.u_driver.data 自身 (self) 或 top.u_driver (instance node)
+        # [P158.12.4 / R-026 2026-11-12] 旧断言允许 self-loop / instance node ——
+        # 那是 connection_extractor 恒自环边在掩盖真答案。恒自环清除后,
+        # 真实 driver 是字面量 8'd165 (assign data = 8'hA5), 语义更强。
         drivers = graph.find_drivers('top.u_driver.data')
         driver_ids = [d.id for d in drivers]
-        # 允许: top.u_driver.data (self-loop) 或 top.u_driver (instance node)
-        self.assertTrue(
-            any('top.u_driver' in did for did in driver_ids),
-            f"top.u_driver.data 应有 driver in top.u_driver.*, 实际: {driver_ids}"
+        self.assertIn(
+            "8'd165", driver_ids,
+            f"top.u_driver.data 的真实 driver 应是字面量 8'd165, 实际: {driver_ids}"
         )
+        # 恒自环不得再出现在 driver 结果里 (R-026)
+        self.assertNotIn('top.u_driver.data', driver_ids,
+                         f"恒自环不得计为 driver (R-026), 实际: {driver_ids}")
 
         # 第3跳: top.u_driver 的直接 driver (literal inside driver module)
         drivers = graph.find_drivers('top.u_driver')

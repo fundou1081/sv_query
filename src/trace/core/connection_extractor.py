@@ -674,11 +674,16 @@ class ConnectionExtractor:
                         _sig_parent2 = _sig_scope if _sig_scope else parent_path
                     parent_signal = f"{_sig_parent2}.{signal_name}"
                     # 边1: child output -> instance port (DRIVER)
-                    # [FIX 2026-07-08] child_signal_id 用 inst_path — 自环作为"模块内部
-                    # 驱动实例输出"的标记 (test_cross_module_tracking 依赖), 保持原行为.
-                    result.edges.append(
-                        TraceEdge(src=child_signal_id, dst=inst_port_id, kind=EdgeKind.DRIVER, assign_type="internal")
-                    )
+                    # [P158.12 / R-026 2026-11-12] child_signal_id 与 inst_port_id
+                    # 同为 f"{inst_path}.{port_name}" — 这条边**恒为自环**且
+                    # expression 为空, 是纯污染 (大图 408 条)。真实自依赖
+                    # (assign a = a + 1) 来自 assign/always extractor, 带 expression,
+                    # 不受影响。原"模块内部驱动实例输出"标记依赖的断言已随
+                    # 2026-08-13 的 test_cross_module_tracking 更新移除。
+                    if child_signal_id != inst_port_id:
+                        result.edges.append(
+                            TraceEdge(src=child_signal_id, dst=inst_port_id, kind=EdgeKind.DRIVER, assign_type="internal")
+                        )
                     # 边2: instance port -> parent wire (CONNECTION)
                     # [FIX 2026-08-13] 跳过 SELFLOOP (同样防御 case26 中 parent_signal == inst_port_id)
                     if parent_signal != inst_port_id:

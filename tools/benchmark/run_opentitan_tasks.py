@@ -86,6 +86,9 @@ def run_one(meta: dict, task: dict, model: dict) -> dict:
         stdout = exc.stdout if isinstance(exc.stdout, str) else (exc.stdout or b"").decode("utf-8", "replace")
         stderr = f"timeout after {timeout}s"
         rc = 124
+    except Exception as exc:  # [P158.12 / R-027] task 异常必须留行计数, 不得让整轮跑挂
+        task_error = str(exc)
+        stdout, stderr, rc = "", task_error[:500], 130
     (ws / "raw.txt").write_text(stdout or "")
     parsed, repaired = parse_answer_json(stdout or "")
     exact, false_conf, false_found = score(task, parsed)
@@ -104,7 +107,7 @@ def run_one(meta: dict, task: dict, model: dict) -> dict:
         "evidence": (parsed or {}).get("evidence", []),
         "exact": exact, "false_confident": false_conf, "false_found": false_found,
         "tool_calls": len(calls), "workspace": str(ws),
-        "stderr": stderr[-800:],
+        "stderr": stderr[-800:], "task_error": rc == 130,
     }
 
 
