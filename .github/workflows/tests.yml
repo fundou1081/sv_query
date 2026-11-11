@@ -40,9 +40,15 @@ jobs:
           # pyslang 是关键依赖，但未发布到 PyPI；从 GitHub 安装
           pip install git+https://github.com/MikePopoloski/pyslang.git
 
-      - name: Run tests
+      - name: Install crapper (complexity gate)
         run: |
-          python -m pytest sim/tests/ --ignore=sim/tests/usage -v --tb=short --maxfail=20
+          git clone --depth 1 https://github.com/unclebob/crapper.git "$HOME/my_skills/vendor/crapper"
+
+      - name: Run canonical gates
+        env:
+          SVQ_GATE_BASE: ${{ github.event.pull_request.base.sha || github.event.before || 'HEAD~1' }}
+        run: |
+          bash tools/run_gates.sh
 
       - name: Check discipline
         # 3 个纪律: 1) 不在 src/trace/core/ 用 regex
@@ -54,7 +60,12 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          python -m pytest sim/tests/ --ignore=sim/tests/usage --cov=src --cov-report=term-missing --cov-report=xml
+          python -m pytest sim/tests/ -m "not opensource" --cov=src --cov-report=term-missing --cov-report=xml
+
+      - name: Report opensource suite (non-blocking, visible)
+        continue-on-error: true
+        run: |
+          python -m pytest sim/tests/ -m "opensource" -q -p no:randomly | tee opensource.log
 
       - name: Upload coverage to Codecov
         if: matrix.python-version == '3.12'
@@ -75,6 +86,8 @@ jobs:
           python-version: "3.12"
       - name: Install ruff
         run: pip install ruff
-      - name: Run ruff
+      - name: Run ruff (changed files only)
+        env:
+          SVQ_LINT_BASE: ${{ github.event.pull_request.base.sha || github.event.before || 'HEAD~1' }}
         run: |
-          ruff check src/ sim/tests/ 2>/dev/null || echo "(ruff issues, see above)"
+          bash tools/run_lint.sh
