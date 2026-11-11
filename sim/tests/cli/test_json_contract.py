@@ -97,6 +97,17 @@ endmodule
 """
 
 
+def test_capabilities_groups_and_contracts_cover_core_commands():
+    data = json.loads(_run(["capabilities", "--json"]).stdout)
+    groups = set(data["core_groups"])
+    core = [c for c in data["commands"] if c.get("layer") == "core"]
+    self_used = {c["group"] for c in core}
+    assert "diagnose" not in groups
+    assert self_used == groups, (self_used, groups)
+    missing = {c["name"] for c in core} - set(data["json_contract"]["commands"])
+    assert not missing, f"core commands without json_contract: {sorted(missing)}"
+
+
 def test_paths_contract_matches(tmp_path):
     p = tmp_path / "t.sv"
     p.write_text(PATH_SRC)

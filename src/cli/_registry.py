@@ -77,8 +77,9 @@ LAYERS: dict[str, LayerSpec] = {
 CORE_GROUPS = {
     "semantic": "语义事实: 关系查询 (drivers/loads/conditions/path) —— agent 推理链主力",
     "locate": "定位原语: 枚举与统计 (search/stats/graph) —— 低层但 agent 需要",
+    "verify": "验证: claim/consistency/structural —— 结论可反驳",
+    "scope": "作用域/清单: scope/instances/ports/params/connections/class",
     "state": "状态: graph 快照与比较 (写自有状态, 不碰项目文件)",
-    "diagnose": "只读诊断: diagnose <check> (imports/report/timescale/widths), 不改文件",
 }
 
 
@@ -710,6 +711,36 @@ JSON_CONTRACT = {
             "member_fields": "class_member",
             "instance_fields": "class_instance",
             "relations_fields": "class_relations",
+        },
+        "filelist prune": {
+            "result_fields": ["top", "total_files", "selected_files",
+                              "selected_count", "dropped", "reason",
+                              "declarations", "output", "written", "dry_run",
+                              "backup", "requires_apply"],
+        },
+        "capabilities": {
+            "result_fields": ["version", "layers", "core_groups", "counts",
+                              "planned_new", "bit_precision", "json_contract",
+                              "commands"],
+        },
+        "snapshot save": {
+            "result_fields": ["ok", "tag", "path", "files", "node_count",
+                              "edge_count", "elaboration_errors", "failed_files"],
+        },
+        "snapshot list": {
+            "result_fields": ["tag", "file", "created_at", "git_commit", "files",
+                              "node_count", "edge_count", "module_graph_present",
+                              "module_graph_instances", "module_graph_ports",
+                              "tag_mismatch", "error"],
+        },
+        "snapshot compare": {
+            "result_fields": ["tag1", "tag2", "stable_core", "health_score_old",
+                              "health_score_new", "health_delta",
+                              "coupling_warning", "added_nodes", "removed_nodes",
+                              "added_edges", "removed_edges", "identical"],
+        },
+        "snapshot delete": {
+            "result_fields": ["ok", "tag", "deleted", "error"],
         },
     },
     "bit_endpoint": {
