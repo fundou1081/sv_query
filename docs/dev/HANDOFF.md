@@ -44,6 +44,7 @@ opensource 的 17 个 skip 都有显式原因，见 §7。
 8. [TESTING.md](../../TESTING.md)
 9. [P160 triage](../validation/P160_OPENSOURCE_TRIAGE_2026-11-11.md) 与
    [P161 remediation](../validation/P161_OPENSOURCE_REMEDIATION_2026-11-11.md)
+10. [本轮对话/工作记录](../sessions/2026-11-11_sv_query_session_log.md)（事实重建，非逐字）
 
 如果只读一份历史复盘：
 
