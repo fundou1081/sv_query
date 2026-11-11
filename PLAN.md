@@ -478,6 +478,10 @@ P156 snapshot MIG metadata <已完成>
 -- P156.1 show module_graph presence <已完成>
 -- P156.2 legacy compatibility test <已完成>
 
+P157 canonical skip cleanup <已完成>
+-- P157.1 delete obsolete deadlock tests <已完成>
+-- P157.2 mark external tests opensource <已完成>
+
 
 ## 已完成（保留最近记录，便于核查上一轮）
 

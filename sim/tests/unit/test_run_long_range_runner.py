@@ -10,6 +10,9 @@ import pytest
 ROOT = Path(__file__).resolve().parents[3]
 MOD = ROOT / "tools" / "benchmark" / "run_long_range.py"
 
+# External pilot sources (/tmp/lr_pilot or openrtl) are not part of canonical.
+pytestmark = pytest.mark.opensource
+
 
 def _load():
     spec = importlib.util.spec_from_file_location("run_long_range", MOD)
