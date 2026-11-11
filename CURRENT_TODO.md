@@ -75,9 +75,13 @@
 ## 🔜 下一步（按顺序，未开工）
 
 ```text
-1. P158.9.2   snapshot surface 矩阵          <- 当前 item
+1. P158.9.2   snapshot surface 矩阵          <- 当前 item（验收含"不许中间态"）
 2. P158.12    P2 清理（26 个硬编码路径 / no:randomly / impact 定位 / 空 expression self-loop）
-3. 17 个 opensource skip 的最终处置（归档 retired exp / 补 fixture / 保留显式 skip）
+3. P165.1     signal.py 全图扫描 pred/succ 化（O(V×E)→O(度)，小改动）
+4. 17 个 opensource skip 的最终处置（归档 retired exp / 补 fixture / 保留显式 skip）
+5. P165.3/4   外部故障集 + filelist 闭包自动化（开源前）
+6. P165.2     packaging 重命名（随开源破坏性窗口）
 ```
 
 未决讨论项（等方豆拍板）：`trace impact` 是否降 exp；真实项目依赖闭包是否固化进 repo。
+评审决策（2026-11-11 已定）：方案 B 拒绝、方案 C（daemon）暂缓待使用证据（见 PLAN P165）。

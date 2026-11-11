@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P158.9.2 snapshot surface 矩阵（命令 → graph-only / graph+MIG / 需 semantic adapter） <待做>
+current item : P158.9.2 snapshot surface 矩阵（命令 → graph-only / graph+MIG / 需 semantic adapter）；验收：缺失 edge 字段要么补齐要么显式声明不保证，不许中间态（arch_eval P0.2 采纳） <待做>
 
 ## 计划树
 
@@ -509,6 +509,14 @@ P164 文档状态校准（2026-11-11 接手） <已完成>
 -- P164.3 契约与基线文档过期状态清理 <已完成>
 -- P164.4 计数漂移检查器覆盖根文档 <已完成>
 
+P165 arch_eval 评审采纳（2026-11-11，来源 architecture/arch_eval_2026-11-11.md，方豆确认采纳） <待做>
+评审同时给出"不采纳"决策：方案 B（迁 Verilator/Yosys IR）拒绝——与验证语义目标错位；
+方案 C（agent 工具 daemon 化）暂缓——等 >2 跳探索的真实使用证据再启动。
+-- P165.1 SignalTracer/structural 全图扫描 pred/succ 化（signal.py 7 处 O(V×E)；NetworkX 原生视图，零索引成本） <待做>
+-- P165.2 packaging 重命名消除 stdlib trace 冲突（src/trace → src/sv_query/trace；开源发布前必须，随破坏性变更窗口一起做） <待做>
+-- P165.3 外部故障集（非自撰；从 OpenTitan 等真实 bug commit 回溯任务，补外部效度） <待做>
+-- P165.4 filelist 依赖闭包自动化（当前人工整理是真实项目落地最大摩擦；与 P159 E-3 同源） <待做>
+
 P158 review remediation backlog <待做>
 -- P158.0 纪律语义契约升级 <已完成>
 -- P158.1 数据边策略 + CLOCK/RESET 反例 <已完成>
@@ -521,7 +529,7 @@ P158 review remediation backlog <待做>
 -- P158.8 测试真实性 / legacy / true-positive <已完成>
 -- P158.9 snapshot surface + schema + capabilities <进行中>
 -- P158.9.1 capabilities / json_contract coverage <已完成>
--- P158.9.2 snapshot surface 矩阵（命令 → graph-only / graph+MIG / 需 semantic adapter） <待做>
+-- P158.9.2 snapshot surface 矩阵（命令 → graph-only / graph+MIG / 需 semantic adapter）；验收：缺失 edge 字段要么补齐要么显式声明不保证，不许中间态（arch_eval P0.2 采纳） <待做>
 -- P158.10 CI/gate 咬合 <已完成>
 -- P158.11 dataflow/snapshot/frontier 性能与界限 <已完成>
 -- P158.11.1 dataflow snapshot + frontier cap <已完成>
@@ -766,3 +774,4 @@ P4 已完成归档 <已完成>
 | 2026-10-27 | P5~P12 位精确性系列完成（iter_289~300）；P13 评审 backlog 登记（iter_301，见 architecture/trace_capability_review_2026-10-27） |
 | 2026-11-11 | 接手校准（P164）：current item 按 HANDOFF 建议指向 P158.11.2b 前置的文档校准；P158.9 拆出 9.2；`--`/`----` 缩进统一，check_plan 新增 P9（不可见项）与字母后缀 id |
 | 2026-11-11 | P158.11.2b 完成（iter_491）：SearchBudget 抽为 graph/search_budget.py 唯一实现；dataflow 有界 DFS + `--max-expansions/--timeout` + truncated 契约；P158.11 整体收口；current item → P158.9.2 |
+| 2026-11-11 | arch_eval 评审采纳（P165 登记，方豆确认）：P165.1 signal.py pred/succ 化 / P165.2 packaging 重命名 / P165.3 外部故障集 / P165.4 filelist 闭包自动化；方案 B 拒绝、方案 C 暂缓；P158.9.2 验收补"不许中间态" |
