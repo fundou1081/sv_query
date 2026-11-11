@@ -129,6 +129,7 @@ def save(
         if files is None:
             files = []
         saved_path = manager.save(tag, graph_data, git_commit=git_commit, files=files)
+        snapshot_bytes = Path(saved_path).stat().st_size
 
         if json_output:
             print(json.dumps({
@@ -136,6 +137,7 @@ def save(
                 "files": len(files),
                 "node_count": graph_data["node_count"],
                 "edge_count": graph_data["edge_count"],
+                "snapshot_bytes": snapshot_bytes,
                 "elaboration_errors": len(elaboration_errors),
                 "failed_files": [str(f) for f in (failed_files or [])],
             }, indent=2 if pretty else None, ensure_ascii=False))
@@ -146,6 +148,7 @@ def save(
         print(f"   Files: {len(files)}")
         print(f"   Nodes: {graph_data['node_count']}")
         print(f"   Edges: {graph_data['edge_count']}")
+        print(f"   Size:  {snapshot_bytes / 1024 / 1024:.2f} MB")
         if elaboration_errors:
             n_errors = len(elaboration_errors)
             n_files = len(failed_files)

@@ -57,6 +57,23 @@ class TestSnapshotRobust(unittest.TestCase):
             self.assertEqual('filename', info['tag'])
             self.assertEqual('body_tag', info['tag_mismatch'])
 
+    def test_snapshot_size_guard_and_metadata(self):
+        with tempfile.TemporaryDirectory() as td:
+            env = os.environ.copy()
+            env['SVQ_SNAPSHOT_DIR'] = td
+            save = _run(['snapshot', 'save', _FIX, '--tag', 'sized'], env)
+            self.assertEqual(0, save.returncode, save.stderr[-1000:])
+            info = json.loads(save.stdout)
+            self.assertGreater(info['snapshot_bytes'], 0)
+            entries = json.loads(_run(['snapshot', 'list'], env).stdout)
+            self.assertEqual(info['snapshot_bytes'], entries[0]['file_size_bytes'])
+
+            env['SVQ_SNAPSHOT_MAX_MB'] = '0.001'  # 1 KB, fixture is larger
+            p = _run(['snapshot', 'save', _FIX, '--tag', 'too_big'], env)
+            self.assertEqual(1, p.returncode)
+            self.assertIn('snapshot too large', p.stderr)
+            self.assertFalse(os.path.exists(os.path.join(td, 'too_big.json')))
+
     def test_dataflow_uses_snapshot(self):
         with tempfile.TemporaryDirectory() as td:
             env = os.environ.copy()
