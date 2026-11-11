@@ -5,7 +5,7 @@
 基于 SignalGraph + MIG 的数据流分析图
 
 职责:
-1. 路径搜索 - 使用 SignalGraph 进行 nx.all_simple_paths
+1. 路径搜索 - 在数据边子图上做**有界** DFS (work budget + 可选 deadline)
 2. 段构建 - 从 SignalGraph edges 获取 driver/condition/timing
 3. 跨模块解析 - 直接使用实例级图节点 id
 4. 结果缓存 - 按需缓存 DataFlowSegment
@@ -17,13 +17,15 @@
 
 import logging
 import re
+import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterator
 
 import networkx as nx
 
 from .contracts import data_edge_view, is_data_edge
 from .models import SignalGraph
+from .search_budget import SearchBudget
 
 if TYPE_CHECKING:
     from ..module_instance_graph import ModuleInstanceGraph
@@ -93,18 +95,23 @@ class DataFlowResult:
         from_signal: 起点信号
         to_signal: 终点信号
         paths: 所有数据流路径
-        is_reachable: 是否可达
+        is_reachable: 是否可达。**None = 未查完**（预算/超时耗尽，不能当成"没有")
         paths_count: 路径数量
         intermediate_signals: 中间信号集合
         all_conditions: 所有条件列表
         clock_domain: 主时钟域
         timing_risk: 路径风险级别 (safe/low/medium/high/critical)
+        truncated: 搜索是否不完整（硬预算中止 或 结果被上限截断）
+        truncation_reason: max_expansions_reached / deadline_reached /
+            max_paths_reached / max_depth_reached；空串 = 完整
+        expansions: 实际 work 计数（考察过的出边数）
+        elapsed_s: 搜索耗时（秒）
     """
 
     from_signal: str
     to_signal: str
     paths: list[DataFlowPath] = field(default_factory=list)
-    is_reachable: bool = False
+    is_reachable: bool | None = False
     paths_count: int = 0
     intermediate_signals: set[str] = field(default_factory=set)
     all_conditions: list[str] = field(default_factory=list)
@@ -113,6 +120,18 @@ class DataFlowResult:
     # [ADD 2026-07-04] latency summary (从主 path 提取, 给快速 view)
     primary_latency_cycles: int | None = None
     primary_is_async: bool = False
+    # [P158.11.2b] 有界搜索的显式状态 (SEMANTIC_CONTRACTS §3)
+    truncated: bool = False
+    truncation_reason: str = ""
+    expansions: int = 0
+    elapsed_s: float = 0.0
+
+    @property
+    def search_status(self) -> str:
+        """complete / truncated / unknown（unknown = 请求没查完，不能当 not_found）。"""
+        if self.is_reachable is None:
+            return "unknown"
+        return "truncated" if self.truncated else "complete"
 
 
 # ==============================================================================
@@ -305,20 +324,101 @@ class DataFlowGraph:
 
         return segments
 
-    def _find_paths(self, from_signal: str, to_signal: str, cutoff: int = 50) -> list[list[str]]:
+    def _bounded_simple_paths(
+        self,
+        graph: nx.DiGraph,
+        source: str,
+        target: str,
+        cutoff: int,
+        state: SearchBudget,
+    ) -> Iterator[list[str]]:
+        """有界枚举 source → target 的简单路径（与 nx.all_simple_paths 同遍历序）。
+
+        [P158.11.2b] SEMANTIC_CONTRACTS §3: 枚举必须有 work budget。这里
+        每次"考察一条出边"记 1 次 `state.expansions`，循环顶端检查
+        `state.exhausted`（work budget + deadline）；耗尽即**停止产出**，
+        由调用方根据 `state.reason` 返回 truncated/unknown。
+
+        为什么不用 `nx.all_simple_paths`：它会先遍历整棵搜索树才产出结果，
+        无法在预算内中止（`list(...)` 更是先物化全部路径）。
+
+        遍历序与 networkx `_all_simple_edge_paths` 一致（栈 + 当前路径字典，
+        按插入序扩展），这样路径**顺序**不变，golden 不受影响。
+        """
+        if source not in graph or target not in graph or cutoff < 0:
+            return
+        current: dict[str | None, tuple | None] = {None: None}
+        stack: list[Iterator] = [iter([(None, source)])]
+        while stack:
+            if state.exhausted:
+                return
+            edge = self._next_unvisited_edge(stack[-1], current, state)
+            if edge is None:
+                # 该节点所有出边已考察完 → 回溯
+                stack.pop()
+                current.popitem()
+                continue
+            nxt = edge[1]
+            if nxt == target:
+                yield list(current.keys())[1:] + [nxt]
+            if self._expandable(current, nxt, target, cutoff):
+                current[nxt] = edge
+                stack.append(iter(graph.edges(nxt)))
+
+    @staticmethod
+    def _next_unvisited_edge(
+        frontier: Iterator, current: dict, state: SearchBudget
+    ) -> tuple | None:
+        """取下一条"目标不在当前路径上"的边；没有则返回 None（触发回溯）。
+
+        每考察一条边记 1 次 expansion —— 这是 work budget 的计量单位。
+        """
+        for e in frontier:
+            state.expansions += 1
+            if e[1] not in current:
+                return e
+        return None
+
+    @staticmethod
+    def _expandable(current: dict, nxt: str, target: str, cutoff: int) -> bool:
+        """与 networkx 一致: 路径边数 (len(current)-1) < cutoff 才继续展开;
+        已到 target 或 target 已在路径上时不再展开。"""
+        return len(current) - 1 < cutoff and target not in current and nxt != target
+
+    def _first_bounded_path(
+        self,
+        graph: nx.DiGraph,
+        source: str,
+        target: str,
+        cutoff: int,
+        state: SearchBudget,
+    ) -> list[str] | None:
+        """有界枚举下的第一条路径（struct 兜底只需要一条）。"""
+        for path in self._bounded_simple_paths(graph, source, target, cutoff, state):
+            if path:
+                return path
+        return None
+
+    def _find_paths(self, from_signal: str, to_signal: str, cutoff: int = 50,
+                    state: SearchBudget | None = None) -> list[list[str]]:
         """查找所有路径(允许循环)
 
-        使用 networkx.all_simple_paths 查找路径。
-        注意: all_simple_paths 默认不允许循环,这里使用 cutoff 限制深度。
+        [P158.11.2b] 用 `_bounded_simple_paths` 做有界枚举 (work budget +
+        deadline)，不再 `list(nx.all_simple_paths(...))` 先物化全部路径。
+        截断原因记在 `state`，由 `analyze()` 写进结果。
 
         Args:
             from_signal: 起点信号
             to_signal: 终点信号
-            cutoff: 最大深度限制
+            cutoff: 最大深度限制 (边数)
+            state: 预算记账器；None 时用默认预算 (供内部/旧调用)
 
         Returns:
             路径列表,每条路径是信号 ID 列表
         """
+        if state is None:
+            state = SearchBudget(max_expansions=200_000, deadline=None,
+                                 max_paths=1_000_000, max_depth=cutoff)
 
         # [FIX] 处理位选择信号,如 byte_data[3:0] → byte_data
         def _expand_bit_select(signal):
@@ -518,17 +618,26 @@ class DataFlowGraph:
         # bus 粒度 8 条语义一致).
         all_paths: list[list[str]] = []
         seen_paths: set[tuple[str, ...]] = set()
+        stop = False
         for from_candidate in candidates_from:
+            if stop:
+                break
             for to_candidate in candidates_to:
+                if stop:
+                    break
                 if from_candidate not in nx_graph.nodes():
                     continue
                 if to_candidate not in nx_graph.nodes():
                     continue
-                try:
-                    paths = list(nx.all_simple_paths(nx_graph, from_candidate, to_candidate, cutoff=cutoff))
-                except (nx.NetworkXNoPath, nx.NodeNotFound):
+                # [P158.11.2b] 有界枚举: 不再 `list(nx.all_simple_paths(...))`
+                # 先物化全部路径 (分支图指数爆炸); 每考察一条出边记 1 次 work,
+                # 预算/超时耗尽即停, 由 state 记录原因。
+                # 先做廉价可达性预检, 避免"无路径"时遍历指数级死胡同。
+                if not nx.has_path(nx_graph, from_candidate, to_candidate):
                     continue
-                for p in paths:
+                for p in self._bounded_simple_paths(
+                    nx_graph, from_candidate, to_candidate, cutoff, state
+                ):
                     if not p:
                         continue
                     # [P158.1] 端点保真: 路径必须**以用户请求的 to_signal 结尾**。
@@ -539,11 +648,23 @@ class DataFlowGraph:
                             continue
                         p = p + [resolved_to]
                     key = tuple(p)
-                    if key not in seen_paths:
-                        seen_paths.add(key)
-                        all_paths.append(p)
+                    if key in seen_paths:
+                        continue
+                    if len(all_paths) >= state.max_paths:
+                        # 收满后**又找到一条** → 确实还有更多, 必须显式截断
+                        state.note("max_paths_reached")
+                        stop = True
+                        break
+                    seen_paths.add(key)
+                    all_paths.append(p)
+                if state.hard_truncated:
+                    stop = True
+                    break
         if all_paths:
             return all_paths
+        if state.hard_truncated:
+            # 预算耗尽 ≠ 没有路径: 调用方必须返回 unknown (不能 found:false)
+            return []
 
         # [FIX] 处理 struct 成员传播的完整路径
         # 例如: data_in → pkt1.data → pkt1 → pkt2 → pkt2.data → data_out
@@ -575,13 +696,14 @@ class DataFlowGraph:
                                 # 找到了通过 struct 传播的路径
                                 # 构造: from_signal → src_parent → succ → ... → to_signal
                                 # 需要找到从 succ 到 to_signal 的路径
-                                try:
-                                    sub_paths = list(nx.all_simple_paths(nx_graph, succ, to_candidate, cutoff=cutoff))
-                                    for sp in sub_paths:
-                                        if sp:
-                                            return [[from_signal] + sp]
-                                except (nx.NetworkXNoPath, nx.NodeNotFound) as _e:
-                                    logger.debug("图无路径 (正常): %s", _e)
+                                # [P158.11.2b] 有界枚举，只要第一条
+                                sp = self._first_bounded_path(
+                                    nx_graph, succ, to_candidate, cutoff, state
+                                )
+                                if sp:
+                                    return [[from_signal] + sp]
+                                if state.hard_truncated:
+                                    return []
 
         # 情况2: to_signal 是成员,检查是否有 struct 赋值到它的父
         if dst_member and dst_parent in nx_graph.nodes():
@@ -596,13 +718,13 @@ class DataFlowGraph:
                         if from_candidate not in nx_graph.nodes():
                             continue
                         if nx.has_path(nx_graph, from_candidate, pred):
-                            try:
-                                sub_paths = list(nx.all_simple_paths(nx_graph, from_candidate, pred, cutoff=cutoff))
-                                for sp in sub_paths:
-                                    if sp:
-                                        return [sp + [dst_parent, to_signal]]
-                            except (nx.NetworkXNoPath, nx.NodeNotFound) as _e:
-                                logger.debug("图无路径 (正常): %s", _e)
+                            sp = self._first_bounded_path(
+                                nx_graph, from_candidate, pred, cutoff, state
+                            )
+                            if sp:
+                                return [sp + [dst_parent, to_signal]]
+                            if state.hard_truncated:
+                                return []
 
         # [FIX] 情况2b: to_signal 被 struct.member 表达式驱动
         # 例如: data_out 由 pkt2.data 驱动,需要追踪 pkt2 的来源
@@ -646,16 +768,14 @@ class DataFlowGraph:
                             # 找到了 struct_pred → dst_struct_resolved
                             # 现在检查 from_signal 能否到达 struct_pred
                             if nx.has_path(nx_graph, from_signal, struct_pred):
-                                try:
-                                    sub_paths = list(
-                                        nx.all_simple_paths(nx_graph, from_signal, struct_pred, cutoff=cutoff)
-                                    )
-                                    for sp in sub_paths:
-                                        if sp:
-                                            # 找到了! 路径: from → ... → struct_pred → dst_struct_resolved → to_signal
-                                            return [sp + [struct_pred, dst_struct_resolved, to_signal]]
-                                except (nx.NetworkXNoPath, nx.NodeNotFound) as _e:
-                                    logger.debug("图无路径 (正常): %s", _e)
+                                sp = self._first_bounded_path(
+                                    nx_graph, from_signal, struct_pred, cutoff, state
+                                )
+                                if sp:
+                                    # 找到了! 路径: from → ... → struct_pred → dst_struct_resolved → to_signal
+                                    return [sp + [struct_pred, dst_struct_resolved, to_signal]]
+                                if state.hard_truncated:
+                                    return []
 
                             # [FIX] 如果 from_signal 是 struct.member,检查是否能通过 struct 父节点传播
                             # 例如: from_signal = pkt1.data, struct_pred = pkt1
@@ -663,15 +783,13 @@ class DataFlowGraph:
                             if src_member_candidate:
                                 # 检查 from_signal 能否到达 struct_pred
                                 if nx.has_path(nx_graph, from_signal, struct_pred):
-                                    try:
-                                        sub_paths = list(
-                                            nx.all_simple_paths(nx_graph, from_signal, struct_pred, cutoff=cutoff)
-                                        )
-                                        for sp in sub_paths:
-                                            if sp:
-                                                return [sp + [dst_struct_resolved, to_signal]]
-                                    except (nx.NetworkXNoPath, nx.NodeNotFound) as _e:
-                                        logger.debug("图无路径 (正常): %s", _e)
+                                    sp = self._first_bounded_path(
+                                        nx_graph, from_signal, struct_pred, cutoff, state
+                                    )
+                                    if sp:
+                                        return [sp + [dst_struct_resolved, to_signal]]
+                                    if state.hard_truncated:
+                                        return []
 
                                 # 检查 from_signal 的父 struct 是否能到达 struct_pred
                                 if src_parent_candidate in nx_graph.nodes():
@@ -706,15 +824,28 @@ class DataFlowGraph:
 
         return []
 
-    def analyze(self, from_signal: str, to_signal: str, max_paths: int = 100) -> DataFlowResult:
+    def analyze(self, from_signal: str, to_signal: str, max_paths: int = 100,
+                *, max_expansions: int = 200_000,
+                timeout_s: float | None = None,
+                max_depth: int = 50) -> DataFlowResult:
         """分析 from → to 的完整数据流路径
 
         主入口方法,返回完整的 DataFlowResult。
 
+        [P158.11.2b] 有界搜索 (SEMANTIC_CONTRACTS §3):
+          - `max_expansions`: work budget (考察的出边数)
+          - `timeout_s`: wall-clock 上限 (None = 不限)
+          - 超限时 `truncated=True` + `truncation_reason`；
+            若一条路径都没找到且是**硬预算**中止 → `is_reachable=None`
+            (unknown，"没查完" ≠ "没有路径")
+
         Args:
             from_signal: 起点信号 (完整 hierarchy path)
             to_signal: 终点信号 (完整 hierarchy path)
-            max_paths: 最大路径数量限制
+            max_paths: 最大路径数量限制 (收满后确认还有更多 → max_paths_reached)
+            max_expansions: work budget
+            timeout_s: 可选 wall-clock 秒数
+            max_depth: 路径边数上限 (cutoff)
 
         Returns:
             DataFlowResult: 包含所有路径及分析结果
@@ -744,16 +875,37 @@ class DataFlowGraph:
                     f"Available signals (first 10): {available}"
                 )
 
-        # 1. 查找所有路径
-        paths = self._find_paths(from_signal, to_signal)
+        # 1. 查找所有路径 (有界)
+        deadline = None if timeout_s is None else time.monotonic() + timeout_s
+        state = SearchBudget(
+            max_expansions=max_expansions,
+            deadline=deadline,
+            max_paths=max_paths,
+            max_depth=max_depth,
+        )
+        paths = self._find_paths(from_signal, to_signal, cutoff=max_depth, state=state)
         # Endpoint fidelity: parent/BIT_SELECT alternative targets must not be
         # reported as if they reached the requested destination.
         paths = [p for p in paths if p and p[-1] == to_signal]
 
-        if not paths:
-            return DataFlowResult(from_signal=from_signal, to_signal=to_signal, is_reachable=False, paths_count=0)
+        budget_fields = {
+            "truncated": state.truncated,
+            "truncation_reason": state.reason,
+            "expansions": state.expansions,
+            "elapsed_s": round(state.elapsed_s, 6),
+        }
 
-        # 2. 限制路径数量
+        if not paths:
+            # [P158.11.2b] 硬预算/超时中止时**不能**说"不可达" —— 那是 unknown。
+            return DataFlowResult(
+                from_signal=from_signal,
+                to_signal=to_signal,
+                is_reachable=None if state.hard_truncated else False,
+                paths_count=0,
+                **budget_fields,
+            )
+
+        # 2. 限制路径数量 (预算已在上游收口; 这里保留防御性切片)
         paths = paths[:max_paths]
 
         # 3. 构建 DataFlowPath
@@ -823,6 +975,7 @@ class DataFlowGraph:
             timing_risk=timing_risk,
             primary_latency_cycles=primary_latency,
             primary_is_async=primary_async,
+            **budget_fields,
         )
 
     def _compute_latency_and_stages(

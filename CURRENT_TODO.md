@@ -3,20 +3,29 @@
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **交接状态**: [docs/dev/HANDOFF.md](docs/dev/HANDOFF.md) — 剩余工作、环境、worker 协议。
-> **最后更新**: 2026-11-11 21:30 GMT+8 (P164 文档状态校准完成)
+> **最后更新**: 2026-11-11 23:00 GMT+8 (P158.11.2b 完成)
 
 ---
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P158.11.2b generic long-query timeout** `<待做>`
-  - 按 HANDOFF §12 的接手顺序：P158.11.2b → P158.9.2 → P158.12 → 17 skip 分类
-  - 现状：`paths` 已有 budget/deadline；`dataflow._find_paths(cutoff=50)` 只有路径条数上限，
-    `dataflow analyze` 也没有 `--timeout`（2026-11-11 实测）
-  - 验收：超预算返回 `truncated` / `unknown_kind:"search_budget_exhausted"`，
-    不得伪装 `found:false`；有 true-positive 测试；canonical 仍 0 failed
+- **当前 item**: **P158.9.2 snapshot surface 矩阵（命令 → graph-only / graph+MIG / 需 semantic adapter）** `<待做>`
+  - 按 HANDOFF §12 的接手顺序：~~P158.11.2b~~（已完成）→ P158.9.2 → P158.12 → 17 skip 分类
+  - 现状：`--from-snapshot` 只覆盖部分命令（9.1 已做 schema/capabilities 咬合）；
+    9.2 要给出每个命令的 snapshot 支持矩阵并补齐
+  - 验收：`capabilities` / `--help` / `json_contract` 三者同源；不支持的命令显式拒绝，
+    不是静默 live 回退
 
-### 已完成（本轮 P164，文档状态校准）
+### 已完成（本轮 P158.11.2b，iter_491）
+
+- `graph/search_budget.py::SearchBudget` 成为预算记账唯一实现（MIG 复用，旧名别名兼容）
+- `dataflow` 有界 DFS（与 networkx 同遍历序）；`DataFlowResult` 增加
+  `truncated/truncation_reason/expansions/search_status`
+- CLI `dataflow analyze --max-expansions/--timeout`；json_contract + capabilities 同步
+- 机械 gate：`test_p158_11_dataflow_budget.py`（diamond fixture：max_paths 截断 /
+  expansions 耗尽 / timeout=0 → unknown）
+
+### 已完成（P164，文档状态校准）
 
 - P164.1 计划树修正：current item 指向 P158.11.2b；P158.9 拆出 9.2；
   `---- ` 不可见项改为 `--`；`check_plan` 新增 P9（3 个以上短横线即报错）+ 字母后缀 id
@@ -43,7 +52,7 @@
 - **命令面**: 45 命令 = core 40 + exp 5（audit / diagnose / trace overview / review render / architecture graph）
 - **环境**: `python3` 必须是装了 typer/pyslang 的解释器（本机 `~/miniconda3/bin/python3`），
   否则 CLI 子进程测试会成片假失败
-- **当前重点**: 文档状态已与代码对齐；下一步回到核心查询的有界性（P158.11.2b）
+- **当前重点**: P158.11.2b 已完成，dataflow 全查询有界；下一步 snapshot surface 矩阵（P158.9.2）
 
 ---
 
@@ -51,6 +60,7 @@
 
 | 项 | 内容 | 结果 |
 |---|---|---|
+| P158.11.2b | 通用长查询 timeout（iter_491） | SearchBudget 唯一实现；dataflow 有界 DFS + CLI 预算参数 + truncated 契约 |
 | P164 | 文档状态校准（接手） | PLAN/CURRENT_TODO/HANDOFF/契约/基线/限制对齐；check_plan + check_docs 加固 |
 | P162/P163 | 交接文档 + 会话记录 | 可交接、可追溯 |
 | P160/P161 | opensource 分诊与修复 | 38 failed → 0 failed；17 个显式 skip |
@@ -65,10 +75,9 @@
 ## 🔜 下一步（按顺序，未开工）
 
 ```text
-1. P158.11.2b 通用长查询 timeout      <- 当前 item
-2. P158.9.2   snapshot surface 矩阵
-3. P158.12    P2 清理（26 个硬编码路径 / no:randomly / impact 定位 / 空 expression self-loop）
-4. 17 个 opensource skip 的最终处置（归档 retired exp / 补 fixture / 保留显式 skip）
+1. P158.9.2   snapshot surface 矩阵          <- 当前 item
+2. P158.12    P2 清理（26 个硬编码路径 / no:randomly / impact 定位 / 空 expression self-loop）
+3. 17 个 opensource skip 的最终处置（归档 retired exp / 补 fixture / 保留显式 skip）
 ```
 
 未决讨论项（等方豆拍板）：`trace impact` 是否降 exp；真实项目依赖闭包是否固化进 repo。
