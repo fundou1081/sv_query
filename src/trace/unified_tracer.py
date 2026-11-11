@@ -447,6 +447,33 @@ class UnifiedTracer:
         self._graph = graph
         self._init_tracers()
 
+    def load_snapshot(self, snapshot: dict) -> None:
+        """Hydrate a tracer from a saved snapshot (P158.7).
+
+        This is the **single** snapshot construction path: it mirrors the
+        live build's graph + MIG + tracer initialization instead of setting
+        private attributes ad hoc. Snapshot does not contain class/covergroup
+        semantic state; those are explicitly None/empty, not silently stale.
+        """
+        from trace.core.graph.models import SignalGraph
+        from trace.core.module_instance_graph import ModuleInstanceGraph, PathResolver
+
+        if not isinstance(snapshot, dict):
+            raise ValueError("snapshot root is not an object")
+        graph = SignalGraph.from_dict(snapshot)
+        mig_data = snapshot.get("module_graph")
+        if mig_data is not None and not isinstance(mig_data, dict):
+            raise ValueError("snapshot module_graph is not an object")
+        mig = ModuleInstanceGraph.from_dict(mig_data) if mig_data else None
+        self._graph = graph
+        self._module_graph = mig
+        # Snapshot carries graph + MIG only; class/covergroup state is absent.
+        self._class_hierarchy = None
+        self._class_build_errors = []
+        self._covergroup_cgs = None
+        self._init_tracers()
+        self._path_resolver = PathResolver(graph, mig)
+
     def get_graph(self) -> SignalGraph | None:
         return self._graph
 

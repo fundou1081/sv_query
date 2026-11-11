@@ -195,7 +195,7 @@ def list_cmd(
               file=sys.stderr)
         print(f"   要使用旧快照: SVQ_SNAPSHOT_DIR={LEGACY_SNAPSHOT_DIR} svq snapshot list",
               file=sys.stderr)
-    snapshots = [manager.show(t) for t in tags]
+    snapshots = manager.list_summary()
 
     if json_output:
         print(json.dumps(snapshots, indent=2))
@@ -208,6 +208,9 @@ def list_cmd(
         print("-" * 100)
         for s in snapshots:
             created = s.get("created_at", "")[:19]
+            if s.get("error"):
+                print(f"{s['tag']:<20} {'! invalid':<25} {0:<8} {0:<8} {s['error']}")
+                continue
             files = ", ".join([Path(f).name for f in s.get("files", [])[:3]])
             if len(s.get("files", [])) > 3:
                 files += f" +{len(s['files']) - 3} more"
@@ -220,6 +223,17 @@ def _emit_snapshot_detail(manager, tag: str, json_output: bool) -> None:
     if not info:
         print(f"Snapshot not found: {tag}")
         raise typer.Exit(code=1)
+
+    if info.get("error"):
+        if json_output:
+            print(json.dumps(info, indent=2))
+        else:
+            print(f"Snapshot invalid: {tag}: {info['error']}")
+        raise typer.Exit(code=1)
+
+    if info.get("tag_mismatch"):
+        print(f"Warning: filename tag {tag!r} != body tag {info['tag_mismatch']!r}",
+              file=__import__("sys").stderr)
 
     if json_output:
         print(json.dumps(info, indent=2))
