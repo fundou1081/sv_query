@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P158.10 CI/gate 咬合 <待做>
+current item : P158.11 dataflow/snapshot/frontier 性能与界限 <待做>
 
 ## 计划树
 
@@ -499,7 +499,7 @@ P158 review remediation backlog <待做>
 -- P158.8 测试真实性 / legacy / true-positive <已完成>
 -- P158.9 snapshot surface + schema + capabilities <待做>
 ---- P158.9.1 capabilities / json_contract coverage <已完成>
--- P158.10 CI/gate 咬合 <待做>
+-- P158.10 CI/gate 咬合 <已完成>
 -- P158.11 dataflow/snapshot/frontier 性能与界限 <待做>
 -- P158.12 P2 清理 <待做>
 

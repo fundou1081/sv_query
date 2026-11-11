@@ -81,7 +81,8 @@
 ## 3. 提交前必跑 (全部 0 退出码)
 
 ```bash
-python3 -m pytest sim/tests/ -m "not opensource" -q -p no:randomly   # 全量门禁
+bash tools/run_gates.sh                                              # 单一 canonical gate (CI 同款)
+python3 -m pytest sim/tests/ -m "not opensource" -q -p no:randomly   # 或手动全量
 python3 tools/check_docs.py                                          # 死链/归档/未登记
 python3 tools/check_except_pass.py                                   # 禁 except:pass
 python3 tools/check_semantic_regex.py                                # 语义提取 regex 纪律 (仅 UVM 宏)
