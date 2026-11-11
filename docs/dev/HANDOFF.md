@@ -342,7 +342,9 @@ python3 tools/agent/run_spi_corpus.py --json
 1. P158.11.2b generic timeout（2026-11-11 已完成）
 2. P158.9 snapshot surface 矩阵（9.2）
 3. P158.12 P2 清理
-4. 17 个 skip 分类
+4. P165 arch_eval 评审采纳（signal.py pred/succ 化 → 外部效度 → packaging 重命名；
+   方案 B 拒绝、方案 C 暂缓，决策记录在 PLAN P165）
+5. 17 个 skip 分类
 ```
 
 如果只接一个任务，选 **P158.9.2 snapshot surface 矩阵**：
