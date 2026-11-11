@@ -1,7 +1,7 @@
 # CLI 能力清单 (生成物 — 请勿手改)
 
 > **生成方式**: `python3 tools/gen_cli_surface.py`  (数据源: `src/cli/_registry.py` + typer introspection)
-> **生成日期**: 2026-11-10  |  **漂移校验**: `python3 tools/gen_cli_surface.py --check`
+> **生成日期**: 2026-11-11  |  **漂移校验**: `python3 tools/gen_cli_surface.py --check`
 > **分层检查**: `python3 tools/check_cli_layers.py` (R1~R6)
 
 ## 总览
@@ -23,7 +23,7 @@
 | 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
 |---|---|---|---|---|---|---|---|---|---|
 | `capabilities` | — | — | locate | primitive | cheap | ✅ | — | ✅ | 本清单自身 (agent 应先读它再决定调什么) |
-| `filelist prune` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | [P91] top-aware 保守 filelist 裁剪; 只输出候选/可选写新 filelist，不改源文件 |
+| `filelist prune` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | [P91/P158.5] top-aware 保守 filelist 裁剪; 默认 dry-run; --apply 才写; 只允许 .f/.fl; 覆盖需 --force + .bak |
 | `graph edges` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | 列出图边; 支持 --file / --filelist (iter_236 补) |
 | `graph nodes` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | 列图节点 (kind/module/--match 过滤; --detail 给表达式等富字段); 支持 --file / --filelist |
 | `graph subgraph` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | [P60] seed 的 k-hop 局部子图; depth/direction/edge-kinds/budget; JSON boundary/truncated |

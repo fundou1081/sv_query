@@ -216,7 +216,7 @@ COMMANDS: list[CommandSpec] = [
        note="列出图边; 支持 --file / --filelist (iter_236 补)"),
     _c("filelist prune", "locate", kind="primitive", cost="cheap",
        write_scope="output",
-       note="[P91] top-aware 保守 filelist 裁剪; 只输出候选/可选写新 filelist，不改源文件"),
+       note="[P91/P158.5] top-aware 保守 filelist 裁剪; 默认 dry-run; --apply 才写; 只允许 .f/.fl; 覆盖需 --force + .bak"),
     _c("graph subgraph", "locate", kind="primitive", cost="cheap",
        note="[P60] seed 的 k-hop 局部子图; depth/direction/edge-kinds/budget; JSON boundary/truncated"),
     CommandSpec(key="diagnose", layer="exp", group="diagnose", kind="experimental",

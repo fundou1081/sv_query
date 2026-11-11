@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P158.1 数据边策略 + CLOCK/RESET 反例 <待做>
+current item : P158.1 数据边策略 + CLOCK/RESET 反例 <进行中>
 
 ## 计划树
 
@@ -485,12 +485,12 @@ P157 canonical skip cleanup <已完成>
 
 P158 review remediation backlog <待做>
 -- P158.0 纪律语义契约升级 <已完成>
--- P158.1 数据边策略 + CLOCK/RESET 反例 <待做>
+-- P158.1 数据边策略 + CLOCK/RESET 反例 <进行中>
 -- P158.2 路径/查询 budget + timeout <待做>
 -- P158.3 构建确定性 + canonical hash <待做>
 -- P158.4 SPI corpus runner <待做>
--- P158.5 filelist 写入安全 <待做>
--- P158.6 truncated/verified 状态机 <待做>
+-- P158.5 filelist 写入安全 <已完成>
+-- P158.6 truncated/verified 状态机 <已完成>
 -- P158.7 snapshot 构造与损坏输入 <待做>
 -- P158.8 测试真实性 / legacy / true-positive <待做>
 -- P158.9 snapshot surface + schema + capabilities <待做>
