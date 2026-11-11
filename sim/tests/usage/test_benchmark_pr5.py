@@ -29,6 +29,9 @@ import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 BENCH = PROJECT_ROOT / "tools" / "benchmark" / "run_benchmark.py"
+
+# Requires external AXI RTL/closure; canonical excludes it.
+pytestmark = pytest.mark.opensource
 FILENAME_LIST = "/tmp/pulp_axi_xbar_pr2.f"
 TARGET = "axi_xbar_intf"
 # [iter_180] 深结构基准 (真实 Cfg: 4 slv / 3 mst / 32b addr / 64b data)

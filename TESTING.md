@@ -9,7 +9,7 @@
 
 | 项 | 值（引自 INDEX） | 说明 |
 |---|---|---|
-| 全量 (canonical) | **2634 (main) / 2633 (foreign) passed / 0 failed** | `sim/tests/`, `-m "not opensource"`；12–13 skipped / 119 deselected；35 subtests（2026-11-10 实测，P145） |
+| 全量 (canonical) | **2619 passed / 0 failed** | `sim/tests/`, `-m "not opensource"`；0 skipped / 139 deselected；35 subtests（2026-11-11 实测，P157） |
 | 回归基线 (unit + regression) | 见 INDEX | `-m "not opensource"` |
 | CLI / integration | 见 INDEX | `sim/tests/cli sim/tests/integration` |
 

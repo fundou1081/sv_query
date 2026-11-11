@@ -290,13 +290,12 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 > `=full` 时纯总线连接也按同索引合成位节点（verilog-axi 图 14.2k→31.5k 节点，
 > 构建时间不变、gzip 0.4→0.7MB）。表达式/算术赋值两种模式都不展开。
 
-### 4. 测试已知失败 (55 个，全部为 pre-existing)
+### 4. 测试已知失败 (54 个，全部为 pre-existing)
 
 | 模块 | 数量 | 原因 |
 |------|------|------|
 | test_fix_timescale | 6 | MissingTimeScale 检测差异 |
 | test_fix_report | 2 | 报告格式变化 |
-| test_deadlock_cli | 1 | naplespu filelist 不存在 |
 | test_dataflow_else_if | 36 | 条件表达式比较差异 |
 | test_dataflow_else_if_typo | 4 | 同上 |
 | test_dataflow_golden | 3 | golden 比较差异 |

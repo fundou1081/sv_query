@@ -123,7 +123,7 @@
 
 **协议/握手/死锁**: `test_handshake_*(8个)` `test_handshake_detector(34)` `test_handshake_fusion(28)`
 `test_protocol_*(8个)` `test_protocol_axistream` `test_bus_protocol_patterns` `test_deadlock_detector(13)`
-`test_deadlock_cli` `test_backpressure_handshake_filter` `test_handshake_cli`
+`test_backpressure_handshake_filter` `test_handshake_cli`
 
 ### 2.4 L4 可视化层 (VizData / SVG / DOT / teach)
 
