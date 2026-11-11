@@ -91,13 +91,18 @@ STRUCTURAL_EDGE_KINDS = {BIT_SELECT, MEMBER_SELECT}
 | `trace frontier` | structural | 可以跨 BIT_SELECT，但输出必须说明是结构前沿 |
 | `verify consistency reciprocity` | data | 只比较 DRIVER/CONNECTION 对 |
 
-### 2.3 当前已知违反
+### 2.3 已修复的历史违反（P158.1，保留作回归对照）
 
-- `PathResolver` 当前接受所有 edge kind，导致 `clk → ready_q` 被判为数据路径；
-- `paths --directed` 与 `verify claim path` 当前会 `verified` 一条 CLOCK 边；
+- `PathResolver` 曾接受所有 edge kind，`clk → ready_q` 被判为数据路径；
+- `paths --directed` 与 `verify claim path` 曾对 CLOCK 边返回 `verified`；
 - 三条消费者曾各自维护 edge 策略。
 
-**验收**：P158.1 完成后，CLOCK/RESET fixture 上：
+**现状（2026-11-11 复测）**：三者共用 `src/trace/core/graph/contracts.py`；
+回归 `sim/tests/unit/test_p158_data_edge_contract.py`（含 mutation）；
+`paths top_minimal.sa1.clk top_minimal.sa1.ready_q --directed` → `found:false, mode:"data"`，
+`verify claim type=path` 同一对 → `contradicted`。
+
+**回归必须同时满足（三者一致）**：
 
 ```text
 paths --directed        → found:false（或 is_data_path:false）
@@ -302,20 +307,22 @@ worker / reviewer 的 `APPROVE` 不是证据。必须提供：
 
 ## 11. 门禁落地状态
 
-截至 2026-11-11：
+截至 2026-11-11（P158 波次 1~3 收口后）：
 
 | 契约 | 机械 gate | 状态 |
 |---|---|---|
 | 数据边分类 | `test_p158_data_edge_contract` | ✅ P158.1 |
-| 路径有界 | `test_p158_data_edge_contract` | ✅ P158.2 |
+| 路径有界 | `test_p158_data_edge_contract`（paths budget/timeout） | ✅ P158.2 |
 | 确定性 | `test_determinism` + SPI 3× | ✅ P158.3 |
-| SPI corpus | `run_spi_corpus.py` | ✅ P158.4 |
+| SPI corpus | `tools/agent/run_spi_corpus.py` 9/9 | ✅ P158.4 |
 | 写入安全 | `test_filelist_prune` | ✅ P158.5 |
 | verified 状态机 | `test_verify_truncated` | ✅ P158.6 |
 | snapshot 构造 | `test_snapshot_robust` / `load_snapshot` | ✅ P158.7 |
-| true-positive/mutation | 无 | ❌ P158.8 |
-| snapshot surface/schema | 部分 | ❌ P158.9 |
-| CI 一致性 | 无 | ❌ P158.10 |
+| true-positive/mutation | `test_p158_data_edge_contract`（mutation）+ legacy snapshot 回归 | ✅ P158.8 |
+| snapshot surface/schema | `cli/test_json_contract.py` + `regression/test_schema_contract_resolution.py`（9.1） | ⚠️ 部分 P158.9（surface 矩阵 9.2 待做） |
+| CI 一致性 | `.github/workflows/tests.yml` → `bash tools/run_gates.sh`（同一命令，`SVQ_GATE_BASE`） | ✅ P158.10 |
+| 长查询有界 | paths/frontier 有 gate；dataflow 无 budget | ⚠️ 部分 P158.11（11.2b 待做） |
+| P2 清理 | — | ❌ P158.12 |
 
 **规则**：没有机械 gate 的契约，在 P158 完成前只能算“目标契约”，
 不得在汇报中写成“已保证”。

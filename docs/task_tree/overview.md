@@ -521,3 +521,4 @@ Open-source project visualization is **correct and verified**. Ready for next ta
 | **385** | **2026-11-11** | **L3** | **P158.11.2a snapshot size (iter_487)** | 评审 R-017 | size guard/metadata | timeout 待做 | **✅ 完成** |
 | **386** | **2026-11-11** | **L3** | **P162 handoff (iter_488)** | 用户: 交接文档 | 状态/剩余/协议 | 交回 checklist | **✅ 完成** |
 | **387** | **2026-11-11** | **L3** | **P163 session log (iter_489)** | 用户: 写对话记录 | 事实重建/决策/失败/worker | 非逐字 | **✅ 完成** |
+| **388** | **2026-11-11** | **L3** | **P164 文档状态校准 (iter_490)** | 用户: 先修文档状态 | 计划树/契约/基线/README/HANDOFF 对齐；check_plan P9 + check_docs 基准收敛 | canonical 全量未独立复核 | **✅ 完成** |

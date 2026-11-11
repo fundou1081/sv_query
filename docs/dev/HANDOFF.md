@@ -1,8 +1,8 @@
 # 交接文档 (HANDOFF)
 
-**交接时间**: 2026-11-11 20:30 (Asia/Shanghai)
+**交接时间**: 2026-11-11 20:30 (Asia/Shanghai)（2026-11-11 21:10 校对状态类文档）
 **仓库**: `/Users/fundou/my_dv_proj/sv_query`
-**HEAD**: `20ed39d6`
+**HEAD**: 以 `git log -1` 为准（本文最后核对：`56c10fa9`）
 **状态**: canonical 与 opensource 均为 0 failed；P158 还剩部分收尾
 
 > 给接手 agent：先读完本文件，再按 [AGENTS.md](../../AGENTS.md) §0 的顺序恢复上下文。
@@ -111,7 +111,8 @@ d1325aaf — docs(P159): record full pitfalls and lessons history
 
 ```text
 paths 已有 budget/timeout；
-dataflow._find_paths 仍可能枚举过多；
+dataflow._find_paths(cutoff=50) 只有路径条数上限，没有 work budget / deadline；
+dataflow analyze 的 CLI 也没有 --timeout（2026-11-11 实测）；
 其他长查询没有统一 wall-clock guard。
 ```
 
@@ -130,7 +131,7 @@ dataflow._find_paths 仍可能枚举过多；
 - canonical 全量仍 0 failed。
 ```
 
-### 5.2 P158.9：snapshot surface 矩阵
+### 5.2 P158.9.2：snapshot surface 矩阵（9.1 已完成）
 
 问题：`--from-snapshot` 半状态（有的命令支持，有的不支持）。
 
@@ -144,10 +145,12 @@ dataflow._find_paths 仍可能枚举过多；
 
 建议按这个顺序：
 
-1. 20 个测试文件硬编码 `/Users/fundou/...` → 仓库相对路径；
-2. `-p no:randomly` no-op：移除 flag 或真正安装插件（不要假装随机）；
-3. `trace impact` heuristic 在 core：移 `exp` 或明确降级；
-4. 408 条空 expression 的 self-loop：调查并去掉；
+1. **26 个测试文件**硬编码 `/Users/fundou/...` → 仓库相对路径
+   （2026-11-11 实测 `grep -rl "/Users/fundou" sim/tests --include=*.py | wc -l` = 26；
+   旧文档写 20/23 都不准）；
+2. `-p no:randomly` no-op：移除 flag 或真正安装插件（实测 `pytest_randomly` 未安装）；
+3. `trace impact` heuristic 在 core：移 `exp` 或把 `kind` 改成 heuristic 并补 claim；
+4. 408 条空 expression 的 self-loop：**先补复现命令/基线文件**再调查（当前文档没有入口，接手无法验证）；
 5. `false_confident` 指标在 task exception 时漏计；
 6. 文档/help/skills 漂移。
 
@@ -173,7 +176,8 @@ naplespu retired exp (8)   -> 已退休；可归档，不恢复旧命令
 cd /Users/fundou/my_dv_proj/sv_query
 git status --porcelain
 git log --oneline -5
-sed -n '18,25p' PLAN.md
+sed -n '20,24p' PLAN.md
+grep -n "^current item" PLAN.md        # 比行号稳定，推荐
 python3 tools/check_plan.py
 ```
 
@@ -217,6 +221,16 @@ python3 -m pytest sim/tests/ -m "opensource" -q -p no:randomly
 ```text
 canonical:   2678 passed / 0 failed
 opensource:  114 passed / 0 failed / 17 explicit skips
+```
+
+**解释器必须先对齐**（2026-11-11 实测坑）：`run_gates.sh` 与测试内部都调用 `python3`。
+若 PATH 里的 `python3` 不是装了 typer/pyslang 的那个（本机默认可能是 3.13.x），
+CLI 子进程测试会成片报 `ModuleNotFoundError: No module named 'typer'`——这是环境假失败，
+不是产品回归。本机正确用法：
+
+```bash
+export PATH="$HOME/miniconda3/bin:$PATH"   # 3.11.4 + pyslang 11.0.0
+bash tools/run_gates.sh
 ```
 
 计数若变化，只更新 `docs/INDEX.md` 的“当前基线”；不要在其他地方写死。
@@ -274,10 +288,11 @@ python3 tools/agent/run_spi_corpus.py --json
 
 ### 机器依赖
 
-- Python 3.11 / 3.12
-- pyslang（GitHub source）
+- Python 3.11 / 3.12；**本机实测可用解释器**：`~/miniconda3/bin/python3`（3.11.4）
+- pyslang（GitHub source）；本机 `pyslang 11.0.0`
 - `crapper`（复杂度门禁；没有会 exit 3，不是 pass）
 - macOS（部分外部路径是机器绑定的）
+- 注意：本机 PATH 默认 `python3` 可能是 3.13.x（无 typer/pyslang），见 §6.3 解释器说明
 
 ---
 
@@ -331,8 +346,9 @@ python3 tools/agent/run_spi_corpus.py --json
 ## 12. 建议接手顺序
 
 ```text
+0. 文档状态校准（P164，2026-11-11 已完成：PLAN/CURRENT_TODO/契约/基线/HANDOFF 对齐）
 1. P158.11.2b generic timeout
-2. P158.9 snapshot surface 矩阵
+2. P158.9 snapshot surface 矩阵（9.2）
 3. P158.12 P2 清理
 4. 17 个 skip 分类
 ```

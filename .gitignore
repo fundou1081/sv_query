@@ -24,3 +24,6 @@ tmp_v*_pngs/
 
 # ub-mode 工具产物 (crapper / dryer / mutator) —— 不入库
 .metrics/
+
+# 工作区/会话元数据 (WorkBuddy 本地状态) —— 不入库
+.workbuddy/

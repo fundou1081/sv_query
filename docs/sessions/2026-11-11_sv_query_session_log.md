@@ -3,7 +3,7 @@
 > **性质**: 本轮多轮对话的**事实重建记录**，不是逐字 transcript。
 > 目的: 让接手 agent 知道“当时用户要什么、做了什么决定、为什么、哪些尝试失败”。
 > 逐字原始对话不随仓库保存；可复现事实以命令、commit、validation 文档为准。
-> **当前 HEAD**: `475d1190`（P162 handoff）
+> **HEAD**: 以 `git log -1` 为准（本文写作时 `475d1190` = P162；P163 提交后为 `56c10fa9`）
 
 ---
 
@@ -262,8 +262,8 @@ python3 run_cli.py verify consistency --from-snapshot opentitan_spi \
 ## 7. 当前状态（接手用）
 
 ```text
-HEAD: 475d1190
-canonical: 2678 passed / 0 skipped / 131 deselected / 0 failed
+HEAD: 以 git log -1 为准（写作时 475d1190；P163 后 56c10fa9）
+canonical: 2678 passed / 0 skipped / 131 deselected / 0 failed（文档记录）
 opensource: 114 passed / 17 skipped / 0 failed
 ```
 

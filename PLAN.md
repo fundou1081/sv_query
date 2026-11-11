@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P158.12 P2 清理 <待做>
+current item : P158.11.2b generic long-query timeout <待做>
 
 ## 计划树
 
@@ -503,6 +503,12 @@ P162 handoff document <已完成>
 P163 session/history record <已完成>
 -- P163.1 conversation/work log <已完成>
 
+P164 文档状态校准（2026-11-11 接手） <已完成>
+-- P164.1 计划树修正：current item / P158.9 拆分 / 四级缩进不可见项 <已完成>
+-- P164.2 CURRENT_TODO / HANDOFF / 会话日志状态同步 <已完成>
+-- P164.3 契约与基线文档过期状态清理 <已完成>
+-- P164.4 计数漂移检查器覆盖根文档 <已完成>
+
 P158 review remediation backlog <待做>
 -- P158.0 纪律语义契约升级 <已完成>
 -- P158.1 数据边策略 + CLOCK/RESET 反例 <已完成>
@@ -513,13 +519,14 @@ P158 review remediation backlog <待做>
 -- P158.6 truncated/verified 状态机 <已完成>
 -- P158.7 snapshot 构造与损坏输入 <已完成>
 -- P158.8 测试真实性 / legacy / true-positive <已完成>
--- P158.9 snapshot surface + schema + capabilities <待做>
----- P158.9.1 capabilities / json_contract coverage <已完成>
+-- P158.9 snapshot surface + schema + capabilities <进行中>
+-- P158.9.1 capabilities / json_contract coverage <已完成>
+-- P158.9.2 snapshot surface 矩阵（命令 → graph-only / graph+MIG / 需 semantic adapter） <待做>
 -- P158.10 CI/gate 咬合 <已完成>
 -- P158.11 dataflow/snapshot/frontier 性能与界限 <进行中>
----- P158.11.2a snapshot size guard <已完成>
----- P158.11.2b generic long-query timeout <待做>
----- P158.11.1 dataflow snapshot + frontier cap <已完成>
+-- P158.11.1 dataflow snapshot + frontier cap <已完成>
+-- P158.11.2a snapshot size guard <已完成>
+-- P158.11.2b generic long-query timeout <待做>
 
 -- P158.12 P2 清理 <待做>
 
@@ -757,3 +764,4 @@ P4 已完成归档 <已完成>
 | 2026-10-25 | 建立本计划树；P0~P3 来自底座审计结论（iter_278） |
 | 2026-10-26 | P0/P1/P2/P3 全部完成（iter_279~288）；计划树进入"无待办"状态 |
 | 2026-10-27 | P5~P12 位精确性系列完成（iter_289~300）；P13 评审 backlog 登记（iter_301，见 architecture/trace_capability_review_2026-10-27） |
+| 2026-11-11 | 接手校准（P164）：current item 按 HANDOFF 建议指向 P158.11.2b 前置的文档校准；P158.9 拆出 9.2；`--`/`----` 缩进统一，check_plan 新增 P9（不可见项）与字母后缀 id |

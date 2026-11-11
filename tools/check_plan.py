@@ -7,12 +7,13 @@
 校验项（任一失败 = 非 0 退出）:
   P1 恰好一条 `current item : ...` 行
   P2 current item 必须能在计划树里找到，且 content / status 完全一致
-  P3 计划项格式: `[-- ]P<数字>[.<数字>...] <内容> <状态>`
+  P3 计划项格式: `[-- ]P<数字>[.<数字>...][a-z]? <内容> <状态>`
   P4 id 全局唯一
-  P5 子项 (`-- `) 的父项必须存在（且父项是顶层项）
+  P5 子项 (`-- `) 的父项必须存在（任意层级；深度 ≤ 3 层）
   P6 状态词只能是: 待做 / 进行中 / 已完成 / 阻塞 / 放弃
   P7 最多一项 `进行中`，且必须是 current item（current 可为 `待做` = 即将开始）
   P8 至少 1 个计划项
+  P9 不允许 `--- ` 及更深的缩进前缀（会被静默跳过 = 计划项不可见）
 
 用法:
     python3 tools/check_plan.py            # 校验 PLAN.md
@@ -31,11 +32,12 @@ PLAN = REPO / "PLAN.md"
 
 STATUSES = ("待做", "进行中", "已完成", "阻塞", "放弃")
 STATUS_ALT = "|".join(STATUSES)
+# id 允许单个小写字母后缀（P158.11.2a / P158.11.2b 这类拆分项）；不含后缀的仍是主流写法
 ITEM_RE = re.compile(
-    rf"^(?P<dash>-- )?(?P<id>P\d+(?:\.\d+)*) (?P<content>\S.*?) <(?P<status>{STATUS_ALT})>$"
+    rf"^(?P<dash>-- )?(?P<id>P\d+(?:\.\d+)*[a-z]?) (?P<content>\S.*?) <(?P<status>{STATUS_ALT})>$"
 )
 CURRENT_RE = re.compile(
-    rf"^current item : (?P<id>P\d+(?:\.\d+)*) (?P<content>\S.*?) <(?P<status>{STATUS_ALT})>$"
+    rf"^current item : (?P<id>P\d+(?:\.\d+)*[a-z]?) (?P<content>\S.*?) <(?P<status>{STATUS_ALT})>$"
 )
 
 
@@ -91,6 +93,11 @@ def check(text: str) -> list[str]:
             continue
         if re.match(r"^(-- )?P\d", line) and not ITEM_RE.match(line):
             errors.append(f"P3: 第 {lineno} 行计划项格式不合法: {line!r}")
+        # P9: 3 个以上短横线 = 不匹配 ITEM_RE，会被静默跳过（P158.9.1 历史坑）
+        if re.match(r"^-{3,}\s*P\d", line):
+            errors.append(
+                f"P9: 第 {lineno} 行用了 3 个以上短横线缩进，计划项不可见: {line!r}"
+            )
         if "<" in line and ">" in line:
             m = re.search(r"<([^<>]*)>$", line)
             if m and re.match(r"^(-- )?P\d", line) and m.group(1) not in STATUSES:
@@ -135,13 +142,14 @@ def check(text: str) -> list[str]:
         if unfinished:
             errors.append(f"P7: current 标已完成时仍有未完成项: {unfinished}")
 
-    # P5
-    tops = {it["id"] for it in items if not it["dash"]}
+    # P5: 父项必须存在（任意层级），层级深度上限 3 层（P1 / P1.1 / P1.1.1）
     for it in items:
         if it["dash"]:
             parent = _parent_of(it["id"])
-            if not parent or parent not in tops:
-                errors.append(f"P5: 子项 {it['id']} 缺少父项 {parent}（父项须为顶层项）")
+            if not parent or parent not in ids:
+                errors.append(f"P5: 子项 {it['id']} 缺少父项 {parent}")
+            elif it["id"].count(".") > 2:
+                errors.append(f"P5: 子项 {it['id']} 层级过深（上限 3 层）")
 
     return errors
 
