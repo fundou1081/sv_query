@@ -3,37 +3,27 @@
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **交接状态**: [docs/dev/HANDOFF.md](docs/dev/HANDOFF.md) — 剩余工作、环境、worker 协议。
-> **最后更新**: 2026-11-11 23:00 GMT+8 (P158.11.2b 完成)
+> **最后更新**: 2026-11-11 23:55 GMT+8 (P158.9.2 完成)
 
 ---
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P158.9.2 snapshot surface 矩阵（命令 → graph-only / graph+MIG / 需 semantic adapter）** `<待做>`
-  - 按 HANDOFF §12 的接手顺序：~~P158.11.2b~~（已完成）→ P158.9.2 → P158.12 → 17 skip 分类
-  - 现状：`--from-snapshot` 只覆盖部分命令（9.1 已做 schema/capabilities 咬合）；
-    9.2 要给出每个命令的 snapshot 支持矩阵并补齐
-  - 验收：`capabilities` / `--help` / `json_contract` 三者同源；不支持的命令显式拒绝，
-    不是静默 live 回退
+- **当前 item**: **P158.12 P2 清理** `<待做>`
+  - 剩余：26 个测试文件硬编码 `/Users/fundou` 路径、`-p no:randomly` no-op、
+    空 expression self-loop；12.1（trace impact 降 exp）已完成
+  - 按 HANDOFF §12 顺序：~~P158.11.2b~~ → ~~P158.9.2~~ → P158.12 → 17 skip 分类
 
-### 已完成（本轮 P158.11.2b，iter_491）
+### 已完成（本轮 P158.9.2，iter_493）
 
-- `graph/search_budget.py::SearchBudget` 成为预算记账唯一实现（MIG 复用，旧名别名兼容）
-- `dataflow` 有界 DFS（与 networkx 同遍历序）；`DataFlowResult` 增加
-  `truncated/truncation_reason/expansions/search_status`
-- CLI `dataflow analyze --max-expansions/--timeout`；json_contract + capabilities 同步
-- 机械 gate：`test_p158_11_dataflow_budget.py`（diamond fixture：max_paths 截断 /
-  expansions 耗尽 / timeout=0 → unknown）
-
-### 已完成（P164，文档状态校准）
-
-- P164.1 计划树修正：current item 指向 P158.11.2b；P158.9 拆出 9.2；
-  `---- ` 不可见项改为 `--`；`check_plan` 新增 P9（3 个以上短横线即报错）+ 字母后缀 id
-- P164.2 CURRENT_TODO / HANDOFF / 会话日志：HEAD、相对命令、解释器、硬编码路径数（26）
-- P164.3 契约/基线/限制文档：SEMANTIC_CONTRACTS §2.3/§11、INDEX 基线、README 计数、
-  KNOWN_LIMITATIONS §4、ARCHITECTURE 过期声明、P159 §6.1/§6.2
-- P164.4 `check_docs` 计数漂移：基准只取 INDEX「当前基线」章节且只认 `N passed`；
-  文件名带日期 = 时点快照
+- `to_dict/from_dict` 补齐：condition_chain / source(SignalSource) /
+  function_return / is_function_call / node+edge extra（JSON-safe 过滤）
+- 显式不保证：condition_ast（运行期 AST）、class/covergroup 状态（恒 None）
+- `docs/dev/SNAPSHOT_SURFACE.md`：字段级 + 命令级快照能力面矩阵（单一权威）
+- 机械 gate：`test_p158_9_2_snapshot_surface.py` 10 项（往返保真 / 旧格式兼容 /
+  CLI live-vs-snapshot parity）
+- 实测证据：condition_chain 丢 32/32 → 0；source 丢 44/44 → 0；
+  effective_condition 重算 72/72；快照体积 +33%（64MB 上限不变）
 
 ### 长期挂起 / 已放弃（不再作为"下一步"）
 
@@ -53,7 +43,7 @@
   trace impact——**2026-11-11 降级**：未标定启发式不得伪装稳定，见 KNOWN_LIMITATIONS §3.4）
 - **环境**: `python3` 必须是装了 typer/pyslang 的解释器（本机 `~/miniconda3/bin/python3`），
   否则 CLI 子进程测试会成片假失败
-- **当前重点**: P158.11.2b 已完成，dataflow 全查询有界；下一步 snapshot surface 矩阵（P158.9.2）
+- **当前重点**: P158.9.2 已完成（快照往返保真 + SNAPSHOT_SURFACE.md 矩阵）；下一步 P158.12 P2 清理
 
 ---
 
@@ -76,13 +66,11 @@
 ## 🔜 下一步（按顺序，未开工）
 
 ```text
-1. P158.9.2   snapshot surface 矩阵          <- 当前 item（验收含"不许中间态"）
-2. P158.12    P2 清理（26 个硬编码路径 / no:randomly / 空 expression self-loop；
-              impact 定位已解决——2026-11-11 降 exp，P158.12.1 已完成）
+1. P158.12    P2 清理（26 个硬编码路径 / no:randomly / 空 expression self-loop）<- 当前 item
+2. 17 个 opensource skip 的最终处置（归档 retired exp / 补 fixture / 保留显式 skip）
 3. P165.1     signal.py 全图扫描 pred/succ 化（O(V×E)→O(度)，小改动）
-4. 17 个 opensource skip 的最终处置（归档 retired exp / 补 fixture / 保留显式 skip）
-5. P165.3/4   外部故障集 + filelist 闭包自动化（开源前）
-6. P165.2     packaging 重命名（随开源破坏性窗口）
+4. P165.3/4   外部故障集 + filelist 闭包自动化（开源前）
+5. P165.2     packaging 重命名（随开源破坏性窗口）
 ```
 
 未决讨论项（等方豆拍板）：真实项目依赖闭包是否固化进 repo。

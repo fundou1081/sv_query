@@ -524,3 +524,4 @@ Open-source project visualization is **correct and verified**. Ready for next ta
 | **388** | **2026-11-11** | **L3** | **P164 文档状态校准 (iter_490)** | 用户: 先修文档状态 | 计划树/契约/基线/README/HANDOFF 对齐；check_plan P9 + check_docs 基准收敛 | canonical 全量未独立复核 | **✅ 完成** |
 | **389** | **2026-11-11** | **L3** | **P158.11.2b 通用长查询 timeout (iter_491)** | 用户: 先解决 11.2b | SearchBudget 唯一实现；dataflow 有界 DFS + --max-expansions/--timeout + truncated 契约 | canonical 全量未独立复核 | **✅ 完成** |
 | **390** | **2026-11-11** | **L3** | **P165 arch_eval 评审采纳 + P158.12.1 impact 降 exp (iter_492)** | 用户: 采纳建议 / 降 exp | P165.1~4 登记；方案 B 拒绝 C 暂缓；impact core→exp（39+6） | 无 | **✅ 完成** |
+| **391** | **2026-11-11** | **L3** | **P158.9.2 快照保真与能力面矩阵 (iter_493)** | 用户: 恢复基线后继续 | to_dict/from_dict 补齐 condition_chain/source/extra；SNAPSHOT_SURFACE.md 矩阵；parity 测试 10 项 | unit 全量未重跑 | **✅ 完成** |

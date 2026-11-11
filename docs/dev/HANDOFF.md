@@ -16,7 +16,7 @@
 sv_query 是 agent 的 RTL 查询 + 客观校验层；
 核心语义契约、数据边、确定性、snapshot MIG、真实 corpus 已经落地；
 当前不是“完成品”，剩余工作集中在：
-P158.9 snapshot surface 矩阵、P158.12 P2 清理（11.2b 长查询 timeout 已完成）。
+P158.12 P2 清理、17 个 opensource skip 处置（11.2b timeout 与 9.2 快照保真已完成）。
 ```
 
 当前测试：
@@ -341,12 +341,14 @@ python3 tools/agent/run_spi_corpus.py --json
 ```text
 0. 文档状态校准（P164，2026-11-11 已完成：PLAN/CURRENT_TODO/契约/基线/HANDOFF 对齐）
 1. P158.11.2b generic timeout（2026-11-11 已完成）
-2. P158.9 snapshot surface 矩阵（9.2）
+2. P158.9 snapshot surface 矩阵（9.2）（2026-11-11 已完成：往返保真 +
+   SNAPSHOT_SURFACE.md 矩阵，见 docs/dev/SNAPSHOT_SURFACE.md）
 3. P158.12 P2 清理
 4. P165 arch_eval 评审采纳（signal.py pred/succ 化 → 外部效度 → packaging 重命名；
    方案 B 拒绝、方案 C 暂缓，决策记录在 PLAN P165）
 5. 17 个 skip 分类
 ```
 
-如果只接一个任务，选 **P158.9.2 snapshot surface 矩阵**：
-`--from-snapshot` 覆盖不一致是当前最影响 agent 可用性的缺口。
+如果只接一个任务，选 **P158.12 P2 清理**：
+26 个测试文件硬编码 `/Users/fundou` 路径决定换机器可不可跑，
+`-p no:randomly` 是 no-op——测试卫生层是当前最大的可信度债。

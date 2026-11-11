@@ -133,6 +133,11 @@ P158.11.2b 起 `dataflow analyze` 同样有界：`SearchBudget`（共享自 MIG 
 `sim/tests/unit/test_p158_11_dataflow_budget.py`（diamond fixture，
 覆盖 max_paths 截断 / expansions 耗尽 / timeout=0 → unknown）。
 
+**快照保真（P158.9.2，2026-11-11）**：路径/条件语义在 `--from-snapshot`
+路径上与 live 等价的前提是快照往返不丢字段。字段级与命令级快照能力面的
+权威矩阵见 [SNAPSHOT_SURFACE.md](SNAPSHOT_SURFACE.md)；缺失字段要么补齐、
+要么显式声明不保证，不许中间态。
+
 ---
 
 ## 4. 验证状态契约
@@ -324,7 +329,7 @@ worker / reviewer 的 `APPROVE` 不是证据。必须提供：
 | verified 状态机 | `test_verify_truncated` | ✅ P158.6 |
 | snapshot 构造 | `test_snapshot_robust` / `load_snapshot` | ✅ P158.7 |
 | true-positive/mutation | `test_p158_data_edge_contract`（mutation）+ legacy snapshot 回归 | ✅ P158.8 |
-| snapshot surface/schema | `cli/test_json_contract.py` + `regression/test_schema_contract_resolution.py`（9.1） | ⚠️ 部分 P158.9（surface 矩阵 9.2 待做） |
+| snapshot surface/schema | `cli/test_json_contract.py` + `regression/test_schema_contract_resolution.py`（9.1）+ `unit/test_p158_9_2_snapshot_surface.py`（9.2 往返保真/parity） | ✅ P158.9（矩阵见 [SNAPSHOT_SURFACE.md](SNAPSHOT_SURFACE.md)） |
 | CI 一致性 | `.github/workflows/tests.yml` → `bash tools/run_gates.sh`（同一命令，`SVQ_GATE_BASE`） | ✅ P158.10 |
 | 长查询有界 | `test_p158_11_dataflow_budget`（dataflow budget/timeout）+ paths/frontier gate | ✅ P158.11 |
 | P2 清理 | — | ❌ P158.12 |

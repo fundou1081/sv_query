@@ -2,7 +2,7 @@
 # graph_models.py - 信号关系图模型
 # ==============================================================================
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field, fields as dc_fields
 from datetime import UTC
 from enum import Enum, auto
 from typing import Any
@@ -12,6 +12,30 @@ import networkx as nx
 # [Stage 1] TraceEdge.source_location 字段用 SourceLocation
 # coverage_models 不反向依赖 graph.models, 无循环 import 风险
 from ..coverage_models import SourceLocation
+
+
+def _filter_json_safe(d: dict | None) -> dict:
+    """[P158.9.2] 只保留 JSON 可序列化的 extra 值。
+
+    extra 是自由形态 metadata, 不承诺全量持久化: 不可序列化的值
+    (运行期对象/AST) 被显式丢弃而非报错 — 损失面在 snapshot surface
+    矩阵中声明 (docs/dev/SNAPSHOT_SURFACE.md)。
+    """
+    import json as _json
+
+    if not d:
+        return {}
+    out: dict = {}
+    for k, v in d.items():
+        try:
+            _json.dumps(v)
+        except (TypeError, ValueError):
+            continue
+        out[k] = v
+    return out
+
+
+# [Stage 1] TraceEdge.source_location 字段用 SourceLocation
 
 
 @dataclass
@@ -164,6 +188,10 @@ class EdgeKind(Enum):
 # [铁律16] 注意:ENABLE/DATA 不作为独立边类型
 # - ENABLE: 用 TraceEdge.condition 属性替代,语义更清晰
 # - DATA: 与 DRIVER 重复,保留 DRIVER 即可
+
+
+# SignalSource 的合法构造字段集合 (from_dict 反序列化时过滤未知键)
+_SIGNAL_SOURCE_FIELDS = frozenset(f.name for f in dc_fields(SignalSource))
 
 
 @dataclass
@@ -588,6 +616,9 @@ class SignalGraph(nx.DiGraph):
                         "parent_bit_start": node.parent_bit_start,
                         "parent_bit_end": node.parent_bit_end,
                         "modport_dir": node.modport_dir,
+                        # [P158.9.2] extra: 仅 JSON-safe 值 (direction/width 等),
+                        # 不可序列化值显式丢弃 — 见 _filter_json_safe 声明
+                        "extra": _filter_json_safe(node.extra),
                     }
                 )
 
@@ -611,6 +642,17 @@ class SignalGraph(nx.DiGraph):
                             edge.source_location.to_dict()
                             if edge.source_location is not None else None
                         ),
+                        # [P158.9.2] 补齐缺失字段 (arch_eval P0.2: 不许中间态):
+                        # condition_chain 被 dataflow 条件提取回退消费, 丢失即
+                        # snapshot 与 live 查询分叉; source 喂 DriverInfo 派生
+                        # property; function 标记喂函数调用语义。
+                        # effective_condition 由 add_trace_edge 重算恢复 (实测 72/72),
+                        # 无需序列化; condition_ast 是运行期 AST, 显式不保证。
+                        "condition_chain": list(edge.condition_chain),
+                        "function_return": edge.function_return,
+                        "is_function_call": edge.is_function_call,
+                        "source": asdict(edge.source) if edge.source is not None else None,
+                        "extra": _filter_json_safe(edge.extra),
                     }
                 )
 
@@ -674,6 +716,8 @@ class SignalGraph(nx.DiGraph):
                 parent_bit_start=node_dict.get("parent_bit_start"),
                 parent_bit_end=node_dict.get("parent_bit_end"),
                 modport_dir=node_dict.get("modport_dir"),
+                # [P158.9.2] 恢复 extra (仅含 to_dict 序列化时保留下来的 JSON-safe 值)
+                extra=dict(node_dict.get("extra") or {}),
             )
             graph.add_trace_node(node)
 
@@ -716,6 +760,12 @@ class SignalGraph(nx.DiGraph):
                     line_end=loc_data.get("line_end", 0),
                     column=loc_data.get("column", 0),
                 )
+            src_data = edge_dict.get("source")
+            source = None
+            if isinstance(src_data, dict):
+                # 过滤未知键, 前向兼容 (新格式多出的键不至于炸旧 reader 的构造)
+                known = {k: v for k, v in src_data.items() if k in _SIGNAL_SOURCE_FIELDS}
+                source = SignalSource(**known) if known else None
             edge = TraceEdge(
                 src=edge_dict["src"],
                 dst=edge_dict["dst"],
@@ -728,6 +778,12 @@ class SignalGraph(nx.DiGraph):
                 expression=edge_dict.get("expression", ""),
                 bit_slice=edge_dict.get("bit_slice", ""),
                 source_location=source_location,
+                # [P158.9.2] 补齐字段恢复 (与 to_dict 对称; 旧快照缺键 → 默认值)
+                condition_chain=list(edge_dict.get("condition_chain") or []),
+                function_return=bool(edge_dict.get("function_return", False)),
+                is_function_call=bool(edge_dict.get("is_function_call", False)),
+                source=source,
+                extra=dict(edge_dict.get("extra") or {}),
             )
             graph.add_trace_edge(edge)
 

@@ -51,6 +51,7 @@
 | [dev/HANDOFF.md](dev/HANDOFF.md) | **交接**: 当前状态 / 剩余工作 / worker 协议 / 交回 checklist |
 | [sessions/2026-11-11_sv_query_session_log.md](sessions/2026-11-11_sv_query_session_log.md) | **P163**: 对话/工作事实记录（非逐字） |
 | [dev/SEMANTIC_CONTRACTS.md](dev/SEMANTIC_CONTRACTS.md) | **语义契约**: 数据边 / 路径 / verified / snapshot / 完成判定 |
+| [dev/SNAPSHOT_SURFACE.md](dev/SNAPSHOT_SURFACE.md) | **快照能力面矩阵 (P158.9.2)**: 字段级保真 / 命令级支持面 / 显式不保证清单 |
 | [dev/CLAIMS.md](dev/CLAIMS.md) | **claim 台账**: 公开能力的证据与状态 |
 | [dev/CODING_STYLE.md](dev/CODING_STYLE.md) | 编码风格与设计决策: 先探索后决策 / 单一实现 / 修根因 / 函数职责 / 结构化数据 / 影响面 / 协作规则 |
 | [dev/WORKFLOW.md](dev/WORKFLOW.md) | 开发流程: 任务生命周期 / 迭代记录 / 文档卫生 / 测试与冒烟 / 机械检查 / ADR / 提交合并 |
