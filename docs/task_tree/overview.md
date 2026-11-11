@@ -511,3 +511,4 @@ Open-source project visualization is **correct and verified**. Ready for next ta
 | **375** | **2026-11-11** | **L3** | **P158.3 determinism (iter_477)** | 评审 R-003 | 三次构建一致 | id 复用根因 | **✅ 完成** |
 | **376** | **2026-11-11** | **L3** | **P158.4 corpus runner (iter_478)** | 评审 R-004 | 9/9 pass | T2/T7 定标 | **✅ 完成** |
 | **377** | **2026-11-11** | **L3** | **P158.8 true-positive/legacy (iter_479)** | 评审 R-010/11 | 真实错误必报；legacy unknown | 覆盖测试 | **✅ 完成** |
+| **378** | **2026-11-11** | **L3** | **P159 history lessons (iter_480)** | 方豆: 记录全过程 | 22 坑/10 经验/20 反模式 | worker 独立复核 | **✅ 完成** |
