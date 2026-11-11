@@ -7,7 +7,8 @@ from pathlib import Path
 
 import typer
 
-from cli._common import _build_tracer, handle_compilation_error  # [ADD 2026-06-11 Req-9]
+from cli._common import _build_tracer, handle_compilation_error
+from cli.core.semantic.trace_common import _load_tracer_from_snapshot  # [ADD 2026-06-11 Req-9]
 from cli.core.semantic._bit_args import normalize_endpoint, parse_bits  # [iter_309 P15]
 from trace.core.compiler import CompilationError  # [ADD 2026-06-11 任务3]
 
@@ -129,6 +130,8 @@ def analyze(
     to_signal: str = typer.Argument(..., help="Target signal (e.g., top.data_out)"),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
+    from_snapshot: str = typer.Option(None, "--from-snapshot",
+                                      help="load graph/MIG from snapshot tag (skip parse)"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments. Use --no-preprocess 退回 pyslang 内置处理 (供不跨文件 define 的小项目用)"),
 
     log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
@@ -143,20 +146,31 @@ def analyze(
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
 ) -> None:
     """Analyze dataflow path from source signal to target signal"""
-    if not file and not filelist:
-        _fail_analyze("--file or --filelist is required", json_output, pretty)
+    if from_snapshot and (file or filelist):
+        _fail_analyze("--from-snapshot is mutually exclusive with --file/--filelist",
+                      json_output, pretty)
+        return
+    if not from_snapshot and not file and not filelist:
+        _fail_analyze("--file, --filelist, or --from-snapshot is required",
+                      json_output, pretty)
+        return
+    if from_snapshot and evidence:
+        _fail_analyze("--evidence is not supported with --from-snapshot",
+                      json_output, pretty)
+        return
 
     try:
-        tracer = _build_tracer(
-            file=file,
-            filelist=filelist,
-            
-            log_level=log_level,
-            preprocess_macros=preprocess_macros,
-        )
+        tracer = (_load_tracer_from_snapshot(from_snapshot) if from_snapshot
+                  else _build_tracer(
+                      file=file, filelist=filelist, log_level=log_level,
+                      preprocess_macros=preprocess_macros,
+                  ))
         _ = tracer.build_graph()
     except CompilationError as e:
         handle_compilation_error(e)
+        return
+    except ValueError as e:
+        _fail_analyze(str(e), json_output, pretty)
         return
 
     try:
@@ -217,7 +231,9 @@ def analyze(
         "ok": True,
         "command": "dataflow",
         "params": {"from_signal": from_signal, "to_signal": to_signal, "bits": bits,
-                   "file": str(file), "max_paths": max_paths, "evidence": evidence},
+                   "file": str(file) if file else None, "filelist": filelist,
+                   "from_snapshot": from_snapshot,
+                   "max_paths": max_paths, "evidence": evidence},
         "result": {
             "from_signal": result.from_signal,
             "to_signal": result.to_signal,

@@ -34,6 +34,13 @@ class TestFrontier(unittest.TestCase):
         self.assertLessEqual(result['summary']['frontier_count'], 1)
         self.assertEqual(1, result['summary']['max_frontier'])
 
+    def test_max_visits_is_exposed_and_can_truncate(self):
+        proc = _run('--max-visits', '1')
+        self.assertEqual(0, proc.returncode, proc.stderr[-1000:])
+        result = json.loads(proc.stdout)['result']
+        self.assertEqual(1, result['summary']['max_visits'])
+        self.assertTrue(result['summary']['truncated'])
+
     def test_pure_cycle_is_reported(self):
         fixture = os.path.join(os.path.dirname(__file__), '..', 'fixtures',
                                'frontier_cycle.sv')
