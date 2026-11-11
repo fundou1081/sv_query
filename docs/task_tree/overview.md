@@ -507,3 +507,6 @@ Open-source project visualization is **correct and verified**. Ready for next ta
 | **371** | **2026-11-11** | **L3** | **P158.0 语义契约 (iter_473)** | 2026-11-11 复盘 | 契约/台账/纪律同步 | 代码 gate 待 P158 | **✅ 完成** |
 | **372** | **2026-11-11** | **L3** | **P158.5 filelist safety (iter_474)** | 评审 R-005 | dry-run/--apply/backup | 文档同步 | **✅ 完成** |
 | **373** | **2026-11-11** | **L3** | **P158.6 truncated verified (iter_475)** | 评审 R-006 | coverage_complete/partial_checks | sample 不再 verified | **✅ 完成** |
+| **374** | **2026-11-11** | **L3** | **P158.1/2 data edge (iter_476)** | 评审 R-001/2 | 数据边/有界 | SPI 0.6s truncated | **✅ 完成** |
+| **375** | **2026-11-11** | **L3** | **P158.3 determinism (iter_477)** | 评审 R-003 | 三次构建一致 | id 复用根因 | **✅ 完成** |
+| **376** | **2026-11-11** | **L3** | **P158.4 corpus runner (iter_478)** | 评审 R-004 | 9/9 pass | T2/T7 定标 | **✅ 完成** |

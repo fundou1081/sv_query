@@ -21,6 +21,7 @@ from cli._common import _build_tracer, handle_compilation_error
 from cli._output import emit_json
 from cli.core.semantic.trace_common import resolve_signal, _load_tracer_from_snapshot
 from trace.core.compiler import CompilationError
+from trace.core.graph.contracts import STRUCTURAL_EDGE_KINDS, has_data_edge
 from trace.core.query.structural import StructuralError, symmetry_findings
 
 verify_app = typer.Typer(help="客观检查：双向一致性 + claim verification (只读, JSON-first)")
@@ -118,9 +119,12 @@ def _is_bit_like(node) -> bool:
 
 
 def _has_data_edge(graph, a: str, b: str) -> bool:
-    """Reciprocity is defined on DRIVER/CONNECTION edges only."""
-    return any(e.kind.name in ("DRIVER", "CONNECTION")
-               for e in graph.get_edges(a, b))
+    """该对节点之间是否存在**数据边** (DRIVER / CONNECTION)。
+
+    [P158.1] edge 分类的唯一实现是 `trace.core.graph.contracts`;
+    这里只引用, 不自己写 `kind.name in (...)` (避免第二份实现)。
+    """
+    return has_data_edge(graph.get_edges(a, b))
 
 
 def _check_reciprocity(tracer, graph, signals: list[str] | None,
@@ -253,7 +257,7 @@ def _check_bit_mapping(graph, signals: list[str] | None) -> dict:
         is_range_primary = (node.bit_range is not None and ":" in node.bit_range
                             and n == f"{node.parent}[{node.bit_range}]")
         if is_range_primary and not any(
-                e.kind.name in ("BIT_SELECT", "MEMBER_SELECT")
+                e.kind in STRUCTURAL_EDGE_KINDS
                 for e in graph.get_edges(n, node.parent)):
             violations.append({"check": "bit_mapping", "kind": "parent_edge_missing",
                                "node": n, "parent": node.parent})
@@ -493,21 +497,24 @@ def _verify_path(tracer, graph, claim: dict) -> dict:
                                  reason="path endpoints do not match from/to")
         missing = []
         for a, b in zip(resolved, resolved[1:]):
-            if not graph.has_edge(a, b):
+            if not _has_data_edge(graph, a, b):
                 missing.append({"from": a, "to": b})
         if claim.get("bidirectional"):
             for a, b in zip(reversed(resolved), list(reversed(resolved))[1:]):
-                if not graph.has_edge(a, b):
+                if not _has_data_edge(graph, a, b):
                     missing.append({"from": a, "to": b, "direction": "reverse"})
         if missing:
             return _claim_result(claim, "contradicted",
-                                 reason="claimed path edges missing",
+                                 reason="claimed path edges missing (data edges only)",
                                  counterevidence=missing)
         return _claim_result(claim, "verified",
                              evidence=[{"kind": "path", "nodes": resolved,
+                                        "edge_policy": "data_edges_only",
                                         "bidirectional": bool(claim.get("bidirectional"))}])
-    # no explicit nodes: check reachability through the path resolver with
-    # PathResolver uses the structural graph only.
+    # no explicit nodes: check reachability through the path resolver.
+    # [P158.1] `directed=True` = **数据路径** (只走 DRIVER/CONNECTION) ——
+    # 与 `paths --directed` / `dataflow analyze` 同一策略。
+    # CLOCK/RESET 边不算数据路径 → 不得 verified。
     try:
         resolver = tracer.get_path_resolver()
         if resolver is None:

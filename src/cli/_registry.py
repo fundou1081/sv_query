@@ -545,9 +545,14 @@ JSON_CONTRACT = {
             "envelope": "direct",
             "optional_fields": ["edge_evidence"],
             "base_fields": ["ok", "src", "dst", "src_resolved", "dst_resolved",
-                            "bits", "directed"],
+                            "bits", "directed", "mode"],
             "modes": {"one": ["found", "hop_count", "path"],
-                      "all": ["count", "truncated", "all_paths"]},
+                      "all": ["count", "truncated", "truncation_reason",
+                              "expansions", "all_paths"],
+                      "canonical": ["canonical", "canonical_policy",
+                                    "candidate_count", "candidate_truncated",
+                                    "truncated", "truncation_reason",
+                                    "expansions", "found", "hop_count", "path"]},
             "node_array": "path",
         },
         "dataflow analyze": {
@@ -651,7 +656,8 @@ JSON_CONTRACT = {
             "result_fields": ["signals", "count"],
         },
         "verify consistency": {
-            "result_fields": ["verified", "total_violations", "unknown_checks", "checks"],
+            "result_fields": ["verified", "coverage_complete", "partial_checks",
+                              "total_violations", "unknown_checks", "checks"],
             "check_fields": "verify_check",
         },
         "verify claim": {

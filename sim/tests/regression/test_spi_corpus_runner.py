@@ -121,7 +121,7 @@ def test_runner_passes_on_synthetic_corpus(tmp_path, synthetic_snapshot):
             "mode": "canonical",
             "from": "top.x",
             "to": "top.z",
-            "expected": {"found": True, "hop_count": 6, "candidate_count": 4},
+            "expected": {"found": True, "hop_count": 5, "candidate_count": 2},
         },
         {
             "id": "SYN-T3",
@@ -241,7 +241,7 @@ def test_runner_records_the_cli_invocations(tmp_path, synthetic_snapshot):
             "mode": "canonical",
             "from": "top.x",
             "to": "top.z",
-            "expected": {"found": True, "hop_count": 6, "candidate_count": 4},
+            "expected": {"found": True, "hop_count": 5, "candidate_count": 2},
         },
     ])
     proc = _run_runner(corpus, snap_dir, tag, extra=["--json"])

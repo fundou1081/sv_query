@@ -11,6 +11,7 @@ core/semantic/paths.py — [iter_237] 跨模块路径查询 (`svq paths <src> <d
 """
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 import typer
@@ -36,6 +37,12 @@ def paths_cmd(
                                   help="[iter_333] attach per-hop edge evidence (file/line/condition)"),
     max_paths: int = typer.Option(50, "--max", "-n", help="--all 时的路径数上限"),
     max_depth: int = typer.Option(50, "--max-depth", help="路径最大节点数 (防无向指数爆炸)"),
+    max_expansions: int = typer.Option(
+        200_000, "--max-expansions",
+        help="[P158.2] 枚举 work budget (展开次数上限); 耗尽时输出 truncated + truncation_reason"),
+    timeout: float = typer.Option(
+        60.0, "--timeout",
+        help="[P158.2] 枚举 wall-clock 上限 (秒); 超时输出 truncated + truncation_reason"),
     bits: str = typer.Option(
         None, "--bits",
         help="[iter_309 P15] 位级端点: 两个逗号分隔位索引（src_bit,dst_bit）；"
@@ -51,9 +58,19 @@ def paths_cmd(
     """图上从 src 到 dst 的路径 (跨模块端口可跳转)。
 
     默认**无向** (结构连通性: 逆着数据流也能找到)；
-    `--directed` 只沿数据流方向 (与 `dataflow analyze` 一致, iter_268 起两者结论一致)。
+    `--directed` 只沿**数据边** (DRIVER/CONNECTION) 搜索 —— 与 `dataflow analyze`
+    同一策略 (iter_268 起两者结论一致, P158.1 起边分类也一致)。
+
+    **模式标注 (P158.1)**: 输出带 `mode` ——
+      - `mode:"data"`      = `--directed`, 数据路径; CLOCK/RESET/BIT_SELECT 不算;
+      - `mode:"structural"` = 无向, 结构连通性; **不能**用来证明数据关系。
+
     `--canonical` 在多个结构变体中选节点数最多的路径（tie-break 字典序），
     输出 `canonical_policy/candidate_count`，避免 10 vs 11 节点歧义。
+
+    **有界性 (P158.2)**: 枚举受 `--max-expansions` (work budget) 与
+    `--timeout` (wall-clock) 约束; 触顶时输出 `truncated:true` +
+    `truncation_reason`, **不静默截断**, 也不把截断伪装成 `found:false`。
 
     例: svq paths inst_demo.in_a inst_demo.add_out --filelist project.f --json
         svq paths in_a add_out --directed --filelist project.f --json
@@ -111,12 +128,26 @@ def paths_cmd(
         fail("--canonical is mutually exclusive with --all", json_output, pretty)
         return
 
+    # [P158.1] 模式标注: directed = **数据路径** (只走 DRIVER/CONNECTION),
+    # 无向 = **结构连通性** (含 CLOCK/RESET/BIT_SELECT, 双向)。
+    # 两者语义不同 → 输出必须带 mode, 调用方不得混用。
+    mode = "data" if directed else "structural"
+    deadline = time.monotonic() + timeout if timeout and timeout > 0 else None
+
     if all_paths:
-        found = resolver.find_all_paths(src_id, dst_id, max_paths=max_paths,
-                                         max_depth=max_depth, directed=directed)
+        result = resolver.find_all_paths_detailed(
+            src_id, dst_id, max_paths=max_paths, max_depth=max_depth,
+            directed=directed, max_expansions=max_expansions, deadline=deadline,
+        )
+        found = result.paths
         data = {"ok": True, "src": src, "dst": dst, "src_resolved": src_id,
                 "dst_resolved": dst_id, "bits": bit_info, "directed": directed,
-                "count": len(found), "truncated": len(found) >= max_paths,
+                "mode": mode,
+                "count": len(found),
+                # [P158.2] 截断必须显式: truncated + truncation_reason
+                "truncated": result.truncated,
+                "truncation_reason": result.truncation_reason,
+                "expansions": result.expansions,
                 "all_paths": found}
         if evidence:
             data["edge_evidence"] = [_edge_ev(p) for p in found]
@@ -124,19 +155,25 @@ def paths_cmd(
         return
 
     if canonical:
-        candidates = resolver.find_all_paths(
+        result = resolver.find_all_paths_detailed(
             src_id, dst_id, max_paths=max_paths, max_depth=max_depth,
-            directed=directed,
-)
+            directed=directed, max_expansions=max_expansions, deadline=deadline,
+        )
+        candidates = result.paths
         # 确定性: 节点数最多, tie-break 用字典序最大; 不依赖图遍历顺序。
         best = max(candidates, key=lambda p: (len(p), tuple(p))) if candidates else None
         data = {
             "ok": True, "src": src, "dst": dst, "src_resolved": src_id,
             "dst_resolved": dst_id, "bits": bit_info, "directed": directed,
+            "mode": mode,
             "canonical": True,
             "canonical_policy": "max_nodes_then_lexicographic",
             "candidate_count": len(candidates),
-            "candidate_truncated": len(candidates) >= max_paths,
+            "candidate_truncated": result.truncated,
+            # [P158.2] canonical 同样必须暴露截断原因 (不能静默 cap)
+            "truncated": result.truncated,
+            "truncation_reason": result.truncation_reason,
+            "expansions": result.expansions,
             "found": best is not None,
             "hop_count": (len(best) - 1) if best else None,
             "path": best,
@@ -146,10 +183,12 @@ def paths_cmd(
         emit(data, json_output, pretty)
         return
 
+
     one = resolver.find_path(src_id, dst_id, directed=directed,
                  )
     data = {"ok": True, "src": src, "dst": dst, "src_resolved": src_id,
             "dst_resolved": dst_id, "bits": bit_info, "directed": directed,
+            "mode": mode,
             "found": one is not None,
             "hop_count": (len(one) - 1) if one else None, "path": one}
     if evidence and one:

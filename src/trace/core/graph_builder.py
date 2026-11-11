@@ -16,6 +16,7 @@ from .builder.subroutine_expander import SubroutineExpander
 from .connection_extractor import ConnectionExtractor  # [P1 cycle 9b] re-export 保兼容
 from .driver_extractor import DriverExtractor  # [P1 cycle 8] re-export 保兼容
 from .extractor_models import ExtractorResult  # [P1 cycle 9] 共享 (避免循环 import)
+from .graph.contracts import CONTROL_EDGE_KINDS, DATA_EDGE_KINDS
 from .graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
 
 logger = logging.getLogger(__name__)
@@ -951,11 +952,10 @@ class GraphBuilder:
         brackets = _re.compile(r"\[([^\]]*)\]")
         hier = _re.compile(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+")
         ident = _re.compile(r"[A-Za-z_]\w*")
-        data_kinds = {"DRIVER", "CONNECTION"}
-        control_kinds = {"BRANCH_CONDITION", "BRANCH_TRUE", "BRANCH_FALSE",
-                         "BRANCH_RESULT", "CASE_SELECT", "CASE_ITEM", "CASE_RESULT",
-                         # 动态值当时钟/复位 → 下游时序行为运行期决定
-                         "CLOCK", "RESET"}
+        # [P158.1] edge 分类的唯一实现是 trace.core.graph.contracts。
+        # 动态值传播 = 数据边 + 控制边 (时钟/复位 → 下游时序行为运行期决定)。
+        data_kinds = {k.name for k in DATA_EDGE_KINDS}
+        control_kinds = {k.name for k in CONTROL_EDGE_KINDS}
         graph_nodes = set(self.graph.nodes())
         # [P18.1] 层次化引用退化时（深层 `u.u2.q` 被抽成 `q`）的候选索引
         leaf_index: dict[str, list[str]] = {}
@@ -1253,11 +1253,9 @@ class GraphBuilder:
                         stack.append(child)
             return out
 
-        data_kinds = {"DRIVER", "CONNECTION", "BRANCH_CONDITION", "BRANCH_TRUE",
-                      "BRANCH_FALSE", "BRANCH_RESULT", "CASE_SELECT", "CASE_ITEM",
-                      "CASE_RESULT",
-                      # 函数结果当时钟/复位 → 下游时序行为运行期决定
-                      "CLOCK", "RESET"}
+        # [P158.1] 见 contracts: 数据边 + 控制边 (函数结果当时钟/复位 →
+        # 下游时序行为运行期决定)。
+        data_kinds = {k.name for k in (DATA_EDGE_KINDS | CONTROL_EDGE_KINDS)}
         seen = set(seeds)
         frontier = list(seeds)
         while frontier:
@@ -1332,9 +1330,8 @@ class GraphBuilder:
                         stack.append(child)
             return out
 
-        data_kinds = {"DRIVER", "CONNECTION", "BRANCH_CONDITION", "BRANCH_TRUE",
-                      "BRANCH_FALSE", "BRANCH_RESULT", "CASE_SELECT", "CASE_ITEM",
-                      "CASE_RESULT", "CLOCK", "RESET"}
+        # [P158.1] 见 contracts: 数据边 + 控制边
+        data_kinds = {k.name for k in (DATA_EDGE_KINDS | CONTROL_EDGE_KINDS)}
         seen = set(seeds)
         frontier = list(seeds)
         while frontier:

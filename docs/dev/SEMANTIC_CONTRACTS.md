@@ -306,12 +306,12 @@ worker / reviewer 的 `APPROVE` 不是证据。必须提供：
 
 | 契约 | 机械 gate | 状态 |
 |---|---|---|
-| 数据边分类 | 无 | ❌ P158.1 |
-| 路径有界 | 无 | ❌ P158.2 |
-| 确定性 | 无 | ❌ P158.3 |
-| SPI corpus | 无 runner | ❌ P158.4 |
-| 写入安全 | 部分静态 | ❌ P158.5 |
-| verified 状态机 | 无 | ❌ P158.6 |
+| 数据边分类 | `test_p158_data_edge_contract` | ✅ P158.1 |
+| 路径有界 | `test_p158_data_edge_contract` | ✅ P158.2 |
+| 确定性 | `test_determinism` + SPI 3× | ✅ P158.3 |
+| SPI corpus | `run_spi_corpus.py` | ✅ P158.4 |
+| 写入安全 | `test_filelist_prune` | ✅ P158.5 |
+| verified 状态机 | `test_verify_truncated` | ✅ P158.6 |
 | snapshot 构造 | 无 parity | ❌ P158.7 |
 | true-positive/mutation | 无 | ❌ P158.8 |
 | snapshot surface/schema | 部分 | ❌ P158.9 |

@@ -176,6 +176,7 @@ class ExprsDriversMixin:
             # ContinuousAssign 语法
             if "ContinuousAssign" in kind:
                 # [Plan F1] 存到 adapter._genvar_context (pyslang symbol 不可 setattr)
+                self._ast_ctx_refs.append(node)  # [P158.3] keep id() unique
                 self._genvar_context[id(node)] = dict(ctx)
                 assignments.append(node)
                 return  # 不递归到子节点
@@ -188,6 +189,7 @@ class ExprsDriversMixin:
             # (原始代码遍历不到 Timed 内的 procedural, 所以 get_assignments
             #  实际只返回 continuous; 本次修复扩展了遍历, 必须保持契约不变)
             elif "Assignment" in kind:
+                self._ast_ctx_refs.append(node)  # [P158.3] keep id() unique
                 self._genvar_context[id(node)] = dict(ctx)
                 return  # 不递归到子节点, 也不 append (保持 get_assignments 只返回 continuous)
 

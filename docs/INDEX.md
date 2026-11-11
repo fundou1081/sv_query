@@ -15,7 +15,7 @@
 | 源码规模 | 163 文件 / 63,146 行 | `find src -name "*.py"` |
 | 测试规模 | 368 测试文件 / 78,847 行 + 117 SV fixture | `find sim/tests -name "*.py"` |
 | 回归基线 | **2129 passed + 35 subtests** (unit + regression, `-m "not opensource"`) | 2026-09-08 实测 (iter_190 后) |
-| 全量 (canonical) | **2619 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / 139 deselected; 35 subtests) | 2026-11-11 实测 (P157): 移除 obsolete deadlock tests，external tests 标 opensource |
+| 全量 (canonical) | **2665 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / 141 deselected; 35 subtests) | 2026-11-11 实测 (P158): data-edge/bounded/determinism/corpus 修复 |
 | CLI / integration | **810 passed / 0 failed** (`sim/tests/cli sim/tests/integration`, `-m "not opensource"`) | 2026-09-08 实测 (iter_185 修复后) |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 迭代记录 | `docs/task_tree/iterations/` (457 份, 只增不改) | 每次迭代一份 |
@@ -71,6 +71,7 @@
 | [validation/P155_RECIPROCITY_2026-11-10.md](validation/P155_RECIPROCITY_2026-11-10.md) | **P155**: reciprocity BIT_SELECT 误报；SPI 128→0 |
 | [validation/P156_SNAPSHOT_MIG_METADATA_2026-11-11.md](validation/P156_SNAPSHOT_MIG_METADATA_2026-11-11.md) | **P156**: snapshot MIG 可用性元数据 |
 | [validation/P157_SKIP_CLEANUP_2026-11-11.md](validation/P157_SKIP_CLEANUP_2026-11-11.md) | **P157**: canonical skip 清理；12→0 |
+| [validation/P158_REMEDIATION_2026-11-11.md](validation/P158_REMEDIATION_2026-11-11.md) | **P158 wave1**: data-edge / bounds / determinism / corpus |
 | [validation/REVIEW_2026-11-11.md](validation/REVIEW_2026-11-11.md) | **P158 输入**: 4-angle review + 28 项修复账本 |
 | [validation/P139_FRONTIER_2026-11-09.md](validation/P139_FRONTIER_2026-11-09.md) | **P139 frontier**: 断点 + next probes；不分类 FIFO |
 | [validation/P139_WORKER_REVIEW_2026-11-09.md](validation/P139_WORKER_REVIEW_2026-11-09.md) | **P139 worker review**: APPROVE WITH NITS；nits 已修 |

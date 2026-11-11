@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING
 
 import networkx as nx
 
+from .contracts import data_edge_view, is_data_edge
 from .models import SignalGraph
 
 if TYPE_CHECKING:
@@ -142,17 +143,36 @@ class DataFlowGraph:
 
         # 段缓存: (from, to) → DataFlowSegment
         self._segment_cache: dict[tuple[str, str], DataFlowSegment] = {}
+        # [P158.1] 只含数据边的图视图缓存 (路径搜索用)
+        self._data_graph_cache = None
+
+    def _data_graph(self):
+        """返回只含**数据边** (DRIVER / CONNECTION) 的有向图视图。
+
+        [P158.1] SEMANTIC_CONTRACTS §2.2: `dataflow analyze` 的路径只能走
+        data 边; CLOCK / RESET 只能作为时序注解, 不能成为路径节点,
+        BIT_SELECT 只能作为**位展开** (端点归一化), 不能是路径的一段。
+
+        edge 分类的唯一实现: `trace.core.graph.contracts.data_edge_view`。
+        """
+        if self._data_graph_cache is None:
+            self._data_graph_cache = data_edge_view(self.signal_graph)
+        return self._data_graph_cache
 
 
     def get_segment(self, from_signal: str, to_signal: str) -> DataFlowSegment | None:
         """获取单步驱动信息(带缓存) - 返回优先级最高的边
+
+        [P158.1] 只返回**数据边** (DRIVER / CONNECTION) 的 segment。
+        CLOCK / RESET / BIT_SELECT / MEMBER_SELECT 不是数据路径的段 →
+        返回 None (端点位的 BIT_SELECT 展开不算一段)。
 
         Args:
             from_signal: 起点信号
             to_signal: 终点信号
 
         Returns:
-            DataFlowSegment 或 None (如果不存在驱动关系)
+            DataFlowSegment 或 None (如果不存在**数据**驱动关系)
         """
         cache_key = (from_signal, to_signal)
         if cache_key in self._segment_cache:
@@ -174,6 +194,18 @@ class DataFlowGraph:
             List[DataFlowSegment] (可能有多条边对应同一个驱动关系)
         """
         return self._build_segments(from_signal, to_signal)
+
+    def _first_data_edge(self, src: str, dst: str):
+        """取 (src, dst) 之间优先级最高的**数据边** (DRIVER / CONNECTION)。
+
+        [P158.1] edge 分类的唯一实现是 `trace.core.graph.contracts`。
+        非数据边 (CLOCK / RESET / BIT_SELECT / MEMBER_SELECT) 返回 None ——
+        它们不是数据驱动关系。
+        """
+        for edge in self.signal_graph.get_edges(src, dst):
+            if is_data_edge(edge):
+                return edge
+        return None
 
     def _edge_condition(self, edge) -> str:
         """从边提取条件文本 (优先 condition, 为空时回退 condition_chain join).
@@ -204,11 +236,13 @@ class DataFlowGraph:
         resolved_to = to_signal
 
         # 2. 获取所有边（可能有多个不同 condition 的边），取第一条（优先级最高）
-        edge = self.signal_graph.get_edge(resolved_from, resolved_to)
+        # [P158.1] 只认**数据边** (DRIVER / CONNECTION); CLOCK/RESET/BIT_SELECT
+        # 不是数据驱动关系。
+        edge = self._first_data_edge(resolved_from, resolved_to)
 
         if not edge:
             # 尝试原始信号(未解析)
-            edge = self.signal_graph.get_edge(from_signal, to_signal)
+            edge = self._first_data_edge(from_signal, to_signal)
 
         if not edge:
             return None
@@ -241,12 +275,14 @@ class DataFlowGraph:
         resolved_from = from_signal
         resolved_to = to_signal
 
-        # 2. 获取所有边
-        edges = self.signal_graph.get_edges(resolved_from, resolved_to)
+        # 2. 获取所有边 (只取**数据边** — P158.1)
+        edges = [e for e in self.signal_graph.get_edges(resolved_from, resolved_to)
+                 if is_data_edge(e)]
 
         if not edges:
             # 尝试原始信号(未解析)
-            edges = self.signal_graph.get_edges(from_signal, to_signal)
+            edges = [e for e in self.signal_graph.get_edges(from_signal, to_signal)
+                     if is_data_edge(e)]
 
         if not edges:
             return []
@@ -294,29 +330,42 @@ class DataFlowGraph:
 
         # 获取所有 BIT_SELECT 子节点(如 top.byte_data → top.byte_data[3:0])
         def _get_bit_select_children(signal):
-            """获取信号的所有 BIT_SELECT 子节点 (signal 指向这些节点的反向边)"""
+            """获取信号的所有 BIT_SELECT 子节点 (signal 指向这些节点的反向边)
+
+            [P158.1] BIT_SELECT 是**结构边**: 只用于**位展开** (端点归一化),
+            不作为数据路径的段。所以这里查的是**全图**, 而不是数据边视图。
+            """
             children = []
             # BIT_SELECT 边的方向是: child → parent (如 byte_data[3:0] → byte_data)
             # 所以我们需要找 signal 的前驱中有 BIT_SELECT 边的
-            if signal not in nx_graph.nodes():
+            if signal not in full_graph.nodes():
                 return children
-            for pred in nx_graph.predecessors(signal):
-                edge = nx_graph.get_edge(pred, signal)
+            for pred in full_graph.predecessors(signal):
+                edge = full_graph.get_edge(pred, signal)
                 if edge and edge.kind.name == "BIT_SELECT":
                     children.append(pred)
             return children
 
-        # 获取所有 BIT_SELECT 父节点(如 top.byte_data 是 top.byte_data[3:0] 的父)
-        def _get_bit_select_parents(signal):
-            """获取信号的所有 BIT_SELECT 父节点 (这些节点指向 signal)"""
-            parents = []
-            if signal not in nx_graph.nodes():
-                return parents
-            for succ in nx_graph.successors(signal):
-                edge = nx_graph.get_edge(signal, succ)
+        # 获取总线的**位成员节点** (如 top.byte_data → top.byte_data[3:0])
+        def _get_bit_select_members(signal):
+            """获取 signal 的所有 BIT_SELECT **成员**节点 (即 signal 的位切片)。
+
+            [P158.1] BIT_SELECT 边的方向是 **child → parent**
+            (top.byte_data[3:0] → top.byte_data), 所以 signal 的位成员在
+            signal 的 **predecessor** 里 (child 是 parent 的前驱)。
+
+            用途: **位展开** —— 端点是总线时, 展开成逐位候选,
+            让数据路径的**段**全部是数据边 (DRIVER/CONNECTION);
+            BIT_SELECT 本身不作为路径的一段 (契约 §2.2)。
+            """
+            members = []
+            if signal not in full_graph.nodes():
+                return members
+            for pred in full_graph.predecessors(signal):
+                edge = full_graph.get_edge(pred, signal)
                 if edge and edge.kind.name == "BIT_SELECT":
-                    parents.append(succ)
-            return parents
+                    members.append(pred)
+            return members
 
         # [FIX] 处理 struct 成员访问,如 pkt1.data → pkt2.data
         def _get_struct_parent_and_member(signal):
@@ -336,12 +385,12 @@ class DataFlowGraph:
                 if parent and member:
                     # 如果 parent 在图中,检查它是否是 struct 类型
                     # (通过检查 parent 是否有结构体成员)
-                    if parent in nx_graph.nodes():
+                    if parent in full_graph.nodes():
                         # 检查 parent 是否看起来像 struct 变量
                         # struct 变量通常有子成员,如 pkt1.addr, pkt1.data 等
                         has_struct_children = False
-                        for succ in nx_graph.successors(parent):
-                            succ_edge = nx_graph.get_edge(parent, succ)
+                        for succ in full_graph.successors(parent):
+                            succ_edge = full_graph.get_edge(parent, succ)
                             if succ_edge and succ_edge.kind.name == "DRIVER":
                                 # 检查 succ 是否是 parent.member 形式
                                 if succ.startswith(parent + "."):
@@ -379,6 +428,7 @@ class DataFlowGraph:
                 return []
 
             # 检查 src_parent → dst_parent 的路径
+            # [P158.1] 路径存在性只看**数据边**
             if nx.has_path(nx_graph, src_parent, dst_parent):
                 # 构造路径: from_signal → src_parent → dst_parent → to_signal
                 try:
@@ -389,27 +439,54 @@ class DataFlowGraph:
 
             # 也检查反向: 如果 to_signal 是成员,但 dst_parent 被 from_signal 驱动
             # 比如: pkt1 → pkt2, 然后查询 pkt1.data → pkt2.data
-            edge = nx_graph.get_edge(src_parent, dst_parent)
+            edge = full_graph.get_edge(src_parent, dst_parent)
             if edge and edge.kind.name == "DRIVER":
                 # 构造路径
                 return [[from_signal, src_parent, dst_parent, to_signal]]
 
             return []
 
+        def _is_bit_member_of(graph, member: str, bus: str) -> bool:
+            """`member` 是否是总线 `bus` 的**位成员** (BIT_SELECT child → parent 边)。
+
+            [P158.1] 用于位展开的端点接回: 数据路径的段全是数据边, 但终点可以是
+            总线的某个位成员 —— 这时把总线端点接回去 (作为**端点**, 不是路径的一段)。
+
+            Args:
+                graph: 全图 (含 BIT_SELECT 边)
+                member: 候选终点 (如 "top.y[0]")
+                bus: 用户请求的终点 (如 "top.y")
+            """
+            if member == bus:
+                return True
+            try:
+                edge = graph.get_edge(member, bus)
+            except (KeyError, nx.NetworkXError):
+                return False
+            return bool(edge) and edge.kind.name == "BIT_SELECT"
+
         # 解析跨模块信号
         resolved_from = from_signal
         resolved_to = to_signal
-
         # 展开位选择
         expanded_from, slice_from = _expand_bit_select(resolved_from)
         expanded_to, slice_to = _expand_bit_select(resolved_to)
 
         # 获取 networkx 图
         try:
-            nx_graph = self.signal_graph
+            full_graph = self.signal_graph
         except AttributeError:
             logger.warning("SignalGraph does not support networkx conversion")
             return []
+
+        # [P158.1] 路径搜索只走**数据边** (DRIVER / CONNECTION)。
+        # CLOCK / RESET / BIT_SELECT / MEMBER_SELECT 不得成为数据路径的段。
+        # BIT_SELECT 仍然用于**位展开** (端点归一化), 但那在下面用 full_graph 做,
+        # 不是路径上的一段。
+        # edge 契约的唯一实现: trace.core.graph.contracts
+        nx_graph = self._data_graph()
+        # full_graph 仍用于查边属性 (BIT_SELECT 亲子关系 / struct 成员识别)
+        _full = full_graph
 
         # 构建候选起始点列表(包括 BIT_SELECT 子节点)
         candidates_from = [resolved_from]
@@ -420,14 +497,17 @@ class DataFlowGraph:
             if child not in candidates_from:
                 candidates_from.append(child)
 
-        # 构建候选目标点列表(包括 BIT_SELECT 父节点)
+        # 构建候选目标点列表 (位展开: 总线 → 逐位成员)
         candidates_to = [resolved_to]
         if expanded_to != resolved_to:
             candidates_to.append(expanded_to)
-        # 添加 expanded_to 的 BIT_SELECT 父节点
-        for parent in _get_bit_select_parents(expanded_to):
-            if parent not in candidates_to:
-                candidates_to.append(parent)
+        # [P158.1] 总线终点 → 逐位成员候选。
+        # BIT_SELECT 边方向是 child → parent, 所以 bus 的位成员是它的**前驱**。
+        # 旧实现找的是"父节点"(successors 方向), 与 BIT_SELECT 实际方向相反 →
+        # 只能靠把 BIT_SELECT 当成路径的一段才能到达 bus 终点 (违反契约)。
+        for member in _get_bit_select_members(expanded_to):
+            if member not in candidates_to:
+                candidates_to.append(member)
 
         # 尝试所有候选组合 — [iter_131 fix] 收集并合并所有组合的路径,
         # 而非首个非空即 return: iter_118 per-entry 后 bus→bus 查询
@@ -451,6 +531,13 @@ class DataFlowGraph:
                 for p in paths:
                     if not p:
                         continue
+                    # [P158.1] 端点保真: 路径必须**以用户请求的 to_signal 结尾**。
+                    # 位展开得到的候选终点 (如 top.y[0]) 不是请求的终点 (top.y),
+                    # 它是总线的**成员** —— 用位展开把端点接回去 (不是路径的一段)。
+                    if p[-1] != resolved_to:
+                        if not _is_bit_member_of(full_graph, p[-1], resolved_to):
+                            continue
+                        p = p + [resolved_to]
                     key = tuple(p)
                     if key not in seen_paths:
                         seen_paths.add(key)
@@ -470,8 +557,8 @@ class DataFlowGraph:
         # 情况1: from_signal 本身就是成员,需要查找它的父 struct 是否赋值给另一个 struct
         if src_member and src_parent in nx_graph.nodes():
             # 检查 from_signal 的父 struct 是否有 DRIVER 边到其他 struct
-            for succ in nx_graph.successors(src_parent):
-                edge = nx_graph.get_edge(src_parent, succ)
+            for succ in full_graph.successors(src_parent):
+                edge = full_graph.get_edge(src_parent, succ)
                 if edge and edge.kind.name == "DRIVER":
                     # 找到了 struct 赋值: src_parent → succ
                     # 检查 succ 是否是 to_signal 的父或者能否继续传播
@@ -499,8 +586,8 @@ class DataFlowGraph:
         # 情况2: to_signal 是成员,检查是否有 struct 赋值到它的父
         if dst_member and dst_parent in nx_graph.nodes():
             # 检查是否有 struct 赋值到 dst_parent
-            for pred in nx_graph.predecessors(dst_parent):
-                edge = nx_graph.get_edge(pred, dst_parent)
+            for pred in full_graph.predecessors(dst_parent):
+                edge = full_graph.get_edge(pred, dst_parent)
                 if edge and edge.kind.name == "DRIVER":
                     # 找到了 struct 赋值: pred → dst_parent
                     # 检查 from_signal 能否到达 pred
@@ -520,8 +607,8 @@ class DataFlowGraph:
         # [FIX] 情况2b: to_signal 被 struct.member 表达式驱动
         # 例如: data_out 由 pkt2.data 驱动,需要追踪 pkt2 的来源
         # 检查所有到 to_signal 的边,看是否有表达式是 xxx.member 形式
-        for pred in nx_graph.predecessors(to_signal):
-            edge = nx_graph.get_edge(pred, to_signal)
+        for pred in full_graph.predecessors(to_signal):
+            edge = full_graph.get_edge(pred, to_signal)
             if edge and edge.expression:
                 # 解析表达式中的 .member 模式
                 match = re.search(r"\.([a-zA-Z_][a-zA-Z0-9_]*)$", edge.expression)
@@ -553,8 +640,8 @@ class DataFlowGraph:
 
                     # 尝试所有可能的 struct 传播路径
                     # 检查 dst_struct_resolved 的前驱(struct 赋值)
-                    for struct_pred in nx_graph.predecessors(dst_struct_resolved):
-                        struct_edge = nx_graph.get_edge(struct_pred, dst_struct_resolved)
+                    for struct_pred in full_graph.predecessors(dst_struct_resolved):
+                        struct_edge = full_graph.get_edge(struct_pred, dst_struct_resolved)
                         if struct_edge and struct_edge.kind.name == "DRIVER":
                             # 找到了 struct_pred → dst_struct_resolved
                             # 现在检查 from_signal 能否到达 struct_pred
@@ -613,7 +700,7 @@ class DataFlowGraph:
             and src_parent in nx_graph.nodes()
             and dst_parent in nx_graph.nodes()
         ):
-            edge = nx_graph.get_edge(src_parent, dst_parent)
+            edge = full_graph.get_edge(src_parent, dst_parent)
             if edge and edge.kind.name == "DRIVER":
                 return [[from_signal, src_parent, dst_parent, to_signal]]
 
@@ -704,7 +791,8 @@ class DataFlowGraph:
             df_path = DataFlowPath(
                 path_id=path_id,
                 segments=segments,
-                distance=len(path) - 1,
+                # [P158.1] distance = **数据段**数 (位展开的端点接回不算一跳)
+                distance=len(segments),
                 has_conditional=has_conditional,
                 latency_cycles=latency_cycles,
                 is_async_crossing=is_async,
@@ -895,6 +983,8 @@ class DataFlowGraph:
     def clear_cache(self) -> None:
         """清除段缓存"""
         self._segment_cache.clear()
+        # [P158.1] 数据边视图也是缓存 (图变了必须重建)
+        self._data_graph_cache = None
 
     def get_cache_stats(self) -> dict[str, int]:
         """获取缓存统计"""
