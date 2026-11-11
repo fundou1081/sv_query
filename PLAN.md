@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P158.9.2 snapshot surface 矩阵（命令 → graph-only / graph+MIG / 需 semantic adapter）；验收：缺失 edge 字段要么补齐要么显式声明不保证，不许中间态（arch_eval P0.2 采纳） <待做>
+current item : P158.12 P2 清理 <待做>
 
 ## 计划树
 
@@ -527,9 +527,9 @@ P158 review remediation backlog <待做>
 -- P158.6 truncated/verified 状态机 <已完成>
 -- P158.7 snapshot 构造与损坏输入 <已完成>
 -- P158.8 测试真实性 / legacy / true-positive <已完成>
--- P158.9 snapshot surface + schema + capabilities <进行中>
+-- P158.9 snapshot surface + schema + capabilities <已完成>
 -- P158.9.1 capabilities / json_contract coverage <已完成>
--- P158.9.2 snapshot surface 矩阵（命令 → graph-only / graph+MIG / 需 semantic adapter）；验收：缺失 edge 字段要么补齐要么显式声明不保证，不许中间态（arch_eval P0.2 采纳） <待做>
+-- P158.9.2 snapshot surface 矩阵（命令 → graph-only / graph+MIG / 需 semantic adapter）；验收：缺失 edge 字段要么补齐要么显式声明不保证，不许中间态（arch_eval P0.2 采纳） <已完成>
 -- P158.10 CI/gate 咬合 <已完成>
 -- P158.11 dataflow/snapshot/frontier 性能与界限 <已完成>
 -- P158.11.1 dataflow snapshot + frontier cap <已完成>
@@ -776,4 +776,5 @@ P4 已完成归档 <已完成>
 | 2026-11-11 | 接手校准（P164）：current item 按 HANDOFF 建议指向 P158.11.2b 前置的文档校准；P158.9 拆出 9.2；`--`/`----` 缩进统一，check_plan 新增 P9（不可见项）与字母后缀 id |
 | 2026-11-11 | P158.11.2b 完成（iter_491）：SearchBudget 抽为 graph/search_budget.py 唯一实现；dataflow 有界 DFS + `--max-expansions/--timeout` + truncated 契约；P158.11 整体收口；current item → P158.9.2 |
 | 2026-11-11 | arch_eval 评审采纳（P165 登记，方豆确认）：P165.1 signal.py pred/succ 化 / P165.2 packaging 重命名 / P165.3 外部故障集 / P165.4 filelist 闭包自动化；方案 B 拒绝、方案 C 暂缓；P158.9.2 验收补"不许中间态" |
+| 2026-11-11 | P158.9.2 快照保真（iter_493）：to_dict/from_dict 补齐 condition_chain/source/function 标记/extra；condition_ast 显式不保证；SNAPSHOT_SURFACE.md 矩阵；CLI live/snapshot parity 测试 |2026-11-11 后接 |
 | 2026-11-11 | P158.12.1 trace impact 降级 exp（方豆拍板）：core 40→39 / exp 5→6；capabilities 默认隐藏、kind=experimental；KNOWN_LIMITATIONS §3.4 加处置注记 |
