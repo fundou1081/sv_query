@@ -84,26 +84,47 @@ class SnapshotManager:
         return self.base_dir / f"{safe_tag}.json"
 
     def _list_snapshots(self) -> list[dict]:
-        """[Golden] 列出所有快照元数据（不加载完整图）"""
+        """[Golden] 列出所有快照元数据（不加载完整图）。
+
+        [P158.7] 文件名是 tag 的唯一权威；文件体里的 tag 只用于检测 mismatch。
+        损坏文件必须作为**可见的 error entry** 返回，不能拖垮整个列表。
+        """
         snapshots = []
         for path in sorted(self.base_dir.glob("*.json")):
             try:
                 with open(path, encoding="utf-8") as f:
                     data = json.load(f)
-                snapshots.append(
-                    {
-                        "tag": data.get("tag", path.stem),
-                        "file": str(path),
-                        "created_at": data.get("created_at", ""),
-                        "git_commit": data.get("git_commit", ""),
-                        "files": data.get("files", []),
-                        "node_count": data.get("node_count", 0),
-                        "edge_count": data.get("edge_count", 0),
-                    }
-                )
-            except (OSError, json.JSONDecodeError) as e:
-                logger.warning(f"Failed to read snapshot {path}: {e}")
-                continue
+                if not isinstance(data, dict):
+                    raise ValueError("snapshot root is not an object")
+                mig = data.get("module_graph") or {}
+                mig_instances = mig.get("instances") or {}
+                entry = {
+                    "tag": path.stem,
+                    "file": str(path),
+                    "created_at": data.get("created_at", ""),
+                    "git_commit": data.get("git_commit", ""),
+                    "files": data.get("files", []),
+                    "node_count": data.get("node_count", 0),
+                    "edge_count": data.get("edge_count", 0),
+                    "module_graph_present": bool(mig_instances),
+                    "module_graph_instances": len(mig_instances),
+                    "module_graph_ports": sum(len(i.get("ports") or {})
+                                              for i in mig_instances.values()),
+                }
+                body_tag = data.get("tag")
+                if body_tag is not None and body_tag != path.stem:
+                    entry["tag_mismatch"] = str(body_tag)
+                snapshots.append(entry)
+            except (OSError, ValueError, TypeError, AttributeError, json.JSONDecodeError) as e:
+                logger.warning("Failed to read snapshot %s: %s", path, e)
+                snapshots.append({
+                    "tag": path.stem,
+                    "file": str(path),
+                    "error": f"invalid snapshot: {e}",
+                    "node_count": 0,
+                    "edge_count": 0,
+                    "module_graph_present": False,
+                })
         return snapshots
 
     def save(self, tag: str, graph_data: dict, git_commit: str = "", files: list[str] = None) -> str:
@@ -137,21 +158,24 @@ class SnapshotManager:
         return str(path)
 
     def load(self, tag: str) -> dict | None:
-        """[Golden] 加载快照完整数据
+        """[Golden] 加载快照完整数据。
 
-        Args:
-            tag: 快照标签
-
-        Returns:
-            快照数据字典，或 None（如果不存在）
+        Raises:
+            ValueError: 文件存在但 JSON/根对象损坏（显式失败，不返回假图）。
         """
         path = self._snapshot_path(tag)
         if not path.exists():
             logger.warning(f"Snapshot not found: {tag}")
             return None
 
-        with open(path, encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError) as e:
+            raise ValueError(f"invalid snapshot {tag}: {e}") from e
+        if not isinstance(data, dict):
+            raise ValueError(f"invalid snapshot {tag}: root is not an object")
+        return data
 
     def delete(self, tag: str) -> bool:
         """[Golden] 删除快照
@@ -175,27 +199,31 @@ class SnapshotManager:
         return self._snapshot_path(tag).exists()
 
     def list_tags(self) -> list[str]:
-        """[Golden] 列出所有快照标签"""
-        return [s["tag"] for s in self._list_snapshots()]
+        """[Golden] 列出所有可读快照标签（损坏文件不进入 tag 列表）。"""
+        return [s["tag"] for s in self._list_snapshots() if "error" not in s]
 
     def list_summary(self) -> list[dict]:
         """[Golden] 列出所有快照摘要"""
         return self._list_snapshots()
 
     def show(self, tag: str) -> dict | None:
-        """[Golden] 查看快照详情（不加载完整图）"""
-        path = self._snapshot_path(tag)
-        if not path.exists():
-            return None
+        """[Golden] 查看快照详情（不加载完整图）。
 
-        with open(path, encoding="utf-8") as f:
-            data = json.load(f)
+        损坏文件返回 `{tag, error}` 而不是裸 traceback；文件名是 tag 权威。
+        """
+        try:
+            data = self.load(tag)
+        except ValueError as e:
+            return {"tag": tag, "file": str(self._snapshot_path(tag)),
+                    "error": str(e), "node_count": 0, "edge_count": 0,
+                    "module_graph_present": False}
+        if data is None:
+            return None
 
         mig = data.get("module_graph") or {}
         mig_instances = mig.get("instances") or {}
-        # 只返回元数据，不返回 nodes/edges（可能很大）
-        return {
-            "tag": data.get("tag", tag),
+        info = {
+            "tag": tag,
             "version": data.get("version", "1.0"),
             "created_at": data.get("created_at", ""),
             "git_commit": data.get("git_commit", ""),
@@ -207,6 +235,10 @@ class SnapshotManager:
             "module_graph_ports": sum(len(i.get("ports") or {})
                                       for i in mig_instances.values()),
         }
+        body_tag = data.get("tag")
+        if body_tag is not None and body_tag != tag:
+            info["tag_mismatch"] = str(body_tag)
+        return info
 
     def compare(self, tag1: str, tag2: str) -> dict | None:
         """[Golden] 对比两个快照

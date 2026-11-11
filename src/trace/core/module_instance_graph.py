@@ -68,8 +68,21 @@ class ModuleInstanceGraph:
 
 
     def to_dict(self) -> dict:
-        """Serialize instance/port mapping for snapshots (P151)."""
+        """Serialize instance/port mapping for snapshots (P151/P158.7)."""
+        module_ports = {}
+        for mod, ports in getattr(self, "_module_ports", {}).items():
+            module_ports[mod] = {
+                name: {
+                    "name": port.name,
+                    "direction": port.direction,
+                    "width": list(port.width) if port.width else None,
+                    "internal_signal": port.internal_signal,
+                    "module_type": port.module_type,
+                }
+                for name, port in ports.items()
+            }
         return {
+            "module_ports": module_ports,
             "instances": {
                 iid: {
                     "id": inst.id,
@@ -94,6 +107,17 @@ class ModuleInstanceGraph:
     def from_dict(cls, data: dict) -> "ModuleInstanceGraph":
         """Rehydrate a snapshot MIG without a semantic adapter (P151)."""
         mig = cls(adapter=None)
+        mig._module_ports = {}
+        for mod, raw_ports in (data or {}).get("module_ports", {}).items():
+            mig._module_ports[mod] = {
+                name: PortInfo(
+                    name=p.get("name", name), direction=p.get("direction", ""),
+                    width=tuple(p.get("width") or (0, 0)),
+                    internal_signal=p.get("internal_signal", ""),
+                    module_type=p.get("module_type", ""),
+                )
+                for name, p in (raw_ports or {}).items()
+            }
         for iid, raw in (data or {}).get("instances", {}).items():
             ports = {}
             for name, p in (raw.get("ports") or {}).items():

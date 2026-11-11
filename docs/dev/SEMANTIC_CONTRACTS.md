@@ -312,7 +312,7 @@ worker / reviewer 的 `APPROVE` 不是证据。必须提供：
 | SPI corpus | `run_spi_corpus.py` | ✅ P158.4 |
 | 写入安全 | `test_filelist_prune` | ✅ P158.5 |
 | verified 状态机 | `test_verify_truncated` | ✅ P158.6 |
-| snapshot 构造 | 无 parity | ❌ P158.7 |
+| snapshot 构造 | `test_snapshot_robust` / `load_snapshot` | ✅ P158.7 |
 | true-positive/mutation | 无 | ❌ P158.8 |
 | snapshot surface/schema | 部分 | ❌ P158.9 |
 | CI 一致性 | 无 | ❌ P158.10 |
