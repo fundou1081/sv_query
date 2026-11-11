@@ -515,3 +515,4 @@ Open-source project visualization is **correct and verified**. Ready for next ta
 | **379** | **2026-11-11** | **L3** | **P158.7 snapshot robust (iter_481)** | 评审 R-007/8/20/21 | 统一 load_snapshot；损坏/tag/module_ports | class state 不存 | **✅ 完成** |
 | **380** | **2026-11-11** | **L3** | **P158.9.1 capabilities (iter_482)** | 评审 R-014 | groups/contract 覆盖 | snapshot surface 未做 | **✅ 完成** |
 | **381** | **2026-11-11** | **L3** | **P158.10 CI/gate (iter_483)** | 评审 R-015 | run_gates/增量 ruff | opensource 仍红 | **✅ 完成** |
+| **382** | **2026-11-11** | **L3** | **P158.11.1 dataflow snapshot (iter_484)** | 评审 R-016/18 | snapshot dataflow / max-visits | size/timeout 待做 | **✅ 完成** |

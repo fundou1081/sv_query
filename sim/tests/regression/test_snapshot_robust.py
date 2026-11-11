@@ -57,6 +57,25 @@ class TestSnapshotRobust(unittest.TestCase):
             self.assertEqual('filename', info['tag'])
             self.assertEqual('body_tag', info['tag_mismatch'])
 
+    def test_dataflow_uses_snapshot(self):
+        with tempfile.TemporaryDirectory() as td:
+            env = os.environ.copy()
+            env['SVQ_SNAPSHOT_DIR'] = td
+            save = _run(['snapshot', 'save', _FIX, '--tag', 'df'], env)
+            self.assertEqual(0, save.returncode, save.stderr[-1000:])
+            p = _run(['dataflow', 'analyze', 'top.x', 'top.y',
+                      '--from-snapshot', 'df'], env)
+            self.assertEqual(0, p.returncode, p.stderr[-1000:])
+            r = json.loads(p.stdout)['result']
+            self.assertTrue(r['is_reachable'])
+            self.assertEqual(1, r['paths_count'])
+            self.assertEqual('df', json.loads(p.stdout)['params']['from_snapshot'])
+            # mutually exclusive with source input
+            p = _run(['dataflow', 'analyze', 'top.x', 'top.y',
+                      '--from-snapshot', 'df', '-f', _FIX], env)
+            self.assertEqual(1, p.returncode)
+            self.assertIn('mutually exclusive', p.stdout)
+
     def test_snapshot_mig_roundtrip_and_tracer(self):
         with tempfile.TemporaryDirectory() as td:
             env = os.environ.copy()

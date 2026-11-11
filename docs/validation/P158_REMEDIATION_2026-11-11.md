@@ -143,6 +143,13 @@ T7: 2 hops / 2 candidates -> 1 hop / 1 candidate
 - 文件名是 tag 权威，body tag 不一致显式 `tag_mismatch`；
 - `test_snapshot_robust.py` 3 passed。
 
+## P158.11.1 dataflow snapshot / frontier cap
+
+- `dataflow analyze --from-snapshot`：跳过 parse，复用 graph+MIG；
+- `--from-snapshot` 与 `--file/--filelist` 互斥，`--evidence` 显式不支持；
+- frontier `--max-visits` 可配置，`summary.truncated` 可见；
+- 回归：`test_snapshot_robust` + frontier max_visits。
+
 ## P158.5 / P158.6
 
 - `filelist prune --output` 默认 dry-run；`--apply`；只允许 `.f/.fl`；
@@ -155,7 +162,7 @@ T7: 2 hops / 2 candidates -> 1 hop / 1 candidate
 ## 验证
 
 ```text
-2675 passed / 0 skipped / 141 deselected / 0 failed
+2677 passed / 0 skipped / 141 deselected / 0 failed
 ```
 
 SPI snapshot：

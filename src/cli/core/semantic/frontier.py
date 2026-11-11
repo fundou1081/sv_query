@@ -12,7 +12,7 @@ from trace.core.compiler import CompilationError
 from trace.core.query.frontier import analyze_frontier
 
 
-def _frontier_payload(signal, direction, max_depth, max_frontier,
+def _frontier_payload(signal, direction, max_depth, max_frontier, max_visits,
                       file, filelist, from_snapshot) -> dict:
     if direction not in {"fanin", "fanout", "both"}:
         raise ValueError("--direction must be fanin | fanout | both")
@@ -28,7 +28,7 @@ def _frontier_payload(signal, direction, max_depth, max_frontier,
     suffix = f" --from-snapshot {from_snapshot}" if from_snapshot else ""
     return analyze_frontier(graph, r["resolved"], direction=direction,
                             max_depth=max_depth, max_frontier=max_frontier,
-                            probe_suffix=suffix)
+                            max_visits=max_visits, probe_suffix=suffix)
 
 
 def _print_frontier(result: dict) -> None:
@@ -46,6 +46,8 @@ def frontier_cmd(
                                   help="fanin | fanout | both"),
     max_depth: int = typer.Option(8, "--max-depth"),
     max_frontier: int = typer.Option(50, "--max-frontier"),
+    max_visits: int = typer.Option(2000, "--max-visits",
+                                   help="max visited nodes per frontier walk (P158.11)"),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str = typer.Option(None, "--filelist", help="filelist (.f/.fl)"),
     from_snapshot: str = typer.Option(None, "--from-snapshot"),
@@ -55,10 +57,10 @@ def frontier_cmd(
     """Report where a structural trace stops and what to query next."""
     try:
         result = _frontier_payload(signal, direction, max_depth, max_frontier,
-                                   file, filelist, from_snapshot)
+                                   max_visits, file, filelist, from_snapshot)
         data = {"ok": True, "command": "trace_frontier",
                 "params": {"direction": direction, "max_depth": max_depth,
-                           "max_frontier": max_frontier},
+                           "max_frontier": max_frontier, "max_visits": max_visits},
                 "result": result, "errors": []}
         if json_output:
             emit_json(data, pretty)

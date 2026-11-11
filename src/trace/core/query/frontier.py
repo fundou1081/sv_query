@@ -101,7 +101,8 @@ def _consume_neighbors(graph, cur: str, nxts: list[str], direction: str,
 
 
 def _walk_direction(graph, signal: str, direction: str,
-                    max_depth: int, max_frontier: int) -> tuple[list[Frontier], bool]:
+                    max_depth: int, max_frontier: int,
+                    max_visits: int = 2000) -> tuple[list[Frontier], bool]:
     frontier: list[Frontier] = []
     visited_total = 0
     truncated = False
@@ -110,7 +111,7 @@ def _walk_direction(graph, signal: str, direction: str,
     while queue:
         cur, path, depth = queue.popleft()
         visited_total += 1
-        if visited_total > 2000 or len(frontier) >= max_frontier:
+        if visited_total > max_visits or len(frontier) >= max_frontier:
             truncated = True
             break
         nxts = _structural_neighbors(graph, cur, direction)
@@ -141,18 +142,20 @@ def _dedupe_frontier(frontier: list[Frontier]) -> list[Frontier]:
     return list(best.values())
 
 
-def _validate_limits(max_depth: int, max_frontier: int) -> None:
+def _validate_limits(max_depth: int, max_frontier: int, max_visits: int = 2000) -> None:
     if max_depth < 1:
         raise ValueError("--max-depth must be >= 1")
     if max_frontier < 1:
         raise ValueError("--max-frontier must be >= 1")
+    if max_visits < 1:
+        raise ValueError("--max-visits must be >= 1")
 
 
 
 def analyze_frontier(graph, signal: str, direction: str = "both",
                      max_depth: int = 8, max_frontier: int = 50,
-                     probe_suffix: str = "") -> dict:
-    _validate_limits(max_depth, max_frontier)
+                     max_visits: int = 2000, probe_suffix: str = "") -> dict:
+    _validate_limits(max_depth, max_frontier, max_visits)
     directions = ["fanin", "fanout"] if direction == "both" else [direction]
     found_all: list[Frontier] = []
     truncated = False
@@ -161,7 +164,8 @@ def analyze_frontier(graph, signal: str, direction: str = "both",
         if remaining <= 0:
             truncated = True
             break
-        found, cut = _walk_direction(graph, signal, d, max_depth, remaining)
+        found, cut = _walk_direction(graph, signal, d, max_depth, remaining,
+                                     max_visits=max_visits)
         found_all.extend(found)
         truncated = truncated or cut or len(found_all) >= max_frontier
     found_all = _dedupe_frontier(found_all)
@@ -172,5 +176,6 @@ def analyze_frontier(graph, signal: str, direction: str = "both",
     } for f in found_all]
     return {"signal": signal, "frontier": rows,
             "summary": {"frontier_count": len(rows), "truncated": truncated,
-                        "max_depth": max_depth, "max_frontier": max_frontier},
+                        "max_depth": max_depth, "max_frontier": max_frontier,
+                        "max_visits": max_visits},
             "note": "generic boundary frontier; no semantic classification"}

@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P158.11 dataflow/snapshot/frontier 性能与界限 <待做>
+current item : P158.12 P2 清理 <待做>
 
 ## 计划树
 
@@ -501,6 +501,8 @@ P158 review remediation backlog <待做>
 ---- P158.9.1 capabilities / json_contract coverage <已完成>
 -- P158.10 CI/gate 咬合 <已完成>
 -- P158.11 dataflow/snapshot/frontier 性能与界限 <待做>
+---- P158.11.1 dataflow snapshot + frontier cap <已完成>
+---- P158.11.2 snapshot size/timeout <待做>
 -- P158.12 P2 清理 <待做>
 
 ## 已完成（保留最近记录，便于核查上一轮）
