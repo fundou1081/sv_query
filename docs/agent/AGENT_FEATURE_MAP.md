@@ -232,11 +232,15 @@
 - **解决**: 两个信号之间是否存在结构路径；默认无向（逆流也可达），
   `--directed` 只沿数据流方向。
 - **输入**: `paths <src> <dst> [--all] [--directed] [--canonical]
-  [--evidence] [--max N] [--bits s,d] [--from-snapshot tag]`
+  [--evidence] [--max N] [--max-expansions N] [--timeout S]
+  [--bits s,d] [--from-snapshot tag]`
 - **result（direct）**:
   - 单路径：`ok`, `src`, `dst`, `src_resolved`, `dst_resolved`, `bits`,
-    `directed`, `found`, `hop_count`, `path[]`。
-  - `--all`：额外 `count`, `truncated`, `all_paths[][]`。
+    `directed`, `mode`, `found`, `hop_count`, `path[]`。
+  - `--all`：额外 `count`, `truncated`, `truncation_reason`, `expansions`,
+    `all_paths[][]`。
+  - `--canonical`：额外 `canonical*`, `candidate_count`, `truncated`,
+    `truncation_reason`, `expansions`。
   `bits` 结构：`{src:{requested_bit,requested_range,resolved,precision,
   coarse_fallback,kind}, dst:{...}, coarse_fallback}`。
 - **坑**: `found:false` 是"查询成功但无路径"（exit 0），不是错误；
