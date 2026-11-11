@@ -2,7 +2,7 @@
 
 > **本文是 `AGENTS.md` 的细则文件之一。** 入口/索引见 [AGENTS.md](../../AGENTS.md)。
 > 硬性禁止项在 [DISCIPLINE.md](DISCIPLINE.md)；编码规范在 [CODING_STYLE.md](CODING_STYLE.md)。
-> **最后修订**: 2026-10-19
+> **最后修订**: 2026-11-11 (P158 语义契约流程)
 
 ---
 
@@ -21,13 +21,15 @@
 | # | 设施 | 唯一位置 | 作用 |
 |---|---|---|---|
 | 1 | **协作入口** | [AGENTS.md](../../AGENTS.md) | 流程与铁律，压缩后必重读 |
-| 2 | **细则** | `docs/dev/` | 纪律 / 风格 / 流程 / 清单 |
+| 2 | **细则** | `docs/dev/` | 纪律 / 风格 / 流程 / 清单 / 语义契约 |
 | 3 | **计划树（唯一计划源）** | [PLAN.md](../../PLAN.md) | **所有代码修改计划**的全局唯一登记处（含状态） |
 | 4 | **当前 todolist** | [CURRENT_TODO.md](../../CURRENT_TODO.md) | **此刻**在做什么 — 唯一稳定追踪点（计划以 PLAN.md 为准） |
 | 5 | **迭代记录** | [docs/task_tree/](../task_tree/) | 任务树 + 每次迭代一个文件 |
 | 6 | **架构决策** | [docs/architecture/](../architecture/) + [ARCHITECTURE.md](../ARCHITECTURE.md) | 架构变更 / 决策记录 |
 | 7 | **测试** | [TESTING.md](../../TESTING.md) + `sim/tests/` | 唯一测试手段与流程 |
 | 8 | **文档索引** | [docs/INDEX.md](../INDEX.md) | 唯一文档入口 + 计数单一真相源 |
+| 9 | **语义契约** | [SEMANTIC_CONTRACTS.md](SEMANTIC_CONTRACTS.md) | 数据边/路径/verified/snapshot/完成的唯一定义 |
+| 10 | **claim 台账** | [CLAIMS.md](CLAIMS.md) | 每个公开 claim 的证据与状态 |
 
 **辅助 (不是入口)**: [ARCHITECTURE_TODOLIST.md](../ARCHITECTURE_TODOLIST.md)（架构改造长期追踪）、
 [TODO.md](../TODO.md)（版本级待办）、`memory/`（按日经验）、
@@ -56,6 +58,7 @@
 ### 1.2 迭代中
 
 - **一个迭代 = 一个可观察的动作**（读代码 / 跑测试 / 修 bug / 验证结果）
+- 语义相关改动必须同时写：反例是什么、哪个测试会红、独立 oracle 是什么
 - 每个迭代写一个 `docs/task_tree/iterations/iter_NNN_<简述>.md`，**边做边写**
 - 每完成一个 sub-task 就勾选 `CURRENT_TODO.md`；遇阻塞立刻写明阻塞点
 - **计划变化先改计划树**：范围/顺序变了，先更新 `PLAN.md`（新增子项或改状态），再动手
@@ -73,8 +76,9 @@
 | `docs/architecture/` | 若涉及架构决策 |
 | `docs/INDEX.md` | 若新增/改名/移动文档；若基线计数变化，更新"当前基线" |
 
-**完成判定**: **代码 ✅ + 测试 ✅ + 文档 ✅** 三者齐备才算完成。
-只完成代码就说"做完了" = 谎报进度。
+**完成判定**: 最低 **代码 ✅ + 测试 ✅ + 文档 ✅**；语义能力/公开 claim 还要
+**契约影响 + true-positive/mutation + 独立 oracle + claim 更新 + （若声称 real-project）corpus 执行**。
+只完成代码/只跑 happy-path 测试就说"做完了" = 谎报进度。
 
 ---
 
@@ -149,6 +153,10 @@
    `-f` 与 `--filelist` 的差异）。
 3. **写文件的测试必须隔离**：`SVQ_SNAPSHOT_DIR` / `SVQ_CACHE_DIR` 指向 `tmp_path`
    （subprocess 需传 `env=`），否则会污染真实目录。
+4. **验证器/检查器测试必须有 true-positive + mutation**；只有“没有误报”不算。
+5. **确定性变更**：同一输入至少构建 3 次比较 canonical hash；一次 fresh parse 不算。
+6. **真实项目 claim**：必须有可执行 corpus/runner；worker 一次性观察不算回归。
+7. **opensource 套件失败必须计数**：不能为了 canonical 0 skipped 把失败移出统计。
 
 ---
 
@@ -174,6 +182,28 @@
 
 **新增规则的流程**: 先写进 [DISCIPLINE.md](DISCIPLINE.md) 或 [CODING_STYLE.md](CODING_STYLE.md)，
 **同一次改动**里补检查器 + "检查器能检出违规"的自检测试。
+
+### 5.1 语义门禁状态 (2026-11-11)
+
+现有检查器全部只覆盖“形式”。以下语义 gate 尚未实现，登记在 P158：
+
+```text
+数据边唯一策略
+路径 work budget / timeout
+构建 determinism hash
+SPI corpus runner
+filelist 写入安全
+verified/truncated 状态机
+snapshot parity / malformed
+true-positive / mutation
+```
+
+在 P158 完成前：
+
+- **禁止**用“8 个门禁全绿”证明语义正确；
+- 语义相关改动必须手工执行 [REVIEW_CHECKLIST §3.5](REVIEW_CHECKLIST.md)；
+- 公开 claim 必须按 [CLAIMS.md](CLAIMS.md) 标 `unverified`/`known-broken`，
+  不得升格为“已保证”。
 
 ---
 

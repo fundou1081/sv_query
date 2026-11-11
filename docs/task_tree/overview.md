@@ -504,3 +504,4 @@ Open-source project visualization is **correct and verified**. Ready for next ta
 | **367** | **2026-11-10** | **L2** | **P154 snapshot probes (iter_469)** | P152 N-3 | probes 带 snapshot tag 且可执行 | 旧 snapshot 仍限制 | **✅ 完成** |
 | **368** | **2026-11-10** | **L2** | **P155 reciprocity (iter_470)** | P152 observation | SPI 128→0 | 真数据边仍检查 | **✅ 完成** |
 | **369** | **2026-11-11** | **L2** | **P156 snapshot MIG metadata (iter_471)** | snapshot/MIG residual | present/instances/ports | 旧 snapshot 可预检 | **✅ 完成** |
+| **371** | **2026-11-11** | **L3** | **P158.0 语义契约 (iter_473)** | 2026-11-11 复盘 | 契约/台账/纪律同步 | 代码 gate 待 P158 | **✅ 完成** |

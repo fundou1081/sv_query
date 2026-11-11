@@ -1,9 +1,10 @@
 # 提交前检查清单 (Review Checklist)
 
 > **本文是 `AGENTS.md` 的细则文件之一。** 入口/索引见 [AGENTS.md](../../AGENTS.md)。
-> 规则本体见 [DISCIPLINE.md](DISCIPLINE.md) 与 [CODING_STYLE.md](CODING_STYLE.md)；
+> 规则本体见 [DISCIPLINE.md](DISCIPLINE.md)、[SEMANTIC_CONTRACTS.md](SEMANTIC_CONTRACTS.md)
+> 与 [CODING_STYLE.md](CODING_STYLE.md)；
 > 流程见 [WORKFLOW.md](WORKFLOW.md)。
-> **最后修订**: 2026-10-19
+> **最后修订**: 2026-11-11 (P158 语义检查)
 
 ---
 
@@ -57,6 +58,30 @@ python3 run_cli.py <命令> --filelist sim/tests/fixtures/scheduler_minimal/file
 
 ---
 
+## 3.5 语义检查 (P158 起强制)
+
+只要改动查询 / 图 / verify / snapshot / 写文件：
+
+- [ ] 是否改了某个 [GLOSSARY](../GLOSSARY.md) 术语的含义？→ 先改契约，再改代码
+- [ ] 数据边是否仍只含 `DRIVER` + `CONNECTION`？CLOCK/RESET 没有被当成数据路径？
+- [ ] `paths --directed` / `dataflow` / `verify claim type=path` 是否共用同一 edge 策略？
+- [ ] `verified` 是否考虑了 `truncated` / `sample` / `unknown`？sample 不可能 verified？
+- [ ] 预算耗尽是否返回 `unknown`/`truncated`，而不是 `not_found` 或静默截断？
+- [ ] 路径/图遍历是否有 work budget + timeout？超限是否可见？
+- [ ] 构建/图变化是否有 determinism 测试（同输入至少 3 次 canonical hash 相同）？
+- [ ] 是否有 true-positive 测试（构造真实错误，检查必须报）？
+- [ ] 是否有 mutation 测试（关闭检查实现，测试必须红）？
+- [ ] expected 是否来自独立 oracle，而不是同一实现反向生成？
+- [ ] snapshot/MIG 能力是否在矩阵中明确？旧 snapshot 缺 MIG 是否显式 unknown？
+- [ ] 写用户文件是否默认 dry-run、`--apply`、已有文件需 `--force`/备份？
+- [ ] 公开 claim 是否更新 [CLAIMS.md](CLAIMS.md)，并标 `verified`/`known-broken`/`unverified`？
+- [ ] 是否只跑了一次 fresh parse / 一次 worker 证据就声称 deterministic/real-project？
+- [ ] 是否用“0 skipped / 门禁全绿”代替语义正确？
+
+**判定**：任一语义检查答不上来 → 不许标完成；只能标进行中/实验。
+
+---
+
 ## 4. 影响面检查
 
 - [ ] 调用方都查过了吗（全仓 grep + `tools/find_module_refs.py`）？
@@ -97,6 +122,20 @@ python3 run_cli.py <命令> --filelist sim/tests/fixtures/scheduler_minimal/file
 
 ## 7. "完成"的定义
 
-> 代码 ✅ + 测试 ✅ + 文档 ✅
+最低：
 
-三者缺一 = 未完成。**"我知道还差文档" 不是完成，是进行中。**
+```text
+代码 ✅ + 测试 ✅ + 文档 ✅
+```
+
+语义能力/公开 claim 还要求：
+
+```text
++ 语义契约影响说明
++ true-positive / mutation 测试
++ 独立 oracle（或说明为何不适用）
++ claim ledger 更新
++ 声称 real-project 时执行可复现 corpus
+```
+
+三者缺一 = 未完成。**"我知道还差文档/反例" 不是完成，是进行中。**

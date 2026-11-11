@@ -3,7 +3,7 @@
 > **本文是 `AGENTS.md` 的细则文件之一。** 入口/索引见 [AGENTS.md](../../AGENTS.md)。
 > **状态**: 强制执行 — 违反任何一条 = 立即停止、回滚、向方豆报告。
 > **适用**: 所有在本仓库工作的 AI 助手 (QClaw / Claude Code / Copilot / DeepSeek Harness 等) 与人类开发者。
-> **最后修订**: 2026-11-04 (新增 §3.5 语义提取 regex 纪律)
+> **最后修订**: 2026-11-11 (新增 §0.1 语义纪律；唯一概念/反事实/确定性)
 
 ---
 
@@ -24,6 +24,43 @@
 
 不变量 I2/I4 的落地细节见 [CLI_SURFACE.md](../CLI_SURFACE.md) 与 [EXP_NAMESPACE.md](../EXP_NAMESPACE.md)；
 能力边界见 [KNOWN_LIMITATIONS.md](../KNOWN_LIMITATIONS.md)。
+
+---
+
+### 0.1 语义纪律 (2026-11-11 — 形式门禁之外的补充)
+
+**背景**: 2026-11-11 四角度评审发现，8 个机械门禁全绿时，
+`paths --directed` 仍可把 CLOCK 边当成数据路径并返回 `verified`。
+结论：**流程纪律不等于语义纪律**。
+
+以下规则与 [SEMANTIC_CONTRACTS.md](SEMANTIC_CONTRACTS.md) 同等强制：
+
+1. **唯一概念语义**：数据边、路径、`verified`/`unknown`、snapshot 支持范围、
+   “完成”只能在 [SEMANTIC_CONTRACTS](SEMANTIC_CONTRACTS.md) 定义一次；
+   代码只能引用同一常量/策略，禁止各命令自行解释。
+2. **先契约后代码**：改查询/验证语义前，先写清“什么输入、什么状态、什么反例”，
+   再改实现；不能先改代码再补文档。
+3. **验证状态必须诚实**：
+   - `verified` 只用于完整覆盖 + 0 violations + 无 unknown/truncated；
+   - sample/truncated/unknown 必须返回 `partial`/`unknown`，不得顶层 `verified:true`；
+   - `not_found` 只在完整搜索后使用；预算耗尽用 `unknown`。
+4. **有界搜索**：任何路径枚举/图遍历必须有 work budget + wall-clock timeout；
+   超限返回显式 `truncated/search_budget_exhausted`，不能静默截断或卡死。
+5. **构建确定性**：同一输入重复构建必须得到同一 canonical graph hash；
+   一次构建不能证明 `byte-identical`。
+6. **真值测试**：每个验证器必须有 true-positive + mutation 测试；
+   只有“没有误报”的测试不算验证。
+7. **独立 oracle**：禁止用同一实现反向生成 expected；真实项目 claim 必须有
+   可执行 corpus/runner，不能只靠 worker 一次性观察。
+8. **写入安全**：`core` 只读；写用户文件必须默认 dry-run + `--apply` + 备份；
+   参数名叫 `output` 不构成写授权。
+9. **claim ledger**：公开能力必须登记 [CLAIMS.md](CLAIMS.md)；没有 gate 的 claim
+   只能标 `unverified`，已知反例标 `known-broken`。
+10. **评审证据**：worker `APPROVE` 不是证据；必须有可复现命令、反例、
+    “观测 vs 推断”区分；主会话至少独立复现 P0。
+
+**判定**：如果一条规则不能对应到测试、检查器或 corpus runner，
+它只能叫 guideline，不能写进“已保证”。
 
 ---
 
@@ -202,6 +239,7 @@ svq visualize module --filelist project.f --target top      # ✅
 | 2026-09-09 | `loads` 跨模块"兜底补丁"只在零结果时触发 | 副本实现必然分叉 → 不变量 I3 |
 | 2026-10-19 | `LoadTracer` 自带第二份遍历，`module=None` 时拼出 `"None.sig"` 假 id | 同上；且**登记缺陷低估了真实缺陷** → 不变量 I5 |
 | 2026-10-19 | `docs/INDEX.md` 的 canonical 计数连续 4 个迭代未同步 | 声明没有机械保障会漂移 → [WORKFLOW.md](WORKFLOW.md) 文档卫生 |
+| 2026-11-11 | 8 个机械门禁全绿，仍有 CLOCK 假数据路径 / 非确定性构建 / 截断 verified / corpus 无 runner | 门禁只查形式不查语义 → 铁律 13 + SEMANTIC_CONTRACTS + CLAIMS; sample/truncated 不得 verified |
 
 ---
 

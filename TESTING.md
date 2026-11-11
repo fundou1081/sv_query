@@ -1,6 +1,6 @@
 # TESTING.md — 测试指南
 
-> 最后更新: 2026-11-09
+> 最后更新: 2026-11-11 (P158 语义测试/反事实)
 
 ## 📌 当前基线（**引用** [docs/INDEX.md 当前基线](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里)）
 
@@ -9,7 +9,7 @@
 
 | 项 | 值（引自 INDEX） | 说明 |
 |---|---|---|
-| 全量 (canonical) | **2619 passed / 0 failed** | `sim/tests/`, `-m "not opensource"`；0 skipped / 139 deselected；35 subtests（2026-11-11 实测，P157） |
+| 全量 (canonical) | **2619 passed / 0 failed** | `sim/tests/`, `-m "not opensource"`；0 skipped / 139 deselected；35 subtests（2026-11-11 实测，P157）。**0 skipped 不代表测试健康**，见 §语义测试 |
 | 回归基线 (unit + regression) | 见 INDEX | `-m "not opensource"` |
 | CLI / integration | 见 INDEX | `sim/tests/cli sim/tests/integration` |
 
@@ -52,6 +52,82 @@ python3 -m pytest sim/tests/unit/ -v
 | `slow` | 慢速测试 (>10s) | ⚠️ |
 
 **本地开发推荐**: `python3 -m pytest sim/tests/ -m "not opensource"`
+
+## 语义测试 / 反事实测试 (P158 起强制)
+
+> 背景: 2026-11-11 评审发现，bit/reciprocity 检查被整体关闭后测试仍全绿；
+> SPI corpus 只有 JSON，没有 runner；`0 skipped` 只是把失败移出 canonical。
+
+### 测试必须回答的四个问题
+
+```text
+1. true-negative: 没有错误时，检查是否不报？
+2. true-positive: 构造真实错误，检查是否必报？
+3. mutation: 关闭/破坏检查实现，测试是否必红？
+4. oracle: expected 是否独立于实现，而不是同一实现反向生成？
+```
+
+只有第 1 条的测试 = **不完整验证**，不能作为 verify/检查器的唯一证据。
+
+### 验证器/检查器的最低测试集
+
+| 测试 | 要求 |
+|---|---|
+| true-negative | 正常输入无 violation |
+| true-positive | 构造 parent 宽度错误、reciprocity 不对称等真实错误，必须有 violation |
+| mutation | 关闭检查实现，测试必须失败 |
+| 状态机 | `verified/partial/unknown/truncated/not_found` 各有一条 |
+| legacy | 旧 snapshot 缺 MIG 必须显式 unknown |
+
+### 确定性测试
+
+涉及图构建 / snapshot / canonical 顺序的改动：
+
+```bash
+# 同一输入至少 3 次，比较 canonical hash / nodes / edges
+python3 run_cli.py snapshot save ... --tag det1 --json
+python3 run_cli.py snapshot save ... --tag det2 --json
+python3 run_cli.py snapshot save ... --tag det3 --json
+```
+
+一次 fresh parse 与 snapshot 一致，不能证明 determinism。
+
+### 真实项目 corpus
+
+声称 real-project 的测试必须有 runner：
+
+```text
+读取固定 task JSON
+→ 映射到 CLI 命令
+→ 断言 expected
+→ 进 canonical 或显式 real-corpus 套件
+```
+
+没有 runner 的 JSON 只是文档，不是测试。
+
+### 指标报告
+
+禁止只报：
+
+```text
+passed / 0 skipped
+```
+
+必须同时报：
+
+```text
+passed
+failed
+unknown
+truncated
+unexecuted
+skipped-with-reason
+external-not-run
+```
+
+`opensource` 套件的失败必须单独计数，不能通过 deselect/移出来变绿。
+
+---
 
 ## 外部项目 (opensource) 管理
 

@@ -4,14 +4,14 @@
 > 恢复上下文时先读它，再读 PLAN；它定义“做什么/不做什么”。
 
 > **强制**。本文件只写"怎么做"，细则与背景全部外链。
-> 细则: [DISCIPLINE](docs/dev/DISCIPLINE.md) · [CODING_STYLE](docs/dev/CODING_STYLE.md) · [WORKFLOW](docs/dev/WORKFLOW.md) · [CHECKLIST](docs/dev/REVIEW_CHECKLIST.md)
+> 细则: [DISCIPLINE](docs/dev/DISCIPLINE.md) · [SEMANTIC_CONTRACTS](docs/dev/SEMANTIC_CONTRACTS.md) · [CLAIMS](docs/dev/CLAIMS.md) · [CODING_STYLE](docs/dev/CODING_STYLE.md) · [WORKFLOW](docs/dev/WORKFLOW.md) · [CHECKLIST](docs/dev/REVIEW_CHECKLIST.md)
 > 导航: [计划树](PLAN.md) · [文档索引](docs/INDEX.md) · [当前任务](CURRENT_TODO.md) · [测试](TESTING.md) · [已知限制](docs/KNOWN_LIMITATIONS.md)
 
 ## 0. 恢复上下文 (压缩 / 新 session 必做)
 
 1. 本文件 → 2. **[产品方向](docs/architecture/product_direction_2026-10-31.md)（做什么/不做什么）**
 → 3. **[PLAN.md](PLAN.md) 计划树（唯一真相源）** → 4. [CURRENT_TODO.md](CURRENT_TODO.md)
-→ 5. [DISCIPLINE.md](docs/dev/DISCIPLINE.md) → 6. 最近 10 个 commit + [overview](docs/task_tree/overview.md) 末尾 3 行
+→ 5. [DISCIPLINE.md](docs/dev/DISCIPLINE.md) → 6. [SEMANTIC_CONTRACTS](docs/dev/SEMANTIC_CONTRACTS.md) + [CLAIMS](docs/dev/CLAIMS.md) → 7. 最近 10 个 commit + [overview](docs/task_tree/overview.md) 末尾 3 行
 
 **核对上一轮状态**：读 `PLAN.md` 的 `current item` 与"已完成"区，确认上一项是否真的完成
 （代码 + 测试 + 文档）；未完成或状态不符，先修正计划树再继续。
@@ -36,6 +36,9 @@
     不得在 `src/trace` 里按名字建边；适配放 `examples/project_adaptations/` 或外部，
     显式调用，输出 `src/dst/evidence/confidence` 的 boundary map，见
     [PROJECT_ADAPTATION](docs/dev/PROJECT_ADAPTATION.md)
+13. **语义必须服从唯一契约** — 数据边、路径、verified/unknown、snapshot 支持范围、
+    完成判定以 [SEMANTIC_CONTRACTS](docs/dev/SEMANTIC_CONTRACTS.md) 为准；同一个语义
+    只允许一份实现；CLOCK/RESET 不是数据边；sample/truncated 不得写成 verified。
 
 ## 1.1 复杂决策参考：ub-mode
 
@@ -71,7 +74,9 @@
 - **收尾**：**更新 [PLAN.md](PLAN.md)**（该项标 `已完成`，`current item` 指向下一项）
   + `CURRENT_TODO` 移入"最近完成" + `overview` 加汇总行 + 新文档登记 [INDEX](docs/INDEX.md)
   + 计数只改 INDEX 的"当前基线"
-- **完成判定**：**代码 ✅ + 测试 ✅ + 文档 ✅**。只做完代码就说"完成" = 谎报进度
+- **完成判定**：代码 ✅ + 测试 ✅ + 文档 ✅ **+ 语义契约影响说明 + 反事实测试/独立 oracle**。
+  只做完代码/只跑 happy-path 测试就说"完成" = 谎报进度。公开能力还必须更新
+  [CLAIMS](docs/dev/CLAIMS.md)。
 
 ## 3. 提交前必跑 (全部 0 退出码)
 
@@ -87,7 +92,9 @@ python3 tools/check_plan.py                                          # PLAN.md �
 git status --porcelain                                               # 只含预期改动
 ```
 
-涉及查询 / 图 / CLI 语义的改动，**额外**跑真实多文件项目冒烟（[WORKFLOW §4](docs/dev/WORKFLOW.md)）。
+涉及查询 / 图 / CLI 语义的改动，**额外**跑真实多文件项目冒烟（[WORKFLOW §4](docs/dev/WORKFLOW.md)），
+并按 [SEMANTIC_CONTRACTS](docs/dev/SEMANTIC_CONTRACTS.md) 检查数据边/状态/确定性/有界性。
+P158 的语义 gate 未落地前，**不得**把“门禁全绿”当成语义正确。
 逐项自检见 [REVIEW_CHECKLIST](docs/dev/REVIEW_CHECKLIST.md)。
 
 ## 4. 汇报与协作
@@ -95,6 +102,8 @@ git status --porcelain                                               # 只含预
 - **主动告知**：缺测试 / 更好的架构 / 更好的方案 / 登记过的局限实际更严重
   → 按 **现状 → 问题 → 建议 → 代价** 说，然后等方豆拍板
 - 大改动（架构 / 重构 / 换算法）**先说后做**；小而安全的改动可直接做，但要在总结里列出
+- 公开 claim 必须对应 [CLAIMS](docs/dev/CLAIMS.md) 一行；没有 gate 的 claim 标 `unverified`，
+  已知反例标 `known-broken`，不得在总结中升格为“已验证”。
 - 决策冲突（用户指示 vs 代码事实、新决策 vs 旧决策）→ **停下确认**，不默默照做也不默默改
   （[CODING_STYLE §11](docs/dev/CODING_STYLE.md)）
 
@@ -105,6 +114,8 @@ git status --porcelain                                               # 只含预
 
 ## 6. 版本
 
+- **v2.7 (2026-11-11)** — 新增铁律 13：语义契约唯一；完成判定增加反事实/独立 oracle；
+  恢复上下文加入 SEMANTIC_CONTRACTS / CLAIMS；`sample/truncated` 不得 verified。
 - **v2.6 (2026-11-09)** — 新增铁律 12：项目适配不进 core 自动推断；模板放 `examples/project_adaptations/`
 - **v2.5 (2026-11-06)** — 新增 §1.1 ub-mode 复杂决策参考（前提/数据形状/根因/减法/TDD）
 - **v2.4 (2026-11-04)** — 新增铁律 11：语义提取必须 slang，仅 UVM 宏允许 regex；提交前增加 `check_semantic_regex.py`

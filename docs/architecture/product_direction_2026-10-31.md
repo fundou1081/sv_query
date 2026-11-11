@@ -48,6 +48,20 @@ scope 定位候选与 canonical ID
 
 **实现状态（iter_345）**：`mode`、`scope` 聚合、interface/generate/class 可发现性已落地；scope 功能到此冻结。
 
+### 1.2 验证结论的语义边界 (2026-11-11)
+
+> 2026-11-11 复盘: “门禁全绿”不等于“语义正确”。产品要能对 agent 说
+> “这个结论是 verified”，必须先满足 [SEMANTIC_CONTRACTS](../dev/SEMANTIC_CONTRACTS.md)。
+
+- `paths --directed` / `verify claim type=path` 只允许数据边（DRIVER/CONNECTION），
+  CLOCK/RESET/BIT_SELECT 不是数据路径；
+- `verified` 只能用于完整覆盖、无 unknown/truncated、0 violations 的结果；
+  sample/truncated 必须返回 `partial`/`unknown`；
+- snapshot 支持范围、确定性、有界搜索、写入安全属于产品契约，不是实现细节；
+- 公开能力与证据登记在 [CLAIMS](../dev/CLAIMS.md)；没有 gate 的 claim 只能是 `unverified`。
+
+产品方向不变，但“客观校验层”的**可信边界**由上述契约定义。
+
 ## 2. 用户与工作流
 
 ### 2.1 Debug（主场景）
