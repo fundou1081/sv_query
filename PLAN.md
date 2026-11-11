@@ -483,6 +483,10 @@ P157 canonical skip cleanup <已完成>
 -- P157.2 mark external tests opensource <已完成>
 
 
+P159 history lessons capture <已完成>
+-- P159.1 independent worker retrospective <已完成>
+-- P159.2 local lessons document <已完成>
+
 P158 review remediation backlog <待做>
 -- P158.0 纪律语义契约升级 <已完成>
 -- P158.1 数据边策略 + CLOCK/RESET 反例 <已完成>
