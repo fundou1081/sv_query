@@ -12,13 +12,12 @@
 
 | 项 | 值 | 说明 |
 |---|---|---|
-| 源码规模 | 163 文件 / 63,146 行 | `find src -name "*.py"` |
-| 测试规模 | 368 测试文件 / 78,847 行 + 117 SV fixture | `find sim/tests -name "*.py"` |
-| 回归基线 | **2129 passed + 35 subtests** (unit + regression, `-m "not opensource"`) | 2026-09-08 实测 (iter_190 后) |
-| 全量 (canonical) | **2678 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / 131 deselected; 35 subtests) | 2026-11-11 实测 (P158): data-edge/bounded/determinism/corpus 修复 |
-| CLI / integration | **810 passed / 0 failed** (`sim/tests/cli sim/tests/integration`, `-m "not opensource"`) | 2026-09-08 实测 (iter_185 修复后) |
+| 源码规模 | 137 文件 / 49,377 行 | `find src -name "*.py"`（2026-11-11 实测） |
+| 测试规模 | 378 测试文件 / 64,311 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-11 实测） |
+| 全量 (canonical) | **2678 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / 131 deselected; 35 subtests) | 2026-11-11 文档记录（P158 收口）；**0 skipped 不是健康指标**，见 TESTING §语义测试 |
+| CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (457 份, 只增不改) | 每次迭代一份 |
+| 迭代记录 | `docs/task_tree/iterations/` (475 份, 只增不改) | 每次迭代一份（2026-11-11 实测） |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 | 语义 regex 纪律 | `python3 tools/check_semantic_regex.py` 必须 ✅ | 仅 UVM 宏例外；class/constraint/covergroup 语义走 slang (iter_368) |
@@ -91,7 +90,7 @@
 | 文档 | 作用 |
 |---|---|
 | [PRIMARY_FEATURES.md](PRIMARY_FEATURES.md) | 主推功能: 查询/追踪/校验（visualize 已退役） |
-| [EXPERIMENTAL_FEATURES.md](EXPERIMENTAL_FEATURES.md) | 实验功能 (6): cdc / verify gap / risk / timing / coverage generate / deadlock — **不承诺** |
+| [EXPERIMENTAL_FEATURES.md](EXPERIMENTAL_FEATURES.md) | 实验功能说明（**正文为 2026-07-04 快照，命令名已失效**；当前 exp 5 个命令以 `capabilities --include-exp` 为准） |
 | [EXP_IDEAS.md](EXP_IDEAS.md) | **exp 创意清单 (未落地)**: 10 条想法 + 各自要解决的问题场景 |
 | [EXP_NAMESPACE.md](EXP_NAMESPACE.md) | exp 层已退役说明 (代码归档在 archive/2026-10-20-exp-attic) |
 | [poc/2026-10-23_native_connectivity.md](poc/2026-10-23_native_connectivity.md) | **POC**: slang-native 连通性 vs 现有两套路径实现 (影子节点 30~38%、0 可达; PathResolver 终点错误 60%+) |
@@ -128,7 +127,7 @@
 | [validation/SESSION_TELEMETRY_2026-11-07.md](validation/SESSION_TELEMETRY_2026-11-07.md) | **P90.3 telemetry 修正**: 真实 sv_query 48/48；`queries` 是 lossy；tool 19–28% |
 | [validation/FILELIST_PRUNE_2026-11-07.md](validation/FILELIST_PRUNE_2026-11-07.md) | **P91 top-aware prune**: AXI 55→3, 27.3s→0.84s；SERV 24→17, 3.4→1.23s |
 | [validation/SNAPSHOT_2026-11-07.md](validation/SNAPSHOT_2026-11-07.md) | **P92 snapshot D**: AXI 18MB / load 0.54s；paths from snapshot；connections 不支持 |
-| [validation/A_D_TEST_2026-11-07.md](validation/A_D_TEST_2026-11-07.md) | **P93 A/D tests**: prune fallback、snapshot paths、8-task matrix；2571 passed |
+| [validation/A_D_TEST_2026-11-07.md](validation/A_D_TEST_2026-11-07.md) | **P93 A/D tests**: prune fallback、snapshot paths、8-task matrix；当时全量基线 2571（历史，不代表当前） |
 | [validation/MODEL_COMPARISON_AD_2026-11-07.md](validation/MODEL_COMPARISON_AD_2026-11-07.md) | **P94 A+D vs 原版**: T2 准确率不变 24/24；延迟反而更慢（seed1）；不设为默认 |
 | [validation/A_D_STRICT_ATTEMPT_2026-11-07.md](validation/A_D_STRICT_ATTEMPT_2026-11-07.md) | **P95 严格 A/D**: query-only/deny repo 失败；agent 搜索/读 JSON；放弃 |
 | [validation/SKILL_PILOT_2026-11-07.md](validation/SKILL_PILOT_2026-11-07.md) | **P96 skill pilot**: 3 cells ×2 条件；skill 未被加载；无收益 |

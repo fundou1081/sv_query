@@ -290,7 +290,12 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 > `=full` 时纯总线连接也按同索引合成位节点（verilog-axi 图 14.2k→31.5k 节点，
 > 构建时间不变、gzip 0.4→0.7MB）。表达式/算术赋值两种模式都不展开。
 
-### 4. 测试已知失败 (54 个，全部为 pre-existing)
+### 4. 测试已知失败（2026-07-29 历史快照 — 不代表当前状态）
+
+> **2026-11-11 校准**：本表是当时的子集基线，只用于追溯口径。
+> P160/P161 之后 canonical 记录为 0 failed，opensource 为 114 passed / 17 skipped
+> （计数以 [INDEX 当前基线](INDEX.md#-当前基线-单一真相源--计数只写在这里) 为准）。
+> **不要**用本表判断当前失败数。
 
 | 模块 | 数量 | 原因 |
 |------|------|------|
@@ -301,7 +306,7 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 | test_dataflow_golden | 3 | golden 比较差异 |
 | test_ventus_all_viz | 5 | arch/trace/PNG 波动 |
 
-**所有 55 个均为既存问题，与 V6.5-V6.7 改动无关。**
+**当时结论（2026-07-29）**：上表全部为既存问题，与 V6.5-V6.7 改动无关；其后大部分已修或被重新分类（见 P160/P161）。
 
 ---
 

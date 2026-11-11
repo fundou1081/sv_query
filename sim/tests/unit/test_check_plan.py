@@ -103,3 +103,50 @@ def test_real_plan_file_passes():
     plan = Path(__file__).resolve().parents[3] / "PLAN.md"
     assert plan.exists(), "PLAN.md 必须存在（全局唯一计划树）"
     assert check(plan.read_text(encoding="utf-8")) == []
+
+
+# --- [P164] 计划树校验器加固：不可见项 / 字母后缀 / 多层父项 -----------------
+
+
+def test_deep_dash_indent_is_rejected():
+    """3 个以上短横线的项不会被解析；必须报 P9，而不是静默跳过。"""
+    text = VALID + "---- P0.1.1 深缩进项 <待做>\n"
+    errs = check(text)
+    assert any(e.startswith("P9") for e in errs), errs
+
+
+def test_letter_suffix_id_allowed():
+    """P158.11.2a / 2b 这类拆分项是合法 id。"""
+    text = """# PLAN
+
+current item : P0.2a 拆分项 <待做>
+
+P0 父项 <进行中>
+-- P0.2a 拆分项 <待做>
+"""
+    assert check(text) == []
+
+
+def test_nested_parent_allowed():
+    """父项可以是中间层（P0.1），不再要求必须是顶层项。"""
+    text = """# PLAN
+
+current item : P0.1.1 深项 <待做>
+
+P0 顶层 <已完成>
+-- P0.1 中层 <已完成>
+-- P0.1.1 深项 <待做>
+"""
+    assert check(text) == []
+
+
+def test_nested_parent_must_exist():
+    text = """# PLAN
+
+current item : P0.9.1 孤儿深项 <待做>
+
+P0 顶层 <已完成>
+-- P0.9.1 孤儿深项 <待做>
+"""
+    errs = check(text)
+    assert any(e.startswith("P5") for e in errs), errs

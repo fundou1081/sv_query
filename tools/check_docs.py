@@ -79,23 +79,34 @@ def check_index_registration():
     return index_txt, missing
 
 
+def baseline_numbers(index_txt: str) -> set[str]:
+    """基准只取 INDEX 的「当前基线」章节，且只认 `N passed`。
+
+    - 整份 INDEX 里的历史条目（如验证摘要 "2571 passed"）不得成为合法基准，
+      否则旧数字会互相"背书"，检查恒过（P164 实测坑）；
+    - `N 测试` 是文件/规模计数，不是通过数，不参与比较。
+    """
+    m = re.search(r"当前基线.*?\n(.*?)(?=\n## |\Z)", index_txt, re.S)
+    scope = m.group(1) if m else index_txt
+    return set(re.findall(r"(\d{3,5})\s*passed", scope))
+
+
 def check_stale_counts(index_txt, ):
     """文档内硬编码测试计数 vs INDEX.md 基准 (警告级)."""
     if index_txt is None:
         return []
-    base = re.findall(r"(\d{3,5})\s*(?:passed|测试)", index_txt)
-    base_nums = set(base)
+    base = baseline_numbers(index_txt)
     warn = []
     for md in iter_md():
         rel = md.relative_to(REPO)
         if any(str(rel).startswith(k) for k in
                ("docs/archive/", "docs/task_tree/", "memory/")):
-            continue  # 历史快照允许保留当时计数
-        if rel.name in ("CHANGELOG.md", "CURRENT_TODO.md", "ARCHITECTURE_TODOLIST.md",
+            continue  # 归档 / 计划树 / 工作日志：历史快照
+        if re.search(r"20\d{2}-\d{2}-\d{2}", rel.name):
+            continue  # 文件名带日期 = 时点快照 (audit / review / validation / session)
+        if rel.name in ("CHANGELOG.md", "ARCHITECTURE_TODOLIST.md",
                         "ARCHITECTURE_EVOLUTION.md"):
-            continue  # 变更日志 / 滚动日志 / 改造步骤记录 / 演进时间线 = 历史快照
-        if str(rel).startswith("docs/refactoring/"):
-            continue  # 重构轮快照 (带日期)
+            continue  # 变更日志 / 改造步骤记录 / 演进时间线 = 历史快照
         txt = md.read_text(encoding="utf-8", errors="ignore")
         for m in re.finditer(r"(\d{3,5})\s*(?:passed|tests?)", txt):
             num = int(m.group(1))
@@ -103,7 +114,7 @@ def check_stale_counts(index_txt, ):
             # 局部事实, 不在本检查范围; 全量基线必须与 INDEX 一致
             if num < 1000:
                 continue
-            if m.group(1) not in base_nums:
+            if m.group(1) not in base:
                 warn.append((rel, m.group(0).strip()))
     return warn
 

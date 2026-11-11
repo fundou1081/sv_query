@@ -5,9 +5,9 @@
 > agent 面向的 RTL **查询 + 客观校验层**：服务动态 debug（波形值由外部工具提供）与 design 理解；
 > 核心是 canonical identity、evidence、双向验证，而不是自然语言解释。
 
-> 2571 passed (canonical 主回归) | Python 3.11+ | pyslang 语义 AST | NetworkX graph | 真实项目 + 性能基准 + agent 对照（内部）
+> 回归基线见 [docs/INDEX.md 当前基线](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里) | Python 3.11+ | pyslang 语义 AST | NetworkX graph | 真实项目 + 性能基准 + agent 对照（内部）
 
-> 更新日期: 2026-11-05
+> 更新日期: 2026-11-11（基线计数不再写死，统一引用 INDEX）
 
 ---
 
@@ -107,17 +107,17 @@ sv_query trace fanin cdc_bug.dst_valid   -f examples/anti_hallucination_cdc/cdc_
 | **Class/约束/覆盖** | `class --relations`（含 UVM 静态） / `trace constraints` / `trace covergroups` / `trace coverpoints` / `trace covergroup` |
 | **Locate** | `stats` / `search` / `graph nodes/edges` / `graph subgraph` / `capabilities` |
 | **State** | `snapshot save/list/compare/delete` |
-| **exp** | `audit` / `diagnose` / `trace overview` / `review render`（默认隐藏，不承诺契约） |
+| **exp** | `audit` / `diagnose` / `trace overview` / `review render` / `architecture graph`（默认隐藏，不承诺契约） |
 
 > `visualize` / `arch` / `design` 全设计图命令已于 2026-11-03 退役；`review render` 仍是 exp。
 
 ---
 
-## 验证状态（2026-11-07）
+## 验证状态（2026-11-11）
 
 | 项 | 状态 |
 |---|---|
-| 全量回归 | **2571 passed / 0 failed**（7 skipped / 119 deselected） |
+| 全量回归 | 见 [INDEX 当前基线](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里)：canonical 0 failed；opensource 114 passed / 17 显式 skip |
 | 开源 smoke | strict_uart / verilog-axi / picorv32 / SERV |
 | 性能基准 | picorv32 / verilog-axi / SERV；build、warm query、cold CLI、peak RSS |
 | 反幻觉 | 单级 CDC walkthrough：profile + fanin/fanout 反驳“两级同步器” |
