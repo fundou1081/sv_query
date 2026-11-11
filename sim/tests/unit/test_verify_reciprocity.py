@@ -26,3 +26,22 @@ class TestVerifyReciprocity(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class _FakeTracer:
+    def trace_fanin(self, node, depth=1):
+        return [g.get_node("top.a")] if node == "top.b" else []
+    def trace_fanout(self, node, depth=1, **kw):
+        return []
+
+
+def test_real_asymmetry_is_reported():
+    global g
+    g = SignalGraph()
+    for nid in ("top.a", "top.b"):
+        g.add_trace_node(TraceNode(id=nid, name=nid.rsplit(".", 1)[-1],
+                                   module="top", kind=NodeKind.SIGNAL,
+                                   width=(0, 0)))
+    g.add_trace_edge(TraceEdge(src="top.a", dst="top.b", kind=EdgeKind.DRIVER))
+    result = _check_reciprocity(_FakeTracer(), g, ["top.b"], max_nodes=10)
+    assert "fanin_not_reciprocal" in {v["kind"] for v in result["violations"]}
