@@ -69,6 +69,7 @@
 | [validation/P155_RECIPROCITY_2026-11-10.md](validation/P155_RECIPROCITY_2026-11-10.md) | **P155**: reciprocity BIT_SELECT 误报；SPI 128→0 |
 | [validation/P156_SNAPSHOT_MIG_METADATA_2026-11-11.md](validation/P156_SNAPSHOT_MIG_METADATA_2026-11-11.md) | **P156**: snapshot MIG 可用性元数据 |
 | [validation/P157_SKIP_CLEANUP_2026-11-11.md](validation/P157_SKIP_CLEANUP_2026-11-11.md) | **P157**: canonical skip 清理；12→0 |
+| [validation/REVIEW_2026-11-11.md](validation/REVIEW_2026-11-11.md) | **P158 输入**: 4-angle review + 28 项修复账本 |
 | [validation/P139_FRONTIER_2026-11-09.md](validation/P139_FRONTIER_2026-11-09.md) | **P139 frontier**: 断点 + next probes；不分类 FIFO |
 | [validation/P139_WORKER_REVIEW_2026-11-09.md](validation/P139_WORKER_REVIEW_2026-11-09.md) | **P139 worker review**: APPROVE WITH NITS；nits 已修 |
 | [validation/P140_GUIDED_BOUNDARY_2026-11-09.md](validation/P140_GUIDED_BOUNDARY_2026-11-09.md) | **P140**: 显式 boundary map 跑通 I2C S1 |
