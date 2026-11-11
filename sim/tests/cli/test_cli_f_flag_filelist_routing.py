@@ -10,14 +10,22 @@ Fix: `_build_tracer()` in src/cli/_common.py auto-detects .f/.fl/.filelist
 extension in the `file` param and promotes it to filelist path.
 """
 
+import os
+from pathlib import Path
 import pytest
 
-pytestmark = pytest.mark.opensource  # picorv32 dependency (4/5 tests)
+# [P158.12] 外部 corpus 根: 环境变量可覆盖, 缺失时显式 skip (不假失败)
+OPENRTL_ROOT = Path(os.environ.get("SVQ_OPENRTL_ROOT",
+                                str(Path.home() / "my_dv_proj" / "openrtl")))
+
+pytestmark = [pytest.mark.opensource,
+            pytest.mark.skipif(not OPENRTL_ROOT.exists(), reason="external openrtl corpus missing; set SVQ_OPENRTL_ROOT")]  # picorv32 dependency (4/5 tests)
 
 import subprocess
 import unittest
 
-PICORV32_F = "/Users/fundou/my_dv_proj/sv_query/sim/tests/pyslang_type_fixtures/industrial_filelists/picorv32.f"
+PICORV32_F = str(Path(__file__).resolve().parents[3]
+    / "sim/tests/pyslang_type_fixtures/industrial_filelists/picorv32.f")
 
 
 class TestFFlagFilelistAutoDetect(unittest.TestCase):
@@ -55,7 +63,7 @@ class TestFFlagFilelistAutoDetect(unittest.TestCase):
         """[Regression] `-f <X.v>` still works (single-file path unchanged)."""
         result = subprocess.run(
             ["sv_query", "stats", "-f",
-             "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v"],
+             str(OPENRTL_ROOT / "picorv32/picorv32.v")],
             capture_output=True, text=True,
         )
         self.assertEqual(result.returncode, 0)
@@ -66,7 +74,7 @@ class TestFFlagFilelistAutoDetect(unittest.TestCase):
         # Create a temp .fl file
         import tempfile
         with tempfile.NamedTemporaryFile(suffix=".fl", delete=False, mode="w") as f:
-            f.write("/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v\n")
+            f.write(str(OPENRTL_ROOT / "picorv32/picorv32.v") + "\n")
             fl_path = f.name
         try:
             result = subprocess.run(
@@ -84,7 +92,7 @@ class TestFFlagFilelistAutoDetect(unittest.TestCase):
         """[Bug fix] `.filelist` extension also auto-detected."""
         import tempfile
         with tempfile.NamedTemporaryFile(suffix=".filelist", delete=False, mode="w") as f:
-            f.write("/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v\n")
+            f.write(str(OPENRTL_ROOT / "picorv32/picorv32.v") + "\n")
             fl_path = f.name
         try:
             result = subprocess.run(

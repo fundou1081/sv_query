@@ -22,13 +22,14 @@ import itertools
 import os
 import re
 import subprocess
+from pathlib import Path
 import sys
 
 # Add src to path for direct module imports (De Morgan unit tests)
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "src"))
 
 
-PROJ = "/Users/fundou/my_dv_proj/sv_query"
+PROJ = str(Path(__file__).resolve().parents[3])
 
 
 def svq_dataflow(from_sig: str, to_sig: str, file_path: str) -> list[str]:

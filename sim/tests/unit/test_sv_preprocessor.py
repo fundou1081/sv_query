@@ -9,7 +9,7 @@ preprocessor 跨文件展开 `MACRO → literal value, 让 pyslang 避开 TooFew
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path("/Users/fundou/my_dv_proj/sv_query")
+REPO_ROOT = Path(__file__).resolve().parents[3]
 SRC_DIR = str(REPO_ROOT / "src")
 if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)

@@ -16,6 +16,8 @@ from pathlib import Path
 warnings.filterwarnings("ignore")
 sys.path.insert(0, "src")
 
+RUN_CLI = str(Path(__file__).resolve().parents[3] / "run_cli.py")  # [P158.12]
+
 
 SAMPLE_SV = """
 `timescale 1ns/1ps
@@ -46,7 +48,7 @@ def test_stats_with_file_still_works():
         path = f.name
     try:
         r = subprocess.run(
-            ["python3", "/Users/fundou/my_dv_proj/sv_query/run_cli.py", "stats", "-f", path],
+            ["python3", RUN_CLI, "stats", "-f", path],
             capture_output=True,
             text=True,
             timeout=60,
@@ -96,7 +98,7 @@ endmodule
         r = subprocess.run(
             [
                 "python3",
-                "/Users/fundou/my_dv_proj/sv_query/run_cli.py",
+                RUN_CLI,
                 "stats",
                 "--filelist",
                 str(filelist_path),
@@ -133,7 +135,7 @@ def test_stats_filelist_does_not_require_file():
         r = subprocess.run(
             [
                 "python3",
-                "/Users/fundou/my_dv_proj/sv_query/run_cli.py",
+                RUN_CLI,
                 "stats",
                 "--filelist",
                 str(filelist),
@@ -151,7 +153,7 @@ def test_stats_filelist_does_not_require_file():
 def test_stats_without_file_or_filelist_errors():
     """stats 不传任何参数应报错 exit 1"""
     r = subprocess.run(
-        ["python3", "/Users/fundou/my_dv_proj/sv_query/run_cli.py", "stats"],
+        ["python3", RUN_CLI, "stats"],
         capture_output=True,
         text=True,
         cwd="/tmp",
@@ -174,7 +176,7 @@ def test_stats_filelist_in_params_json():
         r = subprocess.run(
             [
                 "python3",
-                "/Users/fundou/my_dv_proj/sv_query/run_cli.py",
+                RUN_CLI,
                 "stats",
                 "--filelist",
                 str(filelist),

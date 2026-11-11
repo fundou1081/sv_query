@@ -32,7 +32,7 @@
           "!(!rst_ni) && pop_i && !empty_o"
         ],
         "count": 1,
-        "cycles_detected": true,
+        "cycles_detected": false,
         "driver_conflict": "none",
         "driver_conflict_analysis": {
           "confidence": "exact",

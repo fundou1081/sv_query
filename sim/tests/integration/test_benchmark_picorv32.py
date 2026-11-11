@@ -12,18 +12,22 @@ PR7 目标: run_benchmark.py 加 --files flag, 支持单文件模式 (picorv32.v
 
 import json
 import subprocess
+import os
 import sys
 from pathlib import Path
 
 import pytest
 
-pytestmark = pytest.mark.opensource
+# [P158.12] 外部 corpus 根: 环境变量可覆盖, 缺失时显式 skip (不假失败)
+OPENRTL_ROOT = Path(os.environ.get("SVQ_OPENRTL_ROOT",
+                                str(Path.home() / "my_dv_proj" / "openrtl")))
+pytestmark = [pytest.mark.opensource,
+            pytest.mark.skipif(not OPENRTL_ROOT.exists(), reason="external openrtl corpus missing; set SVQ_OPENRTL_ROOT")]
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 BENCH = PROJECT_ROOT / "tools" / "benchmark" / "run_benchmark.py"
 BASELINE = PROJECT_ROOT / "tools" / "benchmark" / "baselines" / "picorv32.json"
-PICO_FILE = "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v"
-
+PICO_FILE = str(OPENRTL_ROOT / "picorv32/picorv32.v")
 
 def _baseline() -> dict:
     """读 baseline JSON (唯一真相源: tools/benchmark/baselines/picorv32.json)。
@@ -35,7 +39,6 @@ def _baseline() -> dict:
     """
     with open(BASELINE) as f:
         return json.load(f)
-
 
 def _run_bench(target: str = "picorv32", depth: int = 2, output: Path = None, **kwargs) -> dict:
     """Run benchmark with --files flag."""
@@ -59,7 +62,6 @@ def _run_bench(target: str = "picorv32", depth: int = 2, output: Path = None, **
         pytest.skip(f"benchmark output not found: {output}")
     with open(output) as f:
         return json.load(f)
-
 
 class TestFilesFlag:
     """--files flag 加进 benchmark (PR7)."""
@@ -102,7 +104,6 @@ class TestFilesFlag:
         assert "not allowed" in result.stderr.lower() or "mutually exclusive" in result.stderr.lower(), (
             f"stderr should mention mutually exclusive, got: {result.stderr[:200]}"
         )
-
 
 class TestPicorv32Benchmark:
     """picorv32 benchmark 数据合理."""
@@ -162,7 +163,6 @@ class TestPicorv32Benchmark:
         mb = l3.get("picorv32.mem_busy", {})
         if "error" not in mb:
             assert mb.get("fanin", 0) >= 1, f"mem_busy fanin >= 1, got {mb}"
-
 
 class TestPicorv32Baseline:
     """baseline 文件存在且数据合理."""

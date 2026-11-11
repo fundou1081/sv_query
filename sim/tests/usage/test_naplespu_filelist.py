@@ -25,7 +25,7 @@ import sys
 from pathlib import Path
 
 
-REPO_ROOT = Path("/Users/fundou/my_dv_proj/sv_query")
+REPO_ROOT = Path(__file__).resolve().parents[3]
 RUN_CLI = "python3"
 RUN_CLI_PATH = str(REPO_ROOT / "run_cli.py")
 

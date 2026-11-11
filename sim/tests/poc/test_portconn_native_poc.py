@@ -9,12 +9,14 @@ POC test 2026-07-11: portConnections 替代 MIG 自建 port mappings
 关联: MEMORY.md TODO "pyslang Native API 重构机会" (2026-06-25)
 """
 import os
+from pathlib import Path
 import sys
 import time
 
 import pytest
 
-sys.path.insert(0, "/Users/fundou/my_dv_proj/sv_query/src")
+sys.path.insert(0, os.path.join(os.path.dirname(__file__),
+                                "..", "..", "..", "src"))
 
 from trace.core.compiler import SVCompiler
 
@@ -22,12 +24,14 @@ from trace.core.compiler import SVCompiler
 # Fixtures
 # ---------------------------------------------------------------------------
 
-PROJECT_ROOT = "/Users/fundou/my_dv_proj/openrtl"  # [openrtl 2026-09-02] 开源 RTL 统一移入 openrtl
+# [P158.12] 外部 corpus 根: 环境变量可覆盖, 缺失时显式 skip (不假失败)
+OPENRTL_ROOT = Path(os.environ.get("SVQ_OPENRTL_ROOT",
+                                str(Path.home() / "my_dv_proj" / "openrtl")))
 
 
 def _load_darkriscv():
     """Load darkriscv RTL sources."""
-    proj_path = f"{PROJECT_ROOT}/darkriscv/rtl"
+    proj_path = str(OPENRTL_ROOT / "darkriscv/rtl")
     files = [
         'darkriscv.v', 'darkuart.v', 'darkspi.v', 'darkio.v',
         'darkbridge.v', 'darkcache.v', 'darkmac.v', 'darkpll.v',
@@ -299,3 +303,6 @@ class TestPortConnNativePOC:
         actual_short = {hp.split(".")[-1] for hp in direct_subs}
         missing = expected - actual_short
         assert not missing, f"Missing expected sub-instances: {missing}"
+
+pytestmark = pytest.mark.skipif(
+    not OPENRTL_ROOT.exists(), reason="external openrtl corpus missing; set SVQ_OPENRTL_ROOT")

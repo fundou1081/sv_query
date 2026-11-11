@@ -73,11 +73,14 @@ endmodule'''
         edges = {(e.src, e.dst): e.kind for e in r.edges}
         self.assertEqual(edges.get(('top.u_dut.out', 'top.out')), EdgeKind.CONNECTION,
                          "实例输出端口应 CONNECTION 到外部信号")
-        # 内部驱动边 (模块内 assign out = data → 实例端口视角)
-        self.assertTrue(
-            any(s == 'top.u_dut.out' and k == EdgeKind.DRIVER
-                for (s, d), k in edges.items()),
-            "实例输出端口应有 DRIVER 边 (模块内部驱动)")
+        # [P158.12.4 / R-026 2026-11-12] connection_extractor 层不再产出
+        # 实例输出端口的 DRIVER 恒自环 (child_signal_id == inst_port_id,
+        # expression 空, 零信息)。模块内真实驱动 (top.u_dut.data →
+        # top.u_dut.out, DRIVER + expression) 由 assign_extractor 在全管线
+        # 产出 —— 分层契约见 test_cross_module_tracking (多跳回归)。
+        self.assertFalse(
+            any(s == d == 'top.u_dut.out' for (s, d) in edges),
+            "connection_extractor 不得产出实例端口恒自环 (R-026)")
 
     def test_instance_port_node_exists(self):
         """[Golden] 实例端口节点存在 (单一命名空间: 端口即内部节点)

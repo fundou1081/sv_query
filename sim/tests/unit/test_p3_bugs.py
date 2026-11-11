@@ -2,7 +2,6 @@
 
 import pytest
 
-pytestmark = pytest.mark.opensource  # OpenTitan dependency (1/5 tests)
 
 #==============================================================================
 # test_p3_bugs.py - P3 设计验证测试
@@ -21,6 +20,7 @@ pytestmark = pytest.mark.opensource  # OpenTitan dependency (1/5 tests)
 #==============================================================================
 
 import os
+from pathlib import Path
 import sys
 import unittest
 
@@ -29,14 +29,19 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 from trace.core.graph.models import EdgeKind
 from trace.unified_tracer import UnifiedTracer
 
+# [P158.12] 外部 corpus 根: 环境变量可覆盖, 缺失时显式 skip (不假失败)
+OPENRTL_ROOT = Path(os.environ.get("SVQ_OPENRTL_ROOT",
+                                str(Path.home() / "my_dv_proj" / "openrtl")))
 
+pytestmark = [pytest.mark.opensource,
+            pytest.mark.skipif(not OPENRTL_ROOT.exists(), reason="external openrtl corpus missing; set SVQ_OPENRTL_ROOT")]  # OpenTitan dependency (1/5 tests)
 class TestP3DesignDecisions(unittest.TestCase):
     """P3 设计决策验证测试"""
 
     @classmethod
     def setUpClass(cls):
         """加载 uart_rx.sv 作为测试文件"""
-        file_path = '/Users/fundou/my_dv_proj/openrtl/opentitan/hw/ip/uart/rtl/uart_rx.sv'
+        file_path = str(OPENRTL_ROOT / 'opentitan/hw/ip/uart/rtl/uart_rx.sv')
         with open(file_path) as f:
             cls.source = f.read()
 
@@ -241,7 +246,6 @@ class TestP3DesignDecisions(unittest.TestCase):
         # 至少验证图结构正确
         self.assertGreater(graph.number_of_nodes(), 30)
         self.assertGreater(graph.number_of_edges(), 50)
-
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

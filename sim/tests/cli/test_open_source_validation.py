@@ -84,12 +84,17 @@ class TestStrictUartFixture:
         assert 20 <= nodes <= 60, f"unexpected node count: {nodes}"
 
     def test_drivers_dominate(self):
-        """DRIVER edges should be >30% of total edges."""
+        """DRIVER edges should be a substantial share (>25%) of total edges.
+
+        [P158.12.4 / R-026 2026-11-12] 原 >30% 阈值是按**含假自环**的图校准的
+        （connection_extractor 恒自环边虚增 DRIVER 计数）。清除污染后实测
+        28.6% (14/49)，按真实图重校为 >25%。绝对量另有 ≥8 断言兜底。
+        """
         _, data = _stats(STRICT_UART_FL)
         drivers = data.get('DRIVER', 0)
         total = data.get('total_edges', 1)
         pct = drivers * 100.0 / total
-        assert pct > 30, f"DRIVER {pct:.1f}% <= 30% ({drivers}/{total})"
+        assert pct > 25, f"DRIVER {pct:.1f}% <= 25% ({drivers}/{total})"
 
     def test_drivers_with_conditions_present(self):
         """Real RTL should have at least 1 conditioned driver."""

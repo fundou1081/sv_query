@@ -197,20 +197,6 @@
       "src": "sm2cluster_arb.arb_inst.grant_idx_o"
     },
     {
-      "assign_type": "internal",
-      "bit_slice": "",
-      "clock_domain": "",
-      "condition": "",
-      "confidence": "high",
-      "dst": "sm2cluster_arb.arb_inst.grant_idx_o",
-      "effective_condition": "",
-      "expression": "",
-      "function_return": false,
-      "is_function_call": false,
-      "kind": "DRIVER",
-      "src": "sm2cluster_arb.arb_inst.grant_idx_o"
-    },
-    {
       "assign_type": "nonblocking",
       "bit_slice": "",
       "clock_domain": "clk",
@@ -250,20 +236,6 @@
       "function_return": false,
       "is_function_call": false,
       "kind": "BIT_SELECT",
-      "src": "sm2cluster_arb.arb_inst.grant_o"
-    },
-    {
-      "assign_type": "internal",
-      "bit_slice": "",
-      "clock_domain": "",
-      "condition": "",
-      "confidence": "high",
-      "dst": "sm2cluster_arb.arb_inst.grant_o",
-      "effective_condition": "",
-      "expression": "",
-      "function_return": false,
-      "is_function_call": false,
-      "kind": "DRIVER",
       "src": "sm2cluster_arb.arb_inst.grant_o"
     },
     {
@@ -903,10 +875,10 @@
       "BIT_SELECT": 9,
       "CLOCK": 9,
       "CONNECTION": 5,
-      "DRIVER": 11,
+      "DRIVER": 9,
       "RESET": 9
     },
-    "edges": 43,
+    "edges": 41,
     "node_kinds": {
       "CONST": 1,
       "INSTANTIATED_MODULE": 1,

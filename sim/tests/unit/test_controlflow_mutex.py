@@ -14,19 +14,24 @@ TDD: controlflow if/else 互斥判断 (Req-13 P2)
 
 import pytest
 
-pytestmark = pytest.mark.opensource  # NaplesPU dependency
 
 import subprocess
+import os
 import sys
 import warnings
 from pathlib import Path
 
 warnings.filterwarnings("ignore")
 
-REPO_ROOT = Path("/Users/fundou/my_dv_proj/sv_query")
-RUN_CLI_PATH = str(REPO_ROOT / "run_cli.py")
-SYNC_SV = "/Users/fundou/my_dv_proj/openrtl/NaplesPU/NaplesPU/src/deploy/uart/synchronizer.sv"
+# [P158.12] 外部 corpus 根: 环境变量可覆盖, 缺失时显式 skip (不假失败)
+OPENRTL_ROOT = Path(os.environ.get("SVQ_OPENRTL_ROOT",
+                                str(Path.home() / "my_dv_proj" / "openrtl")))
 
+pytestmark = [pytest.mark.opensource,
+            pytest.mark.skipif(not OPENRTL_ROOT.exists(), reason="external openrtl corpus missing; set SVQ_OPENRTL_ROOT")]  # NaplesPU dependency
+REPO_ROOT = Path(__file__).resolve().parents[3]
+RUN_CLI_PATH = str(REPO_ROOT / "run_cli.py")
+SYNC_SV = str(OPENRTL_ROOT / "NaplesPU/NaplesPU/src/deploy/uart/synchronizer.sv")
 
 def _run(*args):
     return subprocess.run(
@@ -35,7 +40,6 @@ def _run(*args):
         text=True,
         timeout=60,
     )
-
 
 def test_if_else_mutex_not_reported_as_contradiction():
     """synchronizer.sync0 的 if/else (reset vs !reset) 应标 [Mutex], 不标矛盾"""
@@ -47,7 +51,6 @@ def test_if_else_mutex_not_reported_as_contradiction():
     assert "[Mutex]" in r.stdout, f"应有 [Mutex] 标记, stdout={r.stdout[:500]}"
     assert "if/else 互斥分支" in r.stdout
     print("✅ controlflow if/else mutex: 标 [Mutex] 不标矛盾")
-
 
 def test_complex_negation_still_warns():
     """复杂表达式 (a && b vs !a) 不应走 if/else mutex 豁免 (因为不是简单标识符对)"""
@@ -74,7 +77,6 @@ endmodule
     # a && b 不是简单标识符, !a 是简单. 不是 mutex
     assert "[Mutex]" not in r.stdout, f"复杂条件不应 mutex, stdout={r.stdout[:500]}"
     print("✅ controlflow 复杂 negation: 不走 mutex 豁免")
-
 
 if __name__ == "__main__":
     tests = [

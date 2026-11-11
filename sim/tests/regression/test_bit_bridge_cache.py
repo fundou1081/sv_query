@@ -53,7 +53,6 @@ class TestCacheModeKey:
 
 class TestModeSwitchEndToEnd:
     def test_switch_modes_rebuilds_correct_graph(self, monkeypatch, tmp_path):
-        tmp_path.mkdir(exist_ok=True)
         monkeypatch.delenv("SVQ_BIT_BRIDGE", raising=False)
         _, g_one = _build(monkeypatch, tmp_path)
         n_one = len(g_one.nodes())
@@ -69,7 +68,6 @@ class TestModeSwitchEndToEnd:
         assert len(g_one_again.nodes()) == n_one
 
     def test_same_mode_hits_cache(self, monkeypatch, tmp_path):
-        tmp_path.mkdir(exist_ok=True)
         monkeypatch.setenv("SVQ_BIT_BRIDGE", "one")
         _, g1 = _build(monkeypatch, tmp_path)
         stats1 = ac.get_cache().cache_stats()
@@ -80,7 +78,6 @@ class TestModeSwitchEndToEnd:
         assert stats2["total_entries"] == stats1["total_entries"] == 1
 
     def test_full_mode_separate_cache_entry(self, monkeypatch, tmp_path):
-        tmp_path.mkdir(exist_ok=True)
         monkeypatch.setenv("SVQ_BIT_BRIDGE", "one")
         _build(monkeypatch, tmp_path)
         monkeypatch.setenv("SVQ_BIT_BRIDGE", "full")

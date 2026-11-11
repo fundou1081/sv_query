@@ -477,20 +477,6 @@
       "src": "Scheduler_minimal.SourceA_dut.data_o"
     },
     {
-      "assign_type": "internal",
-      "bit_slice": "",
-      "clock_domain": "",
-      "condition": "",
-      "confidence": "high",
-      "dst": "Scheduler_minimal.SourceA_dut.data_o",
-      "effective_condition": "",
-      "expression": "",
-      "function_return": false,
-      "is_function_call": false,
-      "kind": "DRIVER",
-      "src": "Scheduler_minimal.SourceA_dut.data_o"
-    },
-    {
       "assign_type": "nonblocking",
       "bit_slice": "",
       "clock_domain": "clk",
@@ -782,20 +768,6 @@
       "function_return": false,
       "is_function_call": false,
       "kind": "BIT_SELECT",
-      "src": "Scheduler_minimal.banked_store_dut.bram_addr"
-    },
-    {
-      "assign_type": "internal",
-      "bit_slice": "",
-      "clock_domain": "",
-      "condition": "",
-      "confidence": "high",
-      "dst": "Scheduler_minimal.banked_store_dut.bram_addr",
-      "effective_condition": "",
-      "expression": "",
-      "function_return": false,
-      "is_function_call": false,
-      "kind": "DRIVER",
       "src": "Scheduler_minimal.banked_store_dut.bram_addr"
     },
     {
@@ -1650,20 +1622,6 @@
       "function_return": false,
       "is_function_call": false,
       "kind": "BIT_SELECT",
-      "src": "Scheduler_minimal.directory_test_dut.is_invalidate_reg"
-    },
-    {
-      "assign_type": "internal",
-      "bit_slice": "",
-      "clock_domain": "",
-      "condition": "",
-      "confidence": "high",
-      "dst": "Scheduler_minimal.directory_test_dut.is_invalidate_reg",
-      "effective_condition": "",
-      "expression": "",
-      "function_return": false,
-      "is_function_call": false,
-      "kind": "DRIVER",
       "src": "Scheduler_minimal.directory_test_dut.is_invalidate_reg"
     },
     {
@@ -2974,20 +2932,6 @@
       "clock_domain": "",
       "condition": "",
       "confidence": "high",
-      "dst": "Scheduler_minimal.sinkA_dut.phy_tx_done",
-      "effective_condition": "",
-      "expression": "",
-      "function_return": false,
-      "is_function_call": false,
-      "kind": "DRIVER",
-      "src": "Scheduler_minimal.sinkA_dut.phy_tx_done"
-    },
-    {
-      "assign_type": "internal",
-      "bit_slice": "",
-      "clock_domain": "",
-      "condition": "",
-      "confidence": "high",
       "dst": "Scheduler_minimal.sinkA_dut",
       "effective_condition": "",
       "expression": "rst_n",
@@ -3100,20 +3044,6 @@
       "clock_domain": "",
       "condition": "",
       "confidence": "high",
-      "dst": "Scheduler_minimal.sinkD_dut.result_q",
-      "effective_condition": "",
-      "expression": "",
-      "function_return": false,
-      "is_function_call": false,
-      "kind": "DRIVER",
-      "src": "Scheduler_minimal.sinkD_dut.result_q"
-    },
-    {
-      "assign_type": "internal",
-      "bit_slice": "",
-      "clock_domain": "",
-      "condition": "",
-      "confidence": "high",
       "dst": "Scheduler_minimal.sinkD_dut",
       "effective_condition": "",
       "expression": "rst_n",
@@ -3190,20 +3120,6 @@
       "function_return": false,
       "is_function_call": false,
       "kind": "BIT_SELECT",
-      "src": "Scheduler_minimal.sourceD_dut.data_o"
-    },
-    {
-      "assign_type": "internal",
-      "bit_slice": "",
-      "clock_domain": "",
-      "condition": "",
-      "confidence": "high",
-      "dst": "Scheduler_minimal.sourceD_dut.data_o",
-      "effective_condition": "",
-      "expression": "",
-      "function_return": false,
-      "is_function_call": false,
-      "kind": "DRIVER",
       "src": "Scheduler_minimal.sourceD_dut.data_o"
     },
     {
@@ -4815,10 +4731,10 @@
       "BRANCH_RESULT": 1,
       "CLOCK": 52,
       "CONNECTION": 33,
-      "DRIVER": 67,
+      "DRIVER": 61,
       "RESET": 52
     },
-    "edges": 236,
+    "edges": 230,
     "node_kinds": {
       "CONST": 1,
       "INSTANTIATED_MODULE": 7,

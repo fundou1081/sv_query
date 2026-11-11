@@ -16,19 +16,24 @@ TDD: trace fanout/fanin 加 --include-clock/reset/control flag (Req-12 P1)
 
 import pytest
 
-pytestmark = pytest.mark.opensource  # NaplesPU dependency
 
 import subprocess
+import os
 import sys
 import warnings
 from pathlib import Path
 
 warnings.filterwarnings("ignore")
 
-REPO_ROOT = Path("/Users/fundou/my_dv_proj/sv_query")
-RUN_CLI_PATH = str(REPO_ROOT / "run_cli.py")
-SYNC_SV = "/Users/fundou/my_dv_proj/openrtl/NaplesPU/NaplesPU/src/deploy/uart/synchronizer.sv"
+# [P158.12] 外部 corpus 根: 环境变量可覆盖, 缺失时显式 skip (不假失败)
+OPENRTL_ROOT = Path(os.environ.get("SVQ_OPENRTL_ROOT",
+                                str(Path.home() / "my_dv_proj" / "openrtl")))
 
+pytestmark = [pytest.mark.opensource,
+            pytest.mark.skipif(not OPENRTL_ROOT.exists(), reason="external openrtl corpus missing; set SVQ_OPENRTL_ROOT")]  # NaplesPU dependency
+REPO_ROOT = Path(__file__).resolve().parents[3]
+RUN_CLI_PATH = str(REPO_ROOT / "run_cli.py")
+SYNC_SV = str(OPENRTL_ROOT / "NaplesPU/NaplesPU/src/deploy/uart/synchronizer.sv")
 
 def _run(*args):
     return subprocess.run(
@@ -38,14 +43,12 @@ def _run(*args):
         timeout=60,
     )
 
-
 def test_fanout_default_excludes_clock():
     """默认 trace fanout clk 报 no loads (跟原行为一致)"""
     r = _run("trace", "fanout", "synchronizer.clk", "-f", SYNC_SV)
     assert r.returncode == 0
     assert "no loads" in r.stdout or "sync0" not in r.stdout
     print("✅ trace fanout default: 排除 CLOCK 边 (无 loads)")
-
 
 def test_fanout_include_clock_shows_sensitivity():
     """--include-clock 看到 clk 的 sensitivity list 引用"""
@@ -56,7 +59,6 @@ def test_fanout_include_clock_shows_sensitivity():
     assert "data_o" in r.stdout, f"应看到 data_o, stdout={r.stdout}"
     print("✅ trace fanout --include-clock: 显示 sensitivity list 引用")
 
-
 def test_fanout_include_clock_works_on_clk():
     """--include-clock 看到 clk 的 sensitivity list 引用 (skipping rst_n 因为该 sv 里没出边)"""
     r = _run("trace", "fanout", "synchronizer.clk", "-f", SYNC_SV, "--include-reset")
@@ -66,7 +68,6 @@ def test_fanout_include_clock_works_on_clk():
     assert "no loads" in r.stdout or len(r.stdout.strip().splitlines()) <= 2
     # 主要验证 --include-reset flag 不会导致报错
     print("✅ trace fanout --include-reset: rst_n 是 input port, 无 out 边, flag 不报错")
-
 
 def test_fanout_only_clock_not_driver():
     """--include-clock 不应该让 clk 突然变 DRIVER 边"""
@@ -82,7 +83,6 @@ def test_fanout_only_clock_not_driver():
     assert len(loads) >= 1, f"应有 loads, got {loads}"
     print(f"✅ trace fanout --include-clock JSON: {len(loads)} loads")
 
-
 def test_fanout_help_mentions_include_flags():
     """trace fanout --help 应文档化 --include-clock/reset/control"""
     r = _run("trace", "fanout", "--help")
@@ -93,7 +93,6 @@ def test_fanout_help_mentions_include_flags():
     # docstring 应说明默认行为
     assert "DRIVER" in r.stdout and "CLOCK" in r.stdout, "help 应说明 default 排除 CLOCK"
     print("✅ trace fanout --help: 文档化 include flags")
-
 
 if __name__ == "__main__":
     tests = [

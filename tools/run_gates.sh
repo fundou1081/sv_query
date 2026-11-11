@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Single canonical gate entry (P158.10). CI and local use the same command.
+# [P158.12 / R-024] -p no:randomly 现在真正生效: pytest-randomly 已入 dev 依赖
+# (pyproject addopts 默认也禁用); 随机顺序需显式 "-p randomly"。
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

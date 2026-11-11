@@ -1,7 +1,7 @@
 # ruff: noqa: E402
+import os
 import pytest
 
-pytestmark = pytest.mark.opensource
 """
 [Validation 2026-07-10] Verify Ventus GPGPU visualizations against source code.
 
@@ -14,25 +14,27 @@ import re
 import unittest
 from pathlib import Path
 
-VENTUS = Path("/Users/fundou/my_dv_proj/openrtl/ventus-gpgpu-verilog")
+# [P158.12] 外部 corpus 根: 环境变量可覆盖, 缺失时显式 skip (不假失败)
+OPENRTL_ROOT = Path(os.environ.get("SVQ_OPENRTL_ROOT",
+                                str(Path.home() / "my_dv_proj" / "openrtl")))
 
+pytestmark = [pytest.mark.opensource,
+            pytest.mark.skipif(not OPENRTL_ROOT.exists(), reason="external openrtl corpus missing; set SVQ_OPENRTL_ROOT")]
+VENTUS = OPENRTL_ROOT / "ventus-gpgpu-verilog"
 
 def read_text(path: Path) -> str:
     assert path.exists(), f"Source file missing: {path}"
     return path.read_text()
-
 
 def extract_dut_instances(source: str) -> set[str]:
     """Extract all `ModuleName inst_name_dut(` instantiations."""
     pattern = r"^\s*(\w+)\s+(\w+_dut)\s*\("
     return {f"{m}.{n}" for m, n in re.findall(pattern, source, re.MULTILINE)}
 
-
 def has_signal_decl(source: str, sig: str, kind: str) -> bool:
     """Check if signal is declared as `kind` (wire/reg)."""
     pattern = rf"^\s*{kind}\s+\S*{re.escape(sig)}\b"
     return bool(re.search(pattern, source, re.MULTILINE))
-
 
 def evaluate_define(defines: str, expr: str) -> int:
     """Evaluate simple `EXPR = A op B` macro defines."""
@@ -52,7 +54,6 @@ def evaluate_define(defines: str, expr: str) -> int:
             return int(eval_op(evaluate_define(defines, left.strip()), op, evaluate_define(defines, right.strip())))
     raise ValueError(f"Cannot evaluate: {val}")
 
-
 def eval_op(a: int, op: str, b: int) -> int:
     if op == "+":
         return a + b
@@ -65,7 +66,6 @@ def eval_op(a: int, op: str, b: int) -> int:
     if op == "%":
         return a % b
     raise ValueError(f"Unknown op: {op}")
-
 
 class TestVentusSchedulerVizAccuracy(unittest.TestCase):
     """Validate sv_query's Scheduler arch/chain against actual SV source."""
@@ -134,7 +134,6 @@ class TestVentusSchedulerVizAccuracy(unittest.TestCase):
         # Verify it's an instantiation, not a forward declaration
         self.assertNotIn("`include", source.split("fixed_pri_arb")[1].split("memReqArb")[0],
                         "fixed_pri_arb should be instantiated, not included")
-
 
 if __name__ == "__main__":
     unittest.main()

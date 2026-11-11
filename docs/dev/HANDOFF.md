@@ -22,7 +22,7 @@ P158.12 P2 清理、17 个 opensource skip 处置（11.2b timeout 与 9.2 快照
 当前测试：
 
 ```text
-canonical:   2678 passed / 0 skipped / 131 deselected / 0 failed
+canonical:   2710 passed / 0 skipped / 131 deselected / 0 failed
 opensource:  114 passed / 17 skipped / 0 failed
 ```
 
@@ -136,15 +136,23 @@ d1325aaf — docs(P159): record full pitfalls and lessons history
 
 建议按这个顺序：
 
-1. **26 个测试文件**硬编码 `/Users/fundou/...` → 仓库相对路径
-   （2026-11-11 实测 `grep -rl "/Users/fundou" sim/tests --include=*.py | wc -l` = 26；
-   旧文档写 20/23 都不准）；
-2. `-p no:randomly` no-op：移除 flag 或真正安装插件（实测 `pytest_randomly` 未安装）；
+1. ~~**26 个测试文件**硬编码 `/Users/fundou/...`~~ **已解决（2026-11-12，P158.12.2）**：
+   仓库相对推导 + `SVQ_OPENRTL_ROOT`（默认 `~/my_dv_proj/openrtl`）+ 缺失显式 skip；
+2. ~~`-p no:randomly` no-op~~ **已解决（2026-11-12，P158.12.3）**：pytest-randomly 入
+   dev 依赖，addopts 默认禁用随机（随机压力用 `-p randomly`）；auto-bless 核查为非问题；
 3. ~~`trace impact` heuristic 在 core~~ **已解决（2026-11-11，P158.12.1）**：降级 exp，
    `kind=experimental`、默认隐藏、`--include-exp` 列出；KNOWN_LIMITATIONS §3.4 已加处置注记；
-4. 408 条空 expression 的 self-loop：**先补复现命令/基线文件**再调查（当前文档没有入口，接手无法验证）；
-5. `false_confident` 指标在 task exception 时漏计；
-6. 文档/help/skills 漂移。
+4. ~~408 条空 expression 的 self-loop~~ **已解决（2026-11-12，P158.12.4）**：
+   connection_extractor 对实例 output port 恒加 `child_signal_id→inst_port_id`（两者同串），
+   零信息自环；跳过后 408 模式归零，真实自依赖（带 expression）不受影响；
+   复现/回归 = `test_p158_12_selfloop.py`；
+5. ~~`false_confident` 指标在 task exception 时漏计~~ **最小面已解决（P158.12.5）**：
+   runner 异常留行（rc=130 + task_error 标记）不挂整轮；**分母语义**（无答案算不算
+   false_confident）待拍板，挂 R-028；
+6. 文档/help/skills 漂移：docs/help 已由 P164 收口；**skills 层仍漂移**（P158.12.7，
+   命令面已 39+6；被撤销的经验回放分支 `replay/agent-3530f163` 有现成内容可参考重做）。
+
+剩余：**P158.12.6（R-028 绿色口径统一）与 P158.12.7（skills 漂移）**。
 
 ### 5.4 17 个 opensource skip 分类
 
@@ -211,7 +219,7 @@ python3 -m pytest sim/tests/ -m "opensource" -q -p no:randomly
 当前期望：
 
 ```text
-canonical:   2678 passed / 0 failed
+canonical:   2710 passed / 0 failed
 opensource:  114 passed / 0 failed / 17 explicit skips
 ```
 

@@ -28,8 +28,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 
 from trace.unified_tracer import UnifiedTracer  # noqa: E402
 
-ZIPCPU_RTL = Path("/Users/fundou/my_dv_proj/openrtl/zipcpu/rtl")
-
+ZIPCPU_RTL = Path(os.environ.get("SVQ_OPENRTL_ROOT",
+                       str(Path.home() / "my_dv_proj" / "openrtl"))) / "zipcpu/rtl"
 
 @pytest.fixture(scope="module")
 def zipcpu_graph():
@@ -47,7 +47,6 @@ def zipcpu_graph():
     # 的 generate 展开 (节点 id 带实例路径前缀)。
     tracer.build_graph()  # strict=True (默认) — 编译不过即抛错
     return tracer.get_graph()
-
 
 class TestRealWorldGenerateStrict:
     """[iter_069] 真实 generate RTL strict 编译 + 图行为"""
@@ -88,3 +87,7 @@ class TestRealWorldGenerateStrict:
             if e and e.kind == EdgeKind.DRIVER:
                 driver_edges += 1
         assert driver_edges > 100, f"真实 RTL 应有大量 DRIVER 边, 实际 {driver_edges}"
+
+pytestmark = pytest.mark.skipif(
+    not ZIPCPU_RTL.exists(),
+    reason="external zipcpu corpus missing; set SVQ_OPENRTL_ROOT")

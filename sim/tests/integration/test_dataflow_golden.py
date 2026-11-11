@@ -21,6 +21,7 @@ import itertools
 import os
 import re
 import subprocess
+from pathlib import Path
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "src"))
@@ -28,7 +29,7 @@ import pytest
 
 pytestmark = pytest.mark.golden
 
-PROJ = "/Users/fundou/my_dv_proj/sv_query"
+PROJ = str(Path(__file__).resolve().parents[3])
 GOLDEN_SV = "/tmp/cdc_test/golden_priority.sv"
 GOLDEN_MUX5_FILE = "/tmp/cdc_test/golden_mux5.sv"
 

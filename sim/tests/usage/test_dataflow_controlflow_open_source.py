@@ -15,19 +15,23 @@ test_dataflow_controlflow_open_source.py - dataflow/controlflow on real OSS proj
 """
 import json
 import subprocess
+import os
 import sys
 from pathlib import Path
 
 import pytest
 
-pytestmark = pytest.mark.opensource
+# [P158.12] 外部 corpus 根: 环境变量可覆盖, 缺失时显式 skip (不假失败)
+OPENRTL_ROOT = Path(os.environ.get("SVQ_OPENRTL_ROOT",
+                                str(Path.home() / "my_dv_proj" / "openrtl")))
+pytestmark = [pytest.mark.opensource,
+            pytest.mark.skipif(not OPENRTL_ROOT.exists(), reason="external openrtl corpus missing; set SVQ_OPENRTL_ROOT")]
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 FILELIST_DIR = PROJECT_ROOT / "sim" / "tests" / "pyslang_type_fixtures" / "industrial_filelists"
-PICO_FILE = Path("/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v")
+PICO_FILE = OPENRTL_ROOT / "picorv32/picorv32.v"
 GOLDEN_DIR = PROJECT_ROOT / "sim" / "tests" / "golden" / "dataflow_open_source"
 GOLDEN_DIR.mkdir(parents=True, exist_ok=True)
-
 
 def _run(*args, timeout=90) -> subprocess.CompletedProcess:
     """Run sv_query with given args."""
@@ -36,7 +40,6 @@ def _run(*args, timeout=90) -> subprocess.CompletedProcess:
         capture_output=True, text=True, timeout=timeout,
         cwd=str(PROJECT_ROOT),
     )
-
 
 # ============================================================================
 # 正面 (Positive)
@@ -57,7 +60,6 @@ def test_p1_naplespu_dataflow_analyze():
     assert n >= 1
     print(f"✅ P1 NaplesPU dataflow: {n} paths sync0→data_o")
 
-
 def test_p2_naplespu_controlflow_analyze():
     """P2: NaplesPU synchronizer.sync0 controlflow (已有, 跑通)."""
     r = _run("controlflow", "analyze",
@@ -67,7 +69,6 @@ def test_p2_naplespu_controlflow_analyze():
     # 4 个 conditional drivers (case 1/2 + clk + reset)
     assert "ControlFlow Analysis" in r.stdout
     print("✅ P2 NaplesPU controlflow: 跑通 (4 conditional drivers)")
-
 
 def test_p3_opentitan_arbiter_dataflow_analyze():
     """P3: OpenTitan prim_arbiter_tree req_i→gnt_o dataflow (3 paths)."""
@@ -82,7 +83,6 @@ def test_p3_opentitan_arbiter_dataflow_analyze():
     assert n >= 1, f"expected >= 1 paths, got {n}"
     print(f"✅ P3 OpenTitan prim_arbiter_tree dataflow: {n} paths req_i→gnt_o")
 
-
 def test_p4_opentitan_arbiter_controlflow_analyze():
     """P4: OpenTitan prim_arbiter_tree.req_i controlflow (no conditional)."""
     r = _run("controlflow", "analyze",
@@ -92,7 +92,6 @@ def test_p4_opentitan_arbiter_controlflow_analyze():
     # prim_arbiter_tree.req_i 是 input port, 没 conditional driver
     assert "ControlFlow Analysis" in r.stdout
     print("✅ P4 OpenTitan prim_arbiter_tree controlflow: 跑通 (no conditional)")
-
 
 def test_p5_opentitan_full_dataflow_analyze():
     """P5: OpenTitan prim_full (含 prim_arbiter_tree 子模块) dataflow."""
@@ -105,7 +104,6 @@ def test_p5_opentitan_full_dataflow_analyze():
     n = int(paths_line.split("Paths:")[1].strip())
     assert n >= 1
     print(f"✅ P5 OpenTitan prim_full dataflow: {n} paths")
-
 
 def _skip_tlul_if_fixture_incomplete(r):
     err = r.stderr + r.stdout
@@ -136,7 +134,6 @@ def test_p6_opentitan_tlul_controlflow_list_conditioned():
         assert sig in r.stdout, f"expected {sig} in output"
     print("✅ P6 OpenTitan tlul controlflow list-conditioned: 4 signals found")
 
-
 def test_p7_picorv32_dataflow_analyze():
     """P7: PicoRV32 picorv32.clk → mem_valid dataflow (单文件模式, 101 warnings 容忍).
 
@@ -154,7 +151,6 @@ def test_p7_picorv32_dataflow_analyze():
     assert "Reachable:" in r.stdout
     print("✅ P7 PicoRV32 dataflow: 跑通 (单文件模式)")
 
-
 def test_p8_picorv32_controlflow_list_conditioned():
     """P8: PicoRV32 controlflow list-conditioned (9+ signals)."""
     if not PICO_FILE.exists():
@@ -168,7 +164,6 @@ def test_p8_picorv32_controlflow_list_conditioned():
         assert sig in r.stdout, f"expected {sig}"
     print("✅ P8 PicoRV32 controlflow list-conditioned: 跑通")
 
-
 def test_p9_opentitan_maxtree_dataflow_unreachable():
     """P9: OpenTitan prim_max_tree clk_i→max_idx_o (0 paths, reachable=False)."""
     r = _run("dataflow", "analyze",
@@ -179,7 +174,6 @@ def test_p9_opentitan_maxtree_dataflow_unreachable():
     assert "Reachable: False" in r.stdout
     print("✅ P9 OpenTitan prim_max_tree dataflow: clk_i→max_idx_o reachable=False (时序, 正确)")
 
-
 def test_p10_naplespu_logger_dataflow():
     """P10: NaplesPU logger dataflow (第二 filelist, 验证子项目覆盖)."""
     r = _run("dataflow", "analyze",
@@ -188,7 +182,6 @@ def test_p10_naplespu_logger_dataflow():
     # 真存在 signal (从 error hint 拿的)
     assert r.returncode == 0, f"rc={r.returncode} stderr={r.stderr[:300]}"
     print("✅ P10 NaplesPU logger dataflow: 跑通 (真 hierarchical signal)")
-
 
 # ============================================================================
 # 反面 (Negative) - 5 项目各 1
@@ -205,7 +198,6 @@ def test_n1_naplespu_dataflow_nonexistent_signal():
     assert "Available signals" in err or "available" in err.lower()
     print("✅ N1 NaplesPU: nonexistent signal → 友好错误")
 
-
 def test_n2_opentitan_arbiter_dataflow_nonexistent_signal():
     """N2: OpenTitan prim_arbiter_tree 不存在 signal → 友好错误."""
     r = _run("dataflow", "analyze",
@@ -216,7 +208,6 @@ def test_n2_opentitan_arbiter_dataflow_nonexistent_signal():
     assert "not found" in err.lower()
     assert "prim_arbiter_tree" in err  # 提示相关 module
     print("✅ N2 OpenTitan prim_arbiter_tree: nonexistent signal → 友好错误")
-
 
 def test_n3_opentitan_tlul_dataflow_unresolvable():
     """N3: OpenTitan tlul (37 errors) dataflow 应能跑 + 错误信息."""
@@ -230,7 +221,6 @@ def test_n3_opentitan_tlul_dataflow_unresolvable():
     assert "not found" in err.lower()
     print("✅ N3 OpenTitan tlul (37 errors): dataflow 仍能跑 + nonexistent signal 错误")
 
-
 def test_n4_picorv32_controlflow_nonexistent_signal():
     """N4: nonexistent signal must be an explicit error, not silent empty output."""
     if not PICO_FILE.exists():
@@ -242,7 +232,6 @@ def test_n4_picorv32_controlflow_nonexistent_signal():
     assert r.returncode == 1
     assert "not found" in (r.stdout + r.stderr).lower()
     print("✅ N4 PicoRV32: controlflow nonexistent sig → explicit not_found")
-
 
 def test_n5_cross_project_dataflow_consistent():
     """N5: dataflow 不混 project (NaplesPU signal 在 OpenTitan 跑 → not found)."""
@@ -256,7 +245,6 @@ def test_n5_cross_project_dataflow_consistent():
     assert "not found" in err.lower()
     print("✅ N5 跨 project: NaplesPU signal 在 OpenTitan 跑 → not found (正确隔离)")
 
-
 # ============================================================================
 # Golden baseline
 # ============================================================================
@@ -267,7 +255,6 @@ def _read_golden_dataflow_data() -> dict:
     if not path.exists():
         pytest.fail(f"missing golden {path.name}; regenerate deliberately after review")
     return json.loads(path.read_text())
-
 
 def test_golden_dataflow_arbiter():
     """Golden: OpenTitan prim_arbiter_tree req_i→gnt_o dataflow 跟 baseline 一致."""
@@ -287,7 +274,6 @@ def test_golden_dataflow_arbiter():
     if actual != golden:
         pytest.fail(f"Golden mismatch:\n  actual: {actual}\n  golden: {golden}")
     print(f"✅ Golden dataflow arbiter: {actual['paths_count']} paths, {actual['n_intermediate']} intermediate")
-
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])

@@ -3,27 +3,32 @@
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **交接状态**: [docs/dev/HANDOFF.md](docs/dev/HANDOFF.md) — 剩余工作、环境、worker 协议。
-> **最后更新**: 2026-11-11 23:55 GMT+8 (P158.9.2 完成)
+> **最后更新**: 2026-11-12 00:45 GMT+8 (P158.12.2~12.5 完成)
 
 ---
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P158.12 P2 清理** `<待做>`
-  - 剩余：26 个测试文件硬编码 `/Users/fundou` 路径、`-p no:randomly` no-op、
-    空 expression self-loop；12.1（trace impact 降 exp）已完成
-  - 按 HANDOFF §12 顺序：~~P158.11.2b~~ → ~~P158.9.2~~ → P158.12 → 17 skip 分类
+- **当前 item**: **P158.12.6 R-028 绿色口径统一**（报告分离
+  passed/failed/unknown/skipped/unexecuted）`<待做>`
+  - 按 HANDOFF §12 顺序：~~P158.11.2b~~ → ~~P158.9.2~~ → ~~P158.12 核心项~~ → 12.6/12.7 → 17 skip 分类
+  - 剩余：12.6 口径统一（benchmark 报告语义，需方豆确认 false_confident 分母）；
+    12.7 skills 文档漂移（命令面 39+6；可参考 `replay/agent-3530f163` 旁路分支重做）
 
-### 已完成（本轮 P158.9.2，iter_493）
+### 已完成（本轮 P158.12.2~12.5，iter_494）
 
-- `to_dict/from_dict` 补齐：condition_chain / source(SignalSource) /
-  function_return / is_function_call / node+edge extra（JSON-safe 过滤）
-- 显式不保证：condition_ast（运行期 AST）、class/covergroup 状态（恒 None）
-- `docs/dev/SNAPSHOT_SURFACE.md`：字段级 + 命令级快照能力面矩阵（单一权威）
-- 机械 gate：`test_p158_9_2_snapshot_surface.py` 10 项（往返保真 / 旧格式兼容 /
-  CLI live-vs-snapshot parity）
-- 实测证据：condition_chain 丢 32/32 → 0；source 丢 44/44 → 0；
-  effective_condition 重算 72/72；快照体积 +33%（64MB 上限不变）
+- **12.2 硬编码路径清零**：26 个测试文件 → 仓库相对推导 +
+  `SVQ_OPENRTL_ROOT`（默认 `~/my_dv_proj/openrtl`）+ 缺失显式 skip
+  （实测 `/nonexistent` → 14 skipped 0 failed）
+- **12.3 no:randomly**：pytest-randomly 5.1.0 入 dev 依赖，addopts 默认禁用随机；
+  auto-bless 核查为非问题（graph_snapshot 本就显式拒绝）
+- **12.4 空 expression 自环清除（R-026）**：connection_extractor 对实例 output port
+  恒加同串自环边（408 条模式）→ 跳过；真实自依赖不受影响；
+  `test_p158_12_selfloop.py` 4 项回归；**golden fanin_2signals 重生成
+  （cycles_detected true→false，原 true 即假自环伪装）**；
+  drivers_dominate 阈值 30%→25%（原值靠假自环虚增）
+- **12.5 R-027 最小面**：benchmark runner task 异常留行计数（rc=130 + task_error），
+  不再让单任务异常挂整轮
 
 ### 长期挂起 / 已放弃（不再作为"下一步"）
 
@@ -42,7 +47,8 @@
 - **命令面**: 45 命令 = core 39 + exp 6（audit / diagnose / trace overview / review render / architecture graph /
   trace impact——**2026-11-11 降级**：未标定启发式不得伪装稳定，见 KNOWN_LIMITATIONS §3.4）
 - **环境**: `python3` 必须是装了 typer/pyslang 的解释器（本机 `~/miniconda3/bin/python3`），
-  否则 CLI 子进程测试会成片假失败
+  否则 CLI 子进程测试会成片假失败；外部 corpus 在 `SVQ_OPENRTL_ROOT`
+  （默认 `~/my_dv_proj/openrtl`），缺失时相关测试显式 skip
 - **当前重点**: P158.9.2 已完成（快照往返保真 + SNAPSHOT_SURFACE.md 矩阵）；下一步 P158.12 P2 清理
 
 ---

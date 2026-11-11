@@ -22,7 +22,7 @@ from pathlib import Path
 
 warnings.filterwarnings("ignore")
 
-REPO_ROOT = Path("/Users/fundou/my_dv_proj/sv_query")
+REPO_ROOT = Path(__file__).resolve().parents[3]
 RUN_CLI_PATH = str(REPO_ROOT / "run_cli.py")
 # 让 `from cli.core.diagnose.timescale import ...` 能工作
 SRC_DIR = str(REPO_ROOT / "src")

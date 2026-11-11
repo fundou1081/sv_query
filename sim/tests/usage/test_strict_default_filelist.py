@@ -33,7 +33,7 @@ import pytest
 
 warnings.filterwarnings("ignore")
 
-REPO_ROOT = Path("/Users/fundou/my_dv_proj/sv_query").resolve()
+REPO_ROOT = Path(__file__).resolve().parents[3].resolve()
 RUN_CLI_PATH = str(REPO_ROOT / "run_cli.py")
 FIXTURE_DIR = REPO_ROOT / "sim" / "tests" / "fixtures" / "strict_uart"
 

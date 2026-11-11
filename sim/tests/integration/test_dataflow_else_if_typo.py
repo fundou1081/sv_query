@@ -20,7 +20,7 @@ import pytest
 TYPO4_FILE = "/tmp/cdc_test/typo4.sv"
 NESTED_NOT2_FILE = "/tmp/cdc_test/nested_not2.sv"
 TYPO3_FILE = "/tmp/cdc_test/typo3.sv"
-PRJ_ROOT = Path("/Users/fundou/my_dv_proj/sv_query")
+PRJ_ROOT = Path(__file__).resolve().parents[3]
 
 
 def _run_dataflow(fr, to, f):
