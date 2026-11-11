@@ -115,6 +115,12 @@ fanout 额外：`loads[]`。
 - result：`from_signal/to_signal/from_resolved/to_resolved/bits/is_reachable/paths_count/
   intermediate_signals/primary_latency_cycles/primary_is_async/all_conditions/clock_domain/
   timing_risk/paths`
+- [P158.11.2b] 有界搜索字段：`search_status`（`complete|truncated|unknown`）、
+  `truncated`、`truncation_reason`（`max_expansions_reached|deadline_reached|
+  max_paths_reached|max_depth_reached`，空串=完整）、`expansions`、`elapsed_s`
+  - `is_reachable` 是**三态**：`true` / `false`（搜索完成后确认无路径）/ `null`（未查完）；
+    `null` 时 result 内附 `machine.unknown_kind="search_budget_exhausted"`。
+  - 对应参数：`--max-expansions`（默认 200000）、`--timeout`（秒，可选）
 - path：`path_id/segments/distance/has_conditional/latency_cycles/is_async_crossing/
   latency_note/stage_breakdown`
 - segment：`from_signal/to_signal/driver/condition/timing/assign_type/distance`，

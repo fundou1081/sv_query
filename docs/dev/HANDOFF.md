@@ -16,7 +16,7 @@
 sv_query 是 agent 的 RTL 查询 + 客观校验层；
 核心语义契约、数据边、确定性、snapshot MIG、真实 corpus 已经落地；
 当前不是“完成品”，剩余工作集中在：
-P158.11.2b 通用长查询 timeout、P158.9 snapshot surface 矩阵、P158.12 P2 清理。
+P158.9 snapshot surface 矩阵、P158.12 P2 清理（11.2b 长查询 timeout 已完成）。
 ```
 
 当前测试：
@@ -105,31 +105,22 @@ d1325aaf — docs(P159): record full pitfalls and lessons history
 
 ## 5. 剩余工作
 
-### 5.1 P158.11.2b：通用长查询 timeout（最高优先）
+### 5.1 P158.11.2b：通用长查询 timeout（✅ 已完成，2026-11-11）
 
-问题：
+落地（commit 见 git log `feat(P158.11.2b)`）：
 
-```text
-paths 已有 budget/timeout；
-dataflow._find_paths(cutoff=50) 只有路径条数上限，没有 work budget / deadline；
-dataflow analyze 的 CLI 也没有 --timeout（2026-11-11 实测）；
-其他长查询没有统一 wall-clock guard。
-```
+- `src/trace/core/graph/search_budget.py::SearchBudget`：预算记账唯一实现
+  （从 MIG 的 `_SearchBudget` 抽出共享，旧名保留别名）；
+- `dataflow._find_paths` 全部 `list(nx.all_simple_paths(...))` 替换为同遍历序的有界 DFS
+  `_bounded_simple_paths`（每考察一条出边记 1 次 expansion）；
+- `DataFlowResult` 新增 `truncated / truncation_reason / expansions / search_status`；
+  耗尽时 `is_reachable=None`（unknown），不再伪装 `found:false`；
+- CLI `dataflow analyze` 新增 `--max-expansions`（默认 200000）/ `--timeout`（秒），
+  JSON 输出同步截断字段；json_contract / capabilities result_fields 已同步；
+- 机械 gate：`sim/tests/unit/test_p158_11_dataflow_budget.py`（diamond fixture，
+  max_paths 截断 / expansions 耗尽 / timeout=0 → unknown）。
 
-目标：
-
-- dataflow（和其他长查询）有显式 work budget / timeout；
-- 超限返回 `truncated`/`unknown_kind:"search_budget_exhausted"`；
-- 不把预算耗尽伪装成 `found:false` 或静默截断。
-
-验收：
-
-```text
-- 大图 dataflow 不无限运行；
-- 预算耗尽时 JSON 有 truncated/reason；
-- 有 true-positive 测试（构造超预算图必须可见）；
-- canonical 全量仍 0 failed。
-```
+边界：`verify` / `subgraph` 等其余命令若将来出现无界枚举，同样走 `SearchBudget`。
 
 ### 5.2 P158.9.2：snapshot surface 矩阵（9.1 已完成）
 
@@ -339,7 +330,8 @@ python3 tools/agent/run_spi_corpus.py --json
 - 不要在 core 里做 OpenTitan 特定推断；
 - 不要静默覆盖用户文件；
 - 不要把 worker APPROVE 当真实项目通过；
-- 不要在 P158.11.2b 未完成前声称“所有查询都有界”。
+- “所有查询都有界”仍需谨慎表述：paths/frontier/dataflow 有 gate；
+  新增长查询必须复用 `SearchBudget`（见 SEMANTIC_CONTRACTS §3）。
 
 ---
 
@@ -347,11 +339,11 @@ python3 tools/agent/run_spi_corpus.py --json
 
 ```text
 0. 文档状态校准（P164，2026-11-11 已完成：PLAN/CURRENT_TODO/契约/基线/HANDOFF 对齐）
-1. P158.11.2b generic timeout
+1. P158.11.2b generic timeout（2026-11-11 已完成）
 2. P158.9 snapshot surface 矩阵（9.2）
 3. P158.12 P2 清理
 4. 17 个 skip 分类
 ```
 
-如果只接一个任务，选 **P158.11.2b**：
-它是当前唯一仍可能导致长查询无上界的核心问题。
+如果只接一个任务，选 **P158.9.2 snapshot surface 矩阵**：
+`--from-snapshot` 覆盖不一致是当前最影响 agent 可用性的缺口。

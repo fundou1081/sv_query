@@ -127,6 +127,11 @@ dataflow analyze        → 不生成该路径、不报 latency_cycles
 
 **验收**：P158.2 在 SPI 7.6k 节点快照上，任意无向查询必须在声明的预算内返回，
 并有明确 `truncated` 或 `unknown`，不得静默卡死。
+P158.11.2b 起 `dataflow analyze` 同样有界：`SearchBudget`（共享自 MIG 的
+`_SearchBudget`），CLI 暴露 `--max-expansions` / `--timeout`，截断时输出
+`truncated:true + truncation_reason + expansions`；机械 gate 见
+`sim/tests/unit/test_p158_11_dataflow_budget.py`（diamond fixture，
+覆盖 max_paths 截断 / expansions 耗尽 / timeout=0 → unknown）。
 
 ---
 
@@ -321,7 +326,7 @@ worker / reviewer 的 `APPROVE` 不是证据。必须提供：
 | true-positive/mutation | `test_p158_data_edge_contract`（mutation）+ legacy snapshot 回归 | ✅ P158.8 |
 | snapshot surface/schema | `cli/test_json_contract.py` + `regression/test_schema_contract_resolution.py`（9.1） | ⚠️ 部分 P158.9（surface 矩阵 9.2 待做） |
 | CI 一致性 | `.github/workflows/tests.yml` → `bash tools/run_gates.sh`（同一命令，`SVQ_GATE_BASE`） | ✅ P158.10 |
-| 长查询有界 | paths/frontier 有 gate；dataflow 无 budget | ⚠️ 部分 P158.11（11.2b 待做） |
+| 长查询有界 | `test_p158_11_dataflow_budget`（dataflow budget/timeout）+ paths/frontier gate | ✅ P158.11 |
 | P2 清理 | — | ❌ P158.12 |
 
 **规则**：没有机械 gate 的契约，在 P158 完成前只能算“目标契约”，

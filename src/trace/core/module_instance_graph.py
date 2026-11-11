@@ -25,6 +25,7 @@ import networkx as nx
 
 from .._safe import _safe_attr, _safe_str, safe_attr, safe_str
 from .graph import contracts
+from .graph.search_budget import SearchBudget
 
 logger = logging.getLogger(__name__)
 
@@ -319,61 +320,9 @@ class PathSearchResult:
     mode: str = "structural"
 
 
-class _SearchBudget:
-    """路径枚举的 work budget + wall-clock deadline (P158.2)。
-
-    只做**记账**: 谁耗尽了预算、为什么耗尽。截断必须显式可见,
-    不允许静默 cap。
-
-    原因优先级 (硬预算 > 软上限):
-      1. `deadline_reached`     — wall-clock 超时 (搜索被中止)
-      2. `max_expansions_reached` — work budget 耗尽 (搜索被中止)
-      3. `max_paths_reached`    — 结果数收满, 但确认还有更多路径
-      4. `max_depth_reached`    — 深度上限剪掉分支 (可能漏路径)
-    """
-
-    #: 硬预算 (中止搜索) 优先于软上限 (剪枝/收满)
-    _HARD = ("deadline_reached", "max_expansions_reached")
-    _SOFT = ("max_paths_reached", "max_depth_reached")
-
-    def __init__(self, max_expansions: int, deadline: float | None,
-                 max_paths: int, max_depth: int):
-        self.max_expansions = max_expansions
-        self.deadline = deadline
-        self.max_paths = max_paths
-        self.max_depth = max_depth
-        self.expansions = 0
-        self._reasons: set[str] = set()
-        self._start = time.monotonic()
-
-    def note(self, reason: str) -> None:
-        """记录截断原因 (可多个; 优先级见类 docstring)。"""
-        self._reasons.add(reason)
-
-    @property
-    def reason(self) -> str:
-        """返回优先级最高的截断原因 (空串 = 未截断)。"""
-        for candidate in self._HARD + self._SOFT:
-            if candidate in self._reasons:
-                return candidate
-        if self.deadline is not None and time.monotonic() > self.deadline:
-            return "deadline_reached"
-        return ""
-
-    @property
-    def exhausted(self) -> bool:
-        """预算是否耗尽 (work budget 或 wall-clock deadline)。"""
-        if self.expansions >= self.max_expansions:
-            self.note("max_expansions_reached")
-            return True
-        if self.deadline is not None and time.monotonic() > self.deadline:
-            self.note("deadline_reached")
-            return True
-        return False
-
-    @property
-    def truncated(self) -> bool:
-        return bool(self.reason)
+# 预算记账的唯一实现 (P158.2 引入, P158.11.2b 抽出共享);
+# 兼容旧名 `_SearchBudget`, 新代码请直接用 `SearchBudget`。
+_SearchBudget = SearchBudget
 
 
 class PathResolver:

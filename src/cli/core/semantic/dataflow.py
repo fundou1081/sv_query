@@ -59,7 +59,14 @@ def output_text(data: dict, human: bool = False, tree: bool = False) -> None:
         intermediate = result.get("intermediate_signals", [])
 
         print(f"DataFlow: {from_sig} → {to_sig}")
-        print(f"  Reachable: {is_reachable}")
+        if is_reachable is None:
+            print("  Reachable: unknown (search budget exhausted)"
+                  f" [{result.get('truncation_reason', '')}]")
+        else:
+            print(f"  Reachable: {is_reachable}")
+        if result.get("truncated"):
+            print(f"  Truncated: {result.get('truncation_reason', '')}"
+                  f" (expansions={result.get('expansions')})")
         print(f"  Paths: {paths_count}")
         print(f"  Clock Domain: {clock_domain}")
         print(f"  Timing Risk: {timing_risk}")
@@ -136,6 +143,12 @@ def analyze(
 
     log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
     max_paths: int = typer.Option(100, "--max-paths", "-n", help="Maximum number of paths to return"),
+    max_expansions: int = typer.Option(
+        200_000, "--max-expansions",
+        help="[P158.11.2b] 搜索 work budget (考察的出边数); 耗尽时返回 truncated, 无路径时为 unknown"),
+    timeout_s: float = typer.Option(
+        None, "--timeout",
+        help="[P158.11.2b] wall-clock 秒数上限; 超时返回 truncated, 无路径时为 unknown"),
     bits: str = typer.Option(
         None, "--bits",
         help="[iter_309 P15] 位级端点: src_bit,dst_bit；位节点缺失时回落总线并标 coarse_fallback"),
@@ -185,7 +198,8 @@ def analyze(
 
     dfg = DataFlowGraph(tracer._graph, tracer._module_graph)
     try:
-        result = dfg.analyze(from_id, to_id, max_paths=max_paths)
+        result = dfg.analyze(from_id, to_id, max_paths=max_paths,
+                             max_expansions=max_expansions, timeout_s=timeout_s)
     except ValueError as e:
         # [ADD 2026-06-11 Req-11] 信号名不存在的友好错误 (Issue 20)
         # ValueError 已含 hint 和 available signals, 不暴露 traceback
@@ -233,7 +247,8 @@ def analyze(
         "params": {"from_signal": from_signal, "to_signal": to_signal, "bits": bits,
                    "file": str(file) if file else None, "filelist": filelist,
                    "from_snapshot": from_snapshot,
-                   "max_paths": max_paths, "evidence": evidence},
+                   "max_paths": max_paths, "max_expansions": max_expansions,
+                   "timeout": timeout_s, "evidence": evidence},
         "result": {
             "from_signal": result.from_signal,
             "to_signal": result.to_signal,
@@ -242,7 +257,13 @@ def analyze(
             "bits": {"src": src_info, "dst": dst_info,
                      "coarse_fallback": bool(src_info["coarse_fallback"]
                                              or dst_info["coarse_fallback"])},
+            # [P158.11.2b] is_reachable 三态: true / false / null(未查完)
             "is_reachable": result.is_reachable,
+            "search_status": result.search_status,
+            "truncated": result.truncated,
+            "truncation_reason": result.truncation_reason,
+            "expansions": result.expansions,
+            "elapsed_s": result.elapsed_s,
             "paths_count": result.paths_count,
             "intermediate_signals": sorted(result.intermediate_signals),
             # [ADD 2026-07-04] latency summary at top level
@@ -255,6 +276,14 @@ def analyze(
         },
         "errors": [],
     }
+
+    if result.search_status == "unknown":
+        # [P158.11.2b] 预算/超时耗尽 ≠ 不可达 (SEMANTIC_CONTRACTS §3.3):
+        # is_reachable=null 且显式标 unknown，不要把"没查完"当成 found:false。
+        data["result"]["machine"] = {
+            "unknown_kind": "search_budget_exhausted",
+            "truncation_reason": result.truncation_reason,
+        }
 
     if json_output:
         emit_json(data, pretty)
