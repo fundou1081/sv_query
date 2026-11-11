@@ -484,6 +484,7 @@ P157 canonical skip cleanup <已完成>
 
 
 P158 review remediation backlog <待做>
+-- P158.0 纪律语义契约升级 <已完成>
 -- P158.1 数据边策略 + CLOCK/RESET 反例 <待做>
 -- P158.2 路径/查询 budget + timeout <待做>
 -- P158.3 构建确定性 + canonical hash <待做>
