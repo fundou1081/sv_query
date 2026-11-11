@@ -111,6 +111,7 @@
 | [validation/LONG_RANGE_SEED2_2026-11-05.md](validation/LONG_RANGE_SEED2_2026-11-05.md) | **seed-2 全 12 题**: T2 两 seed 12/12；source 6–10/12；软隔离但仍有 artifact 污染 |
 | [validation/HARD_ISOLATION_2026-11-05.md](validation/HARD_ISOLATION_2026-11-05.md) | **硬隔离 PoC + 审计**: canonical path 泄漏已修；两模型单题正确；硬隔离方差未评估 |
 | [architecture/project_audit_2026-11-06.md](architecture/project_audit_2026-11-06.md) | **项目审计**: 原始目标/计划状态/未完成开发/测试缺口/下一步排序 |
+| [architecture/arch_eval_2026-11-11.md](architecture/arch_eval_2026-11-11.md) | **架构/产品评估（讨论底稿，2026-11-11）**: 只读评审；不构成已登记计划，采纳需先登记 PLAN |
 | [validation/INTERACTIVE_DEBUG_2026-11-06.md](validation/INTERACTIVE_DEBUG_2026-11-06.md) | **交互式 debug pilot**: 3 场景 × 3 模型；5–20 轮；发现路径粒度/mux/bin 名称/class relative 问题 |
 | [validation/INTERACTIVE_P0_2026-11-06.md](validation/INTERACTIVE_P0_2026-11-06.md) | **P0 post-P77**: 3 模型 × deep_chain；clarify 后 3/3 正确；12 节点/11 hops |
 | [validation/INTERACTIVE_P1_2026-11-06.md](validation/INTERACTIVE_P1_2026-11-06.md) | **P1**: 3 场景 × 3 模型 × 2 seed；17/18 完整；constraints 1 个字段歧义；429 重跑 |
