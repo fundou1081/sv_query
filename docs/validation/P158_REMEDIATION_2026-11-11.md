@@ -162,7 +162,7 @@ T7: 2 hops / 2 candidates -> 1 hop / 1 candidate
 ## 验证
 
 ```text
-2677 passed / 0 skipped / 141 deselected / 0 failed
+2678 passed / 0 skipped / 131 deselected / 0 failed
 ```
 
 SPI snapshot：

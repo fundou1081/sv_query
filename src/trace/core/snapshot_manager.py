@@ -40,6 +40,8 @@ logger = logging.getLogger(__name__)
 #      指过去, 或把它们拷到新目录。见 docs/task_tree/iterations/iter_239_*.md。
 # ----------------------------------------------------------------------------
 ENV_SNAPSHOT_DIR = "SVQ_SNAPSHOT_DIR"
+ENV_SNAPSHOT_MAX_MB = "SVQ_SNAPSHOT_MAX_MB"
+DEFAULT_SNAPSHOT_MAX_MB = 64.0
 #: 历史默认位置 (仅用于提示/迁移, 不再作为默认写入目标)
 LEGACY_SNAPSHOT_DIR = ".svq/snapshots"
 
@@ -68,6 +70,14 @@ class SnapshotManager:
     def __init__(self, base_dir: str | None = None):
         # [iter_239 1b] 默认位置 = resolve_snapshot_dir() (缓存目录), 不再是 cwd 下的 .svq/
         self.base_dir = resolve_snapshot_dir(base_dir)
+        try:
+            self.max_bytes = int(float(os.environ.get(
+                ENV_SNAPSHOT_MAX_MB, DEFAULT_SNAPSHOT_MAX_MB)) * 1024 * 1024)
+        except ValueError as e:
+            raise ValueError(
+                f"{ENV_SNAPSHOT_MAX_MB} must be numeric MB, got "
+                f"{os.environ.get(ENV_SNAPSHOT_MAX_MB)!r}"
+            ) from e
         try:
             self.base_dir.mkdir(parents=True, exist_ok=True)
         except OSError as e:
@@ -106,6 +116,7 @@ class SnapshotManager:
                     "files": data.get("files", []),
                     "node_count": data.get("node_count", 0),
                     "edge_count": data.get("edge_count", 0),
+                    "file_size_bytes": path.stat().st_size,
                     "module_graph_present": bool(mig_instances),
                     "module_graph_instances": len(mig_instances),
                     "module_graph_ports": sum(len(i.get("ports") or {})
@@ -151,8 +162,17 @@ class SnapshotManager:
         data["files"] = files or []
         data["created_at"] = datetime.now(UTC).isoformat()
 
+        payload = json.dumps(data, indent=2, ensure_ascii=False)
+        size_bytes = len(payload.encode("utf-8"))
+        if self.max_bytes > 0 and size_bytes > self.max_bytes:
+            raise ValueError(
+                f"snapshot too large: {size_bytes} bytes > "
+                f"{self.max_bytes} bytes ({ENV_SNAPSHOT_MAX_MB}); "
+                "not written (set a larger limit explicitly if intended)"
+            )
+
         with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
+            f.write(payload)
 
         logger.info(f"Snapshot saved: {tag} -> {path}")
         return str(path)
@@ -230,6 +250,7 @@ class SnapshotManager:
             "files": data.get("files", []),
             "node_count": data.get("node_count", 0),
             "edge_count": data.get("edge_count", 0),
+            "file_size_bytes": self._snapshot_path(tag).stat().st_size,
             "module_graph_present": bool(mig_instances),
             "module_graph_instances": len(mig_instances),
             "module_graph_ports": sum(len(i.get("ports") or {})
