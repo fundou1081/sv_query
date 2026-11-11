@@ -37,6 +37,7 @@ def pytest_configure(config):
     # markers
     config.addinivalue_line("markers", "golden: pure SV fixture, golden file comparison (fast)")
     config.addinivalue_line("markers", "opensource: depends on external open-source projects")
+    config.addinivalue_line("markers", "real_corpus: real project + executable corpus/runner (P158.4)")
     config.addinivalue_line("markers", "slow: large design compilation (>30s per test)")
     config.addinivalue_line("markers", "usage: depends on external open-source projects (in sim/tests/usage/)")
 
