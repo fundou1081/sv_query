@@ -537,6 +537,7 @@ P158 review remediation backlog <待做>
 -- P158.11.2b generic long-query timeout <已完成>
 
 -- P158.12 P2 清理 <待做>
+-- P158.12.1 trace impact 降级 exp（R-025：未标定启发式不得伪装稳定） <已完成>
 
 ## 已完成（保留最近记录，便于核查上一轮）
 
@@ -775,3 +776,4 @@ P4 已完成归档 <已完成>
 | 2026-11-11 | 接手校准（P164）：current item 按 HANDOFF 建议指向 P158.11.2b 前置的文档校准；P158.9 拆出 9.2；`--`/`----` 缩进统一，check_plan 新增 P9（不可见项）与字母后缀 id |
 | 2026-11-11 | P158.11.2b 完成（iter_491）：SearchBudget 抽为 graph/search_budget.py 唯一实现；dataflow 有界 DFS + `--max-expansions/--timeout` + truncated 契约；P158.11 整体收口；current item → P158.9.2 |
 | 2026-11-11 | arch_eval 评审采纳（P165 登记，方豆确认）：P165.1 signal.py pred/succ 化 / P165.2 packaging 重命名 / P165.3 外部故障集 / P165.4 filelist 闭包自动化；方案 B 拒绝、方案 C 暂缓；P158.9.2 验收补"不许中间态" |
+| 2026-11-11 | P158.12.1 trace impact 降级 exp（方豆拍板）：core 40→39 / exp 5→6；capabilities 默认隐藏、kind=experimental；KNOWN_LIMITATIONS §3.4 加处置注记 |

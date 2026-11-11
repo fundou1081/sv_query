@@ -31,6 +31,11 @@
 
 ## 📋 6 个实验性命令
 
+> **2026-11-11 更新**：registry 的 exp 层现为 **6 命令**——
+> `audit` / `diagnose` / `trace overview` / `review render` / `architecture graph` /
+> **`trace impact`（新降级，未标定启发式，见 KNOWN_LIMITATIONS §3.4）**。
+> 本文档下方的 cdc/verify gap/risk 等条目是 2026-07-04 的历史快照。
+
 ### 🔴 真实验性 (高风险, 已知问题)
 
 #### 1. `cdc analyze`

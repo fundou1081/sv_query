@@ -93,7 +93,7 @@ d1325aaf — docs(P159): record full pitfalls and lessons history
 | `src/trace/core/graph/dataflow.py` | dataflow 段/路径 | 必须只走数据边；BIT_SELECT 只做端点位展开 |
 | `src/trace/core/snapshot_manager.py` | snapshot CRUD/大小/损坏 | 文件名是 tag 权威；损坏文件可见 |
 | `src/trace/unified_tracer.py` | `load_snapshot` 唯一构造入口 | 不要再手工设 4 个私有字段 |
-| `src/cli/_registry.py` | capabilities/registry/contract | 40 core 命令的 group/contract |
+| `src/cli/_registry.py` | capabilities/registry/contract | 39 core 命令的 group/contract（2026-11-11 impact 降 exp 后） |
 | `tools/agent/run_spi_corpus.py` | 真实 corpus runner | 9 tasks；不要改成“只打印” |
 | `tools/run_gates.sh` / `tools/run_lint.sh` | CI/本地 gate | 不要绕过 |
 | `.github/workflows/tests.yml` | CI | opensource 可见但不阻塞 |
@@ -140,7 +140,8 @@ d1325aaf — docs(P159): record full pitfalls and lessons history
    （2026-11-11 实测 `grep -rl "/Users/fundou" sim/tests --include=*.py | wc -l` = 26；
    旧文档写 20/23 都不准）；
 2. `-p no:randomly` no-op：移除 flag 或真正安装插件（实测 `pytest_randomly` 未安装）；
-3. `trace impact` heuristic 在 core：移 `exp` 或把 `kind` 改成 heuristic 并补 claim；
+3. ~~`trace impact` heuristic 在 core~~ **已解决（2026-11-11，P158.12.1）**：降级 exp，
+   `kind=experimental`、默认隐藏、`--include-exp` 列出；KNOWN_LIMITATIONS §3.4 已加处置注记；
 4. 408 条空 expression 的 self-loop：**先补复现命令/基线文件**再调查（当前文档没有入口，接手无法验证）；
 5. `false_confident` 指标在 task exception 时漏计；
 6. 文档/help/skills 漂移。

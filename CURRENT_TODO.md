@@ -49,7 +49,8 @@
 
 - **分支**: `main`；HEAD 以 `git log -1` 为准（2026-11-11 核对为 `56c10fa9`）
 - **全量基线**: 见 [docs/INDEX.md 当前基线](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里)（单一真相源，本文不写死计数）
-- **命令面**: 45 命令 = core 40 + exp 5（audit / diagnose / trace overview / review render / architecture graph）
+- **命令面**: 45 命令 = core 39 + exp 6（audit / diagnose / trace overview / review render / architecture graph /
+  trace impact——**2026-11-11 降级**：未标定启发式不得伪装稳定，见 KNOWN_LIMITATIONS §3.4）
 - **环境**: `python3` 必须是装了 typer/pyslang 的解释器（本机 `~/miniconda3/bin/python3`），
   否则 CLI 子进程测试会成片假失败
 - **当前重点**: P158.11.2b 已完成，dataflow 全查询有界；下一步 snapshot surface 矩阵（P158.9.2）
@@ -76,12 +77,13 @@
 
 ```text
 1. P158.9.2   snapshot surface 矩阵          <- 当前 item（验收含"不许中间态"）
-2. P158.12    P2 清理（26 个硬编码路径 / no:randomly / impact 定位 / 空 expression self-loop）
+2. P158.12    P2 清理（26 个硬编码路径 / no:randomly / 空 expression self-loop；
+              impact 定位已解决——2026-11-11 降 exp，P158.12.1 已完成）
 3. P165.1     signal.py 全图扫描 pred/succ 化（O(V×E)→O(度)，小改动）
 4. 17 个 opensource skip 的最终处置（归档 retired exp / 补 fixture / 保留显式 skip）
 5. P165.3/4   外部故障集 + filelist 闭包自动化（开源前）
 6. P165.2     packaging 重命名（随开源破坏性窗口）
 ```
 
-未决讨论项（等方豆拍板）：`trace impact` 是否降 exp；真实项目依赖闭包是否固化进 repo。
-评审决策（2026-11-11 已定）：方案 B 拒绝、方案 C（daemon）暂缓待使用证据（见 PLAN P165）。
+未决讨论项（等方豆拍板）：真实项目依赖闭包是否固化进 repo。
+已拍板（2026-11-11）：`trace impact` 降 exp（已落地，P158.12.1）；方案 B 拒绝、方案 C 暂缓（见 PLAN P165）。

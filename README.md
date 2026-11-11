@@ -107,7 +107,7 @@ sv_query trace fanin cdc_bug.dst_valid   -f examples/anti_hallucination_cdc/cdc_
 | **Class/约束/覆盖** | `class --relations`（含 UVM 静态） / `trace constraints` / `trace covergroups` / `trace coverpoints` / `trace covergroup` |
 | **Locate** | `stats` / `search` / `graph nodes/edges` / `graph subgraph` / `capabilities` |
 | **State** | `snapshot save/list/compare/delete` |
-| **exp** | `audit` / `diagnose` / `trace overview` / `review render` / `architecture graph`（默认隐藏，不承诺契约） |
+| **exp** | `audit` / `diagnose` / `trace overview` / `review render` / `architecture graph` / `trace impact`（默认隐藏，不承诺契约） |
 
 > `visualize` / `arch` / `design` 全设计图命令已于 2026-11-03 退役；`review render` 仍是 exp。
 
