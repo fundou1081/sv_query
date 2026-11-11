@@ -6,7 +6,7 @@
     "source_root": "/Users/fundou/.dsh/opencode-workers-lite/opentitan-pilot/workspace",
     "filelist": "/tmp/opentitan_svq_spi/opentitan_spi.clean.f",
     "top": "spi_host",
-    "note": "P147 third-block smoke matrix; expected values captured by main from the snapshot, worker must independently verify."
+    "note": "P147 third-block smoke matrix; P158.4 makes it executable via tools/agent/run_spi_corpus.py. Every task carries an 'oracle' field: the expected values were re-verified against the OpenTitan RTL (independent oracle), NOT copied from CLI output. Field corrections applied in P158.4: (1) direct_neighbors uses the real contract fields 'driver_count' (drivers) + 'count' (loads) -- there is no 'load_count' field; (2) directed_path pins 'mode':'canonical' because 'paths' has three output modes (default: found/hop_count/path; --all: count/all_paths; --canonical: found/hop_count/path/candidate_count) and only canonical reports all three asserted fields; (3) consistency_connection 'violations' maps to verify consistency's top-level 'total_violations' (the per-check 'violations' is a list)."
   },
   "tasks": [
     {
@@ -15,46 +15,53 @@
       "signal": "spi_host.u_reg.intr_test_qe",
       "expected": {
         "driver_count": 1,
-        "load_count": 2
-      }
+        "count": 2
+      },
+      "oracle": "spi_host_reg_top.sv:403 (assign intr_test_qe = &intr_test_flds_we) = 1 driver; :418 reg2hw.intr_test.error.qe and :434 reg2hw.intr_test.spi_event.qe = 2 loads"
     },
     {
       "id": "SPI-T2",
       "kind": "directed_path",
+      "mode": "canonical",
       "from": "spi_host.u_spi_core.u_fsm.sck_o",
       "to": "spi_host.cio_sck_o",
       "expected": {
         "found": true,
         "hop_count": 4,
         "candidate_count": 2
-      }
+      },
+      "oracle": "spi_host_core.sv:136 (.sck_o -> u_fsm) / spi_host.sv:499 (.sck_o(sck)) / spi_host.sv:160 (assign cio_sck_o = passthrough_en ? pt_sck : sck). Canonical path = u_fsm.sck_o -> u_spi_core.sck_o -> spi_host.sck -> cio_sck_o.ternary_passthrough_en -> cio_sck_o = 5 nodes = 4 hops; the 4th hop is the mux select (BRANCH_FALSE/BRANCH_RESULT edge) created by the ternary at spi_host.sv:160. candidate_count=2 = the direct data edge and the mux-select variant."
     },
     {
       "id": "SPI-T3",
       "kind": "verify_path",
+      "claim_type": "path",
       "from": "spi_host.u_spi_core.u_fsm.sck_o",
       "to": "spi_host.cio_sck_o",
       "expected": {
         "status": "verified"
-      }
+      },
+      "oracle": "same data chain as SPI-T2 (spi_host.sv:160 + spi_host_core.sv:136)"
     },
     {
       "id": "SPI-T4",
       "kind": "verify_driver",
+      "claim_type": "driver",
       "signal": "spi_host.cio_sck_o",
       "driver": "spi_host.u_spi_core.u_fsm.sck_o",
       "expected": {
         "status": "contradicted"
-      }
+      },
+      "oracle": "spi_host.sv:160 assigns cio_sck_o from pt_sck/sck, NOT from u_fsm.sck_o directly; the direct fanin of cio_sck_o is pt_sck and sck, so the claim 'u_fsm.sck_o directly drives cio_sck_o' is false"
     },
     {
       "id": "SPI-T5",
       "kind": "frontier",
       "signal": "spi_host.u_data_fifos.u_tx_fifo.wdata_i",
       "expected": {
-        "frontier_count_gte": 1,
-        "note": "generic frontier; no FIFO classification"
-      }
+        "frontier_count_gte": 2
+      },
+      "oracle": "spi_host_data_fifos.sv:90 (.wdata_i(tx_data_be) -> u_tx_fifo) with :60/:64 (tx_be_ordered <- tx_be_i) and :77 (tx_data_be = {tx_data_ordered, tx_be_ordered}). RTL guarantees >= 2 distinct structural boundary stops: fanin reaches spi_host.u_window.tx_be_o / the tx SRAM adapter (no_structural_edge), fanout reaches the u_tx_fifo instance boundary (instance_boundary). Lower bound 2 is asserted so the test does not over-fit a snapshot-specific count."
     },
     {
       "id": "SPI-T6",
@@ -63,18 +70,21 @@
       "expected": {
         "ok": false,
         "error_contains": "not found"
-      }
+      },
+      "oracle": "contract: unknown endpoint must be an explicit error (SEMANTIC_CONTRACTS 4.3), not not_found-with-confidence"
     },
     {
       "id": "SPI-T7",
       "kind": "directed_path",
+      "mode": "canonical",
       "from": "spi_host.pt_sck",
       "to": "spi_host.cio_sck_o",
       "expected": {
         "found": true,
         "hop_count": 2,
         "candidate_count": 2
-      }
+      },
+      "oracle": "spi_host.sv:153 (assign pt_sck = passthrough_i.sck) and :160 (assign cio_sck_o = passthrough_en ? pt_sck : sck). Canonical path = pt_sck -> cio_sck_o.ternary_passthrough_en -> cio_sck_o = 3 nodes = 2 hops (the extra hop is the ternary select at spi_host.sv:160). The other candidate is the direct pt_sck -> cio_sck_o data edge, so candidate_count=2."
     },
     {
       "id": "SPI-T8",
@@ -82,8 +92,9 @@
       "signal": "spi_host.u_data_fifos.u_rx_fifo.rdata_o",
       "expected": {
         "driver_count": 1,
-        "load_count": 8
-      }
+        "count": 8
+      },
+      "oracle": "spi_host_data_fifos.sv:116 (.rdata_o -> rx_data_unordered) = 1 driver; the 8-load chain is rx_data_unordered -> rx_data_o (:61/:65) -> spi_host.rx_data (spi_host.sv:455) -> u_window.rx_data_i -> u_adapter_rx.rdata_i -> tlul_adapter_reg.rdata_i -> tlul_adapter_reg.rdata_q -> tlul_adapter_reg.rdata"
     },
     {
       "id": "SPI-T9",
@@ -92,7 +103,8 @@
         "status": "pass",
         "checked": 1734,
         "violations": 0
-      }
+      },
+      "oracle": "connection check counts (instance, port) pairs carrying an internal_signal; independently recounted from the snapshot module_graph = 1734 checked, 0 skipped, 0 violations"
     }
   ]
 }
