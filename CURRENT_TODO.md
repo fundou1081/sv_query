@@ -9,7 +9,7 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P158.1 数据边策略 + CLOCK/RESET 反例** `<待做>`
+- **当前 item**: **P158.1 数据边策略 + CLOCK/RESET 反例** `<进行中>`
 - **P126** 文档/运维刷新 ✅（iter_433）
   - P126.1 CURRENT_TODO 刷新 ✅
   - P126.2 TESTING 刷新 ✅

@@ -406,6 +406,8 @@ def consistency_cmd(
             results.append(_check_connections(tracer, graph))
         total = sum(len(c.get("violations", [])) for c in results)
         all_known = all(c.get("status") in ("pass", "fail") for c in results)
+        partial_checks = [c["check"] for c in results if c.get("truncated") is True]
+        coverage_complete = not partial_checks
         data = {
             "ok": True,
             "command": "verify_consistency",
@@ -414,7 +416,9 @@ def consistency_cmd(
                        "checks": wanted, "signal": signal, "max_nodes": max_nodes,
                        "full": full},
             "result": {
-                "verified": total == 0 and all_known,
+                "verified": total == 0 and all_known and coverage_complete,
+                "coverage_complete": coverage_complete,
+                "partial_checks": partial_checks,
                 "total_violations": total,
                 "unknown_checks": [c["check"] for c in results
                                    if c.get("status") not in ("pass", "fail")],

@@ -375,12 +375,13 @@
   connection port↔internal 三类。
 - **输入**: `verify consistency [--checks reciprocity,bit,connection]
   [--signal s] [--max-nodes 200] [--full]`
-- **result**: `verified`, `total_violations`, `unknown_checks[]`,
-  `checks[]`。check：`check/status/checked/skipped/violations[]/
-  truncated/mode/excluded/coverage/...`。`status` ∈ `pass|fail|unknown`。
-- **坑**: `verified:true` 要求全部 check 通过且无 unknown；`unknown`
-  表示元数据不足，不等于 pass。默认采样（`mode:"sample"`），
-  `--full` 才全量；`truncated:true` 时结论只覆盖样本。
+- **result**: `verified`, `coverage_complete`, `partial_checks[]`,
+  `total_violations`, `unknown_checks[]`, `checks[]`。check：
+  `check/status/checked/skipped/violations[]/truncated/mode/excluded/coverage/...`。
+  `status` ∈ `pass|fail|unknown`。
+- **坑**: `verified:true` 要求全部 check 通过、无 unknown，且 **无 truncated**；
+  sample/`truncated:true` 时 `verified:false`、`coverage_complete:false`，
+  结论只覆盖样本。默认采样（`mode:"sample"`），`--full` 才全量。
 - **例**: `sv_query verify consistency --filelist rtl.f --json`
 
 #### `verify claim`
@@ -637,14 +638,16 @@
 #### `filelist prune`
 - **解决**: 按 top module 做 top-aware 的**保守** filelist 裁剪，输出候选；
   可选写一个新 filelist。
-- **输入**: `filelist prune --filelist <f> --top <module> [--output <new.f>]`
+- **输入**: `filelist prune --filelist <f> --top <module> [--output <new.f> --apply [--force]]`
 - **result**: `top`, `total_files`, `selected_files[]`, `selected_count`,
   `dropped`, `reason`, `declarations`(module→files)，`--output` 时加
-  `output`。
+  `output` / `written` / `dry_run` / `backup`。
+- **写入安全**: 默认 **dry-run**，不传 `--apply` 不写；`--output` 只允许
+  `.f/.fl`，拒绝 `.sv/.v` 等 RTL 后缀；目标已存在时必须 `--force`，
+  且先写 `.bak` 备份。`--output` 是 core 里唯一会写文件的参数——见 U7。
 - **坑**: 这是**候选裁剪，不是语义证明**：package/interface/无声明文件/
   读失败文件都会保留。top 找不到时返回完整 filelist 并标
-  `reason:"top_not_found"`，不是错误。`--output` 是 core 里唯一会写
-  文件的参数（只写显式路径，不改源文件）——见 U7。
+  `reason:"top_not_found"`，不是错误。
 - **例**: `sv_query filelist prune --filelist full.f --top top --json`
 
 ---
