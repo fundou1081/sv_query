@@ -1,7 +1,7 @@
 # P160 opensource test triage
 
 **日期**: 2026-11-11
-**状态**: ✅ 分诊完成；修复/退休未开始
+**状态**: ✅ 分诊完成；P161 已修复（114 passed / 17 skipped / 0 failed）
 **基线**: `2106bac2` + 本地 canonical 2677 passed
 
 ---

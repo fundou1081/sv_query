@@ -4,6 +4,7 @@
   "ok": true,
   "params": {},
   "result": {
+    "condition_status": "complete",
     "conditioned_drivers": [],
     "signal": "prim_arbiter_tree.req_i",
     "warnings": []

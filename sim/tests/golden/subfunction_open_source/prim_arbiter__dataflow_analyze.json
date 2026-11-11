@@ -5,22 +5,33 @@
   "params": {},
   "result": {
     "all_conditions": [],
+    "bits": {
+      "coarse_fallback": false,
+      "dst": {
+        "coarse_fallback": false,
+        "kind": "bus",
+        "precision": "bus",
+        "requested_bit": null,
+        "requested_range": null,
+        "resolved": "prim_arbiter_tree.gnt_o"
+      },
+      "src": {
+        "coarse_fallback": false,
+        "kind": "bus",
+        "precision": "bus",
+        "requested_bit": null,
+        "requested_range": null,
+        "resolved": "prim_arbiter_tree.req_i"
+      }
+    },
     "clock_domain": null,
+    "from_resolved": "prim_arbiter_tree.req_i",
     "from_signal": "prim_arbiter_tree.req_i",
-    "intermediate_signals": [
-      "prim_arbiter_tree.gnt_o[0]",
-      "prim_arbiter_tree.gnt_o[1]",
-      "prim_arbiter_tree.gnt_o[2]",
-      "prim_arbiter_tree.gnt_o[3]",
-      "prim_arbiter_tree.gnt_o[4]",
-      "prim_arbiter_tree.gnt_o[5]",
-      "prim_arbiter_tree.gnt_o[6]",
-      "prim_arbiter_tree.gnt_o[7]"
-    ],
+    "intermediate_signals": [],
     "is_reachable": true,
     "paths": [
       {
-        "distance": 2,
+        "distance": 1,
         "has_conditional": false,
         "is_async_crossing": false,
         "latency_cycles": 0,
@@ -35,15 +46,6 @@
             "from_signal": "prim_arbiter_tree.req_i[0]",
             "timing": "",
             "to_signal": "prim_arbiter_tree.gnt_o[0]"
-          },
-          {
-            "assign_type": "",
-            "condition": "",
-            "distance": 1,
-            "driver": "",
-            "from_signal": "prim_arbiter_tree.gnt_o[0]",
-            "timing": "",
-            "to_signal": "prim_arbiter_tree.gnt_o"
           }
         ],
         "stage_breakdown": [
@@ -55,20 +57,11 @@
             "to_kind": "SIGNAL",
             "to_signal": "prim_arbiter_tree.gnt_o[0]",
             "to_stage": null
-          },
-          {
-            "from_kind": "SIGNAL",
-            "from_signal": "prim_arbiter_tree.gnt_o[0]",
-            "from_stage": null,
-            "is_reg_boundary": false,
-            "to_kind": "PORT_OUT",
-            "to_signal": "prim_arbiter_tree.gnt_o",
-            "to_stage": null
           }
         ]
       },
       {
-        "distance": 2,
+        "distance": 1,
         "has_conditional": false,
         "is_async_crossing": false,
         "latency_cycles": 0,
@@ -83,15 +76,6 @@
             "from_signal": "prim_arbiter_tree.req_i[1]",
             "timing": "",
             "to_signal": "prim_arbiter_tree.gnt_o[1]"
-          },
-          {
-            "assign_type": "",
-            "condition": "",
-            "distance": 1,
-            "driver": "",
-            "from_signal": "prim_arbiter_tree.gnt_o[1]",
-            "timing": "",
-            "to_signal": "prim_arbiter_tree.gnt_o"
           }
         ],
         "stage_breakdown": [
@@ -103,20 +87,11 @@
             "to_kind": "SIGNAL",
             "to_signal": "prim_arbiter_tree.gnt_o[1]",
             "to_stage": null
-          },
-          {
-            "from_kind": "SIGNAL",
-            "from_signal": "prim_arbiter_tree.gnt_o[1]",
-            "from_stage": null,
-            "is_reg_boundary": false,
-            "to_kind": "PORT_OUT",
-            "to_signal": "prim_arbiter_tree.gnt_o",
-            "to_stage": null
           }
         ]
       },
       {
-        "distance": 2,
+        "distance": 1,
         "has_conditional": false,
         "is_async_crossing": false,
         "latency_cycles": 0,
@@ -131,15 +106,6 @@
             "from_signal": "prim_arbiter_tree.req_i[2]",
             "timing": "",
             "to_signal": "prim_arbiter_tree.gnt_o[2]"
-          },
-          {
-            "assign_type": "",
-            "condition": "",
-            "distance": 1,
-            "driver": "",
-            "from_signal": "prim_arbiter_tree.gnt_o[2]",
-            "timing": "",
-            "to_signal": "prim_arbiter_tree.gnt_o"
           }
         ],
         "stage_breakdown": [
@@ -151,20 +117,11 @@
             "to_kind": "SIGNAL",
             "to_signal": "prim_arbiter_tree.gnt_o[2]",
             "to_stage": null
-          },
-          {
-            "from_kind": "SIGNAL",
-            "from_signal": "prim_arbiter_tree.gnt_o[2]",
-            "from_stage": null,
-            "is_reg_boundary": false,
-            "to_kind": "PORT_OUT",
-            "to_signal": "prim_arbiter_tree.gnt_o",
-            "to_stage": null
           }
         ]
       },
       {
-        "distance": 2,
+        "distance": 1,
         "has_conditional": false,
         "is_async_crossing": false,
         "latency_cycles": 0,
@@ -179,15 +136,6 @@
             "from_signal": "prim_arbiter_tree.req_i[3]",
             "timing": "",
             "to_signal": "prim_arbiter_tree.gnt_o[3]"
-          },
-          {
-            "assign_type": "",
-            "condition": "",
-            "distance": 1,
-            "driver": "",
-            "from_signal": "prim_arbiter_tree.gnt_o[3]",
-            "timing": "",
-            "to_signal": "prim_arbiter_tree.gnt_o"
           }
         ],
         "stage_breakdown": [
@@ -199,20 +147,11 @@
             "to_kind": "SIGNAL",
             "to_signal": "prim_arbiter_tree.gnt_o[3]",
             "to_stage": null
-          },
-          {
-            "from_kind": "SIGNAL",
-            "from_signal": "prim_arbiter_tree.gnt_o[3]",
-            "from_stage": null,
-            "is_reg_boundary": false,
-            "to_kind": "PORT_OUT",
-            "to_signal": "prim_arbiter_tree.gnt_o",
-            "to_stage": null
           }
         ]
       },
       {
-        "distance": 2,
+        "distance": 1,
         "has_conditional": false,
         "is_async_crossing": false,
         "latency_cycles": 0,
@@ -227,15 +166,6 @@
             "from_signal": "prim_arbiter_tree.req_i[4]",
             "timing": "",
             "to_signal": "prim_arbiter_tree.gnt_o[4]"
-          },
-          {
-            "assign_type": "",
-            "condition": "",
-            "distance": 1,
-            "driver": "",
-            "from_signal": "prim_arbiter_tree.gnt_o[4]",
-            "timing": "",
-            "to_signal": "prim_arbiter_tree.gnt_o"
           }
         ],
         "stage_breakdown": [
@@ -247,20 +177,11 @@
             "to_kind": "SIGNAL",
             "to_signal": "prim_arbiter_tree.gnt_o[4]",
             "to_stage": null
-          },
-          {
-            "from_kind": "SIGNAL",
-            "from_signal": "prim_arbiter_tree.gnt_o[4]",
-            "from_stage": null,
-            "is_reg_boundary": false,
-            "to_kind": "PORT_OUT",
-            "to_signal": "prim_arbiter_tree.gnt_o",
-            "to_stage": null
           }
         ]
       },
       {
-        "distance": 2,
+        "distance": 1,
         "has_conditional": false,
         "is_async_crossing": false,
         "latency_cycles": 0,
@@ -275,15 +196,6 @@
             "from_signal": "prim_arbiter_tree.req_i[5]",
             "timing": "",
             "to_signal": "prim_arbiter_tree.gnt_o[5]"
-          },
-          {
-            "assign_type": "",
-            "condition": "",
-            "distance": 1,
-            "driver": "",
-            "from_signal": "prim_arbiter_tree.gnt_o[5]",
-            "timing": "",
-            "to_signal": "prim_arbiter_tree.gnt_o"
           }
         ],
         "stage_breakdown": [
@@ -295,20 +207,11 @@
             "to_kind": "SIGNAL",
             "to_signal": "prim_arbiter_tree.gnt_o[5]",
             "to_stage": null
-          },
-          {
-            "from_kind": "SIGNAL",
-            "from_signal": "prim_arbiter_tree.gnt_o[5]",
-            "from_stage": null,
-            "is_reg_boundary": false,
-            "to_kind": "PORT_OUT",
-            "to_signal": "prim_arbiter_tree.gnt_o",
-            "to_stage": null
           }
         ]
       },
       {
-        "distance": 2,
+        "distance": 1,
         "has_conditional": false,
         "is_async_crossing": false,
         "latency_cycles": 0,
@@ -323,15 +226,6 @@
             "from_signal": "prim_arbiter_tree.req_i[6]",
             "timing": "",
             "to_signal": "prim_arbiter_tree.gnt_o[6]"
-          },
-          {
-            "assign_type": "",
-            "condition": "",
-            "distance": 1,
-            "driver": "",
-            "from_signal": "prim_arbiter_tree.gnt_o[6]",
-            "timing": "",
-            "to_signal": "prim_arbiter_tree.gnt_o"
           }
         ],
         "stage_breakdown": [
@@ -343,20 +237,11 @@
             "to_kind": "SIGNAL",
             "to_signal": "prim_arbiter_tree.gnt_o[6]",
             "to_stage": null
-          },
-          {
-            "from_kind": "SIGNAL",
-            "from_signal": "prim_arbiter_tree.gnt_o[6]",
-            "from_stage": null,
-            "is_reg_boundary": false,
-            "to_kind": "PORT_OUT",
-            "to_signal": "prim_arbiter_tree.gnt_o",
-            "to_stage": null
           }
         ]
       },
       {
-        "distance": 2,
+        "distance": 1,
         "has_conditional": false,
         "is_async_crossing": false,
         "latency_cycles": 0,
@@ -371,15 +256,6 @@
             "from_signal": "prim_arbiter_tree.req_i[7]",
             "timing": "",
             "to_signal": "prim_arbiter_tree.gnt_o[7]"
-          },
-          {
-            "assign_type": "",
-            "condition": "",
-            "distance": 1,
-            "driver": "",
-            "from_signal": "prim_arbiter_tree.gnt_o[7]",
-            "timing": "",
-            "to_signal": "prim_arbiter_tree.gnt_o"
           }
         ],
         "stage_breakdown": [
@@ -391,15 +267,6 @@
             "to_kind": "SIGNAL",
             "to_signal": "prim_arbiter_tree.gnt_o[7]",
             "to_stage": null
-          },
-          {
-            "from_kind": "SIGNAL",
-            "from_signal": "prim_arbiter_tree.gnt_o[7]",
-            "from_stage": null,
-            "is_reg_boundary": false,
-            "to_kind": "PORT_OUT",
-            "to_signal": "prim_arbiter_tree.gnt_o",
-            "to_stage": null
           }
         ]
       }
@@ -408,6 +275,7 @@
     "primary_is_async": false,
     "primary_latency_cycles": 0,
     "timing_risk": "safe",
+    "to_resolved": "prim_arbiter_tree.gnt_o",
     "to_signal": "prim_arbiter_tree.gnt_o"
   }
 }

@@ -3,9 +3,11 @@ test_subfunction_golden_open_source.py - golden baseline for 8 sub-functions
 ==========================================================================
 [ADD 2026-07-04] Week 4 后续: 每个子功能在真实开源项目里加 golden baseline.
 
-**目标**: 8 个 sub-function (stats/sva_extract/sva_coverage/timing_analyze/cdc_analyze/
-risk_analyze/controlflow_analyze/dataflow_analyze) 在 strict_uart + OpenTitan prim_arbiter_tree
-2 个 fixture 上各跑, 存为 golden baseline, 验证稳定性 (增强健壮性).
+**目标**: 现行 sub-function (stats/controlflow_analyze/dataflow_analyze) 在
+strict_uart + OpenTitan prim_arbiter_tree 上跑，验证稳定性。
+
+P160: retired `exp` sub-functions (sva/timing/cdc/risk) removed from this file;
+their goldens are not current capability evidence.
 
 **为什么不只 1 个 fixture**: cross-validate 2 个项目, 一致性高 = 命令稳定.
 strict_uart (33 nodes, 4 sub-module clk) + prim_arbiter_tree (33 nodes, 1 clk).
@@ -73,16 +75,17 @@ def _normalize(data: dict, project: str) -> dict:
 
 
 def _read_golden(name: str, project: str) -> dict:
-    """Read golden JSON, auto-create on first run."""
+    """Read golden JSON. Missing baseline is a test failure (no auto-bless).
+
+    P160: auto-creating goldens hid real changes; a new baseline must be
+    generated and reviewed deliberately.
+    """
     path = GOLDEN_DIR / f"{project}__{name}.json"
     if not path.exists():
-        # 首次跑: 找对应的 command 跟 fixture 跑
-        runner = _GOLDEN_RUNNERS[name]
-        result = runner(project)
-        assert result.returncode == 0, f"baseline gen failed: {result.stderr[:200]}"
-        data = json.loads(result.stdout)
-        normalized = _normalize(data, project)
-        path.write_text(json.dumps(normalized, indent=2, sort_keys=True))
+        pytest.fail(
+            f"missing golden {path.name}; regenerate deliberately with "
+            f"tools/graph_snapshot.py or the documented P160 procedure"
+        )
     return json.loads(path.read_text())
 
 
@@ -103,34 +106,14 @@ _GOLDEN_RUNNERS = {
         "stats",
         "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
         "--json"]),
-    "sva_extract": _make_runner(lambda p: [
-        "exp", "sva", "extract",
-        "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
-        "--json"]),
-    "sva_coverage": _make_runner(lambda p: [
-        "exp", "sva", "coverage",
-        "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
-        "--json"]),
-    "timing_analyze": _make_runner(lambda p: [
-        "exp", "timing", "analyze",
-        "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
-        "--json"]),
-    "cdc_analyze": _make_runner(lambda p: [
-        "exp", "cdc", "analyze",
-        "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
-        "--json"]),
-    "risk_analyze": _make_runner(lambda p: [
-        "exp", "risk", "analyze",
-        "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
-        "--summary", "--json"]),
     "controlflow_analyze": _make_runner(lambda p: [
         "controlflow", "analyze",
-        "synchronizer.sync0" if p == "strict_uart" else "prim_arbiter_tree.req_i",
+        "synchronizer.sync0_o" if p == "strict_uart" else "prim_arbiter_tree.req_i",
         "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
         "--json"]),
     "dataflow_analyze": _make_runner(lambda p: [
         "dataflow", "analyze",
-        *("sync_fifo.clk_i sync_fifo.count_q".split() if p == "strict_uart"
+        *("synchronizer.async_i synchronizer.sync0_o".split() if p == "strict_uart"
           else "prim_arbiter_tree.req_i prim_arbiter_tree.gnt_o".split()),
         "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
         "--json"]),
@@ -139,11 +122,10 @@ _GOLDEN_RUNNERS = {
 
 # 正面测试: 8 sub × 2 fixture
 @pytest.mark.parametrize("sub_function", [
-    "stats", "sva_extract", "sva_coverage", "timing_analyze",
-    "cdc_analyze", "risk_analyze", "controlflow_analyze", "dataflow_analyze"])
+    "stats", "controlflow_analyze", "dataflow_analyze"])
 @pytest.mark.parametrize("project", ["strict_uart", "prim_arbiter"])
 def test_golden_subfunction(sub_function, project):
-    """Golden: {sub_function} 在 {project} 上 跟 baseline 一致 (增强健壮性)."""
+    """Golden: current sub-function on {project} matches reviewed baseline."""
     runner = _GOLDEN_RUNNERS[sub_function]
     r = runner(project)
     assert r.returncode == 0, f"rc={r.returncode} stderr={r.stderr[:200]}"
@@ -196,28 +178,14 @@ def test_n1_nonexistent_filelist_all_8_subfunctions():
     print("✅ N1 8 sub-functions on nonexistent filelist: no hard crash (宽容 sva 的 forgiving 设计)")
 
 
-def test_n2_strict_uart_partial_graph_all_8_subfunctions():
-    """N2: 8 sub-function 在 strict_uart (2 warnings) → 全部 rc=0 (no-strict 优雅降级)."""
-    for sub in _GOLDEN_RUNNERS.keys():
-        parts = sub.split("_")
-        cmd_name = parts[0]
-        sub_name = parts[1] if len(parts) > 1 else None
-        # 加 per-sub required args
-        if cmd_name == "controlflow":
-            extra = ["synchronizer.sync0"]
-        elif cmd_name == "dataflow":
-            extra = ["sync_fifo.clk_i", "sync_fifo.count_q"]
-        else:
-            extra = []
-        if sub_name:
-            args = [cmd_name, sub_name] + extra + ["--filelist", STRICT_UART_FILELIST, "--json"]
-        else:
-            args = [cmd_name] + extra + ["--filelist", STRICT_UART_FILELIST, "--json"]
-        r = _run("-q", *args)
+def test_n2_strict_uart_current_subfunctions():
+    """N2: current sub-functions on strict_uart all return rc=0."""
+    for sub, runner in _GOLDEN_RUNNERS.items():
+        r = runner("strict_uart")
         assert r.returncode == 0, f"{sub} failed on strict_uart: {r.stderr[:200]}"
         data = json.loads(r.stdout)
         assert data["ok"] is True
-    print("✅ N2 8 sub-functions on strict_uart (2 warnings, ): all rc=0")
+    print("✅ N2 current sub-functions on strict_uart: all rc=0")
 
 
 if __name__ == "__main__":

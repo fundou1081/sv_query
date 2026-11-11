@@ -4,8 +4,84 @@
   "ok": true,
   "params": {},
   "result": {
-    "conditioned_drivers": [],
-    "signal": "synchronizer.sync0",
+    "condition_status": "complete",
+    "conditioned_drivers": [
+      {
+        "conditions": [
+          {
+            "edge": {
+              "condition": "!rst_ni",
+              "dst": "synchronizer.sync0_o",
+              "kind": "CLOCK",
+              "src": "synchronizer.clk_i"
+            },
+            "expr": "!rst_ni"
+          },
+          {
+            "edge": {
+              "condition": "!(!rst_ni)",
+              "dst": "synchronizer.sync0_o",
+              "kind": "CLOCK",
+              "src": "synchronizer.clk_i"
+            },
+            "expr": "!(!rst_ni)"
+          }
+        ],
+        "to_node": "synchronizer.sync0_o"
+      },
+      {
+        "conditions": [
+          {
+            "edge": {
+              "condition": "!rst_ni",
+              "dst": "synchronizer.sync0_o",
+              "kind": "RESET",
+              "src": "synchronizer.rst_ni"
+            },
+            "expr": "!rst_ni"
+          },
+          {
+            "edge": {
+              "condition": "!(!rst_ni)",
+              "dst": "synchronizer.sync0_o",
+              "kind": "RESET",
+              "src": "synchronizer.rst_ni"
+            },
+            "expr": "!(!rst_ni)"
+          }
+        ],
+        "to_node": "synchronizer.sync0_o"
+      },
+      {
+        "conditions": [
+          {
+            "edge": {
+              "condition": "!(!rst_ni)",
+              "dst": "synchronizer.sync0_o",
+              "kind": "DRIVER",
+              "src": "synchronizer.sync1"
+            },
+            "expr": "!(!rst_ni)"
+          }
+        ],
+        "to_node": "synchronizer.sync0_o"
+      },
+      {
+        "conditions": [
+          {
+            "edge": {
+              "condition": "!rst_ni",
+              "dst": "synchronizer.sync0_o",
+              "kind": "DRIVER",
+              "src": "1'b0"
+            },
+            "expr": "!rst_ni"
+          }
+        ],
+        "to_node": "synchronizer.sync0_o"
+      }
+    ],
+    "signal": "synchronizer.sync0_o",
     "warnings": []
   }
 }
