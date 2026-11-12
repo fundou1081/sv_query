@@ -1,0 +1,20 @@
+{
+  "mapping_core": "lowrisc:prim_generic:all",
+  "mapping": {
+    "lowrisc:virtual_constants:top_pkg": "lowrisc:earlgrey_constants:top_pkg",
+    "lowrisc:virtual_constants:top_racl_pkg": "lowrisc:earlgrey_constants:top_racl_pkg"
+  },
+  "exclude": [
+    "*/prim_asap7/*",
+    "*/prim_xilinx/*",
+    "*/top_darjeeling/*",
+    "*/top_englishbreakfast/*",
+    "*/prim_flash/*"
+  ],
+  "incdirs": [
+    "hw/ip/prim/rtl",
+    "hw/ip/prim_generic/rtl",
+    "hw/ip/tlul/rtl",
+    "hw/ip/uart/rtl"
+  ]
+}
