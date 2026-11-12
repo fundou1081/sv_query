@@ -25,6 +25,7 @@
       }
     },
     "clock_domain": null,
+    "expansions": 32,
     "from_resolved": "prim_arbiter_tree.req_i",
     "from_signal": "prim_arbiter_tree.req_i",
     "intermediate_signals": [],
@@ -274,8 +275,11 @@
     "paths_count": 8,
     "primary_is_async": false,
     "primary_latency_cycles": 0,
+    "search_status": "complete",
     "timing_risk": "safe",
     "to_resolved": "prim_arbiter_tree.gnt_o",
-    "to_signal": "prim_arbiter_tree.gnt_o"
+    "to_signal": "prim_arbiter_tree.gnt_o",
+    "truncated": false,
+    "truncation_reason": ""
   }
 }
