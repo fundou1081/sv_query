@@ -1,345 +1,319 @@
-## 0. LLM 友好通用 flags
+## 0. LLM 友好通用约定
 
-**所有命令** 都支持下面这些 flag (除少数不适用):
+**权威命令清单** (机器可读, 含 recommended / cost / kind / stability):
+```bash
+python3 run_cli.py capabilities --json -q
+python3 run_cli.py capabilities --include-exp --json -q   # 追加 6 个 exp 命令
+```
 
 | Flag | Short | 作用 | 推荐 LLM 用法 |
 |------|-------|------|---------------|
-| `--json` | `-j` | stdout 输出合法 JSON | **永远**加 |
-| `--pretty` | `-p` | JSON pretty-print (方便人读) | debug 时加 |
+| `--json` | `-j` | stdout 输出 JSON | **永远**加 |
+| `--pretty` | `-p` | JSON pretty-print | debug 时加 |
 | `--quiet` | `-q` | 抑制所有 stderr 警告 (SWAP, INFO) | **永远**加 |
-| `SVQ_QUIET=1` | (env) | 同 --quiet, 适合脚本 | 适合 CI |
-| `--strict`/`--no-strict` | | 严格模式 (默认 strict, elaboration 失败立即报错) | 默认就行 |
+| `SVQ_QUIET=1` | (env) | 同 `--quiet` | 适合 CI |
+
+### 三个必须知道的约束
+
+1. **flag 放在子命令之后**: `run_cli.py trace fanin X -f F --json -q` ✅ / `run_cli.py trace --json fanin X` ❌ (Typer 报 unknown option)
+2. **`--max-results/-N` 只有 `trace fanin` / `trace fanout` 支持**; `dataflow analyze` 用的是 `--max-paths/-n`; `search` 用 `--max-results/-n` (小写)。用错会直接报错。
+3. **没有 `--summary` / `--strict` / `--no-strict`**: 这些 flag 已被移除 (旧版 cdc/risk 命令随之退役)。
 
 ### 标准 LLM 调用模板
 
 ```bash
 # 查询 (小结果, 全量返回):
-python3 run_cli.py trace fanout top.q --json -q
+python3 run_cli.py trace fanout top.q -f sim/test_simple.sv --json -q
 
-# 查询 (大结果, cap 100 + 优先看是否 truncated):
-python3 run_cli.py trace fanout clk --json -q --max-results 100
+# 查询 (大结果, cap 100 + 检查 truncated):
+python3 run_cli.py trace fanout clk -f sim/test_simple.sv --json -q --max-results 100
 # 返回: result.loads = [...100 items], result.truncated = true/false
 
-# CDC/risk (大结果, 只要 summary):
-python3 run_cli.py cdc analyze --json -q --summary
-# 返回: counts + domains, 没有 paths (省 token)
-
 # 错误处理 (看 error_code 而非 error 字符串):
-python3 run_cli.py trace fanin nonexistent --json -q
-# 返回: {"ok": false, "error_code": "E_FILE_NOT_FOUND", "error": "..."}
+python3 run_cli.py trace fanin nonexistent -f sim/test_simple.sv --json -q
+# 返回: {"ok": false, "error_code": "...", "error": "..."}
 ```
 
 ### JSON schema 资源
 
 - 正式 schema: `tools/llm_schema.json` (Draft 2020-12)
 - 验证脚本: `python3 tools/llm_schema_validate.py`
+- schema 与代码的一致性由 `sim/tests/unit/test_schema_aligns_with_code.py` 守卫
 
 ---
 
-# sv_query 命令速查
+# sv_query 命令速查 (39 core + 6 exp)
 
 > 主入口: `cd <PROJ_DIR>/sv_query && python3 run_cli.py <command> [subcommand]`
-> 跑 `--help` 看完整 options
+> 每个命令都有 `--help`; 下表是实测过的常用 flag。
 
 ---
 
-## 1. trace — 信号追踪
+## 1. semantic — 语义事实 (24 个 core, agent 推理链主力)
 
-### 1.1 fanin (找驱动)
+### 1.1 drivers / loads (规范入口, 别名 trace fanin / trace fanout) ⭐
+
 ```bash
+python3 run_cli.py drivers <signal> -f <file.sv>
+python3 run_cli.py loads <signal> -f <file.sv>
+
+# 等价别名 (兼容老路径):
 python3 run_cli.py trace fanin <signal> -f <file.sv>
-# 默认 depth=10
-python3 run_cli.py trace fanin top.q -f top.sv --depth 3
-
-# [C1 2026-06-28] cap 结果数 (LLM 上下文安全)
-python3 run_cli.py trace fanin top.q -f top.sv --max-results 50
-# 返回字段: result.drivers + result.truncated (bool) + result.total_count (int)
-```
-
-### 1.2 fanout (找读取)
-```bash
 python3 run_cli.py trace fanout <signal> -f <file.sv>
 
-# [C1 2026-06-28] cap 结果数
-python3 run_cli.py trace fanout clk -f top.sv --max-results 100
-# 返回字段: result.loads + result.truncated + result.total_count
+# 常用 flag:
+python3 run_cli.py trace fanin top.q -f top.sv --depth 3
+python3 run_cli.py trace fanin top.q -f top.sv --max-results 50   # 仅 fanin/fanout
+python3 run_cli.py trace fanout clk -f top.sv --include-clock --include-reset
 ```
 
-### 1.3 impact (改信号影响谁)
-```bash
-python3 run_cli.py trace impact <signal> -f <file.sv>
-```
+返回 (JSON): `result.signals[]`, `result.total_count`, `result.total_pre_filter`, `result.truncated`, `result.failed_signals`
 
-### 1.4 evidence (源码 evidence) ⭐
+### 1.2 trace evidence (源码 evidence) ⭐
+
 ```bash
-# 1 行文本
 python3 run_cli.py trace evidence <signal> -f <file.sv>
-
-# 整条 driver chain
 python3 run_cli.py trace evidence <signal> -f <file.sv> --chain
-
-# JSON (agent 必用)
 python3 run_cli.py trace evidence <signal> -f <file.sv> --json --pretty
 ```
 
-返回结构 (JSON):
-```json
-{
-  "ok": true,
-  "signal": "top.q",
-  "evidence": {
-    "source_text": "q <= d;",
-    "source_range": [42, 47],
-    "block_kind": "always_ff",
-    "credibility_score": 0.95,
-    "block_start_line": 38
-  }
-}
-```
+常用 flag: `--chain/-c`, `--tree/-T`, `--human/-H`, `--batch`, `--batch-file`, `--from-snapshot`, `--no-cache`
 
----
+返回: `result.signals[].evidence` (含 `source_text` / `source_location` / `credibility_score`), 顶层另有 `evidence` 字段。
+详见 [evidence.md](evidence.md)。
 
-## 2. dataflow — 数据流分析
+### 1.3 trace profile / lookup / manifest
 
 ```bash
-# 单条路径
-python3 run_cli.py dataflow analyze <from> <to> -f <file.sv>
-
-# 多条
-python3 run_cli.py dataflow analyze top.din top.dout -f top.sv
-
-# 加 evidence
-python3 run_cli.py dataflow analyze top.din top.dout -f top.sv --evidence --json
+python3 run_cli.py trace profile -f <file.sv>
+python3 run_cli.py trace lookup --path top.u_inst.sig -f <file.sv>
+python3 run_cli.py trace manifest --path top.u_inst.sig -f <file.sv>
 ```
 
-返回 paths[].segments[].evidence
+lookup / manifest 都支持 `--path` (可重复) 和 `--paths-file`。
 
----
-
-## 3. controlflow — 控制流分析
+### 1.4 trace constraints 系列
 
 ```bash
-# 找信号被驱动时的条件
+python3 run_cli.py trace constraints <property> -f <file.sv>
+python3 run_cli.py trace constraint-neighborhood <property> -f <file.sv>
+python3 run_cli.py trace constraint-chain <source> <target> -f <file.sv>
+```
+
+constraint-neighborhood: `--max-depth` (默认 6), `--max-nodes` (默认 200)
+constraint-chain: `--max-depth` (默认 6), `--max-nodes` (默认 200)
+
+### 1.5 trace tb-join / frontier
+
+```bash
+python3 run_cli.py trace tb-join <field> --from-snapshot <tag> --filelist <tb.f>
+python3 run_cli.py trace frontier <signal> -f <file.sv> --direction fanin --max-depth 8
+```
+
+frontier flag: `--direction/-d` (fanin|fanout|both, 默认 both), `--max-depth` (8), `--max-frontier` (50), `--max-visits`
+
+### 1.6 trace covergroups / coverpoints / covergroup
+
+```bash
+python3 run_cli.py trace covergroups -f <file.sv>
+python3 run_cli.py trace coverpoints <signal> -f <file.sv>
+python3 run_cli.py trace covergroup <name> -f <file.sv> --rand
+```
+
+covergroup flag: `--coverpoint`, `--instance`, `--rand`; covergroups flag: `--class`
+
+### 1.7 controlflow analyze / list-conditioned
+
+```bash
 python3 run_cli.py controlflow analyze <signal> -f <file.sv>
 python3 run_cli.py controlflow analyze top.dout -f top.sv --evidence --json
+python3 run_cli.py controlflow list-conditioned -f <file.sv>
 ```
 
-返回 conditioned_drivers[].conditions[].evidence (if/case 路径)
+返回: `result.conditioned_drivers[]` (每条含 `to_node` + `conditions[]`, condition 有 `expr` + `edge`)
+
+### 1.8 dataflow analyze ⭐
+
+```bash
+python3 run_cli.py dataflow analyze <from> <to> -f <file.sv>
+python3 run_cli.py dataflow analyze top.din top.dout -f top.sv --evidence --json
+python3 run_cli.py dataflow analyze top.din top.dout -f top.sv --max-paths 20
+```
+
+**注意**: cap 用 `--max-paths/-n` (默认 100), **不是** `--max-results`。
+其它 flag: `--max-expansions`, `--timeout`, `--bits`, `--human/-H`, `--tree/-T`, `--from-snapshot`
+
+返回: `result.paths[]` (每条含 `segments[]`, segment 含 `evidence`), 以及 `is_reachable` / `truncated` / `truncation_reason` / `timing_risk`
+
+### 1.9 scope / instances / connections / hierarchy / params / ports / paths / class
+
+```bash
+python3 run_cli.py scope <path> -f <file.sv>
+python3 run_cli.py instances -f <file.sv> --module top --depth 3
+python3 run_cli.py connections <target> -f <file.sv>
+python3 run_cli.py hierarchy -f <file.sv>
+python3 run_cli.py params <path> -f <file.sv>
+python3 run_cli.py ports <module> -f <file.sv>
+python3 run_cli.py paths <src> <dst> -f <file.sv> --all --max 50
+python3 run_cli.py class -f <file.sv>
+```
+
+paths flag: `--all/-a`, `--canonical`, `--directed/-d`, `--evidence`, `--max/-n`, `--max-depth`, `--max-expansions`, `--timeout`, `--bits`
+class flag: `--member`, `--relations`
 
 ---
 
-## 4. cdc — 时钟域交叉
+## 2. verify — 客观检查, 结论可反驳 (3 个)
 
 ```bash
-python3 run_cli.py cdc analyze -f <file.sv>
-python3 run_cli.py cdc analyze -f top.sv --evidence --json
-# 返回 paths[].source_evidence + target_evidence
-
-# [C2 2026-06-28] summary 模式 (LLM 上下文紧时)
-python3 run_cli.py cdc analyze -f top.sv --summary --json -q
-# 只返回 counts + domains, 不返回 paths (省 token)
+python3 run_cli.py verify consistency -f <file.sv>
+python3 run_cli.py verify consistency -f <file.sv> --checks reciprocity,bit,connection
+python3 run_cli.py verify consistency -f <file.sv> --signal top.data --full
+python3 run_cli.py verify structural -f <file.sv> --checks symmetry
+python3 run_cli.py verify claim --claim '{"signal": "top.data"}' -f <file.sv>
+python3 run_cli.py verify claim --claim-file <claim.json> -f <file.sv>
 ```
 
-输出 (JSON):
-- 完整: result.paths (可能几百条), result.domains, result.domain_pairs, ...
-- summary: result.domains, result.total_cdc, result.high_risk, result.low_risk, summary=True
+- `verify consistency`: `--checks` (默认 reciprocity,bit,connection), `--signal/-s`, `--max-nodes` (200), `--full`, `--from-snapshot`
+- `verify structural`: `--checks` (默认 symmetry), `--max-findings` (100)
+- `verify claim`: `--claim` (JSON 字符串) 或 `--claim-file` (JSON 文件)
 
-检测:
-- 跨 clk 的 `always_ff` 赋值
-- async reset 路径
-- 灰色码同步器
+返回: `result.verified` / `result.total_violations` / `result.checks[]` (每项含 `check` + `status` + `findings`)
+
+> 旧的 `verify gap` 已退役 —— 验证缺口用 `audit --checks verification_gaps` (见 §5)。
 
 ---
 
-## 5. risk — 风险评分
+## 3. locate — 定位与统计 (7 个)
 
 ```bash
-python3 run_cli.py risk analyze -f <file.sv>
-python3 run_cli.py risk analyze -f top.sv --evidence --json
-# 4 类: clock / reset / data / unknown
-
-# [C2 2026-06-28] summary 模式 (LLM 上下文紧时)
-python3 run_cli.py risk analyze -f top.sv --summary --json -q
-# 只返回 top-10 高风险信号 + counts
+python3 run_cli.py stats -f <file.sv> --json -q
+python3 run_cli.py stats -f <file.sv> --fanout-rank --top 20
+python3 run_cli.py search "always_ff" -f <dir> --context 3 --ignore-case
+python3 run_cli.py graph nodes -f <file.sv> --kind SIGNAL --detail
+python3 run_cli.py graph edges -f <file.sv> --kind DRIVER --src top.a
+python3 run_cli.py graph subgraph top.data -f <file.sv> --depth 2 --evidence
+python3 run_cli.py filelist prune --filelist <big.f> --top top --output <pruned.f> --apply
 ```
 
-输出 (JSON):
-- 完整: result.data_signals (可能几百个) + clocks + resets + summary
-- summary: result.top_risks (前 10), result.clocks_count, result.resets_count, summary_mode=True
-
-风险分公式: `risk = (1 - has_sva) × fanin_depth × unconstrained_factor`
+- `stats`: `--file/-f`, `--filelist`, `--fanout-rank`, `--top/-n` (20), `--json/-j`, `--pretty/-p`
+- `search`: `--file/-f` (必填, 文件或目录), `--context/-C` (2), `--regex/-E`, `--ignore-case/-i`, `--max-results/-n` (50), `--line-numbers/-l`
+- `graph nodes`: `--kind/-k`, `--module/-m`, `--match`, `--detail`
+- `graph edges`: `--kind/-k`, `--src/-s`, `--dst/-d`
+- `graph subgraph`: `--depth` (2), `--direction` (in/out/both), `--edge-kinds`, `--max-nodes` (80), `--max-edges` (160), `--evidence`
+- `filelist prune`: `--filelist` (必填), `--top` (必填), `--output/-o`, `--apply` (默认只预览), `--force`
 
 ---
 
-## 6. sva — SVA 提取
+## 4. scope 清单 + state 状态 (1 + 4)
 
 ```bash
-# 提取所有 SVA 属性
-python3 run_cli.py sva extract -f <file.sv>
-
-# 检查覆盖率
-python3 run_cli.py sva cover -f <file.sv>
-
-# 找缺口
-python3 run_cli.py verify gap -f <file.sv> --evidence
-```
-
----
-
-## 7. verify — 验证缺口
-
-```bash
-# 找高风险但没 SVA 的信号
-python3 run_cli.py verify gap -f <file.sv>
-python3 run_cli.py verify gap -f top.sv --evidence --json
-
-# 双向 cross-check
-python3 run_cli.py verify cross -f top.sv
-```
-
----
-
-## 8. timing — 时序分析
-
-```bash
-# 关键路径 (DAG longest path)
-python3 run_cli.py timing critical -f <file.sv>
-
-# 寄存器深度
-python3 run_cli.py timing depth -f <file.sv>
-
-# SCC 检测 (组合环)
-python3 run_cli.py timing scc -f <file.sv>
-```
-
----
-
-## 9. coverage — 覆盖率生成
-
-```bash
-# 把复合信号拆成 atomic
-python3 run_cli.py coverage decompose -f <file.sv>
-
-# 生成 covergroup 模板
-python3 run_cli.py coverage template -f <file.sv>
-```
-
----
-
-## 10. visualize — 可视化
-
-```bash
-# Graphviz DOT
-python3 run_cli.py visualize graph -f <file.sv> --dot out.dot
-dot -Tsvg out.dot -o out.svg
-
-# Mermaid
-python3 run_cli.py visualize graph -f <file.sv> --mermaid out.md
-
-# HTML
-python3 run_cli.py visualize graph -f <file.sv> --html out.html
-```
-
----
-
-## 11. diff / snapshot — 版本对比
-
-```bash
-# 建 snapshot
-python3 run_cli.py snapshot save <name> -f <file.sv>
-
-# 对比
-python3 run_cli.py diff <name1> <name2>
-
-# 列 snapshot
+python3 run_cli.py snapshot save <path> --tag v1.2.3 --git
 python3 run_cli.py snapshot list
+python3 run_cli.py snapshot compare <tag1> <tag2> --top 20 --show-edges
+python3 run_cli.py snapshot delete <tag> --force
 ```
+
+> **旧 `diff` 命令已退役** —— 版本对比用 `snapshot compare <tag1> <tag2>`。
 
 ---
 
-## 12. search — 全文搜索
+## 5. exp 层 (6 个, 默认不在 capabilities 列出)
+
+需要 `--include-exp` 才会出现在 `capabilities` 里, 但命令本身**可以直接调用**。
 
 ```bash
-# grep-like, 但跨 .sv/.v 范围 + 上下文
-python3 run_cli.py search "always_ff" -d <dir>
+# 5.1 audit —— 设计审计 (CDC / 风险 / 验证缺口 / 覆盖率 / 协议 ...) ⭐
+python3 run_cli.py audit -f <file.sv> --checks cdc,risk,verification_gaps --json -q
+python3 run_cli.py audit -f <file.sv> --target top --json -q
+
+# 5.2 diagnose —— 只读诊断 (imports / report / timescale / widths)
+python3 run_cli.py diagnose imports --filelist <file.f>
+# diagnose 的 check 是位置参数 (imports / report / timescale / widths), 文件走 --filelist (必填)
+
+# 5.3 trace overview —— A→B 综合视图 (dataflow + controlflow + evidence)
+python3 run_cli.py trace overview top.a top.b -f <file.sv> --json
+
+# 5.4 review render —— 单个 structural finding 的局部 SVG/HTML
+python3 run_cli.py review render <findings.json> --file <file.sv> --svg out.svg
+
+# 5.5 architecture graph —— 模块/实例架构图
+python3 run_cli.py architecture graph -f <file.sv> --module top --depth 3 --json
 ```
+
+### 5.6 trace impact (exp, 默认隐藏)
+
+```bash
+python3 run_cli.py trace impact <signal> -f <file.sv>
+python3 run_cli.py trace impact <signal> -f <file.sv> --min-risk 0.5
+```
+
+常用 flag: `--min-risk/-r`, `--human/-H`, `--tree/-T`, `--bits`, `--batch`
+
+
+### audit 的 10 个检查项
+
+`protocols`, `handshakes`, `backpressure_cycles`, `assertions`, `coverage`, `verification_gaps`, `risk`, `constraints`, `cdc`, `timing`
+
+```bash
+python3 run_cli.py audit -f <file.sv> --checks cdc --json -q
+# {"target": null, "checks": ["cdc"], "sections": {"cdc": [...]}, "summary": {"checks": 1, "findings": N}}
+```
+
+每条 finding 形状 (cdc / risk / verification_gaps):
+- cdc: `{signal, domains[], has_sync_hint, confidence}`
+- risk: `{signal, role (clock/reset/data), loads, drivers, score}`
+- verification_gaps: `{signal, role, loads, has_assertion, has_coverage}`
+
+> **audit 替换了旧的 `cdc analyze` / `risk analyze` / `verify gap` / `sva` / `coverage` / `timing` 命令。**
 
 ---
 
-## 13. stats — 图统计
-
-```bash
-python3 run_cli.py stats -f <file.sv>
-# 输出节点数、边数、模块数、信号数
-```
-
----
-
-## 全局 flag
-
-| Flag | 说明 |
-|------|------|
-| `--file / -f` | 单个 .sv 文件 (常用) |
-| `--filelist / -fl` | Verilator 风格 filelist |
-| `--json / -j` | JSON 输出 (agent 必用) |
-| `--pretty / -p` | 缩进 JSON |
-| `--evidence / -e` | 在每条结果贴源码 evidence (text 1 行 / JSON 完整字段) |
-| `--human / -H` | 人类友好箭头输出 (6 命令: trace fanin/fanout/impact, dataflow, controlflow, cdc) |
-| `--depth N` | trace fanin/fanout 深度 (默认 10) |
-| `--help` | 命令帮助 |
-
-## --human 输出示例 (Stage 6 part 3)
-
-当用户问"给我看个图"或"人话解释"时, 加 `--human` 给箭头式输出:
-
-```bash
-# trace fanin:  反向链 (源头到信号)
-python3 run_cli.py trace fanin -f top.sv top.dout --human
-#   Fanin of top.dout
-#     1'b0 → top.din → top.data → top.dout
-
-# trace fanout: 正向链 (信号到叶)
-python3 run_cli.py trace fanout -f top.sv top.din --human
-#   Fanout of top.din
-#     top.din → top.data → top.dout
-
-# dataflow:    路径 + 条件 + evidence
-python3 run_cli.py dataflow analyze -f top.sv top.din top.dout --human
-#   DataFlow: top.din → top.dout
-#     paths: 1
-#     Path 0:
-#       top.din → top.data → [when !!rst_n && en] top.dout
-
-# controlflow: 条件 + 驱动
-python3 run_cli.py controlflow analyze -f top.sv top.dout --human
-#   ControlFlow: top.dout
-#     when !rst_n: top.clk → top.dout
-#     when !!rst_n && en: top.data → top.dout
-
-# cdc:         跨时钟域 + 同步器状态
-python3 run_cli.py cdc analyze -f cdc.sv --human
-#   CDC Paths:
-#     clk_a: top.reg_a → top.dout_b  [NO SYNC] [HIGH]
-```
-
-**不破坏**: 不加 --human 时输出跟以前完全一样, --json 也照常工作。
-
-## 退出码
+## 6. 退出码 (实测)
 
 | Code | 含义 |
 |------|------|
-| 0 | 成功 |
-| 1 | 通用错误 |
-| 2 | 参数错误 / 文件不存在 |
-| 3 | SV 解析错误 |
-| 4 | 信号找不到 |
-| 5 | 配置错误 |
+| 0 | 成功 (含"信号找不到"这种**业务层空结果** —— 看 `ok` 字段, 不要只看退出码) |
+| 1 | 文件不存在 / elaboration 失败 / parse error |
+| 2 | 用法错误 (未知命令 / 未知 flag / 缺必填参数) |
 
 ---
 
-## 14. CoralNPU 分析案例
+## 7. error_code (15 种, stable)
 
-### 完整跑一遍 (验证 skill 工作流)
+`OK`, `E_INTERNAL`, `E_USAGE`, `E_FILE_NOT_FOUND`, `E_FILELIST_NOT_FOUND`,
+`E_FILELIST_INCOMPLETE`, `E_FILELIST_INVALID`, `E_INVALID_INPUT`,
+`E_ELABORATION_FAILED`, `E_PARSE_ERROR`, `E_TARGET_NOT_FOUND`,
+`E_SIGNAL_NOT_FOUND`, `E_SIGNAL_AMBIGUOUS`, `E_NO_DATA`, `E_PARTIAL_RESULT`
+
+权威定义: `src/cli/errors.py` 的 `ErrorCode` 枚举。
+
+---
+
+## 8. JSON envelope 形状 (实测, **不统一**)
+
+大多数命令用标准 envelope:
+```json
+{"ok": true, "command": "trace_fanin", "params": {...}, "result": {...}, "errors": []}
+```
+
+但这些命令**不是**标准 envelope (别写代码硬套):
+
+| 命令 | 顶层键 |
+|------|--------|
+| `audit` | `target`, `checks`, `sections`, `summary` |
+| `paths` | `ok`, `src`, `dst`, `found`, `hop_count`, `path`, ... |
+| `search` | `keyword`, `target`, `total_matches`, `file_count`, `files` |
+| `ports` | `ok`, `module`, `count`, `by_direction`, `ports` |
+| `instances` | `ok`, `count`, `module`, `instances` |
+| `hierarchy` | `ok`, `root_count`, `instance_count`, `tree` |
+| `connections` / `params` | `ok`, `error`, `target`/`path`, `resolved_as`, `hint` |
+| `class` | `ok`, `count`, `classes` |
+| `capabilities` | `schema_version`, `layers`, `core_groups`, `commands`, ... |
+
+---
+
+## 9. CoralNPU 分析案例 (已按真实命令更新)
 
 ```bash
 cd <PROJ_DIR>/sv_query
@@ -352,34 +326,22 @@ cat > /tmp/coralnpu_two.f << 'EOF'
 EOF
 
 python3 run_cli.py stats --filelist /tmp/coralnpu_two.f --json -q
-# → 19 nodes, 23 edges, 0 errors ✅
 
-# Step 2: trace 内部信号 (RstSync.rst_delay_reg 是内部 REG)
+# Step 2: trace 内部信号
 python3 run_cli.py trace evidence rst_delay_reg --filelist /tmp/coralnpu_two.f --json -q
-# → credibility_score=1.0 (always_ff 内赋值, 最可信)
 
-# Step 3: 找 RstSync 内 rstn_o 怎么赋值
+# Step 3: 找 rstn_o 怎么赋值
 python3 run_cli.py trace fanin rstn_o --filelist /tmp/coralnpu_two.f --json -q
-# → drivers: [rst_delay_reg] (assign rstn_o = rst_delay_reg[RST_DELAY-1])
 
-# Step 4: CDC check (单 module 内通常无 CDC, 但测试)
-python3 run_cli.py cdc analyze --filelist /tmp/coralnpu_two.f --summary --json -q
-# → 0 跨域 (单 clk)
+# Step 4: CDC check (用 audit, 不是旧的 cdc analyze)
+python3 run_cli.py audit --filelist /tmp/coralnpu_two.f --checks cdc --json -q
 
-# Step 5: 风险评分
-python3 run_cli.py risk analyze --filelist /tmp/coralnpu_two.f --summary --json -q
-# → top_risks (前 10), counts
+# Step 5: 风险评分 (用 audit --checks risk)
+python3 run_cli.py audit --filelist /tmp/coralnpu_two.f --checks risk --json -q
 ```
-
-### 关键发现
-
-- ClockGate + RstSync 是 **210 行内**的纯 SV 模块, 没有 cross-module 依赖
-- RstSync 用 4-FF 同步器 + 时钟门控 (ASIC-style reset)
-- ClockGate 用 latched-and-or 实现 clock gating
-- 单文件 filelist (2 modules) elaboration 完全干净, 证明 sv_query 工具链正常
 
 ### 限制
 
 - RvvCore.sv 包含 RISC-V Vector Ext 完整实现 (~3500 行), 需 RISC-V package 链
 - 在 low-memory machine (<16GB) 上全 filelist (84 files) stats 跑 3+ 分钟, 可能 OOM
-- 推荐: 用 [progressive filelist strategy](../SKILL.md#实际项目分析工作流-coralnpu-案例-2026-06-28) 分层
+- 推荐: 渐进式 filelist (先 2 module, 再加 common cells, 最后全量)

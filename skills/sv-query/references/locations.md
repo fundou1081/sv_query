@@ -5,10 +5,11 @@
 ## 1. 主目录 (USER_PROFILE.md 指定, 唯一工作目录)
 
 ```
-<PROJ_DIR>/sv_query/
+~/my_dv_proj/sv_query/
 ```
 
-**永远在这里工作, 不要去 `[agent-runtime-cache]/` (那个是 agent runtime cache)**
+**永远在这里工作。** 本机只存在这一个 sv_query 副本 ——
+历史上的 `~/my_dvproj/` (有下划线) 别名目录**已不存在**, 不要再去那里找。
 
 ---
 
@@ -20,31 +21,27 @@
 ├── pyproject.toml             # 项目配置 (pyslang>=10,<12 锁版本)
 ├── README.md                  # 用户文档
 ├── EXAMPLES.md                # 使用案例
-├── docs/                      # 详细文档
+├── docs/                      # 详细文档 (60+ 文件)
+│   ├── INDEX.md                 # 索引 + 测试计数单一真相源
 │   ├── USER_GUIDE.md
-│   ├── PYSLANG_COMPAT.md
 │   ├── EVIDENCE_FEATURE.md
-│   ├── CDC_ANALYSIS.md
-│   └── ... (60+ 文件)
+│   ├── CLI_SURFACE.md
+│   ├── EXP_IDEAS.md              # exp 创意清单 (已落地为 svq audit)
+│   └── ...
 ├── src/
 │   ├── cli/                   # CLI 命令 (typer-based)
-│   │   ├── run_cli.py
-│   │   ├── _evidence_helpers.py  # evidence 共享逻辑
-│   │   └── commands/
-│   │       ├── trace.py
-│   │       ├── dataflow.py
-│   │       ├── controlflow.py
-│   │       ├── cdc.py
-│   │       ├── risk.py
-│   │       ├── sva.py
-│   │       ├── verify.py
-│   │       ├── timing.py
-│   │       ├── coverage.py
-│   │       ├── visualize.py
-│   │       ├── diff.py
-│   │       ├── snapshot.py
-│   │       ├── search.py
-│   │       └── stats.py
+│   │   ├── main.py              # 入口 + 命令注册
+│   │   ├── _common.py           # 共用构建/错误处理
+│   │   ├── _output.py           # JSON 输出 + 结构化失败
+│   │   ├── _registry.py         # 命令注册表 (capabilities 契约来源)
+│   │   ├── errors.py            # ErrorCode 枚举 (stable error_code 权威定义)
+│   │   ├── _evidence_helpers.py # evidence 共享逻辑
+│   │   ├── core/
+│   │   │   ├── semantic/        # trace / dataflow / controlflow / verify
+│   │   │   ├── locate/          # stats / search / graph / filelist
+│   │   │   ├── state/           # snapshot
+│   │   │   └── diagnose/        # exp diagnose
+│   │   └── view/               # exp review render / architecture graph
 │   └── trace/                 # 核心分析引擎
 │       ├── unified_tracer.py     # 统一入口
 │       └── core/
@@ -52,7 +49,8 @@
 │           ├── graph_builder.py    # 构建信号图
 │           ├── semantic_adapter.py # pyslang semantic API 适配
 │           ├── driver_extractor.py # driver 提取
-│           ├── sva_extractor.py    # SVA 提取
+│           ├── trace_evidence.py   # evidence + credibility_score
+│           ├── analysis/audit.py   # audit 检查项 (exp)
 │           └── visitors/
 │               ├── constraint_visitor.py
 │               └── signal_expression_visitor.py
@@ -71,55 +69,46 @@
 
 ---
 
-## 3. agent runtime cache (不要用)
+## 3. 仓库 remote (没有 `origin`!)
 
+```bash
+cd ~/my_dv_proj/sv_query
+git remote -v
+# backup      https://github.com/fundou1081/sv_query.git (fetch/push)
+# ssh-origin  git@github.com:fundou1081/sv_query.git      (fetch/push)
 ```
-[agent-runtime-cache]/sv_query/  # agent runtime cache (有下划线)
+
+⚠️ **这个仓库没有 `origin` remote** —— `git push origin main` 会报
+"No such remote 'origin'"。要推用:
+
+```bash
+git push backup main       # https
+git push ssh-origin main   # ssh
 ```
-
-历史原因: agent runtime maps workspace 映射到 `[agent-runtime-cache]/` (有下划线), 但 USER_PROFILE.md 写的是 `<PROJ_DIR>/` (无下划线) 是真主目录。
-
-**可能状态**:
-- 内容可能比主目录新 (agent runtime auto-sync)
-- 也可能比主目录旧 (用户手动改了主目录没同步)
-- inode 不同, 不是 hardlink
-- git remote 相同 (同一个 GitHub repo)
-
-**规则**:
-- 所有 sv_query 工作在 `<PROJ_DIR>/sv_query/`
-- `[agent-runtime-cache]/sv_query/` 视为只读缓存
-- 改完代码 `git push` 后, agent runtime cache会自动更新
 
 ---
 
 ## 4. 如何确认当前在哪
 
 ```bash
-cd <PROJ_DIR>/sv_query
+cd ~/my_dv_proj/sv_query
 pwd
-# <PROJ_DIR>/sv_query
+# /Users/fundou/my_dv_proj/sv_query
 
 git remote -v
-# origin  https://<REPO_URL>.git
-
 git log --oneline | head -3
 # 看你最近的 commit
-```
 
-跟 `[agent-runtime-cache]/sv_query` 对比 (用 rsync / diff -rq):
-
-```bash
-diff -rq <PROJ_DIR>/sv_query [agent-runtime-cache]/sv_query 2>&1 | head
-# 如果输出空 = 一致
-# 如果有 "Only in" = 不同步
+git status --porcelain
+# 确认工作区干净 (且没有别的 agent 在改同一个文件)
 ```
 
 ---
 
 ## 5. 给 agent 的硬规则
 
-1. **永远** `cd <PROJ_DIR>/sv_query` 不去 `[agent-runtime-cache]/`
+1. **永远** `cd ~/my_dv_proj/sv_query` (本机只有这一个副本)
 2. **永远** 先 `pwd && git status` 确认
 3. **永远** 修改后跑测试 + commit
-4. **永远** `git push` 同步到 GitHub (让 agent runtime cache自动更新)
-5. **不要** 删 `[agent-runtime-cache]/sv_query` (它是 agent runtime workspace, 删了 agent won't see it)
+4. 推送用 `git push backup main` 或 `git push ssh-origin main` (**没有 origin**)
+5. **不要** 在没确认的情况下改 `src/cli/_registry.py` 等别人正在编辑的文件

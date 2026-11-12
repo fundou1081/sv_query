@@ -142,7 +142,7 @@ python3 -m pytest sim/tests/ -q
 cd <PROJ_DIR>/sv_query
 git add -A
 git commit -m "feat(compat): support pyslang <新版本>"
-git push origin main
+git push backup main   # 本仓库没有 origin remote
 ```
 
 ---

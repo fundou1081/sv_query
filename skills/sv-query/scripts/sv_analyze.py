@@ -9,24 +9,21 @@ sv-query helper: 用 sv_query 跑一站式分析 (LLM 友好)
     # result 是 dict, 自动处理 error_code 分类
 
     # CLI
-    python3 sv_analyze.py <sv_file> <signal> [--mode trace|f|in|fanin|evidence|dataflow|risk|cdc|verify] [--to TARGET] [--depth N] [--max-results N]
+    python3 sv_analyze.py <sv_file> <signal> \\
+        [--mode trace|fanin|fanout|evidence|dataflow|audit|verify|stats] \\
+        [--to TARGET] [--depth N] [--max-results N] [--checks a,b]
 
 LLM-friendly 设计:
 - 永远加 `--json -q` 抑制 stderr 污染 stdout
-- 默认 `--max-results 50` 防 OOM
-- 返回 dict 含 `ok` (bool) + `error_code` (stable) + `result` / `errors`
+- flag 一律放在**子命令之后** (Typer 只认 leaf command 的选项, 放中间会报 unknown option)
+- 返回 dict 含 `ok` (bool) + `command` + `error_code` (stable, CLI 提供时) + `result` / `errors`
 - 不返回 raw stderr (LLM 难处理)
-- 路径用 `<PROJ_DIR>/sv_query` (USER_PROFILE.md 主目录, 不是 agent runtime cache)
+- 仓库根目录自动定位: 从本文件向上找含 `run_cli.py` 的目录; 可用 `SV_QUERY_DIR` 覆盖
 
-输出 schema 跟 `tools/llm_schema.json` 一致:
-    {
-      "ok": bool,
-      "command": str,
-      "error_code": str | null,
-      "error": str | null,
-      "result": dict | null,
-      "errors": list
-    }
+注意 (2026-11-11, 与 CLI 实测对齐):
+- 旧的 `risk analyze` / `cdc analyze` / `verify gap` 命令已在 iter_263 退役,
+  对应能力改由 `audit --checks risk|cdc|verification_gaps` 提供。
+- 旧的 `--summary` flag 不存在; `dataflow analyze` 的 cap 是 `--max-paths/-n`。
 """
 import argparse
 import json
@@ -35,92 +32,76 @@ import subprocess
 import sys
 from pathlib import Path
 
-# sv_query 项目主目录 (USER_PROFILE.md 强制, 不用 agent runtime cache [agent-runtime-cache]/)
-# sv_query 项目主目录占位符:
-# 默认: ~/projects/sv_query (Linux/macOS 通用约定)
-# 真实用户可能用其他路径 (~/projects/sv_query, ~/work/sv_query 等)
-# 如需修改, 改这一行或用环境变量 SV_QUERY_DIR 覆盖:
-#   export SV_QUERY_DIR=/path/to/your/sv_query
-import os as _os
-_SV_QUERY_DEFAULT = _os.environ.get("SV_QUERY_DIR") or str(Path.home() / "projects" / "sv_query")
-# 修正: 如果默认路径不是用户明确配置的, 用一个通用占位符
-# 这样 error message 不会泄露用户名
-if _SV_QUERY_DEFAULT.startswith(str(Path.home())) and "projects" in _SV_QUERY_DEFAULT and "sv_query" in _SV_QUERY_DEFAULT:
-    # 默认路径未配置, 使用占位符供文档/错误消息使用
-    SV_QUERY_DIR = Path(_os.environ.get("SV_QUERY_DIR", "/path/to/sv_query"))
-else:
-    SV_QUERY_DIR = Path(_SV_QUERY_DEFAULT)
+
+def _find_repo_root() -> Path | None:
+    """从本文件向上找含 run_cli.py 的目录 (skill 随仓库安装时有效)"""
+    for parent in Path(__file__).resolve().parents:
+        if (parent / "run_cli.py").is_file():
+            return parent
+    return None
+
+
+def _resolve_sv_query_dir() -> Path | None:
+    """SV_QUERY_DIR 优先; 否则自动向上定位仓库根"""
+    env = os.environ.get("SV_QUERY_DIR")
+    if env:
+        p = Path(env).expanduser()
+        return p if (p / "run_cli.py").is_file() else None
+    return _find_repo_root()
+
+
+SV_QUERY_DIR = _resolve_sv_query_dir()
 PYTHON = sys.executable
+
+_MISSING_DIR_MSG = (
+    "sv_query 仓库根目录未找到 (需要含 run_cli.py)。"
+    "请设置环境变量: export SV_QUERY_DIR=/path/to/your/sv_query"
+)
 
 
 def run_cli(*args, timeout=120, quiet=True, max_results=None):
     """Run sv_query CLI and return (rc, stdout, stderr)
 
-    LLM 友好:
-    - 自动加 --json -q (除非 caller 显式 override)
-    - max_results 是 per-command flag, 默认 50 (trace fanin/fanout/cdc/risk 支持)
+    关键: `--json` / `-q` 必须放在**子命令之后** —— Typer 只认 leaf command 的选项,
+    放在 group 和 subcommand 之间会报 "No such option"。所以统一追加到 argv 末尾。
 
-    关键: 全局 flag (--json/-j, --quiet/-q) 必须在 subcommand 之后;
-         per-command flag (--max-results/-N, --summary/-S) 也在 subcommand 之后.
+    max_results 只对支持它的命令有效 (trace fanin/fanout); 其它命令用各自 flag。
     """
-    args = list(args)
+    if SV_QUERY_DIR is None:
+        return 127, "", _MISSING_DIR_MSG
 
-    # 处理特殊情况: 第一个 arg 已经是全局 flag
-    if args and args[0] in ("--json", "-j", "--pretty", "-p", "--quiet", "-q"):
-        if len(args) >= 2 and not args[1].startswith("-"):
-            global_flag = args.pop(0)
-            args.insert(1, global_flag)
-
-    # 强制 --json
-    has_json = any(a in ("--json", "-j") for a in args)
-    if not has_json:
-        for i, a in enumerate(args):
-            if not a.startswith("-"):
-                args.insert(i + 1, "--json")
-                break
-        else:
-            args.append("--json")
-
-    # 强制 --quiet
-    if quiet and not any(a in ("--quiet", "-q") for a in args) and not os.environ.get("SVQ_QUIET"):
-        for i, a in enumerate(args):
-            if not a.startswith("-"):
-                args.insert(i + 1, "-q")
-                break
-        else:
-            args.append("-q")
-
-    # max_results 是 per-command, 只在显式要求时加
-    # (避免 stats/evidence 等命令报 "no such option: --max-results")
-    if max_results is not None and not any(a in ("--max-results", "-N") for a in args):
-        for i, a in enumerate(args):
-            if not a.startswith("-"):
-                args.insert(i + 1, "--max-results")
-                args.insert(i + 2, str(max_results))
-                break
-        else:
-            args.extend(["--max-results", str(max_results)])
+    argv = [str(a) for a in args]
+    # 去掉调用方可能自带的 --json/-j, 统一在末尾追加
+    argv = [a for a in argv if a not in ("--json", "-j")]
+    if max_results is not None and not any(a in ("--max-results", "-N") for a in argv):
+        argv += ["--max-results", str(max_results)]
+    argv.append("--json")
+    if quiet and not os.environ.get("SVQ_QUIET"):
+        argv.append("-q")
 
     try:
         result = subprocess.run(
-            [PYTHON, "run_cli.py", *args],
+            [PYTHON, "run_cli.py", *argv],
             cwd=str(SV_QUERY_DIR),
             capture_output=True,
             text=True,
             timeout=timeout,
         )
         return result.returncode, result.stdout, result.stderr
-    except FileNotFoundError:
-        # SV_QUERY_DIR 不存在或没有 run_cli.py
-        # 不暴露实际路径, 给出配置指引
-        return 127, "", (
-            "sv_query not found at expected location. "
-            "Please configure SV_QUERY_DIR environment variable: "
-            "`export SV_QUERY_DIR=/path/to/your/sv_query`. "
-            f"Default location: {SV_QUERY_DIR}."
-        )
+    except subprocess.TimeoutExpired:
+        return 124, "", f"timeout after {timeout}s"
     except Exception as e:
         return 1, "", f"{type(e).__name__}: {e}"
+
+
+def _error_text(data: dict) -> str:
+    """error 可能是 str / dict {type,message} / list —— 统一成可搜索的文本"""
+    err = data.get("error")
+    if isinstance(err, dict):
+        return " ".join(str(x) for x in (err.get("type", ""), err.get("message", "")) if x)
+    if isinstance(err, list):
+        return " ".join(str(x) for x in err)
+    return str(err or "")
 
 
 def parse_json_or_error(rc, stdout, stderr):
@@ -128,14 +109,13 @@ def parse_json_or_error(rc, stdout, stderr):
 
     Returns: dict with `ok`, `command`, `error_code`, `error`, `result`, `errors`
 
-    error_code 分类规则 (从 error 文本推断):
+    error_code 分类规则 (仅在 CLI 本身没给 error_code 时推断):
     - "Elaboration errors" / "unknown module" → E_ELABORATION_FAILED
     - "No such file" / "FileNotFound" → E_FILE_NOT_FOUND
     - "parse error" / "ParseError" → E_PARSE_ERROR
     - exit != 0 且 ok=false → E_INTERNAL
     """
     if not stdout.strip():
-        # rc=127 通常是 binary 不存在 (subprocess FileNotFoundError 包装)
         if rc == 127 and stderr and "not found" in stderr.lower():
             return {
                 "ok": False,
@@ -166,28 +146,36 @@ def parse_json_or_error(rc, stdout, stderr):
             "errors": [],
         }
 
-    # sv_query 输出格式: {ok, command, result, error, error_code, errors}
+    if not isinstance(data, dict):
+        return {
+            "ok": False,
+            "command": None,
+            "error_code": "E_PARSE_ERROR",
+            "error": f"unexpected json type: {type(data).__name__}",
+            "result": None,
+            "errors": [],
+        }
+
+    data.setdefault("errors", [])
+
+    # sv_query 标准信封: {ok, command, params, result, errors, error_code?}
     if data.get("error_code") is None and data.get("ok") is False:
-        # 推断 error_code (从 error 文本)
-        err_text = (data.get("error") or "").lower()
+        err_text = _error_text(data).lower()
         if "elaboration" in err_text or "unknown module" in err_text:
             data["error_code"] = "E_ELABORATION_FAILED"
-        elif "no such file" in err_text or "filenotfound" in err_text or "no such option" in err_text:
-            data["error_code"] = "E_FILE_NOT_FOUND"
         elif "parse error" in err_text or "syntax error" in err_text:
             data["error_code"] = "E_PARSE_ERROR"
         elif "signal not found" in err_text or "no signal" in err_text:
             data["error_code"] = "E_SIGNAL_NOT_FOUND"
         elif "target not found" in err_text:
             data["error_code"] = "E_TARGET_NOT_FOUND"
+        elif "no such file" in err_text or "filenotfound" in err_text or "not found" in err_text:
+            data["error_code"] = "E_FILE_NOT_FOUND"
         elif "no data" in err_text:
             data["error_code"] = "E_NO_DATA"
-        elif rc != 0:
-            data["error_code"] = "E_INTERNAL"
         else:
-            data["error_code"] = "E_INTERNAL"  # 默认
+            data["error_code"] = "E_INTERNAL"
     elif data.get("error_code") is None and data.get("ok") is True:
-        # 成功情况, 确保 error_code 字段存在 (None 表示 OK)
         data["error_code"] = None
 
     return data
@@ -196,48 +184,31 @@ def parse_json_or_error(rc, stdout, stderr):
 def trace_fanin(sv_file: str, signal: str, depth: int = 5, max_results: int = 50) -> dict:
     """Trace signal drivers (fanin)
 
-    Args:
-        sv_file: .sv 文件路径
-        signal: 要 trace 的信号名
-        depth: trace 深度 (默认 5)
-        max_results: cap 结果数 (LLM context 安全)
-
-    Returns: dict, {ok, command, result: {drivers, truncated, total_count, ...}}
+    Returns: dict, {ok, command, result: {signals[], total_count, truncated, ...}}
     """
     rc, out, err = run_cli(
         "trace", "fanin", signal, "-f", sv_file,
         "--depth", str(depth),
-        "--max-results", str(max_results),
+        max_results=max_results,
     )
     return parse_json_or_error(rc, out, err)
 
 
 def trace_fanin_filelist(filelist: str, signal: str, depth: int = 5, max_results: int = 50) -> dict:
-    """Trace fanin using filelist (multi-file projects)
-
-    Returns: dict, {ok, command, result: {drivers, ...}}
-    """
+    """Trace fanin using filelist (multi-file projects)"""
     rc, out, err = run_cli(
         "trace", "fanin", signal, "--filelist", filelist,
         "--depth", str(depth),
-        "--max-results", str(max_results),
+        max_results=max_results,
     )
     return parse_json_or_error(rc, out, err)
 
 
 def trace_fanout(sv_file: str, signal: str, max_results: int = 50) -> dict:
-    """Trace signal loads (fanout)
-
-    Args:
-        sv_file: .sv 文件路径
-        signal: 要 trace 的信号名
-        max_results: cap 结果数
-
-    Returns: dict, {ok, command, result: {loads, truncated, total_count}}
-    """
+    """Trace signal loads (fanout)"""
     rc, out, err = run_cli(
         "trace", "fanout", signal, "-f", sv_file,
-        "--max-results", str(max_results),
+        max_results=max_results,
     )
     return parse_json_or_error(rc, out, err)
 
@@ -246,7 +217,7 @@ def trace_fanout_filelist(filelist: str, signal: str, max_results: int = 50) -> 
     """Trace fanout using filelist"""
     rc, out, err = run_cli(
         "trace", "fanout", signal, "--filelist", filelist,
-        "--max-results", str(max_results),
+        max_results=max_results,
     )
     return parse_json_or_error(rc, out, err)
 
@@ -254,142 +225,137 @@ def trace_fanout_filelist(filelist: str, signal: str, max_results: int = 50) -> 
 def trace_evidence(sv_file: str, signal: str, chain: bool = False) -> dict:
     """Get evidence (source code context) for a signal
 
-    Args:
-        sv_file: .sv 文件路径
-        signal: 要看源码的信号名
-        chain: 是否显示 chain (默认 False)
-
-    Returns: dict, {ok, command, result: {signal, evidence: {credibility_score, source_text, source_range, ...}}}
-
-    Note: sv_query trace_evidence 返回时 evidence 在顶层, 不在 result wrapper 里.
-          这个函数自动包装成 {result: {evidence: ...}} 跟其他命令保持一致.
+    Returns: dict, {ok, command, result: {signals: [{evidence: {...}}]}, evidence: {...}}
     """
-    rc, out, err = run_cli("trace", "evidence", signal, "-f", sv_file, "--json", "-q")
-    data = parse_json_or_error(rc, out, err)
-    if data.get("ok") and "result" not in data and "evidence" in data:
-        # 包装 evidence 到 result 里 (跟其他命令保持一致)
-        data["result"] = {
-            "signal": data.get("signal"),
-            "evidence": data.get("evidence"),
-            "params": data.get("params"),
-        }
-    return data
+    args = ["trace", "evidence", signal, "-f", sv_file]
+    if chain:
+        args.append("--chain")
+    rc, out, err = run_cli(*args)
+    return parse_json_or_error(rc, out, err)
 
 
 def trace_evidence_filelist(filelist: str, signal: str, chain: bool = False) -> dict:
     """Trace evidence using filelist"""
-    rc, out, err = run_cli("trace", "evidence", signal, "--filelist", filelist, "--json", "-q")
-    data = parse_json_or_error(rc, out, err)
-    if data.get("ok") and "result" not in data and "evidence" in data:
-        data["result"] = {
-            "signal": data.get("signal"),
-            "evidence": data.get("evidence"),
-            "params": data.get("params"),
-        }
-    return data
+    args = ["trace", "evidence", signal, "--filelist", filelist]
+    if chain:
+        args.append("--chain")
+    rc, out, err = run_cli(*args)
+    return parse_json_or_error(rc, out, err)
 
 
-def dataflow(sv_file: str, from_sig: str, to_sig: str) -> dict:
+def dataflow(sv_file: str, from_sig: str, to_sig: str, max_paths: int = 50) -> dict:
     """Dataflow between two signals
 
-    Returns: dict, {ok, command, result: {paths: [...]}}
+    注意: cap 用 `--max-paths/-n` (不是 --max-results —— dataflow 不接受那个 flag)
+
+    Returns: dict, {ok, command, result: {paths[], is_reachable, truncated, ...}}
     """
     rc, out, err = run_cli(
         "dataflow", "analyze", from_sig, to_sig, "-f", sv_file,
-        "--evidence", "--max-results", "50",
+        "--evidence",
+        "--max-paths", str(max_paths),
     )
     return parse_json_or_error(rc, out, err)
 
 
-def dataflow_filelist(filelist: str, from_sig: str, to_sig: str) -> dict:
+def dataflow_filelist(filelist: str, from_sig: str, to_sig: str, max_paths: int = 50) -> dict:
     """Dataflow analysis using filelist"""
     rc, out, err = run_cli(
         "dataflow", "analyze", from_sig, to_sig, "--filelist", filelist,
-        "--evidence", "--max-results", "50",
+        "--evidence",
+        "--max-paths", str(max_paths),
     )
     return parse_json_or_error(rc, out, err)
 
 
-def risk_analyze(sv_file: str, summary: bool = True) -> dict:
-    """Risk analysis with evidence
+AUDIT_CHECKS = (
+    "protocols", "handshakes", "backpressure_cycles", "assertions",
+    "coverage", "verification_gaps", "risk", "constraints", "cdc", "timing",
+)
 
-    Args:
-        sv_file: .sv 文件路径
-        summary: True=只返回 top-10 + counts (LLM 友好); False=全量
 
-    Returns: dict, {ok, command, result: {top_risks, clocks_count, resets_count, ...}}
+def audit(sv_file: str = None, filelist: str = None, checks=None, target: str = None) -> dict:
+    """设计审计 (CDC / 风险 / 验证缺口 / 覆盖率 / 协议 / 握手 ...)
+
+    这是退役的 `cdc analyze` / `risk analyze` / `verify gap` 的替代入口。
+
+    注意: audit 的 JSON **没有** 标准信封 (没有 ok/command/result),
+    这里统一包成 {ok, command, result, errors} 让调用方逻辑一致。
+
+    Returns: dict, {ok, command, result: {target, checks[], sections{}, summary{}}}
     """
-    args = ["risk", "analyze", "-f", sv_file, "--max-results", "50"]
-    if summary:
-        args.append("--summary")
+    args = ["audit"]
+    if sv_file:
+        args += ["-f", sv_file]
+    if filelist:
+        args += ["--filelist", filelist]
+    if target:
+        args += ["--target", target]
+    if checks:
+        args += ["--checks", ",".join(checks)]
+    rc, out, err = run_cli(*args)
+    if not out.strip():
+        return parse_json_or_error(rc, out, err)
+    try:
+        raw = json.loads(out)
+    except json.JSONDecodeError:
+        return parse_json_or_error(rc, out, err)
+    if isinstance(raw, dict) and "sections" in raw:
+        return {
+            "ok": True,
+            "command": "audit",
+            "error_code": None,
+            "error": None,
+            "result": raw,
+            "errors": [],
+        }
+    return parse_json_or_error(rc, out, err)
+
+
+def verify_structural(sv_file: str = None, filelist: str = None, checks=None) -> dict:
+    """结构性检查 (默认 symmetry) —— 退役 `verify gap` 的替代入口之一"""
+    args = ["verify", "structural"]
+    if sv_file:
+        args += ["-f", sv_file]
+    if filelist:
+        args += ["--filelist", filelist]
+    if checks:
+        args += ["--checks", ",".join(checks)]
     rc, out, err = run_cli(*args)
     return parse_json_or_error(rc, out, err)
 
 
-def risk_analyze_filelist(filelist: str, summary: bool = True) -> dict:
-    """Risk analysis using filelist"""
-    args = ["risk", "analyze", "--filelist", filelist, "--max-results", "50"]
-    if summary:
-        args.append("--summary")
+def verify_consistency(sv_file: str = None, filelist: str = None, checks=None) -> dict:
+    """双向一致性检查 (reciprocity / bit / connection)"""
+    args = ["verify", "consistency"]
+    if sv_file:
+        args += ["-f", sv_file]
+    if filelist:
+        args += ["--filelist", filelist]
+    if checks:
+        args += ["--checks", ",".join(checks)]
     rc, out, err = run_cli(*args)
-    return parse_json_or_error(rc, out, err)
-
-
-def cdc_analyze(sv_file: str, summary: bool = True) -> dict:
-    """CDC analysis with evidence
-
-    Args:
-        sv_file: .sv 文件路径
-        summary: True=只返回 counts + domains; False=全 paths
-
-    Returns: dict, {ok, command, result: {total_cdc, high_risk, low_risk, domains, ...}}
-    """
-    args = ["cdc", "analyze", "-f", sv_file, "--max-results", "50"]
-    if summary:
-        args.append("--summary")
-    rc, out, err = run_cli(*args)
-    return parse_json_or_error(rc, out, err)
-
-
-def cdc_analyze_filelist(filelist: str, summary: bool = True) -> dict:
-    """CDC analysis using filelist"""
-    args = ["cdc", "analyze", "--filelist", filelist, "--max-results", "50"]
-    if summary:
-        args.append("--summary")
-    rc, out, err = run_cli(*args)
-    return parse_json_or_error(rc, out, err)
-
-
-def verify_gap(sv_file: str) -> dict:
-    """Find verification gaps with evidence
-
-    Returns: dict, {ok, command, result: {gaps: [...]}}
-    """
-    rc, out, err = run_cli("verify", "gap", "-f", sv_file, "--max-results", "50")
-    return parse_json_or_error(rc, out, err)
-
-
-def verify_gap_filelist(filelist: str) -> dict:
-    """Find verification gaps with filelist"""
-    rc, out, err = run_cli("verify", "gap", "--filelist", filelist, "--max-results", "50")
     return parse_json_or_error(rc, out, err)
 
 
 def stats(sv_file: str = None, filelist: str = None) -> dict:
     """Get graph statistics
 
-    Args:
-        sv_file: 单 .sv 文件 (二选一)
-        filelist: filelist 路径 (二选一, 优先)
-
-    Returns: dict, {ok, command, result: {total_nodes, total_edges, nodes, edges, modules}}
+    Returns: dict, {ok, command, result: {...}}
     """
     if filelist:
         args = ["stats", "--filelist", filelist]
     elif sv_file:
         args = ["stats", "-f", sv_file]
     else:
-        return {"ok": False, "error_code": "E_INVALID_INPUT", "error": "need sv_file or filelist", "result": None}
+        return {
+            "ok": False,
+            "command": None,
+            "error_code": "E_INVALID_INPUT",
+            "error": "need sv_file or filelist",
+            "result": None,
+            "errors": [],
+        }
     rc, out, err = run_cli(*args)
     return parse_json_or_error(rc, out, err)
 
@@ -406,10 +372,12 @@ LLM 调用示例:
     python3 sv_analyze.py sim/test.sv top.q --mode fanin
     # 找负载
     python3 sv_analyze.py sim/test.sv clk --mode fanout --max-results 20
-    # CDC 概要
-    python3 sv_analyze.py sim/test.sv --mode cdc --summary
-    # 风险评分
-    python3 sv_analyze.py sim/test.sv --mode risk --summary
+    # CDC 概要 (audit 替代已退役的 cdc analyze)
+    python3 sv_analyze.py sim/test.sv --mode cdc
+    # 风险评分 (audit 替代已退役的 risk analyze)
+    python3 sv_analyze.py sim/test.sv --mode risk
+    # 验证缺口 (audit 替代已退役的 verify gap)
+    python3 sv_analyze.py sim/test.sv --mode verify
     # 整个图 stats
     python3 sv_analyze.py --filelist /tmp/myproj.f --mode stats
         """,
@@ -423,52 +391,52 @@ LLM 调用示例:
     parser.add_argument(
         "--mode",
         default="evidence",
-        choices=["trace", "fanin", "fanout", "f", "fi", "fo", "in", "out",
-                 "evidence", "e", "ev", "dataflow", "df",
-                 "risk", "r", "cdc", "c", "verify", "v",
+        choices=["trace", "fanin", "f", "fi", "in",
+                 "fanout", "fo", "out",
+                 "evidence", "e", "ev",
+                 "dataflow", "df",
+                 "audit", "a", "risk", "r", "cdc", "c", "verify", "v",
                  "stats", "s"],
         help="Analysis mode (default: evidence)",
     )
     parser.add_argument("--to", help="Target signal (for dataflow mode)")
     parser.add_argument("--depth", type=int, default=5, help="Trace depth (default: 5)")
     parser.add_argument("--max-results", "-N", type=int, default=50,
-                        help="Cap results count (default: 50, LLM context safety)")
-    parser.add_argument("--summary", "-S", action="store_true",
-                        help="Summary mode for cdc/risk (LLM friendly)")
+                        help="Cap results count for trace fanin/fanout (default: 50)")
+    parser.add_argument("--max-paths", type=int, default=50,
+                        help="Cap path count for dataflow (default: 50)")
+    parser.add_argument("--checks",
+                        help="Comma-separated audit checks (default: all). "
+                             "Available: " + ",".join(AUDIT_CHECKS))
     parser.add_argument("--chain", action="store_true", help="Show evidence chain")
 
     args = parser.parse_args()
 
-    # CLI 参数解析补充:
     # argparse nargs="?" 会让第一个 positional 作为 sv_file, 第二个作为 signal.
     # 但如果指定了 --filelist, sv_file 应该是 None, 第一个 positional 应该是 signal.
     if args.filelist and not args.signal and args.sv_file:
-        # 交换: sv_file (signal 误传) → signal
         args.signal = args.sv_file
         args.sv_file = None
 
-    # Validate inputs
     target = args.sv_file or args.filelist
     if not target:
         print(json.dumps({"ok": False, "error_code": "E_INVALID_INPUT",
                           "error": "need sv_file or --filelist", "result": None}))
         sys.exit(1)
 
-    # 检查 sv_file 存在 (如果有指定)
     if args.sv_file and not Path(args.sv_file).exists():
         print(json.dumps({"ok": False, "error_code": "E_FILE_NOT_FOUND",
                           "error": f"file not found: {args.sv_file}", "result": None}))
         sys.exit(1)
 
-    # 检查 filelist 存在 (如果有指定)
     if args.filelist and not Path(args.filelist).exists():
         print(json.dumps({"ok": False, "error_code": "E_FILELIST_NOT_FOUND",
                           "error": f"filelist not found: {args.filelist}", "result": None}))
         sys.exit(1)
 
-    # Dispatch
     mode = args.mode
     sv_file = args.sv_file
+    checks = [c.strip() for c in args.checks.split(",") if c.strip()] if args.checks else None
 
     if mode in ("trace", "fanin", "f", "fi", "in"):
         if not args.signal:
@@ -504,24 +472,20 @@ LLM 调用示例:
                               "result": None}))
             sys.exit(1)
         if args.filelist:
-            result = dataflow_filelist(args.filelist, args.signal, args.to)
+            result = dataflow_filelist(args.filelist, args.signal, args.to, args.max_paths)
         else:
-            result = dataflow(sv_file, args.signal, args.to)
+            result = dataflow(sv_file, args.signal, args.to, args.max_paths)
+    elif mode in ("audit", "a"):
+        result = audit(sv_file=sv_file, filelist=args.filelist, checks=checks)
     elif mode in ("risk", "r"):
-        if args.filelist:
-            result = risk_analyze_filelist(args.filelist, summary=args.summary)
-        else:
-            result = risk_analyze(sv_file, summary=args.summary)
+        result = audit(sv_file=sv_file, filelist=args.filelist,
+                       checks=checks or ["risk"])
     elif mode in ("cdc", "c"):
-        if args.filelist:
-            result = cdc_analyze_filelist(args.filelist, summary=args.summary)
-        else:
-            result = cdc_analyze(sv_file, summary=args.summary)
+        result = audit(sv_file=sv_file, filelist=args.filelist,
+                       checks=checks or ["cdc"])
     elif mode in ("verify", "v"):
-        if args.filelist:
-            result = verify_gap_filelist(args.filelist)
-        else:
-            result = verify_gap(sv_file)
+        result = audit(sv_file=sv_file, filelist=args.filelist,
+                       checks=checks or ["verification_gaps"])
     elif mode in ("stats", "s"):
         result = stats(sv_file=sv_file, filelist=args.filelist)
     else:

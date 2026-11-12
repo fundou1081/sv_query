@@ -1,15 +1,16 @@
 ---
 name: sv-query
-description: SystemVerilog RTL 静态分析 CLI (sv_query)。当用户问 RTL 验证 / "这个信号谁驱动" / "找 CDC 路径" / "信号风险评分" / 给 .sv 文件让 agent 分析时使用。命令: trace (fanin/fanout/evidence), dataflow, cdc, risk, sva, verify。核心: evidence 返回源码位置 + credibility_score (0-1, <0.7 需人工确认)。LLM 友好 (4 个关键 flag + 13 种 stable error_code, 见 references/llm-mode.md)。只支持 pyslang v10/v11。
+description: SystemVerilog RTL 静态分析 CLI (sv_query)。当用户问 RTL 验证 / "这个信号谁驱动" / "找 CDC 路径" / "信号风险评分" / 给 .sv 文件让 agent 分析时使用。核心命令: drivers (别名 trace fanin), loads (别名 trace fanout), trace evidence, dataflow analyze, controlflow analyze, verify consistency/claim/structural, graph, snapshot；exp: trace impact / audit 等。evidence 返回源码位置 + credibility_score (0-1, <0.7 需人工确认)。LLM 友好 (--json -q + 15 种 stable error_code)。只支持 pyslang v10/v11。
 ---
 
 # sv-query
 
 SystemVerilog RTL 信号追踪查询引擎 CLI 工具 (`sv_query` 项目)。
 
-> 项目位置: `<PROJ_DIR>/sv_query` (USER_PROFILE.md 主目录, 唯一工作目录)
+> 项目位置: `~/my_dv_proj/sv_query` (USER_PROFILE.md 主目录, 本机唯一副本)
 > 主入口: `python3 run_cli.py <command> [subcommand] [options]`
-> 测试: 全量基线见 [docs/INDEX.md](../../docs/INDEX.md) (含 pulp_axi 5 个 xfail for low-memory machine (<16GB) 环境限制), v10/v11 100% 双版本兼容
+> 命令清单以 `python3 run_cli.py capabilities --json` 为准 (39 个 core 命令 + 6 个 exp 命令)
+> 测试: 全量基线见 [docs/INDEX.md](../../docs/INDEX.md)；pyslang v10/v11 支持以 CI/兼容测试实测为准
 > 依赖: `pyslang>=10.0.0,<12.0.0` (含 `_pyslang_compat.py` shim 桥接 v10/v11 差异)
 
 ## ⚠️ 安装占位符配置 (重要)
@@ -18,56 +19,36 @@ SystemVerilog RTL 信号追踪查询引擎 CLI 工具 (`sv_query` 项目)。
 
 | 占位符 | 含义 | 示例 |
 |--------|------|------|
-| `<PROJ_DIR>` | sv_query 项目父目录 | `~/projects` 或 `~/work` 或 `/opt/dev` |
+| `<PROJ_DIR>` | sv_query 项目父目录 | **本机 = `~/my_dv_proj`** (通用示例: `~/projects` / `~/work`) |
 | `<REPO_URL>` | sv_query GitHub 仓库 URL | `https://github.com/YOUR_USER/sv_query.git` |
 | `<SKILL_DIR>` | 本 skill 安装路径 | `~/.claude/skills/sv-query/` |
 | `<PROJ>` | 你要分析的项目名 | `my_rtl_design`, `cva6`, `picorv32` 等 |
 
-### 配置示例
-
-将 `<PROJ_DIR>/sv_query` 全文替换为你的真实路径, 例如:
-- 你的路径: `~/projects/sv_query` → `<PROJ_DIR>` = `~/projects`
-- 你的路径: `/opt/dev/sv_query` → `<PROJ_DIR>` = `/opt/dev`
-
 ### `scripts/sv_analyze.py` 配置
 
-脚本默认 `<PROJ_DIR>` = `~/projects` (Linux/macOS 通用约定)。如需修改:
+脚本会自动按 `__file__` 向上回溯定位仓库根目录 (即含 `run_cli.py` 的目录), 所以**随 skill 一起安装时无需任何配置**。
+
+如果 skill 被复制到别处 (脱离仓库), 用环境变量指定:
 
 ```bash
-# 方法 1: 环境变量 (推荐, 不改源码)
 export SV_QUERY_DIR=/path/to/your/sv_query
-
-# 方法 2: 改源码 (永久)
-# 编辑 scripts/sv_analyze.py line ~40, 改 Path.home() / "projects" / "sv_query" 为你的路径
 ```
-
-### `scripts/sv_analyze.py` 安装路径
-
-```bash
-# 默认在 <SKILL_DIR>/scripts/sv_analyze.py
-# 例: ~/.claude/skills/sv-query/scripts/sv_analyze.py
-
-# 可复制到任何 PATH 目录:
-cp <SKILL_DIR>/scripts/sv_analyze.py /usr/local/bin/
-```
-
----
 
 ## 何时使用
 
 当用户:
 
-- 问"这个信号谁驱动的 / 哪里被读" → `trace fanin/fanout`
+- 问"这个信号谁驱动的 / 哪里被读" → `trace fanin` / `trace fanout` (或规范名 `drivers` / `loads`)
 - 给一个 `.sv` 文件, 想做静态分析 → 主入口 `run_cli.py`
-- 要做 CDC 检查 → `cdc analyze`
 - 要做数据流追踪 → `dataflow analyze`
-- 要做风险评分 → `risk analyze`
-- 要找 SVA / 验证缺口 → `sva` / `verify gap` (见 references/commands.md)
+- 要做控制流条件分析 → `controlflow analyze`
+- 要找 CDC / 风险 / 验证缺口 → `audit --checks cdc,risk,verification_gaps`
+- 要做客观一致性检查 → `verify consistency` / `verify structural` / `verify claim`
 - 要把分析结果跟源码位置对齐 → 加 `--evidence` 标志
 
 ## 辅助脚本
 
-`scripts/sv_analyze.py` 是给 LLM agent 用的 Python helper (5 种常用模式: trace/fanin/evidence/dataflow/risk/cdc/verify), 自动加 `--json -q --max-results 50`, 输出可直接 `json.loads()`:
+`scripts/sv_analyze.py` 是给 LLM agent 用的 Python helper (fanin / fanout / evidence / dataflow / audit / stats), 自动加 `--json -q`, 输出可直接 `json.loads()`:
 
 ```python
 import sys
@@ -95,18 +76,18 @@ python3 <SKILL_DIR>/scripts/sv_analyze.py sim/test.sv top.data --mode evidence
 ```bash
 cd <PROJ_DIR>/sv_query
 
-# 1. 看命令
-python3 run_cli.py --help
+# 1. 看命令清单 (权威来源)
+python3 run_cli.py capabilities --json -q
 
 # 2. 跑一个 trace, 贴 evidence
-python3 run_cli.py trace evidence -f sim/test_simple.sv top.data
+python3 run_cli.py trace evidence top.data -f sim/test_simple.sv
 
 # 输出:
 #   Signal: top.data
 #   Source: 'data = din;'
 
-# 3. 跑风险分析, 拿完整 evidence JSON
-python3 run_cli.py risk analyze -f sim/test_simple.sv --evidence --json | python3 -m json.tool
+# 3. 跑审计 (CDC / 风险 / 验证缺口), 拿 JSON
+python3 run_cli.py audit -f sim/test_simple.sv --checks cdc,risk --json -q
 ```
 
 ---
@@ -118,7 +99,7 @@ python3 run_cli.py risk analyze -f sim/test_simple.sv --evidence --json | python
 ```bash
 cd <PROJ_DIR>/sv_query
 
-# 确认项目在 (USER_PROFILE.md 主目录, 不是 agent runtime cache [agent-runtime-cache]/)
+# 确认项目在 USER_PROFILE.md 主目录 (本机唯一副本: ~/my_dv_proj/sv_query)
 test -f run_cli.py && test -f pyproject.toml && echo "OK" || echo "MISSING"
 
 # 确认 v10/v11
@@ -137,17 +118,17 @@ python3 -c "import pyslang; print(f'pyslang {pyslang.__version__}')"
 | 谁驱动 X / 给我 X 的源码 | `trace evidence X` (95% 用例) |
 | 谁读了 X | `trace fanout X` |
 | X 怎么到 Y | `dataflow analyze X Y` |
-| 跨时钟域问题 | `cdc analyze` |
-| 信号风险评分 | `risk analyze` |
+| 跨时钟域 / 风险 / 验证缺口 | `audit --checks cdc,risk,verification_gaps` |
+| 结论可反驳的客观检查 | `verify consistency` / `verify structural` |
 
-其他 9 个命令 (impact/controlflow/timing/sva/coverage/diff/visualize/snapshot/search) 见 references/commands.md。
+完整 39 个 core 命令 + 6 个 exp 命令见 references/commands.md；exp 默认不在 capabilities 列出，但可直接调用。
 
 ### Step 3: 跑命令 + 读 evidence
 
 所有带 `--evidence` 的命令返回 2 种格式:
 
 1. **text 模式 (默认)**: 每条结果下方 1 行 `Source: '...';`
-2. **JSON 模式 (--json)**: 每条 result 包含 `evidence.source_text` (单行摘要) 和 `evidence.source_range` (start_line/end_line) 字段
+2. **JSON 模式 (--json)**: 每条 result 包含 `evidence.source_text` (单行摘要) 和 `evidence.source_location` (file/line_start/line_end/column) 字段
 
 证据可信度 (`credibility_score`):
 - `1.0`: 直接 always/initial 块内赋值 → 最可信
@@ -159,16 +140,17 @@ python3 -c "import pyslang; print(f'pyslang {pyslang.__version__}')"
 
 - 高可信 (≥0.9): 可以直接作为结论
 - 中可信 (0.7-0.8): 报告用户, 让他判断
-- 低可信 (<0.7): **必须**告知用户"来源不确定, 需要人工检查" + 给 source_range 让人看具体行
+- 低可信 (<0.7): **必须**告知用户"来源不确定, 需要人工检查" + 给 source_location 让人看具体行
 
 ---
 
 ## 关键技术细节
 
-4 步工作流程 + credibility/evidence 机制 + constraint 速查见 [references/workflow.md](references/workflow.md).
+4 步工作流程 + credibility/evidence 机制 + constraint 速查见 [references/workflow.md](references/workflow.md)。
+
 ## 实际项目分析 (工业案例)
 
-实战案例见 [references/cases/](references/cases/).
+实战案例见 [references/cases/](references/cases/)。
 
 ## 测试 / 验证 (修改项目时)
 
@@ -176,7 +158,7 @@ python3 -c "import pyslang; print(f'pyslang {pyslang.__version__}')"
 # 全量
 cd <PROJ_DIR>/sv_query
 python3 -m pytest sim/tests/ -q
-# 期望: 全量 passed (计数以 [docs/INDEX.md](../../docs/INDEX.md) 为准; 含 7 xfail/xpass for low-memory machine (<16GB) 环境限制)
+# 期望: 计数以 [docs/INDEX.md](../../docs/INDEX.md) 为准；0 failed 不等于全绿
 
 # 双版本 smoke
 python3 -m pytest sim/tests/integration/test_pyslang_version_compat.py -v
@@ -190,7 +172,7 @@ pyslang v10/v11 兼容详情 → [references/pyslang-compat.md](references/pysla
 
 ## 给 agent 的关键约束
 
-1. **永远** 在 `<PROJ_DIR>/sv_query/` 工作, 不用 `[agent-runtime-cache]/` (那是 agent runtime cache)
+1. **永远** 在 `~/my_dv_proj/sv_query/` 工作 (本机唯一副本; 没有 `[agent-runtime-cache]/` 那种副本)
 2. **永远** 加 `--evidence` 在做信号分析时 (用户没指定时默认加, 哪怕只 text)
 3. **永远** 把 `credibility_score < 0.7` 的 evidence 标注为"需人工确认"
 4. **永远** 报告 evidence 失败的命令 (例如找不到信号, JSON `ok=false`)
@@ -202,10 +184,11 @@ pyslang v10/v11 兼容详情 → [references/pyslang-compat.md](references/pysla
 7. **永远** LLM 调用时加 `--json -q` (--quiet 抑制 stderr 警告污染 JSON)
 8. **永远** 用 `error_code` 字段分类错误, **不要** 解析 `error` 字符串
 9. **永远** 检查 `result.truncated` 字段 (--max-results) 决定是否需要扩大查询
-10. **永远** `--summary` 用于 LLM 上下文窗口紧张时 (cdc/risk 返回 top-10 + counts)
-11. **永远** 验证 JSON 输出符合 `tools/llm_schema.json` (LLM 框架函数调用)
-12. 优先用 evidence + error_code 决策, **不要** 重复尝试命令 (会浪费 token)
-13. filelist 解析问题 (axi_pkg 排序, common_cells transitive dep) 不是 sv_query bug, 是 sv 输入工程问题
-14. **分析大项目 (84+ files)** 先从 2 module 开始验证 elaboration 干净, 再渐进扩大
-15. **不要** 把 .svh 加到 filelist (sv_query 不预处理 \`include, 反而引入新错误)
-16. **永远** 排除 `*_tb.sv` 从 filelist (testbench 拖慢且引入 include 错误)"
+10. **永远** 验证 JSON 输出符合 `tools/llm_schema.json` (LLM 框架函数调用)
+11. 优先用 evidence + error_code 决策, **不要** 重复尝试命令 (会浪费 token)
+12. filelist 解析问题 (axi_pkg 排序, common_cells transitive dep) 不是 sv_query bug, 是 sv 输入工程问题
+13. **分析大项目 (84+ files)** 先从 2 module 开始验证 elaboration 干净, 再渐进扩大
+14. **不要** 把 .svh 加到 filelist (sv_query 不预处理 \`include, 反而引入新错误)
+15. **永远** 排除 `*_tb.sv` 从 filelist (testbench 拖慢且引入 include 错误)
+16. **永远** 把 flag 放在子命令**之后** (`run_cli.py trace fanin X -f F --json -q`), 放在中间会被 Typer 拒绝
+17. `--max-results/-N` 只有 `trace fanin` / `trace fanout` 支持; `dataflow analyze` 用的是 `--max-paths/-n`, 别混用

@@ -62,7 +62,7 @@ python3 run_cli.py stats -f bad.sv
 ```bash
 # 模块间引用没找到
 # 用 --filelist 把所有 .sv 列上
-python3 run_cli.py stats -fl filelist.f
+python3 run_cli.py stats --filelist filelist.f
 # filelist.f 格式: Verilator 风格
 # +incdir+path/
 # file1.sv
@@ -111,12 +111,12 @@ python3 run_cli.py trace fanin top.gen_array[0].data -f top.sv
 - 参数 parameter
 - parser 失败 + fallback
 
-**处理**: 报告用户, 给 source_range 让人工看具体行。
+**处理**: 报告用户, 给 `source_location` (含 file / line_start / line_end / column) 让人工看具体行。
 
 ### 5.2 evidence 完全缺失
 
 ```json
-{"ok": false, "error": "no evidence for signal top.X"}
+{"ok": false, "command": "trace_evidence", "error": "no evidence for signal top.X", "errors": ["no evidence for signal top.X"]}
 ```
 
 原因:
@@ -167,9 +167,15 @@ python3 run_cli.py trace fanin top.q -f big.sv --depth 3
 
 ### 7.2 CDC 分析慢
 
+CDC 检查走 `audit --checks cdc` (旧的 `cdc analyze` 命令已退役, 且没有 `--no-fanin-only` flag):
+
 ```bash
-# 加 --no-fanin-only 只看直接 CDC
-python3 run_cli.py cdc analyze -f big.sv --no-fanin-only
+# 只跑 CDC 一项, 其它检查项不跑 (比默认全跑快)
+python3 run_cli.py audit -f big.sv --checks cdc --json -q
+
+# 大项目: 先用 filelist prune 裁掉无关 top, 再跑
+python3 run_cli.py filelist prune --filelist big.f --top my_top --output small.f --apply
+python3 run_cli.py audit --filelist small.f --checks cdc --json -q
 ```
 
 ---
@@ -187,21 +193,28 @@ git config --global --unset http.proxy
 git config --global --unset http.version
 
 # 验证:
-git push origin main
+git push backup main   # 本仓库没有 origin remote
 ```
 
-### 8.2 agent runtime cache不同步
+### 8.2 确认在正确的主目录
+
+本机**只有一份** sv_query: `~/my_dv_proj/sv_query` (无下划线)。
+历史的 `~/my_dvproj/` (有下划线) 别名目录**已不存在**, 不需要对比同步。
 
 ```bash
-# 看 agent runtime cache是否过期 (只是检查, 不要在这里改代码!)
-cd [agent-runtime-cache]/sv_query
-git log --oneline | head -3
-# 跟主目录对比
-cd <PROJ_DIR>/sv_query
-git log --oneline | head -3
-# 不同 = agent runtime cache没更新, push 一下
-git push origin main
-# agent runtime auto-sync will pull
+cd ~/my_dv_proj/sv_query && pwd
+# /Users/fundou/my_dv_proj/sv_query
+
+git remote -v
+# backup / ssh-origin  (没有 origin)
+
+git status --porcelain
+```
+
+要推送时注意**没有 `origin` remote**:
+```bash
+git push backup main       # https
+git push ssh-origin main   # ssh
 ```
 
 ---
@@ -246,14 +259,16 @@ python3 run_cli.py stats -f sim/test_simple.sv
 **修法** (3 种):
 ```bash
 # 1. 加 --quiet/-q 抑制所有 stderr
-python3 run_cli.py cdc analyze --json -q
+python3 run_cli.py trace fanin top.q -f top.sv --json -q
 
 # 2. 重定向 stderr 到 /dev/null
-python3 run_cli.py cdc analyze --json 2>/dev/null
+python3 run_cli.py trace fanin top.q -f top.sv --json 2>/dev/null
 
 # 3. 环境变量
-SVQ_QUIET=1 python3 run_cli.py cdc analyze --json
+SVQ_QUIET=1 python3 run_cli.py trace fanin top.q -f top.sv --json
 ```
+
+> flag 必须放在**子命令之后** (`trace fanin ... --json`), 放中间 Typer 会报 unknown option。
 
 ### 6.2 错误信息是字符串, 难分类
 
@@ -264,9 +279,19 @@ SVQ_QUIET=1 python3 run_cli.py cdc analyze --json
 {"ok": false, "error_code": "E_FILE_NOT_FOUND", "error": "..."}
 ```
 
-13 种 code: OK, E_INTERNAL, E_USAGE, E_FILE_NOT_FOUND, E_FILELIST_NOT_FOUND,
-E_INVALID_INPUT, E_ELABORATION_FAILED, E_PARSE_ERROR, E_TARGET_NOT_FOUND,
-E_SIGNAL_NOT_FOUND, E_NO_DATA, E_PARTIAL_RESULT
+15 种 code (OK + 14 个 E_ 前缀), 权威定义见 `src/cli/errors.py` 的 `ErrorCode`:
+
+```
+OK, E_INTERNAL, E_USAGE, E_FILE_NOT_FOUND, E_FILELIST_NOT_FOUND,
+E_FILELIST_INCOMPLETE, E_FILELIST_INVALID, E_INVALID_INPUT,
+E_ELABORATION_FAILED, E_PARSE_ERROR, E_TARGET_NOT_FOUND,
+E_SIGNAL_NOT_FOUND, E_SIGNAL_AMBIGUOUS, E_NO_DATA, E_PARTIAL_RESULT
+```
+
+⚠️ **不是每条失败都带 error_code**: 通用失败信封是 `{"ok": false, "error": ...}`,
+其中 `error` 可能是**字符串**也可能是**对象** `{"type": "FileNotFoundError", "message": "..."}`
+(实测: `stats` / `dataflow analyze` 用对象形式, `verify structural` / `graph nodes` 用字符串形式)。
+所以解析时要兼容两种形状, 别直接对 `error` 调 `.lower()`。
 
 完整 schema: `tools/llm_schema.json`
 
@@ -283,8 +308,8 @@ python3 run_cli.py trace fanin clk --max-results 100 --json -q
 # 2. depth 限制
 python3 run_cli.py trace fanin clk --depth 3 --json -q
 
-# 3. summary 模式 (cdc/risk 才有)
-python3 run_cli.py cdc analyze --summary --json -q
+# 3. audit 只跑单项检查 (替代已退役的 --summary 模式)
+python3 run_cli.py audit -f big.sv --checks cdc --json -q
 ```
 
 ### 6.4 JSON 字段含义不确定
@@ -296,7 +321,10 @@ python3 tools/llm_schema_validate.py
 
 ### 6.5 LLM 应该用哪个 project root?
 
-**警告**: agent runtime cache `[agent-runtime-cache]/sv_query/` 跟 USER_PROFILE.md 主目录 `<PROJ_DIR>/sv_query/` 内容相同, 但 sv_query 期望主目录. 见 [locations.md](locations.md)。
+**答案**: 只有一个 —— `~/my_dv_proj/sv_query` (USER_PROFILE.md 主目录)。
+
+本机**不存在** `~/my_dvproj/` (有下划线) 这个别名目录, 别再去那里找。
+见 [locations.md](locations.md)。
 
 ---
 

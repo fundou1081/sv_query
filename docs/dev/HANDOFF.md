@@ -3,9 +3,9 @@
 **交接时间**: 2026-11-12 10:10 (Asia/Shanghai)
 **仓库**: `/Users/fundou/my_dv_proj/sv_query`
 **HEAD**: 以 `git log -1` 为准（不要依赖文档里的哈希）
-**状态**: canonical 2718 passed / 0 failed、opensource 114 passed / 17 skipped / 0 failed；
+**状态**: canonical 2722 passed / 0 failed、opensource 114 passed / 17 skipped / 0 failed；
 按 [REPORT_STATUS.md](REPORT_STATUS.md) 口径 **0 failed 不等于全绿**（合计 148 个单元未执行）；
-P158 仅剩 12.7 skills 漂移与 17 skip 分类
+P158.12.7 skills 漂移已完成；剩余 17 个 opensource skip 分类与 P165
 
 > 给接手 agent：先读完本文件，再按 [AGENTS.md](../../AGENTS.md) §0 的顺序恢复上下文。
 > **本次会话（2026-11-12）详细交接见 [HANDOFF_2026-11-12.md](HANDOFF_2026-11-12.md)**：
@@ -20,14 +20,14 @@ P158 仅剩 12.7 skills 漂移与 17 skip 分类
 sv_query 是 agent 的 RTL 查询 + 客观校验层；
 核心语义契约、数据边、确定性、snapshot MIG、真实 corpus 已经落地；
 当前不是“完成品”，剩余工作集中在：
-P158.12.7 skills 文档漂移、17 个 opensource skip 处置（11.2b timeout / 9.2 快照保真 /
-P158.12 核心清理与 12.6 口径统一已完成）。
+17 个 opensource skip 处置；P158.12.7 skills 已完成；
+11.2b timeout / 9.2 快照保真 / 12.1~12.6 已完成。
 ```
 
 当前测试：
 
 ```text
-canonical:   2718 passed / 0 skipped / 131 deselected / 0 failed
+canonical:   2722 passed / 0 skipped / 131 deselected / 0 failed
 opensource:  114 passed / 17 skipped / 0 failed
 ```
 
@@ -157,11 +157,12 @@ d1325aaf — docs(P159): record full pitfalls and lessons history
    `false_confident` 分母 = answered_n（实际作答数），无答案归 unknown
    不进分母；**该分母口径为当前默认，待方豆确认**（改一处即可推翻，
    `test_unexecuted_does_not_dilute_false_confident_rate` 会变红提醒）；
-6. 文档/help/skills 漂移：docs/help 已由 P164 收口；报告口径由 12.6
-   (`docs/dev/REPORT_STATUS.md`) 统一；**skills 层仍漂移**（P158.12.7，
-   命令面已 39+6；被撤销的经验回放分支 `replay/agent-3530f163` 有现成内容可参考重做）。
+6. ~~文档/help/skills 漂移~~ **已完成（2026-11-12，P158.12.7）**：
+   `skills/sv-query` 已按 39+6 命令面校正；`SKILL.md`/`references/*`/
+   `scripts/sv_analyze.py`/`tools/llm_schema.json` 已同步；
+   `test_skill_surface.py` 防回退。
 
-剩余：**P158.12.7（skills 漂移）**。
+剩余：**P167（17 个 opensource skip 分类）**、P165.1~4。
 
 ### 5.4 17 个 opensource skip 分类
 
@@ -228,7 +229,7 @@ python3 -m pytest sim/tests/ -m "opensource" -q -p no:randomly
 当前期望：
 
 ```text
-canonical:   2718 passed / 0 failed
+canonical:   2722 passed / 0 failed
 opensource:  114 passed / 0 failed / 17 explicit skips
 ```
 
@@ -367,7 +368,7 @@ python3 tools/agent/run_spi_corpus.py --json
 5. 17 个 skip 分类
 ```
 
-如果只接一个任务，选 **P158.12.7 skills 文档漂移**：
+如果只接一个任务，选 **P158.12.7 skills 文档漂移（✅ 已完成）**：
 `skills/sv-query/` 仍按旧命令面（40 core + 5 exp）描述，而当前是
 39 core + 6 exp；被撤销的经验回放分支 `replay/agent-3530f163`
 有现成的逐项校正内容，可参考重做（注意按新命令面复核）。
