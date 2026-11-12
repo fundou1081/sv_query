@@ -50,6 +50,7 @@ dev = [
     "pytest-asyncio>=0.21",
     "pytest-randomly>=3.12",  # [P158.12 / R-024] 让 -p no:randomly 真正生效（默认禁用随机）
     "ruff>=0.1.0",
+    "PyYAML>=6.0",  # P165.4 filelist closure adapter
 ]
 all = [
     "scipy>=1.10",
