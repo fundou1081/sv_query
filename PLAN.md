@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P167 opensource skip disposition <待做>
+current item : P165.1 SignalTracer/structural 全图扫描 pred/succ 化（signal.py 7 处 O(V×E)；NetworkX 原生视图，零索引成本） <待做>
 
 ## 计划树
 
@@ -520,8 +520,8 @@ P165 arch_eval 评审采纳（2026-11-11，来源 architecture/arch_eval_2026-11
 P166 opensource golden calibration after P158.12.4/11.2b <已完成>
 -- P166.1 rebaseline stats/dataflow goldens <已完成>
 
-P167 opensource skip disposition <待做>
--- P167.1 classify 17 explicit skips <待做>
+P167 opensource skip disposition <已完成>
+-- P167.1 classify 17 explicit skips <已完成>
 
 P158 review remediation backlog <待做>
 -- P158.0 纪律语义契约升级 <已完成>

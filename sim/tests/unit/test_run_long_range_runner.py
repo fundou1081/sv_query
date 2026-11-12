@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -56,7 +57,9 @@ def test_direct_query_spec_uses_depth_one():
 def test_fact_check_matches_pico_ground_truth(tmp_path):
     m = _load()
     pilot_pico = Path("/tmp/lr_pilot/pico/picorv32.v")
-    fallback = ROOT.parent / "openrtl" / "picorv32" / "picorv32.v"
+    openrtl = Path(os.environ.get("SVQ_OPENRTL_ROOT",
+                                  Path.home() / "my_dv_proj" / "openrtl"))
+    fallback = openrtl / "picorv32" / "picorv32.v"
     if not pilot_pico.exists() and not fallback.exists():
         pytest.skip("pico .v sources not available (pilot/fallback)")
     import json
