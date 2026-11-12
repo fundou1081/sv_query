@@ -10,12 +10,12 @@
 canonical 与 opensource 长期各自报一个 `0 failed`：
 
 ```text
-canonical:   2722 passed / 0 failed / 131 deselected
+canonical:   2724 passed / 0 failed / 123 deselected
 opensource:  114 passed / 9 skipped / 0 failed        (P161 口径)
 ```
 
 两个 `0 failed` 容易被读成“全绿”，但 **140 个单元根本没有执行**
-（131 deselected + 17 显式 skip）。`0 skipped` 更不是 KPI（P157 教训）。
+（123 deselected + 17 显式 skip）。`0 skipped` 更不是 KPI（P157 教训）。
 R-028 要求：报告必须分离状态，不许把未执行揉进“通过”。
 
 ## 2. 七类状态（唯一定义）

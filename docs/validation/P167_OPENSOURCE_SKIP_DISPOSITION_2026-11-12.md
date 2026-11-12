@@ -11,7 +11,7 @@
 原记录：
 
 ```text
-114 passed / 17 skipped / 0 failed
+114 passed / 9 skipped / 0 failed
 ```
 
 独立 worker 在隔离 worktree 中看到 **18 skipped**。额外 1 个不是产品差异，而是
@@ -104,9 +104,9 @@ fallback = openrtl / "picorv32" / "picorv32.v"
 ## 6. 当前口径
 
 ```text
-canonical:   2722 passed / 0 skipped / 131 deselected
+canonical:   2724 passed / 0 skipped / 123 deselected
 opensource:  114 passed / 9 skipped / 0 failed
-unexecuted:  131 + 9 = 140
+unexecuted:  123 + 9 = 132
 ```
 
 `unexecuted` 仍是显式状态，不是通过。

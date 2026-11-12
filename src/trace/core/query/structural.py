@@ -41,18 +41,34 @@ def _direct_port(inst: str, endpoint: str) -> str | None:
     return rest
 
 
-def _port_map(graph: SignalGraph, inst: str) -> dict[str, list]:
-    """port -> CONNECTION edges (直接子端口)。"""
-    by_port: dict[str, list] = {}
-    for src, dst in graph.edges():
-        for edge in graph.get_edges(src, dst):
-            if edge.kind != EdgeKind.CONNECTION:
-                continue
-            port = _direct_port(inst, src) or _direct_port(inst, dst)
-            if port is None:
-                continue
-            by_port.setdefault(port, []).append(edge)
-    return by_port
+def _record_port(out, seen, edge, endpoint: str, id_set: set[str]) -> None:
+    parent, sep, port = endpoint.rpartition(".")
+    if not sep or not port or "." in port or parent not in id_set:
+        return
+    key = (id(edge), parent, port)
+    if key in seen:
+        return
+    seen.add(key)
+    out[parent].setdefault(port, []).append(edge)
+
+
+def _port_index(graph: SignalGraph, instances: list[str]) -> dict[str, dict[str, list]]:
+    """Build port -> CONNECTION edges for all sibling instances in one pass.
+
+    P165.1: this used to call a full `graph.edges()` scan once per instance
+    (O(instances × edges)); use the adjacency view once (O(V + E)).
+    """
+    id_set = set(instances)
+    out: dict[str, dict[str, list]] = {inst: {} for inst in instances}
+    seen: set[tuple[int, str, str]] = set()
+    for src in graph.nodes():
+        for dst in graph.successors(src):
+            for edge in graph.get_edges(src, dst):
+                if edge.kind != EdgeKind.CONNECTION:
+                    continue
+                for endpoint in (src, dst):
+                    _record_port(out, seen, edge, endpoint, id_set)
+    return out
 
 
 def _finding(insts: list[str], port: str, missing: list[str],
@@ -85,10 +101,10 @@ def _finding(insts: list[str], port: str, missing: list[str],
 
 
 def _group_findings(group_key: tuple[str, str], insts: list[str],
-                    graph: SignalGraph) -> list[dict]:
+                    port_maps: dict[str, dict[str, list]]) -> list[dict]:
     if len(insts) < 2:
         return []
-    maps = {inst: _port_map(graph, inst) for inst in insts}
+    maps = {inst: port_maps.get(inst, {}) for inst in insts}
     union: set[str] = set()
     for pm in maps.values():
         union.update(pm)
@@ -109,6 +125,8 @@ def symmetry_findings(graph: SignalGraph, max_findings: int = 100) -> dict:
     if max_findings < 1:
         raise StructuralError("max_findings must be >= 1")
     groups = _instances(graph)
+    all_instances = [inst for insts in groups.values() for inst in insts]
+    port_maps = _port_index(graph, all_instances)
     findings: list[dict] = []
     checked_groups = 0
     for key in sorted(groups):
@@ -116,7 +134,7 @@ def symmetry_findings(graph: SignalGraph, max_findings: int = 100) -> dict:
         if len(insts) < 2:
             continue
         checked_groups += 1
-        findings.extend(_group_findings(key, insts, graph))
+        findings.extend(_group_findings(key, insts, port_maps))
     findings.sort(key=lambda f: f["id"])
     truncated = len(findings) > max_findings
     if truncated:

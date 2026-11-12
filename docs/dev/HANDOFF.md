@@ -3,8 +3,8 @@
 **交接时间**: 2026-11-12 10:10 (Asia/Shanghai)
 **仓库**: `/Users/fundou/my_dv_proj/sv_query`
 **HEAD**: 以 `git log -1` 为准（不要依赖文档里的哈希）
-**状态**: canonical 2722 passed / 0 failed、opensource 114 passed / 17 skipped / 0 failed；
-按 [REPORT_STATUS.md](REPORT_STATUS.md) 口径 **0 failed 不等于全绿**（合计 140 个单元未执行）；
+**状态**: canonical 2724 passed / 0 failed、opensource 114 passed / 9 skipped / 0 failed；
+按 [REPORT_STATUS.md](REPORT_STATUS.md) 口径 **0 failed 不等于全绿**（合计 132 个单元未执行）；
 P158.12.7 skills 漂移已完成；剩余 17 个 opensource skip 分类与 P165
 
 > 给接手 agent：先读完本文件，再按 [AGENTS.md](../../AGENTS.md) §0 的顺序恢复上下文。
@@ -27,8 +27,8 @@ sv_query 是 agent 的 RTL 查询 + 客观校验层；
 当前测试：
 
 ```text
-canonical:   2722 passed / 0 skipped / 131 deselected / 0 failed
-opensource:  114 passed / 17 skipped / 0 failed
+canonical:   2724 passed / 0 skipped / 123 deselected / 0 failed
+opensource:  114 passed / 9 skipped / 0 failed
 ```
 
 opensource 的 9 个 skip 都有显式原因，见 §7。
@@ -229,7 +229,7 @@ python3 -m pytest sim/tests/ -m "opensource" -q -p no:randomly
 当前期望：
 
 ```text
-canonical:   2722 passed / 0 failed
+canonical:   2724 passed / 0 failed
 opensource:  114 passed / 0 failed / 17 explicit skips
 ```
 
