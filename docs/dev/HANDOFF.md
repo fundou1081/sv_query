@@ -1,11 +1,15 @@
 # 交接文档 (HANDOFF)
 
-**交接时间**: 2026-11-11 20:30 (Asia/Shanghai)（2026-11-11 21:10 校对状态类文档）
+**交接时间**: 2026-11-12 10:10 (Asia/Shanghai)
 **仓库**: `/Users/fundou/my_dv_proj/sv_query`
-**HEAD**: 以 `git log -1` 为准（本文最后核对：`56c10fa9`）
-**状态**: canonical 与 opensource 均为 0 failed；P158 还剩部分收尾
+**HEAD**: 以 `git log -1` 为准（本文最后核对：`361d0022`）
+**状态**: canonical 2718 passed / 0 failed、opensource 114 passed / 17 skipped / 0 failed；
+按 [REPORT_STATUS.md](REPORT_STATUS.md) 口径 **0 failed 不等于全绿**（合计 148 个单元未执行）；
+P158 仅剩 12.7 skills 漂移与 17 skip 分类
 
 > 给接手 agent：先读完本文件，再按 [AGENTS.md](../../AGENTS.md) §0 的顺序恢复上下文。
+> **本次会话（2026-11-12）详细交接见 [HANDOFF_2026-11-12.md](HANDOFF_2026-11-12.md)**：
+> 三次提交 / 设计裁决 / 待拍板事项 / 踩坑 / 接手 checklist。
 > 本文件是交接状态，不是计划树唯一真相源；PLAN.md 仍是唯一计划源。
 
 ---
