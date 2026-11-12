@@ -31,7 +31,7 @@ canonical:   2722 passed / 0 skipped / 131 deselected / 0 failed
 opensource:  114 passed / 17 skipped / 0 failed
 ```
 
-opensource 的 17 个 skip 都有显式原因，见 §7。
+opensource 的 9 个 skip 都有显式原因，见 §7。
 
 ---
 
@@ -75,7 +75,7 @@ opensource 的 17 个 skip 都有显式原因，见 §7。
 | P158.11.1 | `dataflow analyze --from-snapshot`；frontier `--max-visits` |
 | P158.11.2a | snapshot size guard `SVQ_SNAPSHOT_MAX_MB` + size metadata |
 | P159 | 全量踩坑历史 |
-| P160/P161 | opensource 38 failed -> 0 failed；17 显式 skip |
+| P160/P161 | opensource 38 failed -> 0 failed；随后 P167 将 8 个 retired exp 归档，剩 9 个显式 skip |
 | P166 | R-026/11.2b 后重捕 stats/dataflow golden；opensource 复核 0 failed |
 
 关键提交：

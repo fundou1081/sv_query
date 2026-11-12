@@ -7,18 +7,16 @@ per "如果开源本身有问题, 就只把代码模式独立出来" feedback:
 - minimal_3module fixture (top + sub + 2 leaves + synchronizer) compiles cleanly
 - All 12 CLI commands verified on minimal filelist without timeout/OOM
 
-Validates 12 CLI commands all run cleanly on multi-file filelist (no crash, no
-Python traceback): stats / risk / cdc / sva extract / sva coverage / sva timing /
-timing / verify gap / coverage suggest / controlflow / dataflow / visualize.
+P167: only current-command checks remain (stats / controlflow / dataflow).
+The retired `exp` commands (risk/cdc/sva/timing/verify gap/coverage suggest)
+were archived with evidence in P160/P167; git history retains them.
 """
 
 import pytest
 
-# P160: only the retired `exp` subcommands are skipped; m01/m10/m11 still run.
+# P167: the 8 retired `exp` tests are archived (not kept as permanent skips).
+# Evidence/precedent: P160 triage + P167 disposition; git history retains them.
 pytestmark = pytest.mark.opensource  # NaplesPU filelist dependency
-_RETIRED_EXP = pytest.mark.skip(
-    reason="P160: `exp` sva/timing/cdc/risk/verify commands were retired; "
-           "migrated coverage lives in current commands/corpus")
 
 import subprocess
 import sys
@@ -61,81 +59,6 @@ def test_m01_stats_filelist():
     print("✅ m01 stats on minimal_3module: clean compile + graph built")
 
 
-@_RETIRED_EXP
-def test_m02_risk_filelist():
-    """risk analyze: 真实风险信号统计"""
-    r = _run("exp", "risk", "analyze", "--filelist", FILELIST_PATH)
-    assert r.returncode == 0
-    assert "CRITICAL" in r.stdout, f"应输出 CRITICAL 风险, stdout={r.stdout[:300]}"
-    # 验证没有"编译失败"误报
-    assert "编译失败" not in r.stdout, f"risk 不应再报编译失败, stdout={r.stdout[:500]}"
-    print("✅ risk analyze on minimal_3module: 风险分析 + 无'编译失败'误报")
-
-
-@_RETIRED_EXP
-def test_m03_cdc_filelist():
-    """cdc analyze: CDC 路径分析"""
-    r = _run("exp", "cdc", "analyze", "--filelist", FILELIST_PATH)
-    assert r.returncode == 0
-    assert "时钟域" in r.stdout or "domain" in r.stdout.lower()
-    print("✅ cdc analyze on minimal_3module: 时钟域分析")
-
-
-@_RETIRED_EXP
-def test_m04_sva_extract_filelist():
-    """sva extract"""
-    r = _run("exp", "sva", "extract", "--filelist", FILELIST_PATH)
-    assert r.returncode == 0
-    assert "SVA 提取" in r.stdout
-    print("✅ sva extract on minimal_3module: 跑通")
-
-
-@_RETIRED_EXP
-def test_m05_sva_coverage_filelist():
-    """sva coverage: 应输出覆盖率, 不应再报'编译失败'"""
-    r = _run("exp", "sva", "coverage", "--filelist", FILELIST_PATH)
-    assert r.returncode == 0
-    assert "编译失败" not in r.stdout, f"sva coverage 不应报编译失败, stdout={r.stdout[:500]}"
-    assert "覆盖率" in r.stdout
-    print("✅ sva coverage on minimal_3module: 覆盖率分析 + 无'编译失败'误报")
-
-
-@_RETIRED_EXP
-def test_m06_sva_timing_filelist():
-    """sva timing"""
-    r = _run("exp", "sva", "timing", "--filelist", FILELIST_PATH)
-    assert r.returncode == 0
-    print("✅ sva timing on minimal_3module: 跑通")
-
-
-@_RETIRED_EXP
-def test_m07_timing_filelist():
-    """timing analyze: 关键路径"""
-    r = _run("exp", "timing", "analyze", "--filelist", FILELIST_PATH)
-    assert r.returncode == 0
-    assert "关键路径" in r.stdout or "路径" in r.stdout
-    print("✅ timing analyze on minimal_3module: 关键路径分析")
-
-
-@_RETIRED_EXP
-def test_m08_verify_gap_filelist():
-    """verify gap: 验证缺口, 不应再报'编译失败'"""
-    r = _run("exp", "verify", "gap", "--filelist", FILELIST_PATH)
-    assert r.returncode == 0
-    assert "编译失败" not in r.stdout
-    assert "高风险缺口" in r.stdout or "缺口" in r.stdout
-    print("✅ verify gap on minimal_3module: 高风险缺口 + 无'编译失败'误报")
-
-
-@_RETIRED_EXP
-def test_m09_coverage_suggest_filelist():
-    """coverage suggest"""
-    r = _run("exp", "coverage", "suggest", "-s", "synchronizer.sync0", "--filelist", FILELIST_PATH)
-    assert r.returncode == 0
-    assert "分解报告" in r.stdout or "atomic" in r.stdout.lower()
-    print("✅ coverage suggest on minimal_3module: 跑通")
-
-
 def test_m10_controlflow_filelist():
     """controlflow analyze: 应正常输出, 不应 traceback"""
     r = _run("controlflow", "analyze", "synchronizer.sync0", "--filelist", FILELIST_PATH)
@@ -159,15 +82,9 @@ def test_m11_dataflow_filelist():
 
 if __name__ == "__main__":
     tests = [
-        test_mstats_filelist,
-        test_mrisk_filelist,
-        test_mcdc_filelist,
-        test_msva_extract_filelist,
-        test_msva_coverage_filelist,
-        test_msva_timing_filelist,
-        test_mtiming_filelist,
-        test_mverify_gap_filelist,
-        test_mcoverage_suggest_filelist,
+        test_m01_stats_filelist,
+        test_m10_controlflow_filelist,
+        test_m11_dataflow_filelist,
         test_mcontrolflow_filelist,
         test_mdataflow_filelist,
     ]
