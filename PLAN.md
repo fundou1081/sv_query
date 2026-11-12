@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P158.12.7 skills 文档漂移（命令面 39+6；可参考 replay/agent-3530f163 旁路分支内容重做） <待做>
+current item : P167 opensource skip disposition <待做>
 
 ## 计划树
 
@@ -520,6 +520,9 @@ P165 arch_eval 评审采纳（2026-11-11，来源 architecture/arch_eval_2026-11
 P166 opensource golden calibration after P158.12.4/11.2b <已完成>
 -- P166.1 rebaseline stats/dataflow goldens <已完成>
 
+P167 opensource skip disposition <待做>
+-- P167.1 classify 17 explicit skips <待做>
+
 P158 review remediation backlog <待做>
 -- P158.0 纪律语义契约升级 <已完成>
 -- P158.1 数据边策略 + CLOCK/RESET 反例 <已完成>
@@ -546,7 +549,7 @@ P158 review remediation backlog <待做>
 -- P158.12.4 空 expression DRIVER 自环清除（R-026：connection_extractor 恒自环边，408 条） <已完成>
 -- P158.12.5 benchmark runner task 异常计数（R-027 最小面：异常留行不挂整轮） <已完成>
 -- P158.12.6 R-028 绿色口径统一（报告分离 passed/failed/unknown/skipped/unexecuted） <已完成>
--- P158.12.7 skills 文档漂移（命令面 39+6；可参考 replay/agent-3530f163 旁路分支内容重做） <待做>
+-- P158.12.7 skills 文档漂移（命令面 39+6；可参考 replay/agent-3530f163 旁路分支内容重做） <已完成>
 
 ## 已完成（保留最近记录，便于核查上一轮）
 

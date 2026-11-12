@@ -73,7 +73,7 @@ python3 run_cli.py trace evidence clk_i --filelist /tmp/coralnpu_two.f --json -q
 | **跑 84-file 全 filelist on low-memory machine (<16GB)** | 3+ min + OOM 风险 | 从 2 module 开始, 验证再扩大 |
 | **trace evidence on top-level INPUT** | 空 evidence, credibility_score=0 | 这是对的 (input 不被驱动), 改看内部信号 |
 | **不加 --quiet** | stdout 有 SWAP warning, LLM 解析失败 | **永远** `--quiet` 或 `-q` |
-| **--no-strict 当 workaround 用** | 用户会要求 strict mode | strict 是 sv_query 金标准, 不用 workaround |
+| **用 `--no-strict` 当 workaround** | 该 flag 已移除；elaboration 失败必须查 filelist/源码根因 | 不要绕过 strict；修输入 |
 | **trace fanout clk (clock 信号)** | 0 loads (clock 不被 fanout) | 看内部 always_ff 驱动的 data 信号 |
 
 ### 大项目的"渐进式 elaboration"策略
@@ -96,7 +96,7 @@ python3 run_cli.py trace evidence clk_i --filelist /tmp/coralnpu_two.f --json -q
 | `ImportError: ... in _pyslang_compat` | pyslang 不在 [10, 12) 范围 | `pip install 'pyslang>=10.0.0,<12.0.0'` |
 | `No module named top` | 信号名错了 | 先跑 `python3 run_cli.py stats -f file.sv` 看实际 module 名 |
 | `Json decode error` | 源码不是合法 SV | 用 `--debug` 看 parser 输出 |
-| `EvideCredibility score < 0.5` | evidence 模糊 | 看 source_range 人工确认 |
+| `credibility_score < 0.5` | evidence 模糊 (只会是 0.0/0.2/0.4) | 看 `source_location` 人工确认 |
 | stdout 含 SWAP warning 等 | stderr 污染 | 加 `--quiet`/`-q` 或 `2>/dev/null` |
 
 详细 troubleshooting → [references/troubleshooting.md](../troubleshooting.md)

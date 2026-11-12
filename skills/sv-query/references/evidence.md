@@ -21,18 +21,37 @@ evidence 是 **sv_query 直接读 SV 源文件** 提取, 不是 LLM 生成的 (�
 
 ## 2. credibility_score 含义
 
+**分数是算出来的, 不是手工打的分** (实现见 `src/trace/core/trace_evidence.py` 的
+`credibility_score` property), 由 4 项相加后取 `min(1.0, ...)`:
+
+| 加分项 | 值 | 条件 |
+|--------|-----|------|
+| snippet_present | +0.2 | 找到 enclosing 源码块 (always / always_comb / if / assign / class / constraint 任一) |
+| matches_source_expr | +0.4 | 源表达式匹配上 |
+| matches_signal_name | +0.2 | 信号名匹配上 |
+| 交叉验证 | +0.2 | 上面两项**同时**成立 |
+
+所以**实际只可能出现 {0.0, 0.2, 0.4, 0.6, 0.8, 1.0}** 这 6 个值 —— 没有 0.9 / 0.7 这种中间值。
+
 | 分数 | 含义 | agent 处理 |
 |------|------|-----------|
-| `1.0` | 直接 assign 块内赋值, 唯一 driver | **直接采用** |
-| `0.9` | 嵌套 always_ff 块 (if 分支) | **采用 + 标 line_start/line_end** |
-| `0.8` | 跨 function call 间接驱动 | **采用 + 标"间接"** |
-| `0.7` | 跨模块实例 port 驱动 | **采用 + 标 module 边界** |
-| `0.5-0.6` | 时序逻辑有多个 always, 来源需消歧 | **报告用户让他选** |
-| `<0.5` | 推测性来源 (parser 失败 + fallback) | **必须标"需人工确认"** |
+| `1.0` | snippet + expr 匹配 + name 匹配 + 交叉验证 | **直接采用** |
+| `0.8` | snippet + expr 匹配 + name 匹配 (无交叉验证) | 采用 + 标 line_start/line_end |
+| `0.6` | snippet + expr 匹配 | 采用 + 标"间接" |
+| `0.4` | snippet + name 匹配 | 采用 + 标 module 边界 |
+| `0.2` | 只有 snippet | **报告用户让他选** |
+| `0.0` | 没有任何 enclosing 块 (如 input 端口, 没被赋值) | **必须标"需人工确认"** |
+
+实测参考 (`sim/test_simple.sv`):
+- `top.data` / `top.dout` (有赋值) → `1.0`, `is_verified=true`
+- `top.clk` / `top.rst_n` (input 端口, 无赋值) → `0.0`, `is_verified=false`
 
 ---
 
-## 3. evidence 在 5 个命令里的形态
+## 3. evidence 在各命令里的形态
+
+> 下表命令都是**现存的**。旧的 `verify gap` / `risk analyze` / `cdc analyze` 已退役,
+> 对应能力改由 `audit --checks ...` 提供 (audit 不返回 evidence 字段)。
 
 ### 3.1 trace evidence
 
@@ -78,73 +97,62 @@ JSON 输出 (agent 必用, **实际结构**):
 }
 ```
 
-### 3.2 verify gap --evidence
+### 3.2 验证缺口 (audit --checks verification_gaps)
+
+> 旧的 `verify gap` 命令已退役 (iter_263)。验证缺口现在由 `audit` 提供。
 
 ```bash
-python3 run_cli.py verify gap -f top.sv --evidence --json
+python3 run_cli.py audit -f top.sv --checks verification_gaps --json -q
 ```
 
 ```json
 {
-  "ok": true,
-  "top_signals": [
-    {
-      "name": "top.q",
-      "risk_score": 0.8,
-      "has_sva": false,
-      "evidence": {
-        "signal": "top.q",
-        "source_location": {"line_start": 42, "line_end": 47, "column": 5},
-        "source_text": "q <= d;",
-        "credibility_score": 0.95,
-        "is_verified": true
+  "target": null,
+  "checks": ["verification_gaps"],
+  "sections": {
+    "verification_gaps": [
+      {
+        "signal": "top.rst_n",
+        "role": "reset",
+        "loads": 2,
+        "has_assertion": false,
+        "has_coverage": false
       }
-    }
-  ]
+    ]
+  },
+  "summary": {"checks": 1, "findings": 1}
 }
 ```
 
-### 3.3 risk analyze --evidence
+注意: `audit` 的返回**没有**标准信封 (没有 `ok` / `command` / `result` 顶层键),
+顶层直接是 `target` / `checks` / `sections` / `summary`。
+
+### 3.3 风险评分 (audit --checks risk)
+
+> 旧的 `risk analyze` 命令已退役 (iter_263)。风险评分现在由 `audit --checks risk` 提供。
 
 实际返回结构 (agent 必看):
 ```json
 {
-  "clocks": [{"id": "top.clk", "name": "clk"}],
-  "resets": [{"id": "top.rst_n", "name": "rst_n"}],
-  "data_signals": [
-    {
-      "node_id": "top.dout",
-      "name": "dout",
-      "kind": "NodeKind.REG",
-      "fan_in": 4,
-      "fan_out": 0,
-      "width": 1,
-      "is_reg": true,
-      "has_sva": false,
-      "has_cov": false,
-      "func_score": 47.3,
-      "func_level": "CRITICAL",
-      "timing_score": 38,
-      "timing_level": "HIGH",
-      "evidence": {...}
-    }
-  ],
-  "summary": {
-    "total": 5,
-    "critical": 1,
-    "high": 1,
-    "sva_covered": 0,
-    "cov_covered": 0
-  }
+  "target": null,
+  "checks": ["risk"],
+  "sections": {
+    "risk": [
+      {"signal": "top.rst_n", "role": "reset", "loads": 2, "drivers": 0, "score": 4.43},
+      {"signal": "top.clk_a", "role": "clock", "loads": 1, "drivers": 0, "score": 3.9},
+      {"signal": "top.reg_a", "role": "data", "loads": 1, "drivers": 4, "score": 1.78}
+    ]
+  },
+  "summary": {"checks": 1, "findings": 6}
 }
 ```
 
-**关键字段** (不是 `risk` 而是 `func_level` + `timing_level`):
-- `func_score` / `func_level`: 功能风险分 + 等级 (CRITICAL/HIGH/MEDIUM/LOW)
-- `timing_score` / `timing_level`: 时序风险分 + 等级
-- `fan_in` / `fan_out`: 扇入扇出
-- `has_sva` / `has_cov`: 是否有 SVA / covergroup
-- `evidence`: 标准 evidence 字段
+**关键字段**:
+- `role`: 信号角色 (`clock` / `reset` / `data`)
+- `loads` / `drivers`: 扇入扇出计数
+- `score`: 风险分 (越大越值得先看)
+
+> `audit` 的 risk 项**不含** evidence 字段 —— 要源码位置请另外跑 `trace evidence`。
 
 ### 3.4 dataflow analyze --evidence
 
@@ -196,47 +204,39 @@ python3 run_cli.py verify gap -f top.sv --evidence --json
 }
 ```
 
-### 3.6 cdc analyze --evidence
+### 3.6 跨时钟域 (audit --checks cdc)
+
+> 旧的 `cdc analyze` 命令已退役 (iter_263)。CDC 检查现在由 `audit --checks cdc` 提供。
 
 ```bash
-python3 run_cli.py cdc analyze -f top.sv --evidence --json
+python3 run_cli.py audit -f top.sv --checks cdc --json -q
 ```
 
 ```json
 {
-  "ok": true,
-  "result": {
-    "paths": [
+  "target": null,
+  "checks": ["cdc"],
+  "sections": {
+    "cdc": [
       {
-        "source": "top.reg_a",
-        "target": "top.dout_b",
-        "source_domain": "top.clk_a",
-        "target_domain": "top.clk_b",
-        "source_domain_short": "clk_a",
-        "target_domain_short": "clk_b",
-        "edge_kind": "EdgeKind.DRIVER",
-        "has_synchronizer": false,
-        "sync_type": "NONE",
-        "sync_flops": 1,
-        "risk": "HIGH",
-        "source_evidence": {
-          "signal": "top.reg_a",
-          "source_location": {"line_start": 23, "line_end": 23, "column": 13},
-          "source_text": "if (!rst_n)",
-          "enclosing_always": {"line_start": 22, "line_end": 27, "text": "..."},
-          "enclosing_if": {"line_start": 23, "line_end": 26, "text": "..."},
-          "enclosing_chain": [...],
-          "is_verified": true,
-          "credibility_score": 0.4
-        },
-        "target_evidence": {...}
+        "signal": "top.reg_a",
+        "domains": ["clk_a", "clk_b"],
+        "has_sync_hint": false,
+        "confidence": "heuristic"
       }
     ]
-  }
+  },
+  "summary": {"checks": 1, "findings": 1}
 }
 ```
 
-注意: CDC evidence 的 `credibility_score` 通常 0.2-0.6 (parser 找到 `if (!rst_n)` 不是真正的 driver), agent **应该**读 `enclosing_always` 的 text 字段, 确认是哪个 always 块在驱动, 而不是只信 score。
+**关键字段**:
+- `domains`: 该信号涉及的时钟域 (>1 个说明跨域)
+- `has_sync_hint`: 是否检测到同步器提示
+- `confidence`: 判定置信度 (`heuristic` / `pattern` / `measured`)
+
+注意: `audit` 的 cdc 项是**启发式**判定 (`confidence: heuristic`), 且**不含** evidence 字段。
+要确认是否真跨域, 请配合 `trace evidence` + `trace fanin` 看实际驱动链。
 
 ---
 

@@ -14,10 +14,10 @@
 |---|---|---|
 | 源码规模 | 137 文件 / 49,377 行 | `find src -name "*.py"`（2026-11-11 实测） |
 | 测试规模 | 378 测试文件 / 64,311 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-11 实测） |
-| 全量 (canonical) | **2718 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / 131 deselected = `unexecuted`; 35 subtests) | **2026-11-12 独立复核**（iter_495，P158.12.6 后干净工作树，36min）；含 R-026 自环清除后的 golden 重捕；**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
+| 全量 (canonical) | **2722 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / 131 deselected = `unexecuted`; 35 subtests) | **2026-11-12 独立复核**（iter_495，P158.12.6 后干净工作树，36min）；含 R-026 自环清除后的 golden 重捕；**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (482 份, 只增不改) | 每次迭代一份（2026-11-12 实测） |
+| 迭代记录 | `docs/task_tree/iterations/` (483 份, 只增不改) | 每次迭代一份（2026-11-12 实测） |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 | 语义 regex 纪律 | `python3 tools/check_semantic_regex.py` 必须 ✅ | 仅 UVM 宏例外；class/constraint/covergroup 语义走 slang (iter_368) |

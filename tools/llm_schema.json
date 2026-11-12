@@ -3,7 +3,7 @@
   "$id": "https://github.com/fundou1081/sv_query/tools/llm_schema.json",
   "title": "sv_query LLM Schema",
   "description": "[Phase 2 B1 2026-06-28] JSON Schema for sv_query CLI output, for LLM consumption. All commands return JSON via --json flag.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "definitions": {
     "SignalId": {
       "type": "string",
@@ -103,17 +103,20 @@
         "error_code": {
           "type": "string",
           "enum": [
-            "E_INTERNAL",
-            "E_USAGE",
-            "E_FILE_NOT_FOUND",
-            "E_FILELIST_NOT_FOUND",
-            "E_INVALID_INPUT",
             "E_ELABORATION_FAILED",
-            "E_PARSE_ERROR",
-            "E_TARGET_NOT_FOUND",
-            "E_SIGNAL_NOT_FOUND",
+            "E_FILELIST_INCOMPLETE",
+            "E_FILELIST_INVALID",
+            "E_FILELIST_NOT_FOUND",
+            "E_FILE_NOT_FOUND",
+            "E_INTERNAL",
+            "E_INVALID_INPUT",
             "E_NO_DATA",
-            "E_PARTIAL_RESULT"
+            "E_PARSE_ERROR",
+            "E_PARTIAL_RESULT",
+            "E_SIGNAL_AMBIGUOUS",
+            "E_SIGNAL_NOT_FOUND",
+            "E_TARGET_NOT_FOUND",
+            "E_USAGE"
           ],
           "description": "[B2 2026-06-28] Stable error code for LLM error classification"
         },
@@ -568,155 +571,6 @@
         }
       }
     },
-    "cdc_analyze": {
-      "description": "Detect clock domain crossing (CDC) issues",
-      "result_schema": {
-        "type": "object",
-        "properties": {
-          "domains": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Clock domain names"
-          },
-          "domain_count": {
-            "type": "integer"
-          },
-          "domain_pairs": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "integer"
-            },
-            "description": "Pair count per clock-domain combination"
-          },
-          "total_cdc": {
-            "type": "integer",
-            "description": "Total CDC paths"
-          },
-          "high_risk": {
-            "type": "integer",
-            "description": "Count of HIGH risk paths"
-          },
-          "low_risk": {
-            "type": "integer",
-            "description": "Count of LOW risk paths"
-          },
-          "high_risk_paths": {
-            "type": "array",
-            "items": {
-              "type": "object"
-            }
-          },
-          "paths": {
-            "type": "array",
-            "items": {
-              "type": "object"
-            },
-            "description": "Full list of CDC paths (use --summary to omit)"
-          },
-          "sync_type_stats": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "integer"
-            }
-          }
-        }
-      }
-    },
-    "cdc_analyze_summary": {
-      "description": "CDC analyze with --summary flag (LLM-optimized)",
-      "result_schema": {
-        "type": "object",
-        "required": [
-          "summary"
-        ],
-        "properties": {
-          "domains": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "total_cdc": {
-            "type": "integer"
-          },
-          "high_risk": {
-            "type": "integer"
-          },
-          "low_risk": {
-            "type": "integer"
-          },
-          "summary": {
-            "const": true,
-            "description": "[C2 2026-06-28] Marker that --summary was used"
-          }
-        }
-      }
-    },
-    "risk_analyze": {
-      "description": "Signal risk analysis: clock/reset/data classification + risk scoring",
-      "result_schema": {
-        "type": "object",
-        "properties": {
-          "clocks": {
-            "type": "array",
-            "items": {
-              "type": "object"
-            },
-            "description": "Clock signals with metadata"
-          },
-          "resets": {
-            "type": "array",
-            "items": {
-              "type": "object"
-            },
-            "description": "Reset signals with metadata"
-          },
-          "data_signals": {
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/SignalRisk"
-            },
-            "description": "All data signals with risk scores (use --summary to limit)"
-          },
-          "summary": {
-            "$ref": "#/definitions/RiskSummary"
-          }
-        }
-      }
-    },
-    "risk_analyze_summary": {
-      "description": "Risk analyze with --summary flag (LLM-optimized, top-10 only)",
-      "result_schema": {
-        "type": "object",
-        "required": [
-          "summary_mode"
-        ],
-        "properties": {
-          "clocks_count": {
-            "type": "integer"
-          },
-          "resets_count": {
-            "type": "integer"
-          },
-          "top_risks": {
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/SignalRisk"
-            },
-            "description": "Top 10 highest-risk signals"
-          },
-          "summary": {
-            "$ref": "#/definitions/RiskSummary"
-          },
-          "summary_mode": {
-            "const": true,
-            "description": "[C2 2026-06-28] Marker that --summary was used"
-          }
-        }
-      }
-    },
     "trace_impact": {
       "description": "Analyze impact of changing a signal (downstream blast radius + risk + coverage)",
       "params_schema": {
@@ -941,86 +795,6 @@
       }
     }
   },
-  "reusable_schemas": {
-    "SignalRisk": {
-      "type": "object",
-      "properties": {
-        "node_id": {
-          "$ref": "#/definitions/SignalId"
-        },
-        "name": {
-          "type": "string"
-        },
-        "kind": {
-          "type": "string"
-        },
-        "fan_in": {
-          "type": "integer"
-        },
-        "fan_out": {
-          "type": "integer"
-        },
-        "width": {
-          "type": "integer"
-        },
-        "is_reg": {
-          "type": "boolean"
-        },
-        "is_conv": {
-          "type": "boolean",
-          "description": "Convergent signal (fan_in >= 3)"
-        },
-        "is_div": {
-          "type": "boolean",
-          "description": "Divergent signal (fan_out >= 3)"
-        },
-        "has_sva": {
-          "type": "boolean"
-        },
-        "has_cov": {
-          "type": "boolean"
-        },
-        "func_score": {
-          "type": "number"
-        },
-        "func_level": {
-          "$ref": "#/definitions/RiskLevel"
-        },
-        "timing_score": {
-          "type": "number"
-        },
-        "timing_level": {
-          "$ref": "#/definitions/RiskLevel"
-        }
-      }
-    },
-    "RiskSummary": {
-      "type": "object",
-      "properties": {
-        "total": {
-          "type": "integer"
-        },
-        "critical": {
-          "type": "integer",
-          "description": "Count of CRITICAL func_level"
-        },
-        "high": {
-          "type": "integer",
-          "description": "Count of HIGH func_level"
-        },
-        "sva_covered": {
-          "type": "integer"
-        },
-        "cov_covered": {
-          "type": "integer"
-        },
-        "truncated": {
-          "type": "boolean",
-          "description": "True if data was truncated by --summary"
-        }
-      }
-    }
-  },
   "usage": {
     "success_pattern": {
       "ok": true,
@@ -1081,14 +855,23 @@
       ]
     },
     "llm_tips": [
-      "Always pass --json (or -j) for parseable output",
+      "Always pass --json (or -j) for parseable output (place it AFTER the subcommand, e.g. 'trace fanin X -f F --json')",
       "Use --quiet (or -q) to suppress stderr warnings (LLM-friendly)",
-      "Use --summary on cdc/risk when full lists would overflow context",
-      "Use --max-results N on trace fanin/fanout to cap long chains",
-      "Check error_code field for stable classification (don't parse error message string)"
+      "Use --max-results/-N on trace fanin/fanout to cap long chains; dataflow analyze uses --max-paths/-n (no --summary flag exists)",
+      "Check error_code field when present for stable classification; not every command emits it (fallback: 'ok' + error message)"
     ]
   },
   "changelog": [
+    {
+      "version": "1.2.0",
+      "date": "2026-11-11",
+      "changes": [
+        "REMOVED cdc_analyze/cdc_analyze_summary/risk_analyze/risk_analyze_summary: 对应 CLI 命令已退役 (iter_263, 6de54621)",
+        "REMOVED reusable_schemas.SignalRisk/RiskSummary: 仅被已退役命令引用",
+        "ADDED E_FILELIST_INCOMPLETE/E_FILELIST_INVALID/E_SIGNAL_AMBIGUOUS: 代码 ErrorCode 里有但 schema 漏了",
+        "llm_tips: --summary flag 已不存在, 改为 --max-paths/-n (dataflow analyze)"
+      ]
+    },
     {
       "version": "1.1.0",
       "date": "2026-07-03",
