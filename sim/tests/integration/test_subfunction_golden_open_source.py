@@ -61,6 +61,8 @@ def _normalize(data: dict, project: str) -> dict:
     if "params" in data:
         data["params"] = {}
     if "result" in data and isinstance(data["result"], dict):
+        # P166: wall-clock timing is not a semantic golden; never freeze it.
+        data["result"].pop("elapsed_s", None)
         # Sort timing critical_paths (flakiness)
         if "critical_paths" in data["result"] and isinstance(data["result"]["critical_paths"], list):
             data["result"]["critical_paths"].sort(

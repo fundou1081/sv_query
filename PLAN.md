@@ -517,6 +517,9 @@ P165 arch_eval 评审采纳（2026-11-11，来源 architecture/arch_eval_2026-11
 -- P165.3 外部故障集（非自撰；从 OpenTitan 等真实 bug commit 回溯任务，补外部效度） <待做>
 -- P165.4 filelist 依赖闭包自动化（当前人工整理是真实项目落地最大摩擦；与 P159 E-3 同源） <待做>
 
+P166 opensource golden calibration after P158.12.4/11.2b <已完成>
+-- P166.1 rebaseline stats/dataflow goldens <已完成>
+
 P158 review remediation backlog <待做>
 -- P158.0 纪律语义契约升级 <已完成>
 -- P158.1 数据边策略 + CLOCK/RESET 反例 <已完成>

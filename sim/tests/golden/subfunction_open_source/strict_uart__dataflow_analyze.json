@@ -28,6 +28,7 @@
       }
     },
     "clock_domain": "clk_i",
+    "expansions": 3,
     "from_resolved": "synchronizer.async_i",
     "from_signal": "synchronizer.async_i",
     "intermediate_signals": [
@@ -87,8 +88,11 @@
     "paths_count": 1,
     "primary_is_async": false,
     "primary_latency_cycles": 2,
+    "search_status": "complete",
     "timing_risk": "safe",
     "to_resolved": "synchronizer.sync0_o",
-    "to_signal": "synchronizer.sync0_o"
+    "to_signal": "synchronizer.sync0_o",
+    "truncated": false,
+    "truncation_reason": ""
   }
 }
