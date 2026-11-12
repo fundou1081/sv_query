@@ -2,8 +2,9 @@
 
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
-> **交接状态**: [docs/dev/HANDOFF.md](docs/dev/HANDOFF.md) — 剩余工作、环境、worker 协议。
-> **最后更新**: 2026-11-12 09:00 GMT+8 (P158.12.6 完成)
+> **交接状态**: [docs/dev/HANDOFF.md](docs/dev/HANDOFF.md) — 剩余工作、环境、worker 协议；
+> [会话交接快照](docs/dev/HANDOFF_2026-11-12.md) — 本次会话交付、设计裁决、待拍板、踩坑。
+> **最后更新**: 2026-11-12 10:10 GMT+8 (交接文档就绪)
 
 ---
 

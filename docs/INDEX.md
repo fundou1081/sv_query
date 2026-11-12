@@ -49,6 +49,7 @@
 |---|---|
 | [dev/DISCIPLINE.md](dev/DISCIPLINE.md) | **开发纪律 (强制)**: 产品不变量 I1~I5 + 5 条硬规则 + 归因顺序 + 例外 + 违规处置 |
 | [dev/HANDOFF.md](dev/HANDOFF.md) | **交接**: 当前状态 / 剩余工作 / worker 协议 / 交回 checklist |
+| [dev/HANDOFF_2026-11-12.md](dev/HANDOFF_2026-11-12.md) | **会话交接快照 (2026-11-12)**: P158.9.2→12.6 三次提交 / 设计裁决 / 待拍板 / 踩坑 / 接手 checklist |
 | [sessions/2026-11-11_sv_query_session_log.md](sessions/2026-11-11_sv_query_session_log.md) | **P163**: 对话/工作事实记录（非逐字） |
 | [dev/SEMANTIC_CONTRACTS.md](dev/SEMANTIC_CONTRACTS.md) | **语义契约**: 数据边 / 路径 / verified / snapshot / 完成判定 |
 | [dev/REPORT_STATUS.md](dev/REPORT_STATUS.md) | **绿色口径统一 (P158.12.6)**: 7 类状态 / canonical+opensource 合并视图 / false_confident 分母 |
