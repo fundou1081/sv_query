@@ -52,7 +52,7 @@
 
 ## 📦 仓库状态
 
-- **分支**: `main`；HEAD 以 `git log -1` 为准（2026-11-12 核对为 `cf323d4e`）
+- **分支**: `main`；HEAD 以 `git log -1` 为准（不要依赖文档里的哈希）
 - **全量基线**: 见 [docs/INDEX.md 当前基线](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里)（单一真相源，本文不写死计数）
 - **命令面**: 45 命令 = core 39 + exp 6（audit / diagnose / trace overview / review render / architecture graph /
   trace impact——**2026-11-11 降级**：未标定启发式不得伪装稳定，见 KNOWN_LIMITATIONS §3.4）

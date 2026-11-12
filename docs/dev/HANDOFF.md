@@ -2,7 +2,7 @@
 
 **交接时间**: 2026-11-12 10:10 (Asia/Shanghai)
 **仓库**: `/Users/fundou/my_dv_proj/sv_query`
-**HEAD**: 以 `git log -1` 为准（本文最后核对：`cf323d4e`，P166 测试 golden 校准后）
+**HEAD**: 以 `git log -1` 为准（不要依赖文档里的哈希）
 **状态**: canonical 2718 passed / 0 failed、opensource 114 passed / 17 skipped / 0 failed；
 按 [REPORT_STATUS.md](REPORT_STATUS.md) 口径 **0 failed 不等于全绿**（合计 148 个单元未执行）；
 P158 仅剩 12.7 skills 漂移与 17 skip 分类
