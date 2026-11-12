@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P158.12.6 R-028 绿色口径统一（报告分离 passed/failed/unknown/skipped/unexecuted） <待做>
+current item : P158.12.7 skills 文档漂移（命令面 39+6；可参考 replay/agent-3530f163 旁路分支内容重做） <待做>
 
 ## 计划树
 
@@ -542,7 +542,7 @@ P158 review remediation backlog <待做>
 -- P158.12.3 no:randomly no-op 修复（pytest-randomly 入 dev 依赖，默认禁用随机）+ auto-bless 核查（非问题） <已完成>
 -- P158.12.4 空 expression DRIVER 自环清除（R-026：connection_extractor 恒自环边，408 条） <已完成>
 -- P158.12.5 benchmark runner task 异常计数（R-027 最小面：异常留行不挂整轮） <已完成>
--- P158.12.6 R-028 绿色口径统一（报告分离 passed/failed/unknown/skipped/unexecuted） <待做>
+-- P158.12.6 R-028 绿色口径统一（报告分离 passed/failed/unknown/skipped/unexecuted） <已完成>
 -- P158.12.7 skills 文档漂移（命令面 39+6；可参考 replay/agent-3530f163 旁路分支内容重做） <待做>
 
 ## 已完成（保留最近记录，便于核查上一轮）
@@ -782,6 +782,7 @@ P4 已完成归档 <已完成>
 | 2026-11-11 | 接手校准（P164）：current item 按 HANDOFF 建议指向 P158.11.2b 前置的文档校准；P158.9 拆出 9.2；`--`/`----` 缩进统一，check_plan 新增 P9（不可见项）与字母后缀 id |
 | 2026-11-11 | P158.11.2b 完成（iter_491）：SearchBudget 抽为 graph/search_budget.py 唯一实现；dataflow 有界 DFS + `--max-expansions/--timeout` + truncated 契约；P158.11 整体收口；current item → P158.9.2 |
 | 2026-11-11 | arch_eval 评审采纳（P165 登记，方豆确认）：P165.1 signal.py pred/succ 化 / P165.2 packaging 重命名 / P165.3 外部故障集 / P165.4 filelist 闭包自动化；方案 B 拒绝、方案 C 暂缓；P158.9.2 验收补"不许中间态" |
+| 2026-11-12 | P158.12.6 完成（iter_495）：7 类状态分类（report_status.py）+ canonical/opensource 合并视图 + false_confident 分母=answered_n（默认口径待确认）；8 项机械 gate |
 | 2026-11-12 | P158.12.2~12.5 完成（iter_494）：26 文件硬编码路径清零（SVQ_OPENRTL_ROOT + 显式 skip）；pytest-randomly 入 dev；R-026 恒自环边清除 + 4 回归测试；R-027 异常留行；剩余 12.6 口径 / 12.7 skills |
 | 2026-11-11 | P158.9.2 快照保真（iter_493）：to_dict/from_dict 补齐 condition_chain/source/function 标记/extra；condition_ast 显式不保证；SNAPSHOT_SURFACE.md 矩阵；CLI live/snapshot parity 测试 |2026-11-11 后接 |
 | 2026-11-11 | P158.12.1 trace impact 降级 exp（方豆拍板）：core 40→39 / exp 5→6；capabilities 默认隐藏、kind=experimental；KNOWN_LIMITATIONS §3.4 加处置注记 |
