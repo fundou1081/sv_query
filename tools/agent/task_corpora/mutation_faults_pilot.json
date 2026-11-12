@@ -1,0 +1,66 @@
+{
+  "description": "P165.3.2 mutation pilot: mutation diff is ground truth; Verilator is independent compile oracle.",
+  "tasks": [
+    {
+      "id": "simple_driver_swap",
+      "source": "sim/test_simple.sv",
+      "top": "top",
+      "query": "drivers",
+      "signal": "top.data",
+      "mutation": {
+        "old": "assign data = din;",
+        "new": "assign data = en;"
+      },
+      "expect": {
+        "before": {"contains": ["top.din"]},
+        "after": {"contains": ["top.en"], "not_contains": ["top.din"]}
+      }
+    },
+    {
+      "id": "simple_driver_removed",
+      "source": "sim/test_simple.sv",
+      "top": "top",
+      "query": "loads",
+      "signal": "top.din",
+      "mutation": {
+        "old": "assign data = din;",
+        "new": "assign data = 1'b0;"
+      },
+      "expect": {
+        "before": {"contains": ["top.data"]},
+        "after": {"not_contains": ["top.data"]}
+      }
+    },
+    {
+      "id": "sync_second_flop_swap",
+      "source": "sim/tests/fixtures/minimal_3module/top.sv",
+      "filelist": "sim/tests/fixtures/minimal_3module/filelist.f",
+      "query": "drivers",
+      "signal": "synchronizer.sync1",
+      "mutation": {
+        "old": "sync1 <= sync0;",
+        "new": "sync1 <= async_i;"
+      },
+      "expect": {
+        "before": {"contains": ["synchronizer.sync0"]},
+        "after": {"not_contains": ["synchronizer.sync0"]}
+      }
+    },
+    {
+      "id": "pico_dbg_mem_valid_swap",
+      "source": "~/my_dv_proj/openrtl/picorv32/picorv32.v",
+      "top": "picorv32_axi",
+      "query": "drivers",
+      "signal": "picorv32_axi.picorv32_core.dbg_mem_valid",
+      "mutation": {
+        "old": "wire dbg_mem_valid = mem_valid;",
+        "new": "wire dbg_mem_valid = mem_ready;"
+      },
+      "expect": {
+        "before": {"contains": ["picorv32_axi.picorv32_core.mem_valid"]},
+        "after": {"contains": ["picorv32_axi.picorv32_core.mem_ready"],
+                  "not_contains": ["picorv32_axi.picorv32_core.mem_valid"]}
+      }
+    }
+  ]
+}
