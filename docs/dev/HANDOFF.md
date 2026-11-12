@@ -3,9 +3,9 @@
 **交接时间**: 2026-11-12 10:10 (Asia/Shanghai)
 **仓库**: `/Users/fundou/my_dv_proj/sv_query`
 **HEAD**: 以 `git log -1` 为准（不要依赖文档里的哈希）
-**状态**: canonical 2724 passed / 0 failed、opensource 114 passed / 9 skipped / 0 failed；
+**状态**: canonical 2727 passed / 0 failed、opensource 114 passed / 9 skipped / 0 failed；
 按 [REPORT_STATUS.md](REPORT_STATUS.md) 口径 **0 failed 不等于全绿**（合计 132 个单元未执行）；
-P158.12.7 skills 漂移已完成；剩余 17 个 opensource skip 分类与 P165
+P158.12.7 / P167 / P165.1 / P165.4 已完成；剩余 P165.3 与 P165.2
 
 > 给接手 agent：先读完本文件，再按 [AGENTS.md](../../AGENTS.md) §0 的顺序恢复上下文。
 > **本次会话（2026-11-12）详细交接见 [HANDOFF_2026-11-12.md](HANDOFF_2026-11-12.md)**：
@@ -27,7 +27,7 @@ sv_query 是 agent 的 RTL 查询 + 客观校验层；
 当前测试：
 
 ```text
-canonical:   2724 passed / 0 skipped / 123 deselected / 0 failed
+canonical:   2727 passed / 0 skipped / 123 deselected / 0 failed
 opensource:  114 passed / 9 skipped / 0 failed
 ```
 
@@ -162,9 +162,9 @@ d1325aaf — docs(P159): record full pitfalls and lessons history
    `scripts/sv_analyze.py`/`tools/llm_schema.json` 已同步；
    `test_skill_surface.py` 防回退。
 
-剩余：**P167（17 个 opensource skip 分类）**、P165.1~4。
+剩余：**P165.3 外部故障集**、P165.2 packaging。
 
-### 5.4 17 个 opensource skip 分类
+### 5.4 9 个 opensource skip 分类
 
 不要直接删除；逐项判断：
 
@@ -229,7 +229,7 @@ python3 -m pytest sim/tests/ -m "opensource" -q -p no:randomly
 当前期望：
 
 ```text
-canonical:   2724 passed / 0 failed
+canonical:   2727 passed / 0 failed
 opensource:  114 passed / 0 failed / 17 explicit skips
 ```
 
@@ -362,7 +362,7 @@ python3 tools/agent/run_spi_corpus.py --json
 2. P158.9 snapshot surface 矩阵（9.2）（2026-11-11 已完成：往返保真 +
    SNAPSHOT_SURFACE.md 矩阵，见 docs/dev/SNAPSHOT_SURFACE.md）
 3. P158.12 P2 清理（12.1~12.6 已全部完成：impact 降 exp / 硬编码路径 /
-   no:randomly / 自环 / 异常计数 / 绿色口径；**仅剩 12.7 skills 文档漂移**）
+   no:randomly / 自环 / 异常计数 / 绿色口径；P158.12.7 / P167 / P165.1 / P165.4 已完成）
 4. P165 arch_eval 评审采纳（signal.py pred/succ 化 → 外部效度 → packaging 重命名；
    方案 B 拒绝、方案 C 暂缓，决策记录在 PLAN P165）
 5. 17 个 skip 分类

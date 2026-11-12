@@ -390,23 +390,32 @@ tool: intent=path / intent=deep_path  →  path_kind=canonical
 
 证据：[canonical path 记录](validation/CANONICAL_PATH_2026-11-09.md)。
 
-### 3.11 OpenTitan UART/I2C 的**依赖闭包仍是手工整理**的
+### 3.11 OpenTitan UART/I2C/SPI 的依赖闭包：已有工具，但仍需 profile
 
-**事实**：两个 block 的 filelist 都是**人工**整理出来的，`.core` 的依赖是 superset。
+**事实（2026-11-12 P165.4）**：新增 `tools/agent/filelist_closure.py`，
+从 CAPI=2 `.core` 递归解析 `depend`、应用 mapping、剥离 include-only header、
+复用 top-reachable prune，并输出 `+incdir+` + compile files。
 
-| block | 文件数 | 状态 |
-|---|---|---|
-| `hw/ip/uart` | 60 | **4 轮手工依赖整理**才可 elaborate（首次 0 errors 是 4 轮后的结果） |
-| `hw/ip/i2c` | 67 | 复用 UART 规则，**首次即 elaborate**；但仍是手写 filelist |
+| block | files | nodes | edges | elaboration_errors |
+|---|---:|---:|---:|---:|
+| UART | 52 | 4253 | 6919 | 0 |
+| I2C | 66 | 9366 | 16969 | 0 |
+| SPI_HOST | 73 | 6875 | 10989 | 0 |
 
-`.core` 不能直接用：`filelist prune` 会保留 include-only `.svh`，需手工删。
+复现：
 
-**可观察后果**：
-- 换 HEAD / 换 block 时**不能**假设 filelist 直接可用 —— UART 用了 4 轮。
-- 依赖闭包**没有**自动化；`.core` → 可 elaborate filelist 仍需人工判断。
-- 这是当前真实项目验证最大的**可复现性缺口**。
+```bash
+python3 tools/agent/filelist_closure.py   --root ~/my_dv_proj/openrtl/opentitan   --core hw/ip/uart/uart.core   --profile tools/agent/filelist_profiles/opentitan_uart.json   --prune-top uart --output /tmp/uart_closure.f --json
+```
 
-证据：[UART pilot](validation/OPENTITAN_PILOT_2026-11-09.md) §P2、
+**仍未自动化/未宣称**：
+- 这是 OpenTitan adapter，不是通用 `.core` 标准实现；
+- profile 仍含项目特定 mapping/exclude/incdir（如 `prim_generic`、`ram_1p_pkg`）；
+- 依赖 PyYAML；生成的是候选 filelist，必须再 `snapshot save` 证明 0 errors；
+- OpenTitan source/snapshot 未固化进 repo（体积/许可/策略未拍板）。
+
+证据：[P165.4 closure](validation/P165_4_FILECLOSURE_2026-11-12.md)、
+[UART pilot](validation/OPENTITAN_PILOT_2026-11-09.md) §P2、
 [I2C pilot](validation/OPENTITAN_I2C_2026-11-09.md) §P4。
 
 ### 3.12 Snapshot 的 MIG 兼容性
