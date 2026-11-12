@@ -16,13 +16,14 @@
 sv_query 是 agent 的 RTL 查询 + 客观校验层；
 核心语义契约、数据边、确定性、snapshot MIG、真实 corpus 已经落地；
 当前不是“完成品”，剩余工作集中在：
-P158.12 P2 清理、17 个 opensource skip 处置（11.2b timeout 与 9.2 快照保真已完成）。
+P158.12.7 skills 文档漂移、17 个 opensource skip 处置（11.2b timeout / 9.2 快照保真 /
+P158.12 核心清理与 12.6 口径统一已完成）。
 ```
 
 当前测试：
 
 ```text
-canonical:   2710 passed / 0 skipped / 131 deselected / 0 failed
+canonical:   2718 passed / 0 skipped / 131 deselected / 0 failed
 opensource:  114 passed / 17 skipped / 0 failed
 ```
 
@@ -146,13 +147,16 @@ d1325aaf — docs(P159): record full pitfalls and lessons history
    connection_extractor 对实例 output port 恒加 `child_signal_id→inst_port_id`（两者同串），
    零信息自环；跳过后 408 模式归零，真实自依赖（带 expression）不受影响；
    复现/回归 = `test_p158_12_selfloop.py`；
-5. ~~`false_confident` 指标在 task exception 时漏计~~ **最小面已解决（P158.12.5）**：
-   runner 异常留行（rc=130 + task_error 标记）不挂整轮；**分母语义**（无答案算不算
-   false_confident）待拍板，挂 R-028；
-6. 文档/help/skills 漂移：docs/help 已由 P164 收口；**skills 层仍漂移**（P158.12.7，
+5. ~~`false_confident` 指标在 task exception 时漏计~~ **已解决（P158.12.5/6）**：
+   runner 异常留行（rc=130 + task_error 标记）不挂整轮；12.6 起
+   `false_confident` 分母 = answered_n（实际作答数），无答案归 unknown
+   不进分母；**该分母口径为当前默认，待方豆确认**（改一处即可推翻，
+   `test_unexecuted_does_not_dilute_false_confident_rate` 会变红提醒）；
+6. 文档/help/skills 漂移：docs/help 已由 P164 收口；报告口径由 12.6
+   (`docs/dev/REPORT_STATUS.md`) 统一；**skills 层仍漂移**（P158.12.7，
    命令面已 39+6；被撤销的经验回放分支 `replay/agent-3530f163` 有现成内容可参考重做）。
 
-剩余：**P158.12.6（R-028 绿色口径统一）与 P158.12.7（skills 漂移）**。
+剩余：**P158.12.7（skills 漂移）**。
 
 ### 5.4 17 个 opensource skip 分类
 
@@ -219,7 +223,7 @@ python3 -m pytest sim/tests/ -m "opensource" -q -p no:randomly
 当前期望：
 
 ```text
-canonical:   2710 passed / 0 failed
+canonical:   2718 passed / 0 failed
 opensource:  114 passed / 0 failed / 17 explicit skips
 ```
 
@@ -351,12 +355,14 @@ python3 tools/agent/run_spi_corpus.py --json
 1. P158.11.2b generic timeout（2026-11-11 已完成）
 2. P158.9 snapshot surface 矩阵（9.2）（2026-11-11 已完成：往返保真 +
    SNAPSHOT_SURFACE.md 矩阵，见 docs/dev/SNAPSHOT_SURFACE.md）
-3. P158.12 P2 清理
+3. P158.12 P2 清理（12.1~12.6 已全部完成：impact 降 exp / 硬编码路径 /
+   no:randomly / 自环 / 异常计数 / 绿色口径；**仅剩 12.7 skills 文档漂移**）
 4. P165 arch_eval 评审采纳（signal.py pred/succ 化 → 外部效度 → packaging 重命名；
    方案 B 拒绝、方案 C 暂缓，决策记录在 PLAN P165）
 5. 17 个 skip 分类
 ```
 
-如果只接一个任务，选 **P158.12 P2 清理**：
-26 个测试文件硬编码 `/Users/fundou` 路径决定换机器可不可跑，
-`-p no:randomly` 是 no-op——测试卫生层是当前最大的可信度债。
+如果只接一个任务，选 **P158.12.7 skills 文档漂移**：
+`skills/sv-query/` 仍按旧命令面（40 core + 5 exp）描述，而当前是
+39 core + 6 exp；被撤销的经验回放分支 `replay/agent-3530f163`
+有现成的逐项校正内容，可参考重做（注意按新命令面复核）。

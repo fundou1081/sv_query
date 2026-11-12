@@ -14,7 +14,7 @@
 |---|---|---|
 | 源码规模 | 137 文件 / 49,377 行 | `find src -name "*.py"`（2026-11-11 实测） |
 | 测试规模 | 378 测试文件 / 64,311 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-11 实测） |
-| 全量 (canonical) | **2710 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / 131 deselected; 35 subtests) | **2026-11-12 独立复核**（iter_494，P158.12.2~12.5 后干净工作树，26min）；含 R-026 自环清除后的 golden 重捕；**0 skipped 不是健康指标**，见 TESTING §语义测试 |
+| 全量 (canonical) | **2718 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / 131 deselected = `unexecuted`; 35 subtests) | **2026-11-12 独立复核**（iter_495，P158.12.6 后干净工作树，36min）；含 R-026 自环清除后的 golden 重捕；**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 迭代记录 | `docs/task_tree/iterations/` (475 份, 只增不改) | 每次迭代一份（2026-11-11 实测） |
@@ -51,6 +51,7 @@
 | [dev/HANDOFF.md](dev/HANDOFF.md) | **交接**: 当前状态 / 剩余工作 / worker 协议 / 交回 checklist |
 | [sessions/2026-11-11_sv_query_session_log.md](sessions/2026-11-11_sv_query_session_log.md) | **P163**: 对话/工作事实记录（非逐字） |
 | [dev/SEMANTIC_CONTRACTS.md](dev/SEMANTIC_CONTRACTS.md) | **语义契约**: 数据边 / 路径 / verified / snapshot / 完成判定 |
+| [dev/REPORT_STATUS.md](dev/REPORT_STATUS.md) | **绿色口径统一 (P158.12.6)**: 7 类状态 / canonical+opensource 合并视图 / false_confident 分母 |
 | [dev/SNAPSHOT_SURFACE.md](dev/SNAPSHOT_SURFACE.md) | **快照能力面矩阵 (P158.9.2)**: 字段级保真 / 命令级支持面 / 显式不保证清单 |
 | [dev/CLAIMS.md](dev/CLAIMS.md) | **claim 台账**: 公开能力的证据与状态 |
 | [dev/CODING_STYLE.md](dev/CODING_STYLE.md) | 编码风格与设计决策: 先探索后决策 / 单一实现 / 修根因 / 函数职责 / 结构化数据 / 影响面 / 协作规则 |

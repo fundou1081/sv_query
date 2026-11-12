@@ -3,17 +3,26 @@
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **交接状态**: [docs/dev/HANDOFF.md](docs/dev/HANDOFF.md) — 剩余工作、环境、worker 协议。
-> **最后更新**: 2026-11-12 00:45 GMT+8 (P158.12.2~12.5 完成)
+> **最后更新**: 2026-11-12 09:00 GMT+8 (P158.12.6 完成)
 
 ---
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P158.12.6 R-028 绿色口径统一**（报告分离
-  passed/failed/unknown/skipped/unexecuted）`<待做>`
-  - 按 HANDOFF §12 顺序：~~P158.11.2b~~ → ~~P158.9.2~~ → ~~P158.12 核心项~~ → 12.6/12.7 → 17 skip 分类
-  - 剩余：12.6 口径统一（benchmark 报告语义，需方豆确认 false_confident 分母）；
-    12.7 skills 文档漂移（命令面 39+6；可参考 `replay/agent-3530f163` 旁路分支重做）
+- **当前 item**: **P158.12.7 skills 文档漂移**（命令面 39+6；可参考
+  `replay/agent-3530f163` 旁路分支内容重做）`<待做>`
+  - 按 HANDOFF §12 顺序：P158.12.7 → 17 skip 分类 → P165 采纳项
+  - 待方豆确认（不阻塞）：`false_confident` 分母口径当前默认
+    = answered_n（实际作答数），见 [REPORT_STATUS](docs/dev/REPORT_STATUS.md)
+
+### 已完成（本轮 P158.12.6，iter_495）
+
+- **7 类状态统一**：`tools/report_status.py` 分类 passed / failed / unknown /
+  truncated / unexecuted / skipped_with_reason / external_not_run；
+  canonical+opensource 合并视图与 VERDICT（"只看 failed 数不代表全绿"）
+- **分母语义**：`false_confident` 分母 = answered_n；`score_long_range.py`
+  summary 暴露 statuses + 新分母；真实历史数据兼容验证通过
+- **口径文档**：`docs/dev/REPORT_STATUS.md`（已登记 INDEX）；机械 gate 8 项
 
 ### 已完成（本轮 P158.12.2~12.5，iter_494）
 
@@ -49,7 +58,7 @@
 - **环境**: `python3` 必须是装了 typer/pyslang 的解释器（本机 `~/miniconda3/bin/python3`），
   否则 CLI 子进程测试会成片假失败；外部 corpus 在 `SVQ_OPENRTL_ROOT`
   （默认 `~/my_dv_proj/openrtl`），缺失时相关测试显式 skip
-- **当前重点**: P158.9.2 已完成（快照往返保真 + SNAPSHOT_SURFACE.md 矩阵）；下一步 P158.12 P2 清理
+- **当前重点**: P158.12.6 已完成（7 类状态口径统一）；下一步 P158.12.7 skills 文档漂移
 
 ---
 
@@ -72,7 +81,7 @@
 ## 🔜 下一步（按顺序，未开工）
 
 ```text
-1. P158.12    P2 清理（26 个硬编码路径 / no:randomly / 空 expression self-loop）<- 当前 item
+1. P158.12.7  skills 文档漂移（按 39+6 命令面校正）  <- 当前 item
 2. 17 个 opensource skip 的最终处置（归档 retired exp / 补 fixture / 保留显式 skip）
 3. P165.1     signal.py 全图扫描 pred/succ 化（O(V×E)→O(度)，小改动）
 4. P165.3/4   外部故障集 + filelist 闭包自动化（开源前）
