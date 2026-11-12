@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P165.1 SignalTracer/structural 全图扫描 pred/succ 化（signal.py 7 处 O(V×E)；NetworkX 原生视图，零索引成本） <待做>
+current item : P165.3 外部故障集（非自撰；从 OpenTitan 等真实 bug commit 回溯任务，补外部效度） <待做>
 
 ## 计划树
 
@@ -512,7 +512,7 @@ P164 文档状态校准（2026-11-11 接手） <已完成>
 P165 arch_eval 评审采纳（2026-11-11，来源 architecture/arch_eval_2026-11-11.md，方豆确认采纳） <待做>
 评审同时给出"不采纳"决策：方案 B（迁 Verilator/Yosys IR）拒绝——与验证语义目标错位；
 方案 C（agent 工具 daemon 化）暂缓——等 >2 跳探索的真实使用证据再启动。
--- P165.1 SignalTracer/structural 全图扫描 pred/succ 化（signal.py 7 处 O(V×E)；NetworkX 原生视图，零索引成本） <待做>
+-- P165.1 SignalTracer/structural 全图扫描 pred/succ 化（signal.py 7 处 O(V×E)；NetworkX 原生视图，零索引成本） <已完成>
 -- P165.2 packaging 重命名消除 stdlib trace 冲突（src/trace → src/sv_query/trace；开源发布前必须，随破坏性变更窗口一起做） <待做>
 -- P165.3 外部故障集（非自撰；从 OpenTitan 等真实 bug commit 回溯任务，补外部效度） <待做>
 -- P165.4 filelist 依赖闭包自动化（当前人工整理是真实项目落地最大摩擦；与 P159 E-3 同源） <待做>

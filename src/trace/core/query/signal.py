@@ -177,10 +177,9 @@ class SignalTracer:
                     drivers.append(cnode)
                     seen_ids.add(cid)
 
-        # ③~⑥ 遍历所有指向本信号的边
-        for src, dst in list(self.graph.edges()):
-            if dst != signal_id:
-                continue
+        # ③~⑥ 只遍历本信号的前驱（O(入度)，不是全图 O(E)）
+        for src in self.graph.predecessors(signal_id):
+            dst = signal_id
 
             # ③ 自环（state = state）
             if src == signal_id:
@@ -278,8 +277,9 @@ class SignalTracer:
 
     def _has_incoming_driver(self, signal_id: str) -> bool:
         """是否存在指向本节点的 DRIVER 边（BIT_SELECT 不算）。"""
-        for src, dst in self.graph.edges():
-            if dst == signal_id and self.graph.get_edge(src, dst).kind == EdgeKind.DRIVER:
+        for src in self.graph.predecessors(signal_id):
+            edge = self.graph.get_edge(src, signal_id)
+            if edge is not None and edge.kind == EdgeKind.DRIVER:
                 return True
         return False
 
@@ -314,9 +314,8 @@ class SignalTracer:
 
         [iter_290 / P5.1] `bit_filter` 给定时只追覆盖该位的切片。
         """
-        for src, dst in list(self.graph.edges()):
-            if dst != signal_id:
-                continue
+        for src in self.graph.predecessors(signal_id):
+            dst = signal_id
             edge = self.graph.get_edge(src, dst)
             if not (edge and edge.kind == EdgeKind.BIT_SELECT and src not in seen_ids):
                 continue
@@ -359,10 +358,10 @@ class SignalTracer:
             if parent is None or not self._has_any_incoming(parent):
                 return
         _liftable = {"SIGNAL", "PORT_OUT", "PORT_IN", "REG"}
-        for src, dst in list(self.graph.edges()):
-            if src != signal_id or dst == signal_id or dst in seen_ids:
+        for dst in self.graph.successors(signal_id):
+            if dst == signal_id or dst in seen_ids:
                 continue
-            edge = self.graph.get_edge(src, dst)
+            edge = self.graph.get_edge(signal_id, dst)
             if not edge or edge.kind != EdgeKind.BIT_SELECT:
                 continue
             dst_node = self.graph.get_node(dst)
@@ -1018,8 +1017,9 @@ class SignalTracer:
         return any(True for _ in self.graph.predecessors(node_id))
 
     def _has_incoming_connection(self, signal_id: str) -> bool:
-        for src, dst in self.graph.edges():
-            if dst == signal_id and self.graph.get_edge(src, dst).kind == EdgeKind.CONNECTION:
+        for src in self.graph.predecessors(signal_id):
+            edge = self.graph.get_edge(src, signal_id)
+            if edge is not None and edge.kind == EdgeKind.CONNECTION:
                 return True
         return False
 
@@ -1197,9 +1197,7 @@ class SignalTracer:
 
     def _has_internal_driver(self, src: str) -> bool:
         """该实例端口是否有真实内部驱动（任意非 internal 的 DRIVER 边指向它）。"""
-        for p, d in self.graph.edges():
-            if d != src:
-                continue
+        for p in self.graph.predecessors(src):
             for e in self.graph.get_edges(p, src):
                 if e.kind == EdgeKind.DRIVER and e.assign_type != "internal":
                     return True
@@ -1208,15 +1206,23 @@ class SignalTracer:
     def _wrapper_passthrough_sources(self, src: str) -> list[str]:
         """指向 src 的 wrapper_passthrough DRIVER 源（graph_builder 后处理加的直通边）。"""
         out = []
-        for ps, pd in self.graph.edges():
-            if pd != src:
-                continue
-            for pe in self.graph.get_edges(ps, pd):
+        for ps in self.graph.predecessors(src):
+            for pe in self.graph.get_edges(ps, src):
                 if (pe.kind == EdgeKind.DRIVER and pe.assign_type == "wrapper_passthrough"
                         and ps in self.graph.nodes()):
                     out.append(ps)
                     break
         return out
+
+    def _incoming_pairs(self, signal_id: str):
+        """Yield only edges into signal_id (O(indegree))."""
+        for src in self.graph.predecessors(signal_id):
+            yield src, signal_id
+
+    def _outgoing_pairs(self, signal_id: str):
+        """Yield only edges out of signal_id (O(outdegree))."""
+        for dst in self.graph.successors(signal_id):
+            yield signal_id, dst
 
     def _find_drivers(self, signal_id: str, allow_cross_module: bool = True,
                       scope_prefix: str | None = None) -> list[TraceNode]:
@@ -1237,7 +1243,7 @@ class SignalTracer:
                 if cnode is not None and cnode.id not in {d.id for d in drivers}:
                     drivers.append(cnode)
         # [iter_272] 不再注入 MIG 虚拟对端 (实例级图跨模块是普通图边)。
-        for src, dst in list(self.graph.edges()):
+        for src, dst in self._incoming_pairs(signal_id):
             if dst == signal_id:
                 # [iter_127 A3] 与 _trace_drivers_recursive 同规则: 跳过
                 # 实例输出端口 "模块内部驱动" internal 自环标记 (非真实源).
@@ -1366,10 +1372,10 @@ class SignalTracer:
         if node is None or node.parent is None:
             return signal_id
         has_load = any(
-            src == signal_id and dst != signal_id
+            dst != signal_id
             and any(e.kind in (EdgeKind.DRIVER, EdgeKind.CONNECTION)
-                    for e in self.graph.get_edges(src, dst))
-            for src, dst in self.graph.edges()
+                    for e in self.graph.get_edges(signal_id, dst))
+            for dst in self.graph.successors(signal_id)
         )
         if has_load:
             return signal_id
@@ -1536,7 +1542,7 @@ class SignalTracer:
         if allowed_kinds is None:
             allowed_kinds = {EdgeKind.DRIVER, EdgeKind.CONNECTION}
 
-        for src, dst in list(self.graph.edges()):
+        for src, dst in self._outgoing_pairs(signal_id):
             if src == signal_id:
                 edge = self.graph.get_edge(src, dst)
                 if edge and edge.kind not in allowed_kinds:
@@ -1823,7 +1829,8 @@ class SignalTracer:
 
                 # 尝试从 node 的驱动边获取 condition
                 # 遍历 node 的入边，找到 DRIVER 边
-                for src, dst in self.graph.edges():
+                for src in self.graph.predecessors(node.id):
+                    dst = node.id
                     if dst == node.id:
                         node_edge = self.graph.get_edge(src, dst)
                         if node_edge and node_edge.kind.name == "DRIVER":
@@ -1877,7 +1884,8 @@ class SignalTracer:
         inferred_reset = None
 
         for succ in self.graph.successors(signal_id):
-            for src, dst in self.graph.edges():
+            for src in self.graph.predecessors(succ):
+                dst = succ
                 if dst == succ:
                     edge = self.graph.get_edge(src, dst)
                     if edge:
@@ -1920,7 +1928,8 @@ class SignalTracer:
         visited.add(signal_id)
 
         # 查找驱动这个信号的边
-        for src, dst in self.graph.edges():
+        for src in self.graph.predecessors(signal_id):
+            dst = signal_id
             if dst == signal_id:
                 edge = self.graph.get_edge(src, dst)
                 if edge and edge.kind.name == "DRIVER":
