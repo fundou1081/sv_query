@@ -4,7 +4,7 @@
 **仓库**: `/Users/fundou/my_dv_proj/sv_query`
 **HEAD**: 以 `git log -1` 为准（不要依赖文档里的哈希）
 **状态**: canonical 2722 passed / 0 failed、opensource 114 passed / 17 skipped / 0 failed；
-按 [REPORT_STATUS.md](REPORT_STATUS.md) 口径 **0 failed 不等于全绿**（合计 148 个单元未执行）；
+按 [REPORT_STATUS.md](REPORT_STATUS.md) 口径 **0 failed 不等于全绿**（合计 140 个单元未执行）；
 P158.12.7 skills 漂移已完成；剩余 17 个 opensource skip 分类与 P165
 
 > 给接手 agent：先读完本文件，再按 [AGENTS.md](../../AGENTS.md) §0 的顺序恢复上下文。
