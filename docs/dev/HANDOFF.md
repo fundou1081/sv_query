@@ -2,7 +2,7 @@
 
 **交接时间**: 2026-11-12 10:10 (Asia/Shanghai)
 **仓库**: `/Users/fundou/my_dv_proj/sv_query`
-**HEAD**: 以 `git log -1` 为准（本文最后核对：`4481af67`；之后仅 P166 测试 golden 校准）
+**HEAD**: 以 `git log -1` 为准（本文最后核对：`cf323d4e`，P166 测试 golden 校准后）
 **状态**: canonical 2718 passed / 0 failed、opensource 114 passed / 17 skipped / 0 failed；
 按 [REPORT_STATUS.md](REPORT_STATUS.md) 口径 **0 failed 不等于全绿**（合计 148 个单元未执行）；
 P158 仅剩 12.7 skills 漂移与 17 skip 分类
@@ -76,6 +76,7 @@ opensource 的 17 个 skip 都有显式原因，见 §7。
 | P158.11.2a | snapshot size guard `SVQ_SNAPSHOT_MAX_MB` + size metadata |
 | P159 | 全量踩坑历史 |
 | P160/P161 | opensource 38 failed -> 0 failed；17 显式 skip |
+| P166 | R-026/11.2b 后重捕 stats/dataflow golden；opensource 复核 0 failed |
 
 关键提交：
 
