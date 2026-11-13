@@ -43,7 +43,7 @@
 **正确做法**：
 ```python
 # ✅ 正确 - 使用编译后 Semantic AST
-from trace.core.compiler import SVCompiler
+from sv_query.trace.core.compiler import SVCompiler
 compiler = SVCompiler(sources={"test.sv": source_code})
 root = compiler.get_root()  # Semantic AST root
 
@@ -60,7 +60,7 @@ root = tree.root  # SyntaxTree root - 禁止使用
 
 **校验方式**
 ```bash
-grep -rn "SyntaxTree.fromText\|SyntaxTree.fromFile\|\.root" src/trace/core/
+grep -rn "SyntaxTree.fromText\|SyntaxTree.fromFile\|\.root" src/sv_query/trace/core/
 # 应返回空（仅 constraint_visitor.py 示例代码除外）
 ```
 
@@ -151,8 +151,8 @@ except:  # getattr 失败，属性不存在，跳过
 
 **校验方式**：
 ```bash
-grep -rn "except:" src/trace/core/
-grep -rn "except Exception:" src/trace/core/
+grep -rn "except:" src/sv_query/trace/core/
+grep -rn "except Exception:" src/sv_query/trace/core/
 # 应返回空或只在允许的场景出现
 ```
 
@@ -882,7 +882,7 @@ class StatementVisitor:
 
 **校验方式**：
 ```bash
-grep -n "if.*in.*ks\|elif.*in.*ks" src/trace/core/
+grep -n "if.*in.*ks\|elif.*in.*ks" src/sv_query/trace/core/
 # 应返回空 (允许 filter 类的 if 分支)
 ```
 
@@ -1051,7 +1051,7 @@ class AnotherVisitor:
 **校验方式**：
 ```bash
 # 检测重复代码
-grep -n "def _get_scoped_parts" src/trace/core/
+grep -n "def _get_scoped_parts" src/sv_query/trace/core/
 # 应只出现 1 次
 ```
 
