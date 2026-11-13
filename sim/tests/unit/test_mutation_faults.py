@@ -94,3 +94,36 @@ def test_cdc_bypass_mutation():
     }
     result = mod.run_task(task)
     assert result["status"] == "passed", result
+
+
+@pytest.mark.skipif(shutil.which("verilator") is None, reason="verilator not installed")
+def test_multi_driver_and_generate_mutations():
+    mod = _load()
+    tasks = [
+        {
+            "id": "multi",
+            "source": "sim/tests/fixtures/dataflow_budget/diamond.sv",
+            "top": "diamond_top",
+            "query": "drivers",
+            "signal": "diamond_top.p2_0",
+            "mutation": {
+                "old": "assign p2_0 = p1_0 | p1_1;",
+                "new": "assign p2_0 = p1_0 | p1_1;\n  assign p2_0 = 1'b1;",
+            },
+            "expect": {"before": {"not_contains": ["1'b1"]},
+                       "after": {"contains": ["1'b1"]}},
+        },
+        {
+            "id": "generate",
+            "source": "sim/tests/fixtures/generate_forms/gen_forms.sv",
+            "top": "top",
+            "query": "drivers",
+            "signal": "top.G[1].local_wire",
+            "mutation": {"old": "local_wire = din[i]", "new": "local_wire = din[0]"},
+            "expect": {"before": {"contains": ["top.din[1]"]},
+                       "after": {"contains": ["top.din[0]"]}},
+        },
+    ]
+    for task in tasks:
+        result = mod.run_task(task)
+        assert result["status"] == "passed", result

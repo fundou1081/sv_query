@@ -351,6 +351,155 @@
           }
         }
       }
+    },
+    {
+      "id": "multi_driver_literal",
+      "source": "sim/tests/fixtures/dataflow_budget/diamond.sv",
+      "top": "diamond_top",
+      "query": "drivers",
+      "signal": "diamond_top.p2_0",
+      "mutation": {
+        "old": "assign p2_0 = p1_0 | p1_1;",
+        "new": "assign p2_0 = p1_0 | p1_1;\n  assign p2_0 = 1'b1;"
+      },
+      "expect": {
+        "before": {
+          "not_contains": [
+            "1'b1"
+          ]
+        },
+        "after": {
+          "contains": [
+            "1'b1"
+          ]
+        }
+      }
+    },
+    {
+      "id": "generate_bit_select",
+      "source": "sim/tests/fixtures/generate_forms/gen_forms.sv",
+      "top": "top",
+      "query": "drivers",
+      "signal": "top.G[1].local_wire",
+      "mutation": {
+        "old": "local_wire = din[i]",
+        "new": "local_wire = din[0]"
+      },
+      "expect": {
+        "before": {
+          "contains": [
+            "top.din[1]"
+          ]
+        },
+        "after": {
+          "contains": [
+            "top.din[0]"
+          ],
+          "not_contains": [
+            "top.din[1]"
+          ]
+        }
+      }
+    },
+    {
+      "id": "wrapper_passthrough_swap2",
+      "source": "sim/tests/fixtures/wrapper_chain/wrapper_chain.sv",
+      "top": "wrapper_chain",
+      "query": "drivers",
+      "signal": "wrapper_chain.s_axi_rvalid_o",
+      "mutation": {
+        "old": "assign s_axi_rvalid_o = s_axi_bready_i;",
+        "new": "assign s_axi_rvalid_o = s_axi_wvalid_i;"
+      },
+      "expect": {
+        "before": {
+          "contains": [
+            "wrapper_chain.s_axi_bready_i"
+          ]
+        },
+        "after": {
+          "contains": [
+            "wrapper_chain.s_axi_wvalid_i"
+          ],
+          "not_contains": [
+            "wrapper_chain.s_axi_bready_i"
+          ]
+        }
+      }
+    },
+    {
+      "id": "wrapper_passthrough_path2",
+      "source": "sim/tests/fixtures/wrapper_chain/wrapper_chain.sv",
+      "top": "wrapper_chain",
+      "query": "paths",
+      "signal": "wrapper_chain.s_axi_bready_i",
+      "to_signal": "wrapper_chain.s_axi_rvalid_o",
+      "mutation": {
+        "old": "assign s_axi_rvalid_o = s_axi_bready_i;",
+        "new": "assign s_axi_rvalid_o = s_axi_wvalid_i;"
+      },
+      "expect": {
+        "before": {
+          "fields": {
+            "found": true
+          }
+        },
+        "after": {
+          "fields": {
+            "found": false
+          }
+        }
+      }
+    },
+    {
+      "id": "mux_case_default_driver",
+      "source": "sim/tests/fixtures/golden_mini/mux_demo.sv",
+      "top": "mux_demo",
+      "query": "drivers",
+      "signal": "mux_demo.y_case",
+      "mutation": {
+        "old": "default: y_case <= f;",
+        "new": "default: y_case <= g;"
+      },
+      "expect": {
+        "before": {
+          "contains": [
+            "mux_demo.f"
+          ]
+        },
+        "after": {
+          "contains": [
+            "mux_demo.g"
+          ],
+          "not_contains": [
+            "mux_demo.f"
+          ]
+        }
+      }
+    },
+    {
+      "id": "simple_path_driver_removed",
+      "source": "sim/test_simple.sv",
+      "top": "top",
+      "query": "paths",
+      "signal": "top.din",
+      "to_signal": "top.dout",
+      "mutation": {
+        "old": "assign data = din;",
+        "new": "assign data = 1'b0;"
+      },
+      "expect": {
+        "before": {
+          "fields": {
+            "found": true
+          }
+        },
+        "after": {
+          "fields": {
+            "found": false
+          }
+        }
+      }
     }
   ]
 }

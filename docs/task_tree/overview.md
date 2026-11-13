@@ -531,3 +531,4 @@ Open-source project visualization is **correct and verified**. Ready for next ta
 | **395** | **2026-11-13** | **L3** | **P165.2 packaging (iter_503)** | 方豆: 先改 packaging | trace→sv_query.trace; 85 模块/600 imports | wheel/console 实测; 2729/0 | **✅ 完成** |
 | **396** | **2026-11-13** | **L3** | **P165.3.3 mutation coverage (iter_504)** | 方豆: 下一步去做 | 4→10 mutations; paths/controlflow/dataflow facts | 10/10; 4 unit tests | **✅ 完成** |
 | **397** | **2026-11-13** | **L3** | **P165.3.4 mutation 14 (iter_505)** | 方豆: 继续 | ternary/case/wrapper + detection_rate | 14/14 | **✅ 完成** |
+| **398** | **2026-11-13** | **L3** | **P165.3.5 mutation 20 (iter_506)** | 方豆: 继续 | multi/generate/wrapper/case | 20/20 | **✅ 完成** |
