@@ -122,10 +122,10 @@ L4: 可视化            ──►  Graphviz dot                     # "画给�
 | 想做什么 | 读这个 |
 |---------|-------|
 | 看入口 | `src/cli/main.py` |
-| 加新 CLI 命令 | `src/cli/commands/risk.py` (200 行, 模板) |
-| 解析 SV (基础) | `src/trace/core/compiler.py` (`_build_tracer` 用这里) |
-| 拿 signal graph | `src/trace/core/graph/data_models.py` (节点/边定义) |
-| 加新分析算法 | `src/trace/core/graph/analyzer/` (cdc/timing/controlflow 模板) |
+| 加新 CLI 命令 | `src/cli/core/semantic/` + `src/cli/_registry.py` (现行结构) |
+| 解析 SV (基础) | `src/sv_query/trace/core/compiler.py` (`_build_tracer` 用这里) |
+| 拿 signal graph | `src/sv_query/trace/core/graph/models.py` (节点/边定义) |
+| 加新分析算法 | `src/sv_query/trace/core/graph/analyzer/controlflow_analyzer.py` (模板) |
 | 跑测试 | `sim/tests/{unit,cli,integration,regression}/` |
 
 ### 2.4 一次 "hello world" 调用
@@ -156,7 +156,7 @@ for node in g.nodes():
 
 ### 任务 A: 加一个新的 CLI 命令
 
-模板 — 复制 `src/cli/commands/risk.py` 改 3 处:
+模板 — 参照 `src/cli/core/semantic/` 的现有命令，并在 `src/cli/_registry.py` 登记:
 
 ```python
 # src/cli/commands/mynew.py
@@ -188,10 +188,10 @@ if __name__ == "__main__":
 
 ### 任务 B: 加一个新的分析器
 
-模板 — 复制 `src/trace/core/graph/analyzer/cdc_analyzer.py`:
+模板 — 复制 `src/sv_query/trace/core/graph/analyzer/controlflow_analyzer.py`:
 
 ```python
-# src/trace/core/graph/analyzer/my_analyzer.py
+# src/sv_query/trace/core/graph/analyzer/my_analyzer.py
 from typing import Any
 
 class MyAnalyzer:
@@ -313,7 +313,7 @@ ruff check src/ tools/ tests/
 1. **README.md** — 项目门面 + 5min quickstart
 2. **docs/COVERAGE_GEN.md** — 我们这次加的 coverage_gen_demo 工具 (Phase 1+2+3 #C, 完整)
 3. **docs/ARCHITECTURE.md** — 4 维分析架构
-4. **src/trace/core/compiler.py** — pyslang 怎么用的 (看注释头部)
+4. **src/sv_query/trace/core/compiler.py** — pyslang 怎么用的 (看注释头部)
 5. **docs/PYSLANG_MEMORY_ISSUE.md** — pyslang 内存不足的坑 (8GB MBA 必看)
 6. **AGENTS.md** — 代码规范 + 铁律 (V6.8更新)
 7. **AGENTS.md#铁律0** — 铁律0: Semantic AST 唯一数据源
@@ -354,8 +354,8 @@ python3 -c "import time; a = bytearray(4 * 1024**3); time.sleep(3); del a"
 
 | 问题类型 | 找谁 / 查哪里 |
 |---------|--------------|
-| pyslang API | `docs/PYSLANG_MEMORY_ISSUE.md` + `src/trace/core/compiler.py` 注释 |
-| 加新 command 模板 | `src/cli/commands/risk.py` (200 行, 模板) |
+| pyslang API | `docs/PYSLANG_MEMORY_ISSUE.md` + `src/sv_query/trace/core/compiler.py` 注释 |
+| 加新 command 模板 | `src/cli/core/semantic/` + `src/cli/_registry.py` |
 | 测试 fixture | `sim/tests/{unit,integration}/conftest.py` |
 | Coverage 工具 | `docs/COVERAGE_GEN.md` |
 | 项目历史 + 决策 | OpenClaw workspace `~/.openclaw/workspace/MEMORY.md` |
