@@ -10,6 +10,8 @@ jobs:
   test:
     name: Test on Python ${{ matrix.python-version }}
     runs-on: macos-latest
+    env:
+      COLUMNS: "120"
     strategy:
       fail-fast: false
       matrix:

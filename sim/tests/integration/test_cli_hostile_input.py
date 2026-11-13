@@ -103,7 +103,8 @@ def test_svq_debug_env_restores_traceback():
          "-f", str(FIXTURES / "no_such_file.sv")],
         capture_output=True, text=True, timeout=300, cwd=REPO, env=env,
     )
-    combined = (result.stderr or "") + (result.stdout or "")
+    import re
+    combined = re.sub(r"\x1b\[[0-9;]*m", "", (result.stderr or "") + (result.stdout or ""))
     assert "Traceback (most recent call last)" in combined, (
         "SVQ_DEBUG=1 应保留 traceback 供开发定位"
     )
