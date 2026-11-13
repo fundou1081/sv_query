@@ -14,10 +14,10 @@
 |---|---|---|
 | 源码规模 | 137 文件 / 49,377 行 | `find src -name "*.py"`（2026-11-11 实测） |
 | 测试规模 | 378 测试文件 / 64,311 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-11 实测） |
-| 全量 (canonical) | **2731 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / 123 deselected = `unexecuted`; 35 subtests) | **2026-11-12 独立复核**（iter_503，P165.2 后干净工作树；含 packaging guard）；含 R-026 自环清除后的 golden 重捕；**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
+| 全量 (canonical) | **2734 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / 123 deselected = `unexecuted`; 35 subtests) | **2026-11-12 独立复核**（iter_503，P165.2 后干净工作树；含 packaging guard）；含 R-026 自环清除后的 golden 重捕；**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (489 份, 只增不改) | 每次迭代一份（2026-11-13 实测） |
+| 迭代记录 | `docs/task_tree/iterations/` (490 份, 只增不改) | 每次迭代一份（2026-11-13 实测） |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 | 语义 regex 纪律 | `python3 tools/check_semantic_regex.py` 必须 ✅ | 仅 UVM 宏例外；class/constraint/covergroup 语义走 slang (iter_368) |
@@ -83,6 +83,7 @@
 | [validation/P165_3_EXTERNAL_ORACLE_2026-11-12.md](validation/P165_3_EXTERNAL_ORACLE_2026-11-12.md) | **P165.3.1**: independent Verilator oracle; no OpenTitan git history |
 | [validation/P165_3_2_MUTATION_FAULTS_2026-11-12.md](validation/P165_3_2_MUTATION_FAULTS_2026-11-12.md) | **P165.3.2**: mutation pilot; 4/4 passed with Verilator oracle |
 | [validation/P165_2_PACKAGING_2026-11-13.md](validation/P165_2_PACKAGING_2026-11-13.md) | **P165.2**: trace→sv_query.trace; wheel/console verified |
+| [validation/P165_3_3_MUTATION_COVERAGE_2026-11-13.md](validation/P165_3_3_MUTATION_COVERAGE_2026-11-13.md) | **P165.3.3**: 10 mutation tasks; driver/path/condition/CDC/bit |
 | [lessons/2026-11-11_pitfalls.md](lessons/2026-11-11_pitfalls.md) | **P159**: 22 个踩坑/误判/经验，含对外分享版 |
 | [validation/REVIEW_2026-11-11.md](validation/REVIEW_2026-11-11.md) | **P158 输入**: 4-angle review + 28 项修复账本 |
 | [validation/P139_FRONTIER_2026-11-09.md](validation/P139_FRONTIER_2026-11-09.md) | **P139 frontier**: 断点 + next probes；不分类 FIFO |

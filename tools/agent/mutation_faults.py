@@ -39,7 +39,9 @@ def _expand(path: str) -> Path:
 
 
 def _query(args: list[str]) -> tuple[int, dict | None, str]:
-    cmd = [sys.executable, str(CLI), *args, "--json", "-q", "--no-cache"]
+    cmd = [sys.executable, str(CLI), *args, "--json", "-q"]
+    if args and args[0] in ("drivers", "loads"):
+        cmd.append("--no-cache")
     proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True, text=True)
     try:
         data = json.loads(proc.stdout) if proc.stdout.strip() else None
@@ -48,24 +50,64 @@ def _query(args: list[str]) -> tuple[int, dict | None, str]:
     return proc.returncode, data, proc.stderr
 
 
-def _facts(data: dict | None, kind: str) -> set[str] | None:
+def _facts(data: dict | None, kind: str) -> dict | None:
+    """Normalize a query result to {items: set, fields: dict}."""
     if not isinstance(data, dict) or not data.get("ok"):
         return None
-    signals = (data.get("result") or {}).get("signals") or []
-    if not signals:
-        return set()
-    items = signals[0].get("drivers" if kind == "drivers" else "loads") or []
-    return {str(x.get("id")) for x in items}
+    if kind in ("drivers", "loads"):
+        signals = (data.get("result") or {}).get("signals") or []
+        if not signals:
+            return {"items": set(), "fields": {}}
+        items = signals[0].get(kind) or []
+        return {"items": {str(x.get("id")) for x in items}, "fields": {}}
+    if kind == "paths":
+        return {
+            "items": {str(x) for x in (data.get("path") or [])},
+            "fields": {"found": bool(data.get("found"))},
+        }
+    if kind == "controlflow":
+        result = data.get("result") or {}
+        exprs = set()
+        for cd in result.get("conditioned_drivers") or []:
+            for cond in cd.get("conditions") or []:
+                exprs.add(str(cond.get("expr", "")))
+        return {"items": exprs, "fields": {}}
+    if kind == "dataflow":
+        result = data.get("result") or {}
+        return {
+            "items": {str(x) for x in (result.get("intermediate_signals") or [])},
+            "fields": {
+                "is_reachable": result.get("is_reachable"),
+                "clock_domain": result.get("clock_domain"),
+                "primary_is_async": result.get("primary_is_async"),
+            },
+        }
+    return None
 
 
-def _satisfies(facts: set[str] | None, expect: dict) -> bool:
+def _satisfies(facts: dict | None, expect: dict) -> bool:
     if facts is None:
         return False
-    if not set(expect.get("contains", [])).issubset(facts):
+    items = facts["items"]
+    if not set(expect.get("contains", [])).issubset(items):
         return False
-    if set(expect.get("not_contains", [])) & facts:
+    if set(expect.get("not_contains", [])) & items:
         return False
+    for key, value in (expect.get("fields") or {}).items():
+        if facts["fields"].get(key) != value:
+            return False
     return True
+
+
+def _query_args(task: dict) -> list[str]:
+    kind = task["query"]
+    if kind == "paths":
+        return ["paths", task["signal"], task["to_signal"]]
+    if kind == "dataflow":
+        return ["dataflow", "analyze", task["signal"], task["to_signal"]]
+    if kind == "controlflow":
+        return ["controlflow", "analyze", task["signal"]]
+    return [kind, task["signal"]]
 
 
 def _prepare(task: dict, work: Path) -> tuple[Path, Path | None, str]:
@@ -115,7 +157,7 @@ def run_task(task: dict) -> dict:
         if not v.get("ok"):
             out.update(status="invalid_mutant", verilator=v)
             return out
-        args = [task["query"], task["signal"]]
+        args = _query_args(task)
         if filelist:
             args += ["--filelist", str(filelist)]
         else:
@@ -126,7 +168,7 @@ def run_task(task: dict) -> dict:
             out.update(status="query_error", rc=rc, stderr=err[-1000:], query_data=data)
             return out
         # Baseline query against the original source (no mutation).
-        base_args = [task["query"], task["signal"]]
+        base_args = _query_args(task)
         if task.get("filelist"):
             base_args += ["--filelist", str(_expand(task["filelist"]))]
         else:
@@ -135,15 +177,19 @@ def run_task(task: dict) -> dict:
         before = _facts(bdata, task["query"])
         exp = task.get("expect") or {}
         if not _satisfies(before, exp.get("before", {})):
-            out.update(status="invalid_baseline", before=sorted(before or []),
+            out.update(status="invalid_baseline",
+                       before=sorted((before or {}).get("items", [])),
                        stderr=berr[-1000:])
             return out
         if not _satisfies(after, exp.get("after", {})):
-            out.update(status="failed", before=sorted(before or []),
-                       after=sorted(after))
+            out.update(status="failed",
+                   before=sorted((before or {}).get("items", [])),
+                   after=sorted((after or {}).get("items", [])))
             return out
-        out.update(status="passed", before=sorted(before or []),
-                   after=sorted(after), verilator_ok=True)
+        out.update(status="passed",
+                   before=sorted((before or {}).get("items", [])),
+                   after=sorted((after or {}).get("items", [])),
+                   verilator_ok=True)
         return out
 
 

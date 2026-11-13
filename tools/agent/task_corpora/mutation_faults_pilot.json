@@ -12,8 +12,19 @@
         "new": "assign data = en;"
       },
       "expect": {
-        "before": {"contains": ["top.din"]},
-        "after": {"contains": ["top.en"], "not_contains": ["top.din"]}
+        "before": {
+          "contains": [
+            "top.din"
+          ]
+        },
+        "after": {
+          "contains": [
+            "top.en"
+          ],
+          "not_contains": [
+            "top.din"
+          ]
+        }
       }
     },
     {
@@ -27,8 +38,16 @@
         "new": "assign data = 1'b0;"
       },
       "expect": {
-        "before": {"contains": ["top.data"]},
-        "after": {"not_contains": ["top.data"]}
+        "before": {
+          "contains": [
+            "top.data"
+          ]
+        },
+        "after": {
+          "not_contains": [
+            "top.data"
+          ]
+        }
       }
     },
     {
@@ -42,8 +61,16 @@
         "new": "sync1 <= async_i;"
       },
       "expect": {
-        "before": {"contains": ["synchronizer.sync0"]},
-        "after": {"not_contains": ["synchronizer.sync0"]}
+        "before": {
+          "contains": [
+            "synchronizer.sync0"
+          ]
+        },
+        "after": {
+          "not_contains": [
+            "synchronizer.sync0"
+          ]
+        }
       }
     },
     {
@@ -57,9 +84,174 @@
         "new": "wire dbg_mem_valid = mem_ready;"
       },
       "expect": {
-        "before": {"contains": ["picorv32_axi.picorv32_core.mem_valid"]},
-        "after": {"contains": ["picorv32_axi.picorv32_core.mem_ready"],
-                  "not_contains": ["picorv32_axi.picorv32_core.mem_valid"]}
+        "before": {
+          "contains": [
+            "picorv32_axi.picorv32_core.mem_valid"
+          ]
+        },
+        "after": {
+          "contains": [
+            "picorv32_axi.picorv32_core.mem_ready"
+          ],
+          "not_contains": [
+            "picorv32_axi.picorv32_core.mem_valid"
+          ]
+        }
+      }
+    },
+    {
+      "id": "simple_path_removed",
+      "source": "sim/test_simple.sv",
+      "top": "top",
+      "query": "paths",
+      "signal": "top.din",
+      "to_signal": "top.dout",
+      "mutation": {
+        "old": "assign data = din;",
+        "new": "assign data = en;"
+      },
+      "expect": {
+        "before": {
+          "fields": {
+            "found": true
+          }
+        },
+        "after": {
+          "fields": {
+            "found": false
+          }
+        }
+      }
+    },
+    {
+      "id": "simple_path_added",
+      "source": "sim/test_simple.sv",
+      "top": "top",
+      "query": "paths",
+      "signal": "top.en",
+      "to_signal": "top.dout",
+      "mutation": {
+        "old": "assign data = din;",
+        "new": "assign data = en;"
+      },
+      "expect": {
+        "before": {
+          "fields": {
+            "found": false
+          }
+        },
+        "after": {
+          "fields": {
+            "found": true
+          }
+        }
+      }
+    },
+    {
+      "id": "simple_condition_invert",
+      "source": "sim/test_simple.sv",
+      "top": "top",
+      "query": "controlflow",
+      "signal": "top.dout",
+      "mutation": {
+        "old": "else if (en)",
+        "new": "else if (!en)"
+      },
+      "expect": {
+        "before": {
+          "contains": [
+            "!(!rst_n) && en"
+          ]
+        },
+        "after": {
+          "contains": [
+            "!(!rst_n) && !en"
+          ]
+        }
+      }
+    },
+    {
+      "id": "mux_condition_invert",
+      "source": "sim/tests/fixtures/golden_mini/mux_demo.sv",
+      "top": "mux_demo",
+      "query": "controlflow",
+      "signal": "mux_demo.y_simple_if",
+      "mutation": {
+        "old": "if (sel_a)",
+        "new": "if (!sel_a)"
+      },
+      "expect": {
+        "before": {
+          "contains": [
+            "sel_a",
+            "!sel_a"
+          ]
+        },
+        "after": {
+          "contains": [
+            "!(!sel_a)",
+            "!sel_a"
+          ],
+          "not_contains": [
+            "sel_a"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cdc_bypass_first_stage",
+      "source": "sim/tests/integration/dataflow_fixtures/two_flop_sync.sv",
+      "top": "two_flop_sync",
+      "query": "dataflow",
+      "signal": "two_flop_sync.data_in",
+      "to_signal": "two_flop_sync.data_out",
+      "mutation": {
+        "old": ".data_b_i(async_wire)",
+        "new": ".data_b_i(data_in)"
+      },
+      "expect": {
+        "before": {
+          "contains": [
+            "two_flop_sync.u_a.data_a_o"
+          ],
+          "fields": {
+            "primary_is_async": true
+          }
+        },
+        "after": {
+          "not_contains": [
+            "two_flop_sync.u_a.data_a_o"
+          ],
+          "fields": {
+            "primary_is_async": false
+          }
+        }
+      }
+    },
+    {
+      "id": "bit_select_swap",
+      "source": "sim/tests/fixtures/golden_mini/golden_dataflow_3_slice.sv",
+      "top": "with_trunc",
+      "query": "drivers",
+      "signal": "with_trunc.y_trunc",
+      "mutation": {
+        "old": "sum[7:0]",
+        "new": "sum[15:8]"
+      },
+      "expect": {
+        "before": {
+          "contains": [
+            "with_trunc.sum[7:0]"
+          ]
+        },
+        "after": {
+          "contains": [
+            "with_trunc.sum[15:8]"
+          ],
+          "not_contains": [
+            "with_trunc.sum[7:0]"
+          ]
+        }
       }
     }
   ]
