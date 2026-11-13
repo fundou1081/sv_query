@@ -200,13 +200,23 @@ def main() -> int:
     args = ap.parse_args()
     spec = json.loads(_expand(args.tasks).read_text(encoding="utf-8"))
     results = [run_task(t) for t in spec.get("tasks", [])]
+    passed = sum(r["status"] == "passed" for r in results)
+    failed = sum(r["status"] == "failed" for r in results)
+    valid = passed + failed
+    by_query: dict[str, int] = {}
+    for r in results:
+        q = str(r.get("query"))
+        by_query[q] = by_query.get(q, 0) + 1
     summary = {
         "total": len(results),
-        "passed": sum(r["status"] == "passed" for r in results),
-        "failed": sum(r["status"] == "failed" for r in results),
+        "passed": passed,
+        "failed": failed,
         "invalid": sum(r["status"].startswith("invalid") for r in results),
         "other": sum(r["status"] not in ("passed", "failed") and
                      not r["status"].startswith("invalid") for r in results),
+        "valid": valid,
+        "detection_rate": (passed / valid) if valid else None,
+        "by_query": by_query,
         "results": results,
     }
     if args.json:
