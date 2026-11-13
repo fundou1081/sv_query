@@ -12,6 +12,9 @@ jobs:
     runs-on: macos-latest
     env:
       COLUMNS: "120"
+      # GitHub macOS + Rich 14 intermittently renders an empty options table
+      # in captured subprocess output; use Typer's plain Click fallback in CI.
+      TYPER_USE_RICH: "0"
     strategy:
       fail-fast: false
       matrix:
