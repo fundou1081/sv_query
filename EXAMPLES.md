@@ -29,7 +29,7 @@
 
 ```python
 import pyslang
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 source = '''
 module top;
@@ -379,7 +379,7 @@ graph = tracer.get_graph()
 
 # Find clock for data_out
 # Query through clock domain tracer
-from trace.core.query.clock_domain import ClockDomainTracer
+from sv_query.trace.core.query.clock_domain import ClockDomainTracer
 
 tracer_obj = tracer._tracers.get('clock_domain')
 if tracer_obj:

@@ -7,12 +7,12 @@
 
 | 文件 | 原路径 | 移出时间 | 原因 |
 |---|---|---|---|
-| `base_pyslang_adapter.py` | `src/trace/core/base.py` | 2026-09-08 (iter_174) | **2,341 行 legacy adapter 层**: `ASTWalker` + `PyslangAdapter` (2,067 行) + 3 个 Collector。在 src/ **从未被实例化** (运行时唯一 adapter = `SemanticAdapter`) — 仅 8 处类型注解引用 (已改为 `SemanticAdapter`) + 少量测试 (已移植/退役)。2026-07-15 的 V2 清理删除了 `core/pyslang_adapter.py` 但漏掉本层。 |
+| `base_pyslang_adapter.py` | `src/sv_query/trace/core/base.py` | 2026-09-08 (iter_174) | **2,341 行 legacy adapter 层**: `ASTWalker` + `PyslangAdapter` (2,067 行) + 3 个 Collector。在 src/ **从未被实例化** (运行时唯一 adapter = `SemanticAdapter`) — 仅 8 处类型注解引用 (已改为 `SemanticAdapter`) + 少量测试 (已移植/退役)。2026-07-15 的 V2 清理删除了 `core/pyslang_adapter.py` 但漏掉本层。 |
 
 ## 恢复方式
 
 ```bash
-git mv legacy/base_pyslang_adapter.py src/trace/core/base.py
+git mv legacy/base_pyslang_adapter.py src/sv_query/trace/core/base.py
 # 然后把 src/ 中 `SemanticAdapter` 注解改回 `PyslangAdapter` (8 处, git show bcbdc5c 可查),
 # 并恢复 core/__init__.py 的导出 —— 但注意: 运行时从未使用该层, 恢复通常没有必要。
 ```

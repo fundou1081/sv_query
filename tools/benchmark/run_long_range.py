@@ -11,6 +11,7 @@ import argparse
 import json
 import os
 import re
+import os
 import shutil
 import subprocess
 import time
@@ -74,7 +75,9 @@ def _copy_design(design: str, ws: Path) -> Path:
     if design in ("axi", "serv"):
         src = PILOT / design
         if not src.is_dir():
-            src = ROOT.parent / "openrtl" / ("verilog-axi/rtl" if design == "axi" else "serv")
+            openrtl = Path(os.environ.get("SVQ_OPENRTL_ROOT",
+                                          Path.home() / "my_dv_proj" / "openrtl"))
+            src = openrtl / ("verilog-axi/rtl" if design == "axi" else "serv")
         files = sorted(src.rglob("*.v"))
         if not files:
             raise FileNotFoundError(f"no .v sources for {design}: {src}")
@@ -86,7 +89,9 @@ def _copy_design(design: str, ws: Path) -> Path:
         return fl
     src = PILOT / "pico" / "picorv32.v"
     if not src.exists():
-        src = ROOT.parent / "openrtl" / "picorv32" / "picorv32.v"
+        openrtl = Path(os.environ.get("SVQ_OPENRTL_ROOT",
+                                      Path.home() / "my_dv_proj" / "openrtl"))
+        src = openrtl / "picorv32" / "picorv32.v"
     out = ws / "picorv32.v"
     shutil.copy2(src, out)
     return out

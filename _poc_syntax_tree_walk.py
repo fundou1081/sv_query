@@ -21,7 +21,7 @@ File: sim/tests/fixtures/golden_mini/nested_mux_demo.sv
 import sys
 sys.path.insert(0, '/Users/fundou/my_dv_proj/slang/build/bindings')
 
-from trace.core.compiler import SVCompiler
+from sv_query.trace.core.compiler import SVCompiler
 
 
 # ---------------------------------------------------------------------------
@@ -46,7 +46,7 @@ print(f"comp type:                {type(comp).__name__}")
 print(f"comp.__class__.__module__: {type(comp).__module__}")
 
 # Also verify we can get it from a SemanticAdapter:
-from trace.core.semantic_adapter import SemanticAdapter
+from sv_query.trace.core.semantic_adapter import SemanticAdapter
 root = compiler.get_root()
 adapter = SemanticAdapter(root, compiler)
 print(f"\nadapter.root:             {adapter.root}")
