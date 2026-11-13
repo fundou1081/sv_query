@@ -91,12 +91,11 @@ Issues = "https://github.com/fundou1081/sv_query/issues"
 #
 #   **P165.2**: query engine moved from top-level `trace` to `sv_query.trace`;
 #   the old name collided with Python's stdlib `trace` module.
-#   `src` remains a package (CLI legacy imports `src.cli...`), but the query
-#   package is shipped as `sv_query.trace` and no `trace` package is installed.
-#   This is why include= contains both `src*` and `sv_query*` during migration.
+#   Installed packages are `sv_query.trace` + `cli`; `src/` is only an
+#   editable/legacy import root and is intentionally not shipped.
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["src", "src.*", "sv_query*", "cli*", "applications*"]
+include = ["sv_query*", "cli*"]
 namespaces = true
 
 [tool.setuptools.package-data]

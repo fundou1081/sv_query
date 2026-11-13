@@ -2,7 +2,7 @@
 
 > **公开 claim 的唯一登记处。** 纪律依据: [SEMANTIC_CONTRACTS.md](SEMANTIC_CONTRACTS.md) §8。
 > 没有 gate 的 claim = `unverified`；已知反例 = `known-broken`；不得写成“已支持”。
-> **最后更新**: 2026-11-11 (P158 复盘)
+> **最后更新**: 2026-11-13 (P165.2 packaging)
 
 ---
 
@@ -30,9 +30,10 @@
 | C-07 | `verify consistency` 的 verified 覆盖全部请求证据 | fixture/snapshot | `test_verify_truncated` | `verified` |
 | C-08 | 新 snapshot 可从 MIG 离线执行 connection 检查 | fixture | `test_verify_consistency_snapshot` / `test_snapshot_robust` | `verified` |
 | C-09 | 旧 snapshot 缺 MIG 时显式 unknown，不静默 fallback | fixture | `test_verify_consistency_snapshot` legacy case | `verified` |
-| C-10 | canonical 0 skipped 代表测试健康 | CI | `run_gates.sh` + opensource 114/17/0 | `scoped`（canonical 与 opensource 分开；0 skip 仍不是健康指标） |
+| C-10 | canonical 0 skipped 代表测试健康 | CI | `run_gates.sh` + opensource 114/9/0 | `scoped`（canonical 与 opensource 分开；0 skip 仍不是健康指标） |
 | C-11 | SPI `verify consistency` 的 bit/connection/reciprocity 全绿 | real-corpus | `--full` 实测 3152/3261/1734，0 violations | `scoped`（外部 snapshot） |
 | C-12 | worker `APPROVE` 等于真实项目通过 | 过程 | 无 | **known-broken**（需主会话复现） |
+| C-13 | 安装包不含 top-level `trace`，查询引擎为 `sv_query.trace` | packaging | `test_packaging_rename` + worker wheel install | `scoped`（CI 尚未构建/安装 wheel；人工 target install 已验证） |
 
 ---
 
