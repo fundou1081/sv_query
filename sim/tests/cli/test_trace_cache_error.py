@@ -89,10 +89,13 @@ def test_a1_no_cache_flag_in_help():
     r = _run("fanin", "--help")
     assert r.returncode == 0
     # 跨多行 help text 出现 --no-cache
-    text = " ".join((r.stdout + r.stderr).split())
+    import re
+    text = " ".join(re.sub(r"\x1b\[[0-9;]*m", "",
+                           r.stdout + r.stderr).split())
     assert "--no-cache" in text
     assert "cache" in text  # AST cache (跨行)
-    assert "default: cache enabled" in text
+    assert "default: cache" in text
+    assert "enabled for repeat" in text
     print("✅ A1 --no-cache documented in help")
 
 
