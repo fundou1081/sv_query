@@ -39,10 +39,8 @@ jobs:
           # P171.1: pyslang 11.0.0 is on PyPI; do not install git HEAD
           # (CI previously downgraded to 7.0.1 and broke pyslang.ast imports).
           pip install -e ".[dev]"
-          # P171.1: several oracle tests require verilator; install it explicitly
-          # instead of turning environment absence into failures.
-          sudo apt-get update
-          sudo apt-get install -y verilator
+          # P171.1: macOS runner; install verilator for oracle tests if absent.
+          command -v verilator >/dev/null 2>&1 || brew install verilator
 
       - name: Install crapper (complexity gate)
         run: |
