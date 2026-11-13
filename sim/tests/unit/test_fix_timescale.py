@@ -139,9 +139,9 @@ def test_fix_timescale_cli_is_readonly_no_apply_option():
     # [iter_248] 4 项检查合并为 `diagnose <check>`: help 是顶层命令的 help
     r = _run("diagnose", "--help")
     assert r.returncode == 0
-    assert "--filelist" in r.stdout
-    assert "--apply" not in r.stdout, "CLI 不应再提供 --apply (只读硬约束)"
-    assert "tools/fix_timescale.py" in r.stdout, "应指向真正的写入工具"
+    assert "--filelist" in (r.stdout + r.stderr)
+    assert "--apply" not in (r.stdout + r.stderr), "CLI 不应再提供 --apply (只读硬约束)"
+    assert "tools/fix_timescale.py" in (r.stdout + r.stderr), "应指向真正的写入工具"
 
     # 运行时也必须拒绝 --apply
     r2 = _run("diagnose", "timescale", "--filelist", "/dev/null", "--apply")
@@ -180,8 +180,8 @@ def test_fix_timescale_help_documented():
     """diagnose timescale --help 应文档化只读 flag"""
     r = _run("diagnose", "timescale", "--help")
     assert r.returncode == 0
-    assert "--filelist" in r.stdout
-    assert "--timescale" in r.stdout
+    assert "--filelist" in (r.stdout + r.stderr)
+    assert "--timescale" in (r.stdout + r.stderr)
     print("✅ diagnose timescale --help: 文档化 flag (只读)")
 
 

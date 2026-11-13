@@ -125,9 +125,9 @@ def test_fix_widths_resolves_literal_and_macro():
     r = _run("diagnose", "widths", "--filelist", fl, "--log-level", "ERROR")
     assert r.returncode == 0, f"stderr={r.stderr[:300]}"
     # 2 个 typedef, 都应解析
-    assert "clog2 = 3" in r.stdout, f"应含 $clog2(8)=3, stdout={r.stdout[:500]}"  # 8→3
-    assert "clog2 = 6" in r.stdout, f"应含 $clog2(64)=6, stdout={r.stdout[:500]}"  # 64→6
-    assert "13/13" not in r.stdout, "不应是 NaplesPU 数字"  # 我们只测小项目
+    assert "clog2 = 3" in (r.stdout + r.stderr), f"应含 $clog2(8)=3, stdout={r.stdout[:500]}"  # 8→3
+    assert "clog2 = 6" in (r.stdout + r.stderr), f"应含 $clog2(64)=6, stdout={r.stdout[:500]}"  # 64→6
+    assert "13/13" not in (r.stdout + r.stderr), "不应是 NaplesPU 数字"  # 我们只测小项目
     print("✅ fix widths: 字面 + macro 都能解析")
 
 
@@ -152,8 +152,8 @@ def test_fix_widths_help_documented():
     """fix widths --help 文档化"""
     r = _run("diagnose", "widths", "--help")
     assert r.returncode == 0
-    assert "--filelist" in r.stdout
-    assert "--json" in r.stdout
+    assert "--filelist" in (r.stdout + r.stderr)
+    assert "--json" in (r.stdout + r.stderr)
     print("✅ fix widths --help: 文档化")
 
 

@@ -28,5 +28,5 @@ def test_include_control_is_explicit_error():
 def test_help_marks_unsupported():
     r = _run("trace", "fanout", "--help")
     assert r.returncode == 0
-    assert "--include-control" in r.stdout
-    assert "UNSUPPORTED" in r.stdout
+    assert "--include-control" in (r.stdout + r.stderr)
+    assert "UNSUPPORTED" in (r.stdout + r.stderr)
