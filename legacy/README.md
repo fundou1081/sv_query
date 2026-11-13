@@ -7,6 +7,7 @@
 
 | 文件 | 原路径 | 移出时间 | 原因 |
 |---|---|---|---|
+| `poc_syntax_tree_walk.py` | 根目录 PoC → `legacy/` | 2026-11-13 (P165.2) | 历史 SyntaxTree walk 演示；硬编码本机 slang 路径，不参与构建/测试；已归档并加 ruff noqa，仅保留作历史参考。 |
 | `base_pyslang_adapter.py` | `src/sv_query/trace/core/base.py` | 2026-09-08 (iter_174) | **2,341 行 legacy adapter 层**: `ASTWalker` + `PyslangAdapter` (2,067 行) + 3 个 Collector。在 src/ **从未被实例化** (运行时唯一 adapter = `SemanticAdapter`) — 仅 8 处类型注解引用 (已改为 `SemanticAdapter`) + 少量测试 (已移植/退役)。2026-07-15 的 V2 清理删除了 `core/pyslang_adapter.py` 但漏掉本层。 |
 
 ## 恢复方式
