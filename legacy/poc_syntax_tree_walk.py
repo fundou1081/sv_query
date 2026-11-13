@@ -1,3 +1,4 @@
+# ruff: noqa
 #!/usr/bin/env python3
 """
 Proof-of-Concept: Bypassing SemanticAdapter.get_assignments()
