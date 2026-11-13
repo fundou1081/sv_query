@@ -1,3 +1,8 @@
+import shutil
+import pytest
+
+pytestmark = pytest.mark.skipif(
+    shutil.which("verilator") is None, reason="verilator not installed")
 #==============================================================================
 # test_width_extraction.py - 位宽提取测试
 #==============================================================================

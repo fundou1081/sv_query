@@ -55,12 +55,26 @@ def test_structural_clean_symmetric(tmp_path):
     d = _data(tmp_path, CLEAN)
     assert d["result"]["findings"] == []
     assert d["result"]["checks"][0]["status"] == "pass"
+    assert d["result"]["verified"] is True
+    assert d["result"]["coverage_complete"] is True
+    assert d["result"]["coverage"]["groups_checked"] == 1
+
+
+def test_structural_no_comparable_groups_is_unknown(tmp_path):
+    d = _data(tmp_path, "module top(input a, output y); assign y = a; endmodule")
+    assert d["result"]["checks"][0]["status"] == "unknown"
+    assert d["result"]["verified"] is False
+    assert d["result"]["unknown_checks"] == ["symmetry"]
+    assert d["result"]["coverage"]["groups_checked"] == 0
 
 
 def test_structural_max_findings_truncation(tmp_path):
     d = _data(tmp_path, BAD, "--max-findings", "2")
     assert d["result"]["total"] == 2
     assert d["result"]["truncated"] is True
+    assert d["result"]["coverage_complete"] is False
+    assert d["result"]["partial_checks"] == ["symmetry"]
+    assert d["result"]["verified"] is False
 
 
 def test_structural_subgraph_spec_is_runnable(tmp_path):

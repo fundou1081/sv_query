@@ -129,24 +129,39 @@ def symmetry_findings(graph: SignalGraph, max_findings: int = 100) -> dict:
     port_maps = _port_index(graph, all_instances)
     findings: list[dict] = []
     checked_groups = 0
+    instances_checked = 0
     for key in sorted(groups):
         insts = sorted(groups[key])
         if len(insts) < 2:
             continue
         checked_groups += 1
+        instances_checked += len(insts)
         findings.extend(_group_findings(key, insts, port_maps))
     findings.sort(key=lambda f: f["id"])
     truncated = len(findings) > max_findings
     if truncated:
         findings = findings[:max_findings]
+    status = "unknown" if checked_groups == 0 else ("fail" if findings else "pass")
+    coverage_complete = not truncated
     return {
+        "verified": status == "pass" and coverage_complete,
+        "coverage_complete": coverage_complete,
+        "partial_checks": ["symmetry"] if truncated else [],
+        "unknown_checks": ["symmetry"] if checked_groups == 0 else [],
         "findings": findings,
         "total": len(findings),
         "truncated": truncated,
+        "coverage": {
+            "groups_total": len(groups),
+            "groups_checked": checked_groups,
+            "instances_checked": instances_checked,
+            "truncated": truncated,
+        },
         "checks": [{
             "check": "symmetry.port_set",
-            "status": "fail" if findings else "pass",
+            "status": status,
             "checked": checked_groups,
+            "instances_checked": instances_checked,
             "findings": len(findings),
         }],
     }

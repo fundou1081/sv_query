@@ -1,3 +1,8 @@
+import shutil
+import pytest
+
+pytestmark = pytest.mark.skipif(
+    shutil.which("verilator") is None, reason="verilator not installed")
 #==============================================================================
 # test_parameter_extraction.py - 模块参数提取测试
 #==============================================================================
