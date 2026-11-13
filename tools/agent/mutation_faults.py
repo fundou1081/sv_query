@@ -35,7 +35,9 @@ def _load_verilator():
 
 
 def _expand(path: str) -> Path:
-    return Path(os.path.expandvars(os.path.expanduser(path)))
+    """Resolve task paths relative to the repo, never to the caller CWD."""
+    p = Path(os.path.expandvars(os.path.expanduser(path)))
+    return p if p.is_absolute() else (ROOT / p)
 
 
 def _query(args: list[str]) -> tuple[int, dict | None, str]:
@@ -139,11 +141,21 @@ def _prepare(task: dict, work: Path) -> tuple[Path, Path | None, str]:
         filelist = work / fl.name
         lines = []
         for line in fl.read_text(encoding="utf-8").splitlines():
-            p = Path(line.strip())
-            if p.resolve() == src.resolve():
-                lines.append(str(target))
-            else:
+            raw = line.strip()
+            if not raw or raw.startswith(("#", "//")):
                 lines.append(line)
+                continue
+            if raw.startswith("+incdir+"):
+                d = raw[len("+incdir+"):].strip()
+                p = Path(d)
+                if not p.is_absolute():
+                    p = fl.parent / p
+                lines.append(f"+incdir+{p.resolve()}")
+                continue
+            p = Path(raw)
+            if not p.is_absolute():
+                p = fl.parent / p
+            lines.append(str(target) if p.resolve() == src.resolve() else str(p.resolve()))
         filelist.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return target, filelist, target.read_text(encoding="utf-8")
 

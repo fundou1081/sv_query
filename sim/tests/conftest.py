@@ -13,8 +13,15 @@ pytest configuration — test markers + auto symlink setup (V6.7)
   pytest -m "not slow"           # 跳过慢测试
 """
 
+import os
+import os
 import sys
 from pathlib import Path
+
+# P171.2: filelist fixtures use ${SVQ_OPENRTL_ROOT}; provide the documented
+# default so external-fixture tests resolve consistently (or skip explicitly).
+os.environ.setdefault("SVQ_OPENRTL_ROOT",
+                      str(Path.home() / "my_dv_proj" / "openrtl"))
 
 # [FIX 2026-07-30] sys.path MUST be set at module-level (not inside
 # pytest_configure hook) so it takes effect before test file collection.

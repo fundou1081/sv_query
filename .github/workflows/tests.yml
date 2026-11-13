@@ -36,9 +36,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          # P171.1: pyslang 11.0.0 is on PyPI; do not install git HEAD
+          # (CI previously downgraded to 7.0.1 and broke pyslang.ast imports).
           pip install -e ".[dev]"
-          # pyslang 是关键依赖，但未发布到 PyPI；从 GitHub 安装
-          pip install git+https://github.com/MikePopoloski/pyslang.git
 
       - name: Install crapper (complexity gate)
         run: |
@@ -49,6 +49,20 @@ jobs:
           SVQ_GATE_BASE: ${{ github.event.pull_request.base.sha || github.event.before || 'HEAD~1' }}
         run: |
           bash tools/run_gates.sh
+
+      - name: Build/install wheel smoke
+        run: |
+          rm -rf /tmp/svq-wheel /tmp/svq-install
+          python -m pip wheel . --no-deps -w /tmp/svq-wheel
+          python -m pip install --no-deps --target /tmp/svq-install /tmp/svq-wheel/*.whl
+          test -d /tmp/svq-install/sv_query/trace
+          test ! -e /tmp/svq-install/trace
+          PYTHONPATH=/tmp/svq-install python - <<'PY'
+          import sv_query.trace, trace
+          assert "/tmp/svq-install/" in sv_query.trace.__file__
+          assert "python" in trace.__file__.lower()
+          PY
+          PYTHONPATH=/tmp/svq-install /tmp/svq-install/bin/sv_query --help >/dev/null
 
       - name: Check discipline
         # 3 个纪律: 1) 不在 src/trace/core/ 用 regex
