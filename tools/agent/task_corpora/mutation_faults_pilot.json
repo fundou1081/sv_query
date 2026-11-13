@@ -500,6 +500,33 @@
           }
         }
       }
+    },
+    {
+      "id": "multi_driver_conflict_simple",
+      "source": "sim/test_simple.sv",
+      "top": "top",
+      "query": "drivers",
+      "signal": "top.data",
+      "mutation": {
+        "old": "assign data = din;",
+        "new": "assign data = din;\n    assign data = en;"
+      },
+      "expect": {
+        "before": {
+          "fields": {
+            "driver_count": 1,
+            "multi_driver": false,
+            "driver_conflict": "none"
+          }
+        },
+        "after": {
+          "fields": {
+            "driver_count": 2,
+            "multi_driver": true,
+            "driver_conflict": "possible"
+          }
+        }
+      }
     }
   ]
 }

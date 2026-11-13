@@ -127,3 +127,27 @@ def test_multi_driver_and_generate_mutations():
     for task in tasks:
         result = mod.run_task(task)
         assert result["status"] == "passed", result
+
+
+@pytest.mark.skipif(shutil.which("verilator") is None, reason="verilator not installed")
+def test_multi_driver_conflict_fields():
+    mod = _load()
+    task = {
+        "id": "multi_conflict",
+        "source": "sim/test_simple.sv",
+        "top": "top",
+        "query": "drivers",
+        "signal": "top.data",
+        "mutation": {
+            "old": "assign data = din;",
+            "new": "assign data = din;\n    assign data = en;",
+        },
+        "expect": {
+            "before": {"fields": {"driver_count": 1, "multi_driver": False,
+                                  "driver_conflict": "none"}},
+            "after": {"fields": {"driver_count": 2, "multi_driver": True,
+                                 "driver_conflict": "possible"}},
+        },
+    }
+    result = mod.run_task(task)
+    assert result["status"] == "passed", result

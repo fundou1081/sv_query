@@ -58,8 +58,16 @@ def _facts(data: dict | None, kind: str) -> dict | None:
         signals = (data.get("result") or {}).get("signals") or []
         if not signals:
             return {"items": set(), "fields": {}}
-        items = signals[0].get(kind) or []
-        return {"items": {str(x.get("id")) for x in items}, "fields": {}}
+        sig = signals[0]
+        items = sig.get(kind) or []
+        fields = {
+            k: sig.get(k) for k in (
+                "driver_count", "multi_driver", "driver_conflict",
+                "conditional_drivers",
+            )
+            if k in sig
+        }
+        return {"items": {str(x.get("id")) for x in items}, "fields": fields}
     if kind == "paths":
         return {
             "items": {str(x) for x in (data.get("path") or [])},
