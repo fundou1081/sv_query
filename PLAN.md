@@ -517,6 +517,7 @@ P165 arch_eval 评审采纳（2026-11-11，来源 architecture/arch_eval_2026-11
 -- P165.3 外部故障集（非自撰；不依赖 OpenTitan 历史） <已完成>
 -- P165.3.1 independent Verilator elaboration oracle <已完成>
 -- P165.3.2 mutation fault set under independent oracle <已完成>
+-- P165.3.3 mutation coverage expansion (driver/load/path/condition/CDC/bit-select) <已完成>
 -- P165.4 filelist 依赖闭包自动化（当前人工整理是真实项目落地最大摩擦；与 P159 E-3 同源） <已完成>
 
 P166 opensource golden calibration after P158.12.4/11.2b <已完成>
