@@ -1,8 +1,11 @@
 """P171.2: filelist fixtures and mutation runner must be CWD-independent."""
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
 MUT = ROOT / "tools/agent/mutation_faults.py"
@@ -24,6 +27,7 @@ def test_filelist_fixtures_have_no_absolute_paths():
     assert not bad, "\n".join(f"{p}:{n}: {line}" for p, n, line in bad[:10])
 
 
+@pytest.mark.skipif(shutil.which("verilator") is None, reason="verilator not installed")
 def test_mutation_runner_is_cwd_independent(tmp_path):
     tasks = {
         "tasks": [{

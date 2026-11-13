@@ -1,3 +1,8 @@
+import shutil
+import pytest
+
+pytestmark = pytest.mark.skipif(
+    shutil.which("verilator") is None, reason="verilator not installed")
 #==============================================================================
 # test_comment_handling.py - 注释处理测试
 #==============================================================================

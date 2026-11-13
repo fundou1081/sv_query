@@ -1,3 +1,8 @@
+import shutil
+import pytest
+
+pytestmark = pytest.mark.skipif(
+    shutil.which("verilator") is None, reason="verilator not installed")
 #==============================================================================
 # test_param_expression_resolution.py - 参数引用参数递归求值测试
 #==============================================================================
