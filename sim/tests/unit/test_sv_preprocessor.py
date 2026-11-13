@@ -16,7 +16,7 @@ if SRC_DIR not in sys.path:
 
 import pytest
 
-from trace.core.sv_preprocessor import (
+from sv_query.trace.core.sv_preprocessor import (
     _resolve_macro_recursive,
     _strip_comment,
     preprocess_macros,
@@ -161,7 +161,7 @@ class TestPreprocessMacros:
 class TestUnifiedTracerPreprocess:
     def test_preprocess_disabled_keeps_orig(self):
         """--no-preprocess 保留原始 source"""
-        from trace.unified_tracer import UnifiedTracer
+        from sv_query.trace.unified_tracer import UnifiedTracer
         sources = {
             "a.sv": "`define FOO 4\nlogic [`FOO-1:0] x;\n"
         }
@@ -172,7 +172,7 @@ class TestUnifiedTracerPreprocess:
 
     def test_preprocess_enabled_replaces(self):
         """默认 preprocess_macros=True, source 会被替换"""
-        from trace.unified_tracer import UnifiedTracer
+        from sv_query.trace.unified_tracer import UnifiedTracer
         sources = {
             "a.sv": "`define FOO 4\nlogic [`FOO-1:0] x;\n"
         }
@@ -185,7 +185,7 @@ class TestUnifiedTracerPreprocess:
 
     def test_idempotent(self):
         """连续调用 _ensure_preprocessed 不会重复替换"""
-        from trace.unified_tracer import UnifiedTracer
+        from sv_query.trace.unified_tracer import UnifiedTracer
         sources = {
             "a.sv": "`define FOO 4\nlogic [`FOO-1:0] x;\n"
         }

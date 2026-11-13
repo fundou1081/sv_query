@@ -20,8 +20,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 
 import pyslang
 
-from trace.core.sva_extractor import SVAExtractor
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.core.sva_extractor import SVAExtractor
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 
 class TestSVATiming(unittest.TestCase):

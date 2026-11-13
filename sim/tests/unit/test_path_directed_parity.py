@@ -28,7 +28,7 @@ SRC = str(PROJECT_ROOT / "src")
 if SRC not in sys.path:
     sys.path.insert(0, SRC)
 
-from trace.unified_tracer import UnifiedTracer  # noqa: E402
+from sv_query.trace.unified_tracer import UnifiedTracer  # noqa: E402
 
 FILELIST = PROJECT_ROOT / "sim/tests/fixtures/minimal_3module/filelist.f"
 
@@ -60,7 +60,7 @@ def resolver(tracer):
 
 
 def _dataflow_reachable(tracer, src: str, dst: str) -> bool:
-    from trace.core.graph.dataflow import DataFlowGraph
+    from sv_query.trace.core.graph.dataflow import DataFlowGraph
 
     dfg = DataFlowGraph(tracer.get_graph(), tracer.get_module_graph())
     return bool(dfg.analyze(src, dst, max_paths=20).is_reachable)

@@ -10,8 +10,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
 
-from trace.core.compiler import SVCompiler
-from trace.core.extractors._common import (
+from sv_query.trace.core.compiler import SVCompiler
+from sv_query.trace.core.extractors._common import (
     iter_bit_selects,
     BitSelectHit,
     make_range_select_id,

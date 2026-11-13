@@ -12,8 +12,8 @@ ensure_on_path(PROJECT_ROOT)
 
 from cli._common import _build_tracer, handle_compilation_error  # [iter_236 1a]
 from cli.core.semantic.trace_common import resolve_signal  # [iter_362 P60]
-from trace.core.query.subgraph import SubgraphError, SubgraphOptions, build_subgraph  # [iter_362 P60]
-from trace.core.compiler import CompilationError
+from sv_query.trace.core.query.subgraph import SubgraphError, SubgraphOptions, build_subgraph  # [iter_362 P60]
+from sv_query.trace.core.compiler import CompilationError
 from cli._output import emit_json
 
 

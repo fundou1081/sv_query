@@ -9,8 +9,8 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.core.compiler import SVCompiler
-from trace.core.semantic_adapter import SemanticAdapter
+from sv_query.trace.core.compiler import SVCompiler
+from sv_query.trace.core.semantic_adapter import SemanticAdapter
 
 
 class TestWidthExtraction(unittest.TestCase):

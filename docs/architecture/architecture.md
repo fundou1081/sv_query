@@ -47,7 +47,7 @@ sv_query/
 ## API
 
 ```python
-from trace import UnifiedTracer
+from sv_query.trace import UnifiedTracer
 
 tracer = UnifiedTracer(parser)
 graph = tracer.build_graph()

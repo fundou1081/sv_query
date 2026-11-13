@@ -28,14 +28,14 @@ def _strip_pycache():
 
 def _build_graph():
     _strip_pycache()
-    from trace.unified_tracer import UnifiedTracer
+    from sv_query.trace.unified_tracer import UnifiedTracer
     src = ALU_PATTERN.read_text()
     tracer = UnifiedTracer(sources={ALU_PATTERN.name: src}, )
     return tracer.build_graph()
 
 
 def _drivers_of(graph, target_signal: str) -> list[str]:
-    from trace.core.graph.models import EdgeKind
+    from sv_query.trace.core.graph.models import EdgeKind
     drivers = []
     for u, v in graph.edges():
         if v.endswith(target_signal):

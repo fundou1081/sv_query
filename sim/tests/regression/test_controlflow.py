@@ -11,14 +11,14 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.core.compiler import SVCompiler
-from trace.core.graph.analyzer.controlflow_analyzer import (
+from sv_query.trace.core.compiler import SVCompiler
+from sv_query.trace.core.graph.analyzer.controlflow_analyzer import (
     ControlFlowAnalysis,
     ControlFlowAnalyzer,
 )
-from trace.core.graph_builder import GraphBuilder
-from trace.core.semantic_adapter import SemanticAdapter
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.core.graph_builder import GraphBuilder
+from sv_query.trace.core.semantic_adapter import SemanticAdapter
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 
 def _build_graph(src: str, filename: str = "top.sv"):

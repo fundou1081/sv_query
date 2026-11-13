@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.core.connection_extractor import ConnectionExtractor  # noqa: E402
+from sv_query.trace.core.connection_extractor import ConnectionExtractor  # noqa: E402
 
 
 class _Adapter:

@@ -10,7 +10,7 @@ import typer
 from cli._common import _build_tracer, handle_compilation_error
 from cli.core.semantic.trace_common import _load_tracer_from_snapshot  # [ADD 2026-06-11 Req-9]
 from cli.core.semantic._bit_args import normalize_endpoint, parse_bits  # [iter_309 P15]
-from trace.core.compiler import CompilationError  # [ADD 2026-06-11 任务3]
+from sv_query.trace.core.compiler import CompilationError  # [ADD 2026-06-11 任务3]
 
 from cli._paths import ensure_on_path, PROJECT_ROOT  # noqa: E402
 ensure_on_path(PROJECT_ROOT)
@@ -27,7 +27,7 @@ from cli._evidence_helpers import (
 from cli._evidence_helpers import (  # noqa: E402
     make_resolver as _make_evidence_resolver,
 )
-from trace.core.graph.dataflow import DataFlowGraph
+from sv_query.trace.core.graph.dataflow import DataFlowGraph
 from cli._output import emit_json
 
 

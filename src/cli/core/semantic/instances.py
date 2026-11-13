@@ -20,7 +20,7 @@ from pathlib import Path
 import typer
 
 from cli._common import _build_tracer, handle_compilation_error
-from trace.core.compiler import CompilationError
+from sv_query.trace.core.compiler import CompilationError
 from cli.core.semantic.trace_common import _load_tracer_from_snapshot
 
 instance_app = typer.Typer(help="实例与层级查询 (只读, JSON-first)")

@@ -142,8 +142,8 @@ protocol_score = (
 **目标**: 给一个模块, 找出所有可能的 `valid`/`ready`/`addr`/`data` 候选
 
 **新增文件**:
-- `src/trace/core/protocol/__init__.py`
-- `src/trace/core/protocol/role_detector.py` (~150 行)
+- `src/sv_query/trace/core/protocol/__init__.py`
+- `src/sv_query/trace/core/protocol/role_detector.py` (~150 行)
 - `sim/tests/unit/test_role_detector.py` (~20 测试)
 
 **核心 API**:
@@ -179,7 +179,7 @@ def find_role_candidates(module) -> dict[str, list[RoleCandidate]]:
 **目标**: 在 role 候选的基础上, 找出真正配对的 valid+ready
 
 **新增文件**:
-- `src/trace/core/protocol/pair_finder.py` (~200 行)
+- `src/sv_query/trace/core/protocol/pair_finder.py` (~200 行)
 - `sim/tests/unit/test_pair_finder.py` (~15 测试)
 
 **核心 API**:
@@ -233,8 +233,8 @@ def find_handshake_pairs(module, role_candidates) -> list[HandshakePair]:
 - `config/protocols/tlul.yaml`
 - `config/protocols/ahb.yaml`
 - `config/protocols/apb.yaml`
-- `src/trace/core/protocol/schema.py` (~100 行, YAML 加载)
-- `src/trace/core/protocol/matcher.py` (~250 行, 模板匹配)
+- `src/sv_query/trace/core/protocol/schema.py` (~100 行, YAML 加载)
+- `src/sv_query/trace/core/protocol/matcher.py` (~250 行, 模板匹配)
 - `sim/tests/unit/test_protocol_matcher.py` (~15 测试)
 
 **核心 API**:
@@ -399,7 +399,7 @@ if match.confidence < 0.5:
 
 **新增模块路径**:
 ```
-src/trace/core/protocol/
+src/sv_query/trace/core/protocol/
     __init__.py
     role_detector.py      # Session 1
     pair_finder.py        # Session 2

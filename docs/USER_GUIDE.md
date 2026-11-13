@@ -59,7 +59,7 @@ python run_cli.py risk analyze -f your_module.sv
 ### Python API
 
 ```python
-from trace.unified_tracer import UnifiedTracer
+from sv_query.sv_query.trace.unified_tracer import UnifiedTracer
 
 # 解析文件
 with open('your_module.sv') as f:
@@ -133,7 +133,7 @@ python run_cli.py visualize graph \
 ### 基础用法
 
 ```python
-from trace.unified_tracer import UnifiedTracer
+from sv_query.sv_query.trace.unified_tracer import UnifiedTracer
 
 # 单文件
 with open('module.sv') as f:
@@ -174,14 +174,14 @@ graph = tracer.build_graph()
 compiler = tracer._get_compiler()
 sources = compiler._sources
 
-from trace.core.sva_extractor import SVAExtractor
+from sv_query.sv_query.trace.core.sva_extractor import SVAExtractor
 sva = SVAExtractor(sources).extract()
 ```
 
 ### 完整示例：追踪信号
 
 ```python
-from trace.unified_tracer import UnifiedTracer
+from sv_query.sv_query.trace.unified_tracer import UnifiedTracer
 
 tracer = UnifiedTracer(
     sources={'top.sv': open('top.sv').read()}
@@ -189,7 +189,7 @@ tracer = UnifiedTracer(
 graph = tracer.build_graph()
 
 # 查找信号的所有驱动
-from trace.core.query import SignalTracer
+from sv_query.sv_query.trace.core.query import SignalTracer
 sig_tracer = SignalTracer(graph)
 drivers = sig_tracer.trace_drivers('top.clk')
 for d in drivers:

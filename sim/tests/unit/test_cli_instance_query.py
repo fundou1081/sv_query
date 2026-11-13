@@ -167,7 +167,7 @@ class TestGetInstancesApiFixed:
         历史 bug: ① `SemanticAdapter(adapter)` 双重包装 → `.topInstances` AttributeError;
         ② 解析函数按原始 InstanceSymbol 形状写 (`hasattr(node,'kind')`) → 永远解析不出东西。
         """
-        from trace.unified_tracer import UnifiedTracer
+        from sv_query.trace.unified_tracer import UnifiedTracer
 
         src = (PROJECT_ROOT / INST_DEMO).read_text()
         t = UnifiedTracer(sources={"inst_demo.sv": src})

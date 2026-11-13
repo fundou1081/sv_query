@@ -107,7 +107,7 @@ def _auto_load_default_config() -> None:
       3. 不存在 → 不动, 用 builtin fallback
     """
     # sv_query/ 包根目录 (本文件所在位置的爷爷级别)
-    # signal_classifier.py 位于 src/trace/core/graph/analyzer/
+    # signal_classifier.py 位于 src/sv_query/trace/core/graph/analyzer/
     _here = Path(__file__).resolve()
     # 1. sv_query/config/ 路径
     sv_query_root = _here.parents[4] if len(_here.parents) >= 5 else None

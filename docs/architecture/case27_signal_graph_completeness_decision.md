@@ -3,7 +3,7 @@
 **Status**: 🔒 **LOCKED** (D1-D4 at 23:00 GMT+8 `om_x100b67dbb9a3d8acc363f6f98e6bd89`; D5 added 07:20 GMT+8 `om_x100b67c3047874a0c44881d1ea50581`)
 **Owner**: 方豆 / QClaw
 **Scope**: signal-graph extraction → visualization pipeline + pyslang version policy
-**Affects**: `src/trace/core/semantic_adapter.py`, `src/trace/core/driver_extractor.py`, `src/trace/core/graph/viz/*`, `src/trace/__init__.py` (v11 alias bridge), `src/trace/core/ast_utils.py` (helper migration)
+**Affects**: `src/sv_query/trace/core/semantic_adapter.py`, `src/sv_query/trace/core/driver_extractor.py`, `src/sv_query/trace/core/graph/viz/*`, `src/sv_query/trace/__init__.py` (v11 alias bridge), `src/sv_query/trace/core/ast_utils.py` (helper migration)
 
 ---
 
@@ -105,7 +105,7 @@ T.66 + T.83 + T.85 + T.87 architecture deep-read traced these to a deeper archit
 
 | # | Change | File | Status |
 |---|---|---|---|
-| 1 | Fix Gap 3 — module-top-level ternary `?:` op nodes in viz | `src/trace/core/driver_extractor.py` (`_handle_normal_assign`) + `src/trace/core/graph/viz/expression_tree.py` (`_store_expr_tree`) | ⏳ next iteration (iter_033) |
+| 1 | Fix Gap 3 — module-top-level ternary `?:` op nodes in viz | `src/sv_query/trace/core/driver_extractor.py` (`_handle_normal_assign`) + `src/sv_query/trace/core/graph/viz/expression_tree.py` (`_store_expr_tree`) | ⏳ next iteration (iter_033) |
 | 2 | Write "signal graph completeness" verification test | `sim/tests/test_signal_graph_completeness.py` | ⏳ next iteration |
 | 3 | 1:1 batch regression (32 cases) — confirm no semantic regressions from Gap 3 fix | existing `sim/tests/golden/dataflow_open_source/` | ⏳ next iteration |
 

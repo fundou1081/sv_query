@@ -33,7 +33,7 @@
 11. **语义提取必须 slang** — class/constraint/covergroup/UVM 语义走 pyslang semantic AST；
     仅 UVM 宏相关允许源码 regex（预处理会去掉宏），见 [DISCIPLINE §3.5](docs/dev/DISCIPLINE.md)
 12. **项目适配不进 core 自动推断** — 具体项目（OpenTitan 等）的 FIFO/接口/命名约定
-    不得在 `src/trace` 里按名字建边；适配放 `examples/project_adaptations/` 或外部，
+    不得在 `src/sv_query/trace` 里按名字建边；适配放 `examples/project_adaptations/` 或外部，
     显式调用，输出 `src/dst/evidence/confidence` 的 boundary map，见
     [PROJECT_ADAPTATION](docs/dev/PROJECT_ADAPTATION.md)
 13. **语义必须服从唯一契约** — 数据边、路径、verified/unknown、snapshot 支持范围、

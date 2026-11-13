@@ -49,7 +49,7 @@ def test_syntactic_mutex_and_conflict():
 
 def test_bit_mapping_detects_out_of_bounds():
     from cli.core.semantic.verify import _check_bit_mapping
-    from trace.core.graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
+    from sv_query.trace.core.graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
 
     g = SignalGraph()
     g.add_trace_node(TraceNode(id="top.p", name="p", module="top",

@@ -39,7 +39,7 @@ def set_quiet(quiet: bool = True) -> None:
     ERROR messages) are suppressed. JSON output via stdout is unaffected.
 
     Usage:
-        from trace.core.compiler import set_quiet
+        from sv_query.trace.core.compiler import set_quiet
         set_quiet(True)  # suppress all stderr noise
     """
     global _QUIET
@@ -306,7 +306,7 @@ class SVCompiler:
     def add_filelist(self, filelist_path: str, env: dict[str, str] | None = None,
                      already_loaded: set | None = None,
                      missing_entries: list | None = None) -> None:
-        """从 filelist 加载源文件 (解析统一走 `trace.core.filelist.parse_filelist`)。
+        """从 filelist 加载源文件 (解析统一走 `sv_query.trace.core.filelist.parse_filelist`)。
 
         [iter_193] 本方法过去自带一套解析实现 (与 `cli._common._read_filelist`
         规则不一致: 相对路径基准/嵌套解析不同) → 现在只做**应用**:

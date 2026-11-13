@@ -332,7 +332,7 @@ class PathResolver:
     实现跨模块边界路径查找
 
     [P158.1] 两种模式语义**不同**, 由 edge 契约区分 (见
-    `trace.core.graph.contracts`):
+    `sv_query.trace.core.graph.contracts`):
 
     - `directed=True`  → **数据路径**: 只走 data 边 (DRIVER / CONNECTION)。
       CLOCK / RESET / BIT_SELECT / MEMBER_SELECT 一律不走 → `clk → ready_q`

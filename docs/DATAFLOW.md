@@ -817,7 +817,7 @@ sv_query -q dataflow-controlflow analyze A B --no-strict --file x.sv --json
 实现基于 SignalGraph + MIG 的 DataFlowGraph，支持跨模块的完整数据流分析。
 
 ## 文件位置
-`src/trace/core/graph/dataflow.py`
+`src/sv_query/trace/core/graph/dataflow.py`
 
 ## 核心数据结构
 

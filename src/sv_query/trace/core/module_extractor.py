@@ -1,5 +1,5 @@
 """
-trace.core.module_extractor - 提取 module 级别的 sub-instance 结构
+sv_query.trace.core.module_extractor - 提取 module 级别的 sub-instance 结构
 
 [PR1 2026-06-13] 用于 visualize module L1 图.
 

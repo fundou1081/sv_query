@@ -19,8 +19,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 
 import pyslang
 
-from trace import UnifiedTracer
-from trace.core.graph.models import EdgeKind
+from sv_query.trace import UnifiedTracer
+from sv_query.trace.core.graph.models import EdgeKind
 
 
 def _build_graph(source, filename='top.sv'):

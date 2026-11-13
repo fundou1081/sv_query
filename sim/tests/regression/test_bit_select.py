@@ -32,8 +32,8 @@ sys.path.insert(0, 'src')
 
 import pyslang
 
-from trace.core.graph.models import EdgeKind
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.core.graph.models import EdgeKind
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 
 class TestBitSelectWidth(unittest.TestCase):

@@ -44,7 +44,7 @@ def audit_cmd(
     if tracer is None:
         return
 
-    from trace.core.analysis import audit as audit_mod
+    from sv_query.trace.core.analysis import audit as audit_mod
 
     selected = [c.strip() for c in checks.split(",")] if checks else None
     try:

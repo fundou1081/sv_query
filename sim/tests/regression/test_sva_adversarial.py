@@ -14,7 +14,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.core.sva_extractor import SVAExtractor  # noqa: E402
+from sv_query.trace.core.sva_extractor import SVAExtractor  # noqa: E402
 
 
 def _extract(source):

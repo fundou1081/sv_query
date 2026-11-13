@@ -79,7 +79,7 @@ from .core.semantic_adapter import SemanticAdapter
 # ==============================================================================
 # 状态机分析器
 # ==============================================================================
-from trace.core.fsm_analyzer import (  # noqa: E402
+from sv_query.trace.core.fsm_analyzer import (  # noqa: E402
     StateMachineAnalyzer, StateMachineInfo, StateTransition,
 )
 
@@ -103,7 +103,7 @@ _root_logger = logging.getLogger("trace")
 _root_logger.setLevel(_default_log_level)
 
 # 配置 __main__ logger (用于 build_graph 等操作)
-_main_logger = logging.getLogger("trace.core")
+_main_logger = logging.getLogger("sv_query.trace.core")
 _main_logger.setLevel(_default_log_level)
 
 
@@ -199,7 +199,7 @@ class UnifiedTracer:
         filelist 模式: 用 filelist + 所有引用文件的内容 hash (iter_270 新增),
         以前 `_sources` 为空直接跳过缓存 → 真实工程永远不命中。
         """
-        from trace.core.cache import get_cache
+        from sv_query.trace.core.cache import get_cache
 
         cache = get_cache()
         try:
@@ -220,7 +220,7 @@ class UnifiedTracer:
 
     def _graph_project_key(self) -> str | None:
         """[iter_287 / PLAN P3.2] 工程身份（只看路径）—— 供缓存按工程过期。"""
-        from trace.core.cache import get_cache
+        from sv_query.trace.core.cache import get_cache
 
         try:
             return get_cache().compute_project_key(
@@ -317,7 +317,7 @@ class UnifiedTracer:
             cache_key = self._graph_cache_key(target_module) if use_cache else None
             project_key = self._graph_project_key() if use_cache else None
             if use_cache and cache_key:
-                from trace.core.cache import get_cache
+                from sv_query.trace.core.cache import get_cache
 
                 cache = get_cache()
                 cached = cache.get_by_key(cache_key, force=force, project_key=project_key)
@@ -358,7 +358,7 @@ class UnifiedTracer:
 
             # 保存到缓存
             if use_cache and cache_key:
-                from trace.core.cache import get_cache
+                from sv_query.trace.core.cache import get_cache
 
                 cache = get_cache()
                 cache_data = {
@@ -455,8 +455,8 @@ class UnifiedTracer:
         private attributes ad hoc. Snapshot does not contain class/covergroup
         semantic state; those are explicitly None/empty, not silently stale.
         """
-        from trace.core.graph.models import SignalGraph
-        from trace.core.module_instance_graph import ModuleInstanceGraph, PathResolver
+        from sv_query.trace.core.graph.models import SignalGraph
+        from sv_query.trace.core.module_instance_graph import ModuleInstanceGraph, PathResolver
 
         if not isinstance(snapshot, dict):
             raise ValueError("snapshot root is not an object")
@@ -520,7 +520,7 @@ class UnifiedTracer:
 
     def _resolve_class_member_access(self, adapter, graph):
         """为 class 实例成员访问建 MEMBER_SELECT 边（P0~P3 四步，实现在下方）。"""
-        from trace.core.graph.models import NodeKind
+        from sv_query.trace.core.graph.models import NodeKind
 
         class_names = self._collect_class_names(adapter)
         if not class_names:
@@ -562,7 +562,7 @@ class UnifiedTracer:
 
     def _upgrade_class_instances(self, graph, NodeKind, instance_to_class: dict[str, str]) -> None:
         """P1: 实例节点 → CLASS_INSTANCE + IS_INSTANCE_OF；P2: 组合成员同升级。"""
-        from trace.core.graph.models import EdgeKind, TraceEdge
+        from sv_query.trace.core.graph.models import EdgeKind, TraceEdge
 
         for inst_path, cls_name in instance_to_class.items():
             inst_node = graph.get_node(inst_path)
@@ -590,7 +590,7 @@ class UnifiedTracer:
         """P0/P3: 实例成员 (p.addr / range.min_addr) → MEMBER_SELECT 两条边。"""
         import re
 
-        from trace.core.graph.models import EdgeKind, TraceEdge
+        from sv_query.trace.core.graph.models import EdgeKind, TraceEdge
 
         for node_id in list(graph.nodes()):
             match = re.match(r"^(.+)\.([^.]+)$", node_id)
@@ -676,7 +676,7 @@ class UnifiedTracer:
 
     def _add_op_node(self, op_id: str, label: str, module: str, kind, extra: dict) -> bool:
         """建 OP_* 节点；失败只 debug（不中断 build）。"""
-        from trace.core.graph.models import TraceNode
+        from sv_query.trace.core.graph.models import TraceNode
 
         try:
             self._graph.add_trace_node(TraceNode(
@@ -687,14 +687,14 @@ class UnifiedTracer:
             return False
 
     def _link_op_edge(self, src: str, dst: str, kind) -> None:
-        from trace.core.graph.models import TraceEdge
+        from sv_query.trace.core.graph.models import TraceEdge
 
         if src in self._graph and dst in self._graph:
             self._graph.add_trace_edge(TraceEdge(src=src, dst=dst, kind=kind))
 
     def _emit_ternary_op(self, parent_module, lhs_short, node, seen: set[str]) -> None:
         """OP_TERNARY + BRANCH_CONDITION/TRUE/FALSE/RESULT 边。"""
-        from trace.core.graph.models import EdgeKind, NodeKind
+        from sv_query.trace.core.graph.models import EdgeKind, NodeKind
 
         children = node.get("children", []) or []
         cond_sigs = self._signal_refs(children[0]) if children else []
@@ -718,7 +718,7 @@ class UnifiedTracer:
 
     def _emit_case_op(self, parent_module, lhs_short, node, seen: set[str]) -> None:
         """OP_CASE + CASE_SELECT/ITEM/RESULT 边。"""
-        from trace.core.graph.models import EdgeKind, NodeKind
+        from sv_query.trace.core.graph.models import EdgeKind, NodeKind
 
         children = node.get("children", []) or []
         cond_sigs = self._signal_refs(children[0]) if children else []

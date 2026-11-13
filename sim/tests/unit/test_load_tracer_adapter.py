@@ -31,8 +31,8 @@ SRC = str(PROJECT_ROOT / "src")
 if SRC not in sys.path:
     sys.path.insert(0, SRC)
 
-from trace.core.query.load import LoadTracer  # noqa: E402
-from trace.unified_tracer import UnifiedTracer  # noqa: E402
+from sv_query.trace.core.query.load import LoadTracer  # noqa: E402
+from sv_query.trace.unified_tracer import UnifiedTracer  # noqa: E402
 
 INST_DEMO = PROJECT_ROOT / "sim/tests/fixtures/golden_mini/inst_demo.sv"
 SINGLE_MODULE = """
@@ -171,12 +171,12 @@ class TestNoSecondImplementation:
 
     def test_graph_traversal_module_is_gone(self):
         import importlib.util
-        assert importlib.util.find_spec("trace.core.graph_traversal") is None, (
+        assert importlib.util.find_spec("sv_query.trace.core.graph_traversal") is None, (
             "死基类 graph_traversal.py 不应复活"
         )
 
     def test_loadtracer_delegates_to_signal_tracer(self, single):
-        from trace.core.query.signal import SignalTracer
+        from sv_query.trace.core.query.signal import SignalTracer
         assert isinstance(single._load_tracer._signal_tracer, SignalTracer)
 
 

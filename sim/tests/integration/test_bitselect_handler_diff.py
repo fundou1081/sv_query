@@ -20,8 +20,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 
 import pyslang
 
-from trace.unified_tracer import UnifiedTracer
-from trace.core.graph.models import EdgeKind
+from sv_query.trace.unified_tracer import UnifiedTracer
+from sv_query.trace.core.graph.models import EdgeKind
 
 
 # ==============================================================================
@@ -146,9 +146,9 @@ def _build_graph_builder_only(source):
     pyslang.SyntaxTree.fromText(source)
     # 正确初始化顺序: SVCompiler(sources=...) -> get_root() (触发 _do_compile) -> SemanticAdapter
     # [iter_080 fix] 去掉 strict=False (违反纪律 #1) — fixture 全部合法, strict 应通过
-    from trace.core.graph_builder import GraphBuilder
-    from trace.core.semantic_adapter import SemanticAdapter
-    from trace.core.compiler import SVCompiler
+    from sv_query.trace.core.graph_builder import GraphBuilder
+    from sv_query.trace.core.semantic_adapter import SemanticAdapter
+    from sv_query.trace.core.compiler import SVCompiler
     compiler = SVCompiler(sources={'test.sv': source}, log_level='WARNING')  # strict=True 默认
     root = compiler.get_root()  # 内部触发 _do_compile()
     adapter = SemanticAdapter(root, compiler=compiler)

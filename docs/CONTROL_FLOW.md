@@ -623,7 +623,7 @@ python -m pytest sim/tests/ -v
 
 ## 相关文件
 
-- `src/trace/core/visitors/statement_collector_visitor.py`
+- `src/sv_query/trace/core/visitors/statement_collector_visitor.py`
   - `_is_simple_expr_for_negation()`: 语义 AST 简单性判断
   - `visit_conditional_statement()`: else-if 链处理，栈操作
   - context 中的 `_parent_cond_expr` 字段
@@ -1110,7 +1110,7 @@ class PriorityAnalysis:
 ## 八、文件结构
 
 ```
-src/trace/core/
+src/sv_query/trace/core/
 ├── graph/
 │   ├── __init__.py
 │   ├── dataflow.py              # DataFlow 图 (已有)
@@ -1259,8 +1259,8 @@ def get_signals_with_conditions(self, node, parent_cond=None) -> List[Tuple[str,
 **方案 B**: 在 `graph_builder.py` 的连续赋值处理中特殊处理 ConditionalOp
 
 ### 具体改动位置
-1. `src/trace/core/visitors/signal_expression_visitor.py` - 添加 `get_signals_with_conditions()`
-2. `src/trace/core/graph_builder.py` - 修改连续赋值边创建 (line 560-660)
+1. `src/sv_query/trace/core/visitors/signal_expression_visitor.py` - 添加 `get_signals_with_conditions()`
+2. `src/sv_query/trace/core/graph_builder.py` - 修改连续赋值边创建 (line 560-660)
 
 ---
 
@@ -1320,7 +1320,7 @@ def _get_case_selector(self, node) -> str:
 ```
 
 ### 具体改动位置
-1. `src/trace/core/visitors/statement_collector_visitor.py`
+1. `src/sv_query/trace/core/visitors/statement_collector_visitor.py`
    - `_expr_to_string()` - 添加 `IdentifierNameSyntax` 处理
    - 或 `_get_case_selector()` - 添加 syntax 节点直接处理
 

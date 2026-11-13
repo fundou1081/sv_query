@@ -171,7 +171,7 @@
 
 5 个 viz 子命令 (`graph`/`dataflow`/`pipeline`/`chain`/`module`) 共享:
   •  CLI plumbing:  `src/cli/_viz_common.py`  (FILE_OPTION 等 + build_viz_tracer)
-  •  DOT helpers:   `src/trace/core/graph/analyzer/_dot_common.py`
+  •  DOT helpers:   `src/sv_query/trace/core/graph/analyzer/_dot_common.py`
                     (escape_dot_label / format_node_label_chain /
                      sanitize_dot_id_inner / render_with_engine)
 

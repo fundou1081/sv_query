@@ -13,8 +13,8 @@ from cli._paths import ensure_on_path, PROJECT_ROOT  # noqa: E402
 ensure_on_path(PROJECT_ROOT)
 
 
-from trace.core.snapshot_manager import SnapshotManager
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.core.snapshot_manager import SnapshotManager
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 snapshot_app = typer.Typer(help="Snapshot management for graph diff")
 
@@ -190,7 +190,7 @@ def list_cmd(
 
     tags = manager.list_tags()
     # [iter_239 1b] 旧位置提示 (只提示, **不读取** —— 不做 silent fallback)
-    from trace.core.snapshot_manager import LEGACY_SNAPSHOT_DIR
+    from sv_query.trace.core.snapshot_manager import LEGACY_SNAPSHOT_DIR
     _legacy = Path(LEGACY_SNAPSHOT_DIR)
     if not tags and _legacy.is_dir() and any(_legacy.glob("*.json")):
         print(f"💡 当前目录 ({manager.base_dir}) 无快照, 但旧位置 {LEGACY_SNAPSHOT_DIR}/ 有 "

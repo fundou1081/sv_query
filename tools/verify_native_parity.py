@@ -44,10 +44,10 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src"))
 
-from trace.core.compiler import SVCompiler  # noqa: E402
-from trace.core.module_instance_graph import ModuleInstanceGraph  # noqa: E402
-from trace.core.native_adapter import get_module_instances_native  # noqa: E402
-from trace.core.semantic_adapter import SemanticAdapter  # noqa: E402
+from sv_query.trace.core.compiler import SVCompiler  # noqa: E402
+from sv_query.trace.core.module_instance_graph import ModuleInstanceGraph  # noqa: E402
+from sv_query.trace.core.native_adapter import get_module_instances_native  # noqa: E402
+from sv_query.trace.core.semantic_adapter import SemanticAdapter  # noqa: E402
 
 # ----------------------------------------------------------------------------
 # Fixtures — 覆盖现有 parity 测试场景 + #7 需要新增探测的边界场景

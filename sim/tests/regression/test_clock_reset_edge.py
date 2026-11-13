@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 
 import pyslang
 
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 
 class TestClockResetEdge(unittest.TestCase):
@@ -161,7 +161,7 @@ endmodule'''
         graph = tracer.get_graph()
 
         # 检查边类型
-        from trace.core.graph.models import EdgeKind
+        from sv_query.trace.core.graph.models import EdgeKind
         has_driver = False
         has_clock = False
         for (s, d), edge_list in graph._edge_data.items():

@@ -3,7 +3,7 @@
 # [iter_081] A 组: 主路径语法补独立行为断言文件 (对齐 constraint/covergroup 密度)
 # 背景: wire x = expr; 之前只靠 integration 顺带测, 无独立 regression 行为断言.
 # 行为金标准 (module 域): RHS 真实信号 → wire (LHS) 的 DRIVER 边必须存在.
-# 实现位置: src/trace/core/extractors/net_decl_extractor.py (Step 3b 拆出)
+# 实现位置: src/sv_query/trace/core/extractors/net_decl_extractor.py (Step 3b 拆出)
 #==============================================================================
 
 import os
@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 
 import pyslang
 
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 
 def _build_graph(source):

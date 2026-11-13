@@ -182,8 +182,8 @@ python run_cli.py visualize graph -f top.sv --cache --rebuild
 ### Python API 用法
 
 ```python
-from trace.unified_tracer import UnifiedTracer
-from trace.core.cache import get_cache
+from sv_query.sv_query.trace.unified_tracer import UnifiedTracer
+from sv_query.sv_query.trace.core.cache import get_cache
 
 # 方式1：build_graph 参数
 tracer = UnifiedTracer(sources={'file.sv': source})

@@ -10,7 +10,7 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P165.2 packaging 重命名** `<待做>`
+- **当前 item**: **P62.2 交互式 debug (gate)** `<待做>`
   - 按 HANDOFF §12 顺序：P158.12.7 → 17 skip 分类 → P165 采纳项
   - 待方豆确认（不阻塞）：`false_confident` 分母口径当前默认
     = answered_n（实际作答数），见 [REPORT_STATUS](docs/dev/REPORT_STATUS.md)

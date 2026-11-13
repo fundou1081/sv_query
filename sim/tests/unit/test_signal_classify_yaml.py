@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from trace.core.graph.analyzer.signal_classifier import (
+from sv_query.trace.core.graph.analyzer.signal_classifier import (
     ClassifyConfig,
     get_config,
     load_config,

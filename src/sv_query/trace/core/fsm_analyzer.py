@@ -6,8 +6,8 @@
 `UnifiedTracer` 的门面职责无关 (它们是"从图里抽状态机 + 画图"), 放在一起
 只会让 1,400 行的文件更难读。
 
-`UnifiedTracer` 仍 re-export 这三个名字 (`from trace.core.fsm_analyzer import ...`),
-既有 `from trace.unified_tracer import StateMachineInfo` 的导入路径不变。
+`UnifiedTracer` 仍 re-export 这三个名字 (`from sv_query.trace.core.fsm_analyzer import ...`),
+既有 `from sv_query.trace.unified_tracer import StateMachineInfo` 的导入路径不变。
 """
 from __future__ import annotations
 

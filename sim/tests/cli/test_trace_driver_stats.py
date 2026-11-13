@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
 from cli.core.semantic.trace_common import driver_stats
-from trace.core.graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
+from sv_query.trace.core.graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 

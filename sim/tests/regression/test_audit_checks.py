@@ -1,6 +1,6 @@
 """[iter_288 / PLAN P3.3] `svq audit` 十条检查的回归。
 
-原 exp 10 条创意（docs/EXP_IDEAS.md）在 `trace.core.analysis.audit` 里重新实现，
+原 exp 10 条创意（docs/EXP_IDEAS.md）在 `sv_query.trace.core.analysis.audit` 里重新实现，
 本文件锁定每条检查的**可观察输出**（不是内部实现）：
 
   1 protocols            名称模式识别 AXI4
@@ -24,8 +24,8 @@ import pytest
 REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO / "src"))
 
-from trace.core.analysis import CHECKS, run_audit  # noqa: E402
-from trace.unified_tracer import UnifiedTracer  # noqa: E402
+from sv_query.trace.core.analysis import CHECKS, run_audit  # noqa: E402
+from sv_query.trace.unified_tracer import UnifiedTracer  # noqa: E402
 
 FIXTURE = """
 class pkt;

@@ -6,7 +6,7 @@ test_filelist_parity.py — [iter_193] 两个消费方必须解析出**同一份
 同一份 filelist 两侧结果不一致 (iter_190 记录, iter_192 只做到"结果一致"), 且
 对实际存在的文件误报缺失。
 
-iter_193 起两者共用 `trace.core.filelist.parse_filelist`。本测试是**不变量锁**:
+iter_193 起两者共用 `sv_query.trace.core.filelist.parse_filelist`。本测试是**不变量锁**:
 对多种 filelist 场景断言两侧解析出的文件集完全一致 —— 一旦有人再引入第二套实现,
 这里立刻失败。
 """
@@ -15,8 +15,8 @@ from pathlib import Path
 import pytest
 
 from cli._common import _read_filelist
-from trace.core.compiler import SVCompiler
-from trace.core.filelist import parse_filelist
+from sv_query.trace.core.compiler import SVCompiler
+from sv_query.trace.core.filelist import parse_filelist
 
 SV_A = "module a; endmodule\n"
 SV_B = "module b; endmodule\n"

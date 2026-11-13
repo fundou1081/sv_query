@@ -9,7 +9,7 @@ import unittest
 
 import pyslang
 
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 
 class TestTimingControlParsing(unittest.TestCase):

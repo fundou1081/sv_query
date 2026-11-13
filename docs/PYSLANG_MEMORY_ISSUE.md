@@ -55,7 +55,7 @@ print(comp.getRoot().topInstances[0].name)      # → UnicodeDecodeError
 技巧确实能让结果更稳定 —— 因为它改变了堆的复用模式, 而不是因为"内存不够"。
 它治的是症状。iter_185 修复后该技巧不再是必要条件。
 
-## 修复 (iter_185, 已在 `src/trace/core/compiler.py`)
+## 修复 (iter_185, 已在 `src/sv_query/trace/core/compiler.py`)
 
 ```python
 self._source_manager = sm        # 所有权挂到 compiler (_do_compile 内)

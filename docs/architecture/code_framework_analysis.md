@@ -45,14 +45,14 @@
 
 ### UnifiedTracer
 
-- **文件**: `src/trace/unified_tracer.py:22`
+- **文件**: `src/sv_query/trace/unified_tracer.py:22`
 - **行数**: 137 行
 - **职责**: Facade 模式，对外暴露 trace_signal / trace_loads / find_path 等 API，屏蔽内部复杂度
 - **数据输出**: SignalChain / LoadChain / 信号路径 / 时钟域追踪结果
 
 ### GraphBuilder
 
-- **文件**: `src/trace/core/graph_builder.py:1336`
+- **文件**: `src/sv_query/trace/core/graph_builder.py:1336`
 - **行数**: 1517 行
 - **职责**: 编排所有 Extractor，协调 build 流程，最终输出 SignalGraph
 - **核心流程**:
@@ -96,7 +96,7 @@
 
 ### ModuleInstanceGraph (MIG)
 
-- **文件**: `src/trace/core/module_instance_graph.py:50`
+- **文件**: `src/sv_query/trace/core/module_instance_graph.py:50`
 - **行数**: 969 行
 - **职责**: 管理模块实例层级、维护端口到内部信号的映射、支持跨模块路径查找
 - **核心数据结构**:
@@ -114,7 +114,7 @@
 
 ### PyslangAdapter
 
-- **文件**: `src/trace/core/base.py:65`
+- **文件**: `src/sv_query/trace/core/base.py:65`
 - **行数**: 1352 行
 - **职责**: 封装 pyslang AST，提供统一的数据访问接口
 - **核心方法**:

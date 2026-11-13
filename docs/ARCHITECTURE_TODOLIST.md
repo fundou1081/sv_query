@@ -14,7 +14,7 @@
 - **目标**: 把 4101 行单文件拆成按语法类组织的子目录
 - **子任务**:
   - [x] 盘点 driver_extractor 全部公开方法 (def 清单) — 67 顶层 + 11 嵌套 = 78 def
-  - [x] 设计新目录结构: `src/trace/core/extractors/{assign, always, wire_init, function, case, ternary, bit_select, struct, generate, alias}_extractor.py`
+  - [x] 设计新目录结构: `src/sv_query/trace/core/extractors/{assign, always, wire_init, function, case, ternary, bit_select, struct, generate, alias}_extractor.py`
   - [x] 设计 ExtractorResult 新协议 (按需扩展)
   - [x] G2 计划: 拆文件的具体切割点 + import 链 + 测试覆盖 — G2 plan 完成
   - [x] **Step 1+2: 拆 alias_extractor** (0.5 天, 极低风险) — commit `b6708b5`, 1461 tests 0 regression
@@ -130,7 +130,7 @@
 - **子任务**:
   - [x] 盘点真正依赖关系 — **实际 11 步** (非记录的 20 步)
   - [x] 设计 PipelineStep 协议 (name/run/inputs/outputs) + Pipeline (validate/拓扑排序/run)
-  - [x] 重构 build_graph 用 DAG — 新建 `src/trace/core/pipeline.py`, 行为 1:1
+  - [x] 重构 build_graph 用 DAG — 新建 `src/sv_query/trace/core/pipeline.py`, 行为 1:1
   - [x] 独立步骤 (class/bit_select vs module_graph) 结构上可并行
   - [ ] 测试: 故意打乱顺序看是否报错
 - **依赖**: 无
@@ -319,7 +319,7 @@
   - 关联 Bug #2/#3 (warning+extra 模式) + NO_TREE_MARKER 正面参考
   - 清理优先级 P0-P3, 供后续逐步执行
 - **2026-08-28 23:10** — **#5 done** (iter_049). build_graph 重构为显式 DAG.
-  - 新建 `src/trace/core/pipeline.py`: PipelineStep (name/run/inputs/outputs) + Pipeline (validate/拓扑排序/run)
+  - 新建 `src/sv_query/trace/core/pipeline.py`: PipelineStep (name/run/inputs/outputs) + Pipeline (validate/拓扑排序/run)
   - 实际 11 步 (非记录 20 步), 依赖链 compile→adapter→graph→{class,class_member,bit_select,module_graph}→path_resolver→tracers
   - 独立步骤结构上可并行 (class/bit_select vs module_graph 只依赖 graph)
   - 实施失误: _step_compile 错写 return ctx["root"] → KeyError → 353 失败, 修复后 0 回归

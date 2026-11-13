@@ -55,7 +55,7 @@ if os.path.isdir(PYSLLANG_BINDINGS_PATH) and PYSLLANG_BINDINGS_PATH not in sys.p
 
 import pyslang
 
-from trace.core.ast_utils import is_syntax_list, iter_syntax_list
+from sv_query.trace.core.ast_utils import is_syntax_list, iter_syntax_list
 
 
 class SemanticAdapter(

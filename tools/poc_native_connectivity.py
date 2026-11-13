@@ -222,7 +222,7 @@ def _read_filelist(filelist: Path) -> list[Path]:
 # ==============================================================================
 
 def build_legacy(filelist: Path) -> dict:
-    from trace.unified_tracer import UnifiedTracer
+    from sv_query.trace.unified_tracer import UnifiedTracer
 
     t0 = time.time()
     tracer = UnifiedTracer(filelist=str(filelist), log_level="ERROR",

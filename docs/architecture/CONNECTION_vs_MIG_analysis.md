@@ -22,7 +22,7 @@
 
 ### 1.1 ConnectionExtractor
 
-- **文件**: `src/trace/core/graph_builder.py` (line 1004)
+- **文件**: `src/sv_query/trace/core/graph_builder.py` (line 1004)
 - **类名**: `ConnectionExtractor`
 - **职责**: 为模块实例端口创建 CONNECTION 边，建立外部信号与实例端口的连接关系
 - **在 GraphBuilder 中的位置**: `GraphBuilder._extract_all_edges()` 调用
@@ -30,7 +30,7 @@
 
 ### 1.2 ModuleInstanceGraph
 
-- **文件**: `src/trace/core/module_instance_graph.py` (line 50)
+- **文件**: `src/sv_query/trace/core/module_instance_graph.py` (line 50)
 - **类名**: `ModuleInstanceGraph`
 - **职责**: 管理模块实例层级、维护端口到内部信号的映射、支持跨模块路径查找
 - **在 UnifiedTracer 中的位置**: `build_graph()` 时独立 build，不合并到 SignalGraph

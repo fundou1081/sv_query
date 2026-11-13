@@ -33,7 +33,7 @@ def _strip_pycache():
 
 def _build_graph(file_path: Path, target: str = "generate_if_alu"):
     _strip_pycache()
-    from trace.unified_tracer import UnifiedTracer
+    from sv_query.trace.unified_tracer import UnifiedTracer
     src = file_path.read_text()
     tracer = UnifiedTracer(sources={file_path.name: src}, )
     return tracer.build_graph()
@@ -51,8 +51,8 @@ class TestGenerateIfLimitation:
         """TWO_CYCLE_ALU=0 (default) → pyslang returns 0 always blocks
         from get_always_blocks(), even though the else branch has a
         working always @* block."""
-        from trace.core.compiler import SVCompiler
-        from trace.core.semantic_adapter import SemanticAdapter
+        from sv_query.trace.core.compiler import SVCompiler
+        from sv_query.trace.core.semantic_adapter import SemanticAdapter
 
         # Re-import inside test to be safe
         compiler = SVCompiler(sources={'gen.sv': GOLDEN.read_text()})
@@ -87,7 +87,7 @@ class TestGenerateIfLimitation:
         )
 
         # 修复后: 激活分支 (else, always @*) 的赋值应有 DRIVER 边
-        from trace.core.graph.models import EdgeKind
+        from sv_query.trace.core.graph.models import EdgeKind
         incoming_drivers = 0
         for u, v in g.edges():
             if v.endswith('alu_shr'):
@@ -121,7 +121,7 @@ class TestGenerateIfLimitation:
 
         try:
             g = _build_graph(tmp_path, target='test_no_gen')
-            from trace.core.graph.models import EdgeKind
+            from sv_query.trace.core.graph.models import EdgeKind
             drivers = []
             for u, v in g.edges():
                 if v.endswith('alu_shr'):

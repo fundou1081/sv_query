@@ -8,7 +8,7 @@ LLM 调用 sv_query 时, 需要稳定的 error code 来分类错误 (而不是�
 错误消息字符串). 本模块提供 ErrorCode enum 和 make_error() helper.
 
 用法:
-    from src.cli.errors import ErrorCode, make_error
+    from cli.errors import ErrorCode, make_error
 
     # 在 except 块:
     except FileNotFoundError as e:

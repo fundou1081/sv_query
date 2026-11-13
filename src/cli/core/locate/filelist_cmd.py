@@ -7,7 +7,7 @@ from pathlib import Path
 import typer
 
 from cli._common import _read_filelist_full
-from trace.core.top_prune import prune_sources
+from sv_query.trace.core.top_prune import prune_sources
 
 filelist_app = typer.Typer(help="Filelist 操作 (只读/显式输出)")
 

@@ -16,7 +16,7 @@ import warnings
 warnings.filterwarnings('ignore')
 sys.path.insert(0, 'src')
 
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 
 def test_wire_with_init_has_driver():
@@ -38,7 +38,7 @@ endmodule
     try:
         tracer = UnifiedTracer(files=[path])
         graph = tracer.build_graph()
-        from trace.core.query.signal import SignalTracer
+        from sv_query.trace.core.query.signal import SignalTracer
         st = SignalTracer(graph)
         # The wire 'x' should have a driver
         dis = st.trace_fanin_detailed('test.x')
@@ -73,7 +73,7 @@ endmodule
     try:
         tracer = UnifiedTracer(files=[path])
         graph = tracer.build_graph()
-        from trace.core.query.signal import SignalTracer
+        from sv_query.trace.core.query.signal import SignalTracer
         st = SignalTracer(graph)
         dis = st.trace_fanin_detailed('test.sel')
         assert len(dis) > 0, "Expected drivers for test.sel, got 0"

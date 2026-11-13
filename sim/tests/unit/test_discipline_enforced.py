@@ -7,8 +7,8 @@ test_discipline_enforced.py - Pytest wrapper for check_discipline.py
 让 discipline 在 `pytest` 时自动跑 (不依赖开发者手动跑 pre-commit).
 
 Discipline 规则 (跟 check_discipline.py 一致):
-1. NO regex in src/trace/core/ (用 AST, 不用 re.findall/match/search)
-2. NO 3-level-deep dirs under src/trace
+1. NO regex in src/sv_query/trace/core/ (用 AST, 不用 re.findall/match/search)
+2. NO 3-level-deep dirs under src/sv_query/trace
 3. NO igraph / graphviz imports (用 DOT 输出, 不绑定)
 
 测试策略:
@@ -51,14 +51,14 @@ def test_check_discipline_script_exists():
 
 
 def test_no_regex_in_trace_core():
-    """src/trace/core/ 不应用 regex 分析 SV 源码 (用 AST, 不用 re)."""
+    """src/sv_query/trace/core/ 不应用 regex 分析 SV 源码 (用 AST, 不用 re)."""
     rc, stdout, stderr = _run_check_discipline()
     if rc != 0 and "正则" in stdout:
         pytest.fail(
-            f"Discipline violation: regex used in src/trace/core/\n"
+            f"Discipline violation: regex used in src/sv_query/trace/core/\n"
             f"--- stdout ---\n{stdout[:1000]}"
         )
-    print("✅ no regex usage in src/trace/core/")
+    print("✅ no regex usage in src/sv_query/trace/core/")
 
 
 def test_no_forbidden_imports():
@@ -73,14 +73,14 @@ def test_no_forbidden_imports():
 
 
 def test_no_excessive_directory_depth():
-    """src/trace 目录深度 ≤ 3 (避免过深, 保持清晰)."""
+    """src/sv_query/trace 目录深度 ≤ 3 (避免过深, 保持清晰)."""
     rc, stdout, stderr = _run_check_discipline()
     if rc != 0 and "目录过深" in stdout:
         pytest.fail(
-            f"Discipline violation: directory depth > 3 in src/trace\n"
+            f"Discipline violation: directory depth > 3 in src/sv_query/trace\n"
             f"--- stdout ---\n{stdout[:1000]}"
         )
-    print("✅ src/trace directory depth ≤ 3")
+    print("✅ src/sv_query/trace directory depth ≤ 3")
 
 
 def test_check_discipline_passes_overall():

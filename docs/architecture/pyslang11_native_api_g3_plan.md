@@ -25,7 +25,7 @@ ARCHITECTURE_TODOLIST #7 目标是 "用 `inst.hierarchicalPath` / `inst.portConn
 
 ### 1.1 MIG.build 的真实结构 — 已半 native
 
-`src/trace/core/module_instance_graph.py` 有**两条并行路径**:
+`src/sv_query/trace/core/module_instance_graph.py` 有**两条并行路径**:
 
 | 路径 | 入口 | 状态 |
 |---|---|---|

@@ -2,7 +2,7 @@
 #
 # [V5 of docs/archive/2026-09-08-cleanup/ARCHITECTURE_REVIEW_2026-07-15.md]
 #
-# src/trace/core/data_models.py (171 行, 13 classes) 自 2026-06-26 起完全未被 import.
+# src/sv_query/trace/core/data_models.py (171 行, 13 classes) 自 2026-06-26 起完全未被 import.
 # 所有需要的类 (SignalChain, ModuleConnections, StateTransition, ClockDomainResult) 已在
 # graph/ 或 query/ subpackage 中重新定义. DriverCollector pattern 被 base.py 重写.
 
@@ -17,10 +17,10 @@ class TestNoLegacyDataModels(unittest.TestCase):
     """[V5] data_models.py 必须不存在"""
 
     def test_legacy_data_models_file_does_not_exist(self):
-        """src/trace/core/data_models.py 必须不存在"""
+        """src/sv_query/trace/core/data_models.py 必须不存在"""
         path = os.path.join(
             os.path.dirname(__file__),
-            '..', '..', '..', 'src', 'trace', 'core', 'data_models.py'
+            '..', '..', '..', 'src', 'sv_query', 'trace', 'core', 'data_models.py'
         )
         self.assertFalse(
             os.path.exists(path),
@@ -29,11 +29,11 @@ class TestNoLegacyDataModels(unittest.TestCase):
         )
 
     def test_no_import_legacy_data_models(self):
-        """任何生产代码或测试不应 import trace.core.data_models"""
+        """任何生产代码或测试不应 import sv_query.trace.core.data_models"""
         import subprocess
         result = subprocess.run(
             ['grep', '-rln',
-             'trace\\.core\\.data_models\\|from trace.core.data_models '
+             'trace\\.core\\.data_models\\|from sv_query.trace.core.data_models '
              '|from .data_models\\|from \\.\\.data_models',
              'src/', 'tools/', 'sim/tests/cli/', 'sim/tests/regression/'],
             capture_output=True, text=True,

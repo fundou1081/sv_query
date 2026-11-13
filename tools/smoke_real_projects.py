@@ -23,7 +23,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from trace.unified_tracer import UnifiedTracer  # noqa: E402
+from sv_query.trace.unified_tracer import UnifiedTracer  # noqa: E402
 
 UART_FL = ROOT / "sim" / "tests" / "fixtures" / "strict_uart" / "filelist.f"
 AXI_FL = ROOT / "sim" / "tests" / "fixtures" / "verilog-axi" / "filelist.f"

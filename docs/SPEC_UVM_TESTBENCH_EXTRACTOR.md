@@ -243,8 +243,8 @@ graph TD
 
 | 文件 | 操作 | 说明 |
 |------|------|------|
-| `src/trace/core/graph/uvm_models.py` | 新增 | UVM 数据模型 |
-| `src/trace/core/uvm_testbench_extractor.py` | 新增 | 提取器 |
+| `src/sv_query/trace/core/graph/uvm_models.py` | 新增 | UVM 数据模型 |
+| `src/sv_query/trace/core/uvm_testbench_extractor.py` | 新增 | 提取器 |
 | `sim/tests/regression/test_uvm_testbench.py` | 新增 | 金标准测试 |
 
 ---

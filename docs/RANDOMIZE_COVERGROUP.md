@@ -78,7 +78,7 @@
 
 | 项 | 文件 | 当前状态 | 工作量 |
 |---|------|---------|--------|
-| `extract_array_randomize_method_expr` | `src/trace/core/visitors/operator_visitor.py` | `[NOT TESTED]` | 4 个 test |
+| `extract_array_randomize_method_expr` | `src/sv_query/trace/core/visitors/operator_visitor.py` | `[NOT TESTED]` | 4 个 test |
 | `extract_prerandomize_method_expr` | 同上 | handler map 列出, 无测试 | 2 个 test |
 | `extract_postrandomize_method_expr` | 同上 | 同上 | 2 个 test |
 | `extract_array_or_randomize_method_expr` | 同上 | 同上 | 2 个 test |

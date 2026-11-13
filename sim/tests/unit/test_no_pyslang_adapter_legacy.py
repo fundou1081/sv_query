@@ -1,7 +1,7 @@
 # test_no_pyslang_adapter_legacy.py - 防止 legacy adapter 层重新引入
 #
-# [V2 of architecture review 2026-07-15] 删除 src/trace/core/pyslang_adapter.py (158 行死代码)
-# [iter_174 2026-09-08] 移出 src/trace/core/base.py (2,341 行 legacy 层:
+# [V2 of architecture review 2026-07-15] 删除 src/sv_query/trace/core/pyslang_adapter.py (158 行死代码)
+# [iter_174 2026-09-08] 移出 src/sv_query/trace/core/base.py (2,341 行 legacy 层:
 #   ASTWalker + PyslangAdapter + 3 Collector) → legacy/base_pyslang_adapter.py
 #   依据: 该层在 src/ **从未被实例化**, 运行时唯一 adapter = SemanticAdapter;
 #   8 处类型注解已改指 SemanticAdapter, 相关测试已移植/退役。
@@ -20,19 +20,19 @@ class TestNoLegacyPyslangAdapter(unittest.TestCase):
     """防止 re-introduction"""
 
     def test_legacy_pyslang_adapter_file_does_not_exist(self):
-        """src/trace/core/pyslang_adapter.py 必须不存在"""
+        """src/sv_query/trace/core/pyslang_adapter.py 必须不存在"""
         path = os.path.join(
             os.path.dirname(__file__),
-            '..', '..', '..', 'src', 'trace', 'core', 'pyslang_adapter.py'
+            '..', '..', '..', 'src', 'sv_query', 'trace', 'core', 'pyslang_adapter.py'
         )
         self.assertFalse(
             os.path.exists(path),
             f"[V2 violation] Legacy pyslang_adapter.py reappeared at {path}. "
-            f"Use trace.core.base.PyslangAdapter instead."
+            f"Use sv_query.trace.core.base.PyslangAdapter instead."
         )
 
     def test_no_import_legacy_pyslang_adapter(self):
-        """生产代码 (src/) 不应 import trace.core.pyslang_adapter
+        """生产代码 (src/) 不应 import sv_query.trace.core.pyslang_adapter
 
         注: 这个测试本文件 self-test 是 OK 的, 因为它必须 reference 这个名字才能检查.
         但我们排除 (1) 自己, (2) __pycache__/ 字节码缓存, (3) docs/archive/.
@@ -47,7 +47,7 @@ class TestNoLegacyPyslangAdapter(unittest.TestCase):
                 continue
             result = subprocess.run(
                 ['grep', '-rln',
-                 'from \\.pyslang_adapter\\|from trace.core.pyslang_adapter '
+                 'from \\.pyslang_adapter\\|from sv_query.trace.core.pyslang_adapter '
                  '|trace\\.core\\.pyslang_adapter',
                  d],
                 capture_output=True, text=True, cwd=repo_root,
@@ -69,7 +69,7 @@ class TestNoLegacyBaseLayer(unittest.TestCase):
     def test_core_base_moved_out(self):
         path = os.path.join(
             os.path.dirname(__file__), '..', '..', '..',
-            'src', 'trace', 'core', 'base.py'
+            'src', 'sv_query', 'trace', 'core', 'base.py'
         )
         self.assertFalse(
             os.path.exists(path),
@@ -78,10 +78,10 @@ class TestNoLegacyBaseLayer(unittest.TestCase):
         )
 
     def test_no_src_import_of_legacy_base(self):
-        """src/ 不得 import trace.core.base (legacy 层)"""
+        """src/ 不得 import sv_query.trace.core.base (legacy 层)"""
         repo_root = os.path.join(os.path.dirname(__file__), '..', '..', '..')
         result = subprocess.run(
-            ['grep', '-rln', 'from \.base import\|from trace\.core\.base import', 'src/'],
+            ['grep', '-rln', 'from \.base import\|from sv_query.trace\.core\.base import', 'src/'],
             capture_output=True, text=True, cwd=repo_root,
         )
         violating = [l for l in result.stdout.split('\n') if l and '__pycache__' not in l]

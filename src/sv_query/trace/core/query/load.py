@@ -28,8 +28,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from trace.core.graph.models import SignalGraph
-from trace.core.query.signal import SignalTracer
+from sv_query.trace.core.graph.models import SignalGraph
+from sv_query.trace.core.query.signal import SignalTracer
 
 
 @dataclass

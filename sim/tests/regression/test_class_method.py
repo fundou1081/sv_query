@@ -28,7 +28,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 
 import pyslang
 
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 
 def _build_graph(source):
@@ -46,8 +46,8 @@ class TestClassMethod(unittest.TestCase):
 
         同时把 adapter 存到 self._adapter 供 _get_class_methods 复用。
         """
-        from trace.core.compiler import SVCompiler
-        from trace.core.semantic_adapter import SemanticAdapter
+        from sv_query.trace.core.compiler import SVCompiler
+        from sv_query.trace.core.semantic_adapter import SemanticAdapter
         comp = SVCompiler(sources={'test.sv': source})
         self._adapter = SemanticAdapter(comp.get_root())
         return self._adapter.get_classes()
@@ -204,8 +204,8 @@ endmodule'''
 endclass
 module top();
 endmodule'''
-        from trace.core.compiler import SVCompiler
-        from trace.core.semantic_adapter import SemanticAdapter
+        from sv_query.trace.core.compiler import SVCompiler
+        from sv_query.trace.core.semantic_adapter import SemanticAdapter
         comp = SVCompiler(sources={'test.sv': source})
         adapter = SemanticAdapter(comp.get_root())
         classes = adapter.get_classes()
@@ -278,7 +278,7 @@ class TestClassMethodAssignmentEdges(unittest.TestCase):
 endclass
 module top; endmodule'''
         graph = self._build_graph(source)
-        from trace.core.graph.models import EdgeKind
+        from sv_query.trace.core.graph.models import EdgeKind
         edge = graph.get_edge('packet.addr', 'packet.data')
         self.assertIsNotNone(edge, "方法体内 data = addr 应生成 packet.addr → packet.data 驱动边")
         self.assertEqual(edge.kind, EdgeKind.DRIVER)
@@ -293,7 +293,7 @@ module top; endmodule'''
 endclass
 module top; endmodule'''
         graph = self._build_graph(source)
-        from trace.core.graph.models import EdgeKind
+        from sv_query.trace.core.graph.models import EdgeKind
         drivers = [
             (u, v) for u, v in graph.edges()
             if graph.get_edge(u, v) and graph.get_edge(u, v).kind == EdgeKind.DRIVER

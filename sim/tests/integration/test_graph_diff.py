@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 
 import pyslang
 
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 
 class TestGraphDiff(unittest.TestCase):
@@ -39,7 +39,7 @@ module top(output logic [7:0] q, input clk);
         b <= a;
     end
 endmodule'''
-        from trace.core.graph.diff import diff_graph
+        from sv_query.trace.core.graph.diff import diff_graph
 
         pyslang.SyntaxTree.fromText(old_source)
         pyslang.SyntaxTree.fromText(new_source)
@@ -70,7 +70,7 @@ module top(output logic [7:0] q, input clk);
     logic [7:0] a;
     always_ff @(posedge clk) a <= q;
 endmodule'''
-        from trace.core.graph.diff import diff_graph
+        from sv_query.trace.core.graph.diff import diff_graph
 
         pyslang.SyntaxTree.fromText(old_source)
         pyslang.SyntaxTree.fromText(new_source)
@@ -98,7 +98,7 @@ module top(output logic [7:0] q, input clk);
         b <= a;
     end
 endmodule'''
-        from trace.core.graph.diff import diff_graph
+        from sv_query.trace.core.graph.diff import diff_graph
 
         pyslang.SyntaxTree.fromText(old_source)
         pyslang.SyntaxTree.fromText(new_source)
@@ -119,7 +119,7 @@ module top(input clk, output logic q);
     logic a;
     always_ff @(posedge clk) a <= q;
 endmodule'''
-        from trace.core.graph.diff import diff_graph
+        from sv_query.trace.core.graph.diff import diff_graph
 
         pyslang.SyntaxTree.fromText(source)
         tracer1 = UnifiedTracer(sources={'test.sv.sv': source})
@@ -151,7 +151,7 @@ module top(input clk, output logic [7:0] q);
         d <= c;
     end
 endmodule'''
-        from trace.core.graph.diff import forward_reachability
+        from sv_query.trace.core.graph.diff import forward_reachability
 
         tracer = self._make_tracer(source)
         _ = tracer.trace_fanout('q', 'top')  # 触发 build_graph
@@ -178,7 +178,7 @@ module top(input clk, output logic [7:0] q);
         d <= c;
     end
 endmodule'''
-        from trace.core.graph.diff import forward_reachability
+        from sv_query.trace.core.graph.diff import forward_reachability
 
         tracer = self._make_tracer(source)
         _ = tracer.trace_fanout('q', 'top')
@@ -208,7 +208,7 @@ module top(input clk, output logic [7:0] q);
     logic [7:0] a;
     always_ff @(posedge clk) a <= q;
 endmodule'''
-        from trace.core.graph.diff import diff_graph, diff_reachability
+        from sv_query.trace.core.graph.diff import diff_graph, diff_reachability
 
         pyslang.SyntaxTree.fromText(old_source)
         pyslang.SyntaxTree.fromText(new_source)

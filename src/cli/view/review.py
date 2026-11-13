@@ -14,7 +14,7 @@ import typer
 
 from cli._common import _build_tracer
 from cli._output import emit_json
-from trace.core.query.subgraph import SubgraphOptions, build_subgraph
+from sv_query.trace.core.query.subgraph import SubgraphOptions, build_subgraph
 
 review_app = typer.Typer(help="Local review artifact for structural findings")
 

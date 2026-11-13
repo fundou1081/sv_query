@@ -15,7 +15,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.core.semantic_adapter import (  # noqa: E402
+from sv_query.trace.core.semantic_adapter import (  # noqa: E402
     SemanticAdapter,
     _fold_select_index,
 )

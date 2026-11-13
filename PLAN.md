@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P165.2 packaging 重命名消除 stdlib trace 冲突（src/trace → src/sv_query/trace；开源发布前必须，随破坏性变更窗口一起做） <待做>
+current item : P62.2 交互式 debug（gate） <待做>
 
 ## 计划树
 
@@ -509,11 +509,11 @@ P164 文档状态校准（2026-11-11 接手） <已完成>
 -- P164.3 契约与基线文档过期状态清理 <已完成>
 -- P164.4 计数漂移检查器覆盖根文档 <已完成>
 
-P165 arch_eval 评审采纳（2026-11-11，来源 architecture/arch_eval_2026-11-11.md，方豆确认采纳） <待做>
+P165 arch_eval 评审采纳（2026-11-11，来源 architecture/arch_eval_2026-11-11.md，方豆确认采纳） <已完成>
 评审同时给出"不采纳"决策：方案 B（迁 Verilator/Yosys IR）拒绝——与验证语义目标错位；
 方案 C（agent 工具 daemon 化）暂缓——等 >2 跳探索的真实使用证据再启动。
 -- P165.1 SignalTracer/structural 全图扫描 pred/succ 化（signal.py 7 处 O(V×E)；NetworkX 原生视图，零索引成本） <已完成>
--- P165.2 packaging 重命名消除 stdlib trace 冲突（src/trace → src/sv_query/trace；开源发布前必须，随破坏性变更窗口一起做） <待做>
+-- P165.2 packaging 重命名消除 stdlib trace 冲突（src/trace → src/sv_query/trace；开源发布前必须，随破坏性变更窗口一起做） <已完成>
 -- P165.3 外部故障集（非自撰；不依赖 OpenTitan 历史） <已完成>
 -- P165.3.1 independent Verilator elaboration oracle <已完成>
 -- P165.3.2 mutation fault set under independent oracle <已完成>
@@ -525,7 +525,7 @@ P166 opensource golden calibration after P158.12.4/11.2b <已完成>
 P167 opensource skip disposition <已完成>
 -- P167.1 classify 17 explicit skips <已完成>
 
-P158 review remediation backlog <待做>
+P158 review remediation backlog <已完成>
 -- P158.0 纪律语义契约升级 <已完成>
 -- P158.1 数据边策略 + CLOCK/RESET 反例 <已完成>
 -- P158.2 路径/查询 budget + timeout <已完成>
@@ -544,7 +544,7 @@ P158 review remediation backlog <待做>
 -- P158.11.2a snapshot size guard <已完成>
 -- P158.11.2b generic long-query timeout <已完成>
 
--- P158.12 P2 清理 <进行中>
+-- P158.12 P2 清理 <已完成>
 -- P158.12.1 trace impact 降级 exp（R-025：未标定启发式不得伪装稳定） <已完成>
 -- P158.12.2 测试硬编码路径清除（26 文件 → 仓库相对 + SVQ_OPENRTL_ROOT 显式 skip） <已完成>
 -- P158.12.3 no:randomly no-op 修复（pytest-randomly 入 dev 依赖，默认禁用随机）+ auto-bless 核查（非问题） <已完成>

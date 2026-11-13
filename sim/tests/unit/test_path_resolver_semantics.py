@@ -24,7 +24,7 @@ SRC = str(PROJECT_ROOT / "src")
 if SRC not in sys.path:
     sys.path.insert(0, SRC)
 
-from trace.unified_tracer import UnifiedTracer  # noqa: E402
+from sv_query.trace.unified_tracer import UnifiedTracer  # noqa: E402
 
 INST_DEMO = PROJECT_ROOT / "sim/tests/fixtures/golden_mini/inst_demo.sv"
 

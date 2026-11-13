@@ -12,8 +12,8 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.core.query.load import LoadTracer
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.core.query.load import LoadTracer
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 
 class TestLoadTracer(unittest.TestCase):

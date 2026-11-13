@@ -10,7 +10,7 @@ import json
 import typer
 
 from cli._common import _build_tracer, handle_compilation_error
-from trace.core.compiler import CompilationError
+from sv_query.trace.core.compiler import CompilationError
 
 
 def build_tracer(file, filelist, log_level: str = "WARNING"):

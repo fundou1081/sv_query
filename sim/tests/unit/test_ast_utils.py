@@ -19,7 +19,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 import pytest
 
 # Import the module under test
-from trace.core.ast_utils import (
+from sv_query.trace.core.ast_utils import (
     _KIND_ALIASES,
     _kind_name,
     is_wrapper,
@@ -295,7 +295,7 @@ class TestRealPyslangIntegration:
     @pytest.fixture
     def parsed_tern(self):
         """Parse `(g ? a : b)` via UnifiedTracer and return the conditional expr."""
-        from trace.unified_tracer import UnifiedTracer
+        from sv_query.trace.unified_tracer import UnifiedTracer
 
         src_text = """
         module m;
@@ -308,7 +308,7 @@ class TestRealPyslangIntegration:
 
         # Walk to find a ConditionalOp / ConditionalExpression in any module.
         # After build, the AST is gone but we can still parse fresh.
-        from trace.core.compiler import SVCompiler
+        from sv_query.trace.core.compiler import SVCompiler
         compiler = SVCompiler(sources={'m.sv': src_text})
         # Find the conditional expression in the AST
         def find(node, depth=0):

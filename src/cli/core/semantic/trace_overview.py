@@ -18,8 +18,8 @@ import typer
 from cli._evidence_helpers import build_resolver as _build_evidence_resolver  # noqa: E402
 from cli._evidence_helpers import evidence_to_dict as _evidence_to_dict  # noqa: E402
 from cli._output import emit_json
-from trace.core.sva_extractor import SVAExtractor
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.core.sva_extractor import SVAExtractor
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 logger = logging.getLogger(__name__)
 
@@ -59,11 +59,11 @@ def overview(
     from cli._evidence_helpers import (
         make_resolver as _make_evidence_resolver,
     )
-    from trace.core.compiler import CompilationError, SVCompiler
-    from trace.core.graph.analyzer.controlflow_analyzer import ControlFlowAnalyzer
-    from trace.core.graph.dataflow import DataFlowGraph
-    from trace.core.graph_builder import GraphBuilder
-    from trace.core.semantic_adapter import SemanticAdapter
+    from sv_query.trace.core.compiler import CompilationError, SVCompiler
+    from sv_query.trace.core.graph.analyzer.controlflow_analyzer import ControlFlowAnalyzer
+    from sv_query.trace.core.graph.dataflow import DataFlowGraph
+    from sv_query.trace.core.graph_builder import GraphBuilder
+    from sv_query.trace.core.semantic_adapter import SemanticAdapter
 
     try:
         tracer = _bt(

@@ -48,7 +48,7 @@ REPO = Path(__file__).resolve().parents[1]
 THRESHOLD_DEFAULT = 10
 
 # crapper 写的 .metrics/crap.edn 每行形如:
-#   {:name "viz_to_elk", :namespace "trace.core.graph.viz.elk_bridge", :complexity 142, ...}
+#   {:name "viz_to_elk", :namespace "sv_query.trace.core.graph.viz.elk_bridge", :complexity 142, ...}
 ENTRY_RE = re.compile(r':name "([^"]+)",\s*:namespace "([^"]+)",\s*:complexity (\d+)')
 
 
@@ -91,6 +91,41 @@ def changed_src_files(repo: Path, base: str | None = None) -> list[str]:
         if path.startswith("src/") and path.endswith(".py"):
             files.append(path)
     return sorted(set(files))
+
+
+def renamed_src_files(repo: Path, base: str | None = None) -> dict[str, str]:
+    """Map new src path -> old path for renames (git diff/status, -M).
+
+    A package move changes the namespace, so naively treating the new path as
+    a new file makes every pre-existing function look newly introduced.  Use
+    the old path only to fetch HEAD content, then analyze it under the *new*
+    path so namespaces are comparable.
+    """
+    if base:
+        out = subprocess.run(
+            ["git", "diff", "--name-status", "-M", base, "--", "src"],
+            cwd=repo, capture_output=True, text=True,
+        ).stdout
+        mapping: dict[str, str] = {}
+        for line in out.splitlines():
+            parts = line.split("\t")
+            if len(parts) >= 3 and parts[0].startswith("R"):
+                old, new = parts[1], parts[2]
+                if new.startswith("src/") and new.endswith(".py"):
+                    mapping[new] = old
+        return mapping
+    out = subprocess.run(
+        ["git", "status", "--porcelain"], cwd=repo, capture_output=True, text=True
+    ).stdout
+    mapping = {}
+    for line in out.splitlines():
+        if " -> " not in line:
+            continue
+        old, new = line[3:].split(" -> ", 1)
+        old, new = old.strip().strip('"'), new.strip().strip('"')
+        if new.startswith("src/") and new.endswith(".py"):
+            mapping[new] = old
+    return mapping
 
 
 def git_show(repo: Path, rev_path: str, rev: str = "HEAD") -> str | None:
@@ -171,6 +206,7 @@ def compare(
 
 def run(repo: Path, threshold: int, crapper: Path, base: str | None = None) -> dict:
     files = changed_src_files(repo, base)
+    renames = renamed_src_files(repo, base)
     violations: list[dict] = []
     notes: list[dict] = []
     errors: list[dict] = []
@@ -184,7 +220,7 @@ def run(repo: Path, threshold: int, crapper: Path, base: str | None = None) -> d
             if not (repo / rel).exists():
                 continue
             cur_content = (repo / rel).read_text(encoding="utf-8")
-            head_text = git_show(repo, rel, base or "HEAD")
+            head_text = git_show(repo, renames.get(rel, rel), base or "HEAD")
             if head_text is None:
                 baseline: dict = {}
             else:

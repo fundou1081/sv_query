@@ -22,8 +22,8 @@ from cli.core.semantic.trace_common import (
     _collect_signals, resolve_signal, resolution_fields,
     resolution_error_message, SignalResolutionError,
 )
-from trace.core.sva_extractor import SVAExtractor
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.core.sva_extractor import SVAExtractor
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 logger = logging.getLogger(__name__)
 
@@ -134,7 +134,7 @@ def evidence(
                 })
             except Exception as sig_err:
                 # [A3 2026-07-04] Per-signal failure → record error, continue
-                from src.cli.errors import code_for_exception, make_error
+                from cli.errors import code_for_exception, make_error
                 err_data = make_error(
                     code_for_exception(sig_err), str(sig_err), command="trace_evidence",
                 )

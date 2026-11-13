@@ -31,7 +31,7 @@ from pathlib import Path
 
 # [iter_234 P2] 统一路径引导: **无条件**把 src 插到最前
 # (旧写法用 `if ... not in sys.path` 守护 → src 已在 path 但排在 stdlib 之后时跳过插入
-#  → `import trace` 命中 stdlib trace.py; 由 tools 级测试首次暴露, 详见 tools/_bootstrap.py)
+#  → `import sv_query.trace` 命中 stdlib trace.py; 由 tools 级测试首次暴露, 详见 tools/_bootstrap.py)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _bootstrap import ensure_src_first  # noqa: E402
 

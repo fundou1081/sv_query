@@ -73,7 +73,7 @@ def _json(*args) -> dict:
 
 @pytest.fixture(scope="module")
 def tracer():
-    from trace.unified_tracer import UnifiedTracer
+    from sv_query.trace.unified_tracer import UnifiedTracer
 
     t = UnifiedTracer(filelist=str(FILELIST), log_level="ERROR")
     t.build_graph()
@@ -88,7 +88,7 @@ def resolver(tracer):
 @pytest.fixture(scope="module")
 def inst_resolver():
     """inst_demo 的 resolver (多路径图, 用于有界枚举测试)。"""
-    from trace.unified_tracer import UnifiedTracer
+    from sv_query.trace.unified_tracer import UnifiedTracer
 
     src = (PROJECT_ROOT / "sim/tests/fixtures/golden_mini/inst_demo.sv").read_text()
     t = UnifiedTracer(sources={"inst_demo.sv": src}, log_level="ERROR")
@@ -102,12 +102,12 @@ def inst_resolver():
 class TestEdgeContract:
     def test_contract_module_is_single_source(self):
         """DATA/CONTROL/STRUCTURAL 三集合必须存在且互斥。"""
-        from trace.core.graph.contracts import (
+        from sv_query.trace.core.graph.contracts import (
             CONTROL_EDGE_KINDS,
             DATA_EDGE_KINDS,
             STRUCTURAL_EDGE_KINDS,
         )
-        from trace.core.graph.models import EdgeKind
+        from sv_query.trace.core.graph.models import EdgeKind
 
         assert DATA_EDGE_KINDS == {EdgeKind.DRIVER, EdgeKind.CONNECTION}
         assert EdgeKind.CLOCK in CONTROL_EDGE_KINDS
@@ -130,8 +130,8 @@ class TestEdgeContract:
         pattern = re.compile(r"""["']DRIVER["']\s*,\s*["']CONNECTION["']""")
         for rel in ("src/cli/core/semantic/paths.py",
                     "src/cli/core/semantic/verify.py",
-                    "src/trace/core/graph/dataflow.py",
-                    "src/trace/core/module_instance_graph.py"):
+                    "src/sv_query/trace/core/graph/dataflow.py",
+                    "src/sv_query/trace/core/module_instance_graph.py"):
             text = (PROJECT_ROOT / rel).read_text()
             if pattern.search(text):
                 offenders.append(rel)
@@ -139,8 +139,8 @@ class TestEdgeContract:
 
     def test_is_data_edge_classifier(self):
         """classifier 按 kind 判定, 不按名字字符串。"""
-        from trace.core.graph.contracts import has_data_edge, is_data_edge
-        from trace.core.graph.models import EdgeKind
+        from sv_query.trace.core.graph.contracts import has_data_edge, is_data_edge
+        from sv_query.trace.core.graph.models import EdgeKind
 
         class _E:
             def __init__(self, kind):
@@ -248,7 +248,7 @@ class TestClockIsNotADataPath:
 
         这是本文件的核心不变式 —— 契约 §2.2 要求三者共用同一 edge 策略。
         """
-        from trace.core.graph.dataflow import DataFlowGraph
+        from sv_query.trace.core.graph.dataflow import DataFlowGraph
 
         dfg = DataFlowGraph(tracer.get_graph(), tracer.get_module_graph())
         got_path = resolver.find_path(CLOCK_SRC, CLOCK_DST, directed=True) is not None
@@ -270,7 +270,7 @@ class TestBitSelectIsExpansionNotSegment:
 
     @pytest.fixture(scope="class")
     def bus_tracer(self):
-        from trace.unified_tracer import UnifiedTracer
+        from sv_query.trace.unified_tracer import UnifiedTracer
 
         src = """module leaf (input a, output y);
   assign y = a;
@@ -288,7 +288,7 @@ endmodule
 
     def test_bus_query_aggregates_all_entries(self, bus_tracer):
         """总线查询仍聚合全部 entry (位展开没坏)。"""
-        from trace.core.graph.dataflow import DataFlowGraph
+        from sv_query.trace.core.graph.dataflow import DataFlowGraph
 
         dfg = DataFlowGraph(bus_tracer.get_graph(),
                             getattr(bus_tracer, "_module_graph", None))
@@ -297,8 +297,8 @@ endmodule
 
     def test_segments_are_data_edges_only(self, bus_tracer):
         """每条 segment 的边必须是 DRIVER / CONNECTION (不是 BIT_SELECT)。"""
-        from trace.core.graph.contracts import is_data_edge
-        from trace.core.graph.dataflow import DataFlowGraph
+        from sv_query.trace.core.graph.contracts import is_data_edge
+        from sv_query.trace.core.graph.dataflow import DataFlowGraph
 
         graph = bus_tracer.get_graph()
         dfg = DataFlowGraph(graph, getattr(bus_tracer, "_module_graph", None))
@@ -384,14 +384,14 @@ class TestBoundedEnumeration:
         用一张**合成大图** (不依赖外部 snapshot, 保证可复现):
         构造一个宽度 × 深度的链 + 大量 CLOCK 边, 无向枚举必然爆炸。
         """
-        from trace.core.graph.models import (
+        from sv_query.trace.core.graph.models import (
             EdgeKind,
             NodeKind,
             SignalGraph,
             TraceEdge,
             TraceNode,
         )
-        from trace.core.module_instance_graph import ModuleInstanceGraph, PathResolver
+        from sv_query.trace.core.module_instance_graph import ModuleInstanceGraph, PathResolver
 
         g = SignalGraph()
         n = 400
@@ -440,7 +440,7 @@ class TestMutation:
     @staticmethod
     def _guard_asserts_dataflow_unreachable(tracer) -> None:
         """guard 断言: dataflow 对 CLOCK 对必须 not reachable。"""
-        from trace.core.graph import dataflow
+        from sv_query.trace.core.graph import dataflow
 
         dfg = dataflow.DataFlowGraph(tracer.get_graph(), tracer.get_module_graph())
         dfg._data_graph_cache = None
@@ -449,7 +449,7 @@ class TestMutation:
 
     def test_mutation_relaxes_data_edge_kinds_turns_guard_red(self, resolver, monkeypatch):
         """mutation: 数据边集合被放宽 → PathResolver 的 guard 必须变红。"""
-        from trace.core.graph import contracts
+        from sv_query.trace.core.graph import contracts
 
         monkeypatch.setattr(
             contracts, "DATA_EDGE_KINDS",
@@ -461,7 +461,7 @@ class TestMutation:
 
     def test_mutation_relaxes_data_edge_kinds_turns_dataflow_guard_red(self, tracer, monkeypatch):
         """mutation: 数据边集合被放宽 → dataflow 的 guard 必须变红。"""
-        from trace.core.graph import contracts
+        from sv_query.trace.core.graph import contracts
 
         monkeypatch.setattr(
             contracts, "DATA_EDGE_KINDS",
@@ -476,7 +476,7 @@ class TestMutation:
         把 `max_expansions` 变成无穷大 (等价于"没有预算的实现"),
         此时 `truncated` 不再为 True → guard 断言失败。
         """
-        from trace.core.module_instance_graph import PathResolver
+        from sv_query.trace.core.module_instance_graph import PathResolver
 
         original = PathResolver.find_all_paths_detailed
 

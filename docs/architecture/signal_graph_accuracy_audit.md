@@ -97,9 +97,9 @@
 - `target=None`: 365 节点 (auto 后 542), rotator 实例内部信号整块缺失
   (auto 后出现 `cordic.genblk1[0].U.x_shifter.D` 等实例路径节点)
 **源码位置**:
-- `src/trace/core/graph_builder.py:68` — `_configure_instance_paths` 仅在
+- `src/sv_query/trace/core/graph_builder.py:68` — `_configure_instance_paths` 仅在
   `if self.target_module:` 下跑; None 时 driver 无实例路径
-- `src/trace/core/driver_extractor.py:1287` — `if self._instance_paths:` 为假 →
+- `src/sv_query/trace/core/driver_extractor.py:1287` — `if self._instance_paths:` 为假 →
   else 旧路径按模块类型名提取 (generate 内实例从不作为 (path,module) 处理)
 **触发**: CLI `visualize dataflow` 不传 `--module` (默认 None,
 `src/cli/view/visualize.py:260`)、或任何 API 调用不设 target。
@@ -124,7 +124,7 @@
 - `top.y[0..3]` 位驱动全空; `top.u_sub.y ← {u_sub.a, u_sub.y(自环)}`; 只有
   `('top.u_sub.y','top.y')` 总线级 CONNECTION, 无位级 CONNECTION/DRIVER
 **源码位置**:
-- `src/trace/core/connection_extractor.py:567-577` (边2) — instance port →
+- `src/sv_query/trace/core/connection_extractor.py:567-577` (边2) — instance port →
   parent wire 只按**总线名** (inst_port_id/parent_signal 是 `...y` 非 `...y[3]`),
   不做位展开
 - 位级查询依赖 bit nodes 的 BIT_SELECT + DRIVER, 跨实例位→位无桥

@@ -9,8 +9,8 @@
 
 def test_classify_node_handles_2tuple_width():
     """正常 2-tuple 不受影响"""
-    from trace.core.graph.analyzer.signal_classifier import SignalClass, _classify_node
-    from trace.core.graph.models import NodeKind, TraceNode
+    from sv_query.trace.core.graph.analyzer.signal_classifier import SignalClass, _classify_node
+    from sv_query.trace.core.graph.models import NodeKind, TraceNode
 
     node = TraceNode(
         id="test", name="data", module="m", kind=NodeKind.SIGNAL,
@@ -22,8 +22,8 @@ def test_classify_node_handles_2tuple_width():
 
 def test_classify_node_handles_3tuple_width():
     """[Bug-fix] 3-tuple 不应崩"""
-    from trace.core.graph.analyzer.signal_classifier import SignalClass, _classify_node
-    from trace.core.graph.models import NodeKind, TraceNode
+    from sv_query.trace.core.graph.analyzer.signal_classifier import SignalClass, _classify_node
+    from sv_query.trace.core.graph.models import NodeKind, TraceNode
 
     node = TraceNode(
         id="test", name="tl_o", module="sram2tlul", kind=NodeKind.SIGNAL,
@@ -36,8 +36,8 @@ def test_classify_node_handles_3tuple_width():
 
 def test_classify_node_handles_empty_width():
     """空 tuple 也不应崩"""
-    from trace.core.graph.analyzer.signal_classifier import SignalClass, _classify_node
-    from trace.core.graph.models import NodeKind, TraceNode
+    from sv_query.trace.core.graph.analyzer.signal_classifier import SignalClass, _classify_node
+    from sv_query.trace.core.graph.models import NodeKind, TraceNode
 
     node = TraceNode(
         id="test", name="x", module="m", kind=NodeKind.SIGNAL,
@@ -49,8 +49,8 @@ def test_classify_node_handles_empty_width():
 
 def test_classify_node_handles_non_tuple_width():
     """非 tuple 也不应崩"""
-    from trace.core.graph.analyzer.signal_classifier import SignalClass, _classify_node
-    from trace.core.graph.models import NodeKind, TraceNode
+    from sv_query.trace.core.graph.analyzer.signal_classifier import SignalClass, _classify_node
+    from sv_query.trace.core.graph.models import NodeKind, TraceNode
 
     node = TraceNode(
         id="test", name="x", module="m", kind=NodeKind.SIGNAL,

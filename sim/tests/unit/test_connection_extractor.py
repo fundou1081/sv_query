@@ -19,10 +19,10 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.core.compiler import SVCompiler
-from trace.core.connection_extractor import ConnectionExtractor
-from trace.core.graph.models import EdgeKind
-from trace.core.semantic_adapter import SemanticAdapter
+from sv_query.trace.core.compiler import SVCompiler
+from sv_query.trace.core.connection_extractor import ConnectionExtractor
+from sv_query.trace.core.graph.models import EdgeKind
+from sv_query.trace.core.semantic_adapter import SemanticAdapter
 
 
 def _extract(source, root_module='top'):

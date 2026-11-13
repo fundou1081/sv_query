@@ -23,7 +23,7 @@ import logging
 
 from .._safe import safe_attr, safe_str  # [iter_184]
 
-from trace.core.semantic_adapter import SemanticAdapter
+from sv_query.trace.core.semantic_adapter import SemanticAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +132,7 @@ class BitSelectHandler:
 
                             # 确保节点存在
                             if full_name not in self.graph.nodes():
-                                from trace.core.graph.models import NodeKind, TraceNode
+                                from sv_query.trace.core.graph.models import NodeKind, TraceNode
 
                                 node = TraceNode(
                                     id=full_name,
@@ -277,7 +277,7 @@ class BitSelectHandler:
 
                         # 确保 bit select 节点存在
                         if bit_select_id not in self.graph.nodes():
-                            from trace.core.graph.models import NodeKind, TraceNode
+                            from sv_query.trace.core.graph.models import NodeKind, TraceNode
 
                             node = TraceNode(
                                 id=bit_select_id,
@@ -296,7 +296,7 @@ class BitSelectHandler:
                         # 创建 BIT_SELECT 边
                         existing_edge = self.graph.get_edge(bit_select_id, parent_id)
                         if not existing_edge:
-                            from trace.core.graph.models import EdgeKind, TraceEdge
+                            from sv_query.trace.core.graph.models import EdgeKind, TraceEdge
 
                             edge = TraceEdge(
                                 src=bit_select_id,
@@ -408,8 +408,8 @@ class BitSelectHandler:
         regex 实现的行为 —— 原正则要求 `(\\d+):(\\d+)` 冒号形式, 从不匹配单下标,
         这是**刻意保留的语义**, 不是遗漏 (见类 docstring: 数组下标不是位选)。
         """
-        from trace.core.extractors._common import iter_bit_selects
-        from trace.core.graph.models import EdgeKind, NodeKind, TraceEdge, TraceNode
+        from sv_query.trace.core.extractors._common import iter_bit_selects
+        from sv_query.trace.core.graph.models import EdgeKind, NodeKind, TraceEdge, TraceNode
 
         pyslang_root = self._get_pyslang_root()
 

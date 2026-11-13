@@ -7,8 +7,8 @@ Verifies:
 - depth limits work
 """
 
-from trace.core.graph.models import NodeKind, SignalGraph, TraceNode
-from trace.core.module_extractor import (
+from sv_query.trace.core.graph.models import NodeKind, SignalGraph, TraceNode
+from sv_query.trace.core.module_extractor import (
     ModuleExtraction,
     extract_module_from_graph,
     truncate_instance_id,

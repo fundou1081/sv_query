@@ -22,7 +22,7 @@ from .graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
 logger = logging.getLogger(__name__)
 
 # [P1 cycle 9] ExtractorResult 移到了 extractor_models.py
-# 这里 re-export 保持向后兼容 (from trace.core.graph_builder import ExtractorResult)
+# 这里 re-export 保持向后兼容 (from sv_query.trace.core.graph_builder import ExtractorResult)
 __all__ = [
     "ExtractorResult",
     "GraphBuilder",
@@ -952,7 +952,7 @@ class GraphBuilder:
         brackets = _re.compile(r"\[([^\]]*)\]")
         hier = _re.compile(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+")
         ident = _re.compile(r"[A-Za-z_]\w*")
-        # [P158.1] edge 分类的唯一实现是 trace.core.graph.contracts。
+        # [P158.1] edge 分类的唯一实现是 sv_query.trace.core.graph.contracts。
         # 动态值传播 = 数据边 + 控制边 (时钟/复位 → 下游时序行为运行期决定)。
         data_kinds = {k.name for k in DATA_EDGE_KINDS}
         control_kinds = {k.name for k in CONTROL_EDGE_KINDS}
@@ -1598,7 +1598,7 @@ class GraphBuilder:
         - 设 RangeSelect 4 属性 (bit_range / parent_bit_start / parent_bit_end / width)
         - ElementSelect 只创 BIT_SELECT 边, 不设 4 属性 (跟路径 A 一致)
         """
-        from trace.core.extractors._common import iter_bit_selects, BitSelectHit
+        from sv_query.trace.core.extractors._common import iter_bit_selects, BitSelectHit
 
         # [G3 Option 3 2026-08-28] target_module 为空时 (trace_signal 内部 build_graph 无 target),
         # 用首个 top instance 的实际名字当前缀, 跟 DriverExtractor 的 top.out[0] 前缀一致.
@@ -1783,7 +1783,7 @@ class GraphBuilder:
         双向线本质: 两侧都建会让 fanin(端口成员) 把无驱动的 interface 线当
         假源 (实测 [a, bf.addr, u_w.a]); 按"谁驱动谁"单向建模与普通端口一致。
         """
-        from trace.core.graph.models import EdgeKind, TraceEdge
+        from sv_query.trace.core.graph.models import EdgeKind, TraceEdge
 
         links = getattr(self.graph, "_interface_links", [])
         for (inst_path, port_name, _iface_name, members, parent_prefix) in links:
@@ -1804,7 +1804,7 @@ class GraphBuilder:
                 if parent_member_id not in self.graph._node_data:
                     # 占位: 未出现的 interface 实例成员 (顶层未引用) 也建,
                     # 让桥稳定存在 (只读方 fanin 需要目标节点)
-                    from trace.core.graph.models import NodeKind, TraceNode
+                    from sv_query.trace.core.graph.models import NodeKind, TraceNode
                     # [iter_285 / PLAN P2.1] TraceNode.width 是必填; 这里原先漏传 →
                     # 带 interface 的设计直接 TypeError 崩溃 (P2.1 边缘回归暴露)。
                     # 位宽优先沿用实例侧成员, 退化时用 (0, 0) sentinel。
@@ -1920,7 +1920,7 @@ class GraphBuilder:
                     continue
 
                 # 创建 placeholder 节点
-                from trace.core.graph.models import NodeKind, TraceNode
+                from sv_query.trace.core.graph.models import NodeKind, TraceNode
 
                 placeholder = TraceNode(
                     id=node_id, name=signal_name, module=module_name, kind=NodeKind.SIGNAL, width=(0, 0)

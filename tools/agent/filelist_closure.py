@@ -199,7 +199,7 @@ class Closure:
     def prune(self, top: str) -> None:
         """Use the existing top-reachable pruner; candidate, not a proof."""
         import importlib.util
-        mod_path = Path(__file__).resolve().parents[2] / "src" / "trace" / "core" / "top_prune.py"
+        mod_path = Path(__file__).resolve().parents[2] / "src" / "sv_query" / "trace" / "core" / "top_prune.py"
         spec = importlib.util.spec_from_file_location("_svq_top_prune", mod_path)
         mod = importlib.util.module_from_spec(spec)
         import sys as _sys

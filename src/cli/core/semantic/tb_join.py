@@ -13,7 +13,7 @@ import typer
 from cli._common import _build_tracer
 from cli._output import emit_json
 from cli.core.semantic.trace_common import _load_tracer_from_snapshot
-from trace.core.compiler import CompilationError
+from sv_query.trace.core.compiler import CompilationError
 from cli._common import handle_compilation_error
 from cli.core.semantic.constraints import constraint_dict
 

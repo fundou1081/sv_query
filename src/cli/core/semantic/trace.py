@@ -14,7 +14,7 @@ from pathlib import Path
 
 import typer
 
-# 添加 src 到 path 以便 import trace
+# 添加 src 到 path 以便 import sv_query.trace
 from cli._paths import ensure_on_path, PROJECT_ROOT  # noqa: E402
 ensure_on_path(PROJECT_ROOT)
 
@@ -31,10 +31,10 @@ from cli._evidence_helpers import (
 from cli._evidence_helpers import (
     format_fanout_human as _format_fanout_human,
 )
-from trace.core.covergroup_extractor import CovergroupExtractor
-from trace.core.graph.models import EdgeKind
-from trace.core.sva_extractor import SVAExtractor
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.core.covergroup_extractor import CovergroupExtractor
+from sv_query.trace.core.graph.models import EdgeKind
+from sv_query.trace.core.sva_extractor import SVAExtractor
+from sv_query.trace.unified_tracer import UnifiedTracer
 import logging
 from cli._common import _build_pruned_tracer
 from cli._output import emit_json
@@ -518,7 +518,7 @@ def fanin(
                 total_pre_filter += drivers_pre
             except Exception as sig_err:
                 # [A3 2026-07-04] Per-signal failure → record error, continue with others
-                from src.cli.errors import code_for_exception, make_error
+                from cli.errors import code_for_exception, make_error
                 err_data = make_error(
                     code_for_exception(sig_err), str(sig_err), command="trace_fanin",
                 )
@@ -626,7 +626,7 @@ def fanin(
 
     except Exception as e:
         # [Phase 2 B2 2026-06-28] LLM-friendly error with stable code
-        from src.cli.errors import code_for_exception, make_error
+        from cli.errors import code_for_exception, make_error
         data = make_error(code_for_exception(e), str(e), command="trace_fanin")
         if json_output:
             emit_json(data)
@@ -808,7 +808,7 @@ def fanout(
                 total_pre_filter += loads_pre
             except Exception as sig_err:
                 # [A3 2026-07-04] Per-signal failure → record error, continue
-                from src.cli.errors import code_for_exception, make_error
+                from cli.errors import code_for_exception, make_error
                 err_data = make_error(
                     code_for_exception(sig_err), str(sig_err), command="trace_fanout",
                 )
@@ -913,7 +913,7 @@ def fanout(
 
     except Exception as e:
         # [Phase 2 B2 2026-06-28] LLM-friendly error with stable code
-        from src.cli.errors import code_for_exception, make_error
+        from cli.errors import code_for_exception, make_error
         data = make_error(
             code_for_exception(e),
             str(e),
@@ -1074,7 +1074,7 @@ def impact(
                 total_high_risk_all += high_risk_count
             except Exception as sig_err:
                 # [A3 2026-07-04] Per-signal failure → record error, continue
-                from src.cli.errors import code_for_exception, make_error
+                from cli.errors import code_for_exception, make_error
                 err_data = make_error(
                     code_for_exception(sig_err), str(sig_err), command="trace_impact",
                 )

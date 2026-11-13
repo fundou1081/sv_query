@@ -14,7 +14,7 @@ import typer
 from cli._common import _build_tracer, handle_compilation_error
 from cli._output import emit_json
 from cli.core.semantic.trace_common import resolve_signal
-from trace.core.compiler import CompilationError
+from sv_query.trace.core.compiler import CompilationError
 
 
 def constraint_dict(info, graph=None, *, id_key: str = "block") -> dict:
@@ -147,7 +147,7 @@ def _neighborhood_error(exc: Exception, json_output: bool, pretty: bool) -> None
 
 def _run_neighborhood(property: str, file, filelist, max_depth: int,
                       max_nodes: int) -> dict:
-    from trace.core.query.constraint import ConstraintTracer
+    from sv_query.trace.core.query.constraint import ConstraintTracer
 
     if max_depth < 1 or max_nodes < 1:
         raise ValueError("--max-depth and --max-nodes must be >= 1")
@@ -209,7 +209,7 @@ def constraint_neighborhood_cmd(
 
 def _run_constraint_chain(source: str, target: str, file, filelist,
                           max_depth: int, max_nodes: int) -> dict:
-    from trace.core.query.constraint import ConstraintTracer
+    from sv_query.trace.core.query.constraint import ConstraintTracer
 
     if max_depth < 1 or max_nodes < 1:
         raise ValueError("--max-depth and --max-nodes must be >= 1")

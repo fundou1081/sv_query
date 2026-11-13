@@ -22,7 +22,7 @@ sys.path.insert(0, str(_REPO_ROOT / "src"))
 
 import unittest  # noqa: E402
 
-from trace.unified_tracer import UnifiedTracer  # noqa: E402
+from sv_query.trace.unified_tracer import UnifiedTracer  # noqa: E402
 
 FIXTURE_DIR = _REPO_ROOT / "sim" / "tests" / "fixtures" / "golden_mini"
 
@@ -326,7 +326,7 @@ endmodule
         """同名 class 跨文件: 冲突告警 + 首定义保留 (D5 禁止静默)."""
         import io
         import logging
-        from trace.unified_tracer import UnifiedTracer as UT
+        from sv_query.trace.unified_tracer import UnifiedTracer as UT
         src2 = '''class packet;
   bit [15:0] b;
 endclass

@@ -18,7 +18,7 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_REPO_ROOT / "src"))
 
-from trace.core.cache.ast_cache import (  # noqa: E402
+from sv_query.trace.core.cache.ast_cache import (  # noqa: E402
     ENV_CACHE_DIR,
     ASTCache,
     resolve_cache_dir,
@@ -91,7 +91,7 @@ class TestCacheGracefulDegradation(unittest.TestCase):
         self.addCleanup(_restore)
 
     def test_construction_does_not_raise_and_disables_disk(self):
-        with self.assertLogs("trace.core.cache.ast_cache", level="WARNING") as cm:
+        with self.assertLogs("sv_query.trace.core.cache.ast_cache", level="WARNING") as cm:
             c = ASTCache(cache_dir=str(self.unwritable))
         self.assertFalse(c.enabled, "不可写目录 → 磁盘缓存应关闭")
         self.assertTrue(any(ENV_CACHE_DIR in m for m in cm.output),
@@ -110,7 +110,7 @@ class TestCacheGracefulDegradation(unittest.TestCase):
         """运行中变不可写 (目录被删/权限变更) → warning 一次, 不刷屏"""
         c = ASTCache(cache_dir=str(self.unwritable))
         self.assertFalse(c.enabled)  # 构造即降级
-        with self.assertNoLogs("trace.core.cache.ast_cache", level="WARNING"):
+        with self.assertNoLogs("sv_query.trace.core.cache.ast_cache", level="WARNING"):
             c.put_by_key("k1", {"x": 1})
             c.put_by_key("k2", {"x": 2})  # 降级后不重复 warning
 
@@ -166,7 +166,7 @@ class TestSnapshotDirResolution(unittest.TestCase):
     """[iter_239 1b] 快照目录: 显式 > SVQ_SNAPSHOT_DIR > <cache_dir>/snapshots"""
 
     def setUp(self):
-        from trace.core.snapshot_manager import ENV_SNAPSHOT_DIR
+        from sv_query.trace.core.snapshot_manager import ENV_SNAPSHOT_DIR
         self.ENV_SNAPSHOT_DIR = ENV_SNAPSHOT_DIR
         self._saved = {k: os.environ.get(k) for k in (ENV_SNAPSHOT_DIR, ENV_CACHE_DIR)}
         for k in (ENV_SNAPSHOT_DIR, ENV_CACHE_DIR):
@@ -183,32 +183,32 @@ class TestSnapshotDirResolution(unittest.TestCase):
                 os.environ[k] = v
 
     def test_default_is_under_cache_dir(self):
-        from trace.core.snapshot_manager import resolve_snapshot_dir
+        from sv_query.trace.core.snapshot_manager import resolve_snapshot_dir
 
         self.assertEqual(resolve_snapshot_dir(), resolve_cache_dir() / "snapshots")
 
     def test_env_override(self):
-        from trace.core.snapshot_manager import SnapshotManager, resolve_snapshot_dir
+        from sv_query.trace.core.snapshot_manager import SnapshotManager, resolve_snapshot_dir
 
         os.environ[self.ENV_SNAPSHOT_DIR] = self.tmp.name
         self.assertEqual(resolve_snapshot_dir(), Path(self.tmp.name))
         self.assertEqual(SnapshotManager().base_dir, Path(self.tmp.name))
 
     def test_env_follows_cache_dir(self):
-        from trace.core.snapshot_manager import resolve_snapshot_dir
+        from sv_query.trace.core.snapshot_manager import resolve_snapshot_dir
 
         os.environ[ENV_CACHE_DIR] = self.tmp.name
         self.assertEqual(resolve_snapshot_dir(), Path(self.tmp.name) / "snapshots")
 
     def test_explicit_beats_env(self):
-        from trace.core.snapshot_manager import resolve_snapshot_dir
+        from sv_query.trace.core.snapshot_manager import resolve_snapshot_dir
 
         os.environ[self.ENV_SNAPSHOT_DIR] = self.tmp.name
         self.assertEqual(resolve_snapshot_dir("/tmp/explicit_snap"), Path("/tmp/explicit_snap"))
 
     def test_unwritable_dir_gives_actionable_error(self):
         """受限环境 (沙箱/只读 home) 下要报可操作的错, 而不是裸 Errno。"""
-        from trace.core.snapshot_manager import SnapshotManager
+        from sv_query.trace.core.snapshot_manager import SnapshotManager
 
         blocker = Path(self.tmp.name) / "afile"
         blocker.write_text("not a dir")

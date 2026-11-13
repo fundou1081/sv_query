@@ -15,8 +15,8 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO / "src"))
 
-from trace.core.graph.models import SignalGraph  # noqa: E402
-from trace.unified_tracer import UnifiedTracer  # noqa: E402
+from sv_query.trace.core.graph.models import SignalGraph  # noqa: E402
+from sv_query.trace.unified_tracer import UnifiedTracer  # noqa: E402
 
 SRC = """
 typedef struct packed { logic [3:0] a; logic [3:0] b; } pkt_t;

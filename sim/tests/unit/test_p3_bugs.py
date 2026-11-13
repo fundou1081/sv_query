@@ -26,8 +26,8 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.core.graph.models import EdgeKind
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.core.graph.models import EdgeKind
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 # [P158.12] 外部 corpus 根: 环境变量可覆盖, 缺失时显式 skip (不假失败)
 OPENRTL_ROOT = Path(os.environ.get("SVQ_OPENRTL_ROOT",

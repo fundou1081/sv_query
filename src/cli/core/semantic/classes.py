@@ -16,7 +16,7 @@ from pathlib import Path
 import typer
 
 from cli.core.semantic._common import build_tracer, emit, fail, node_dict
-from trace.core.query.uvm import uvm_class_info
+from sv_query.trace.core.query.uvm import uvm_class_info
 
 _CALL_KW = {"if", "for", "while", "case", "return", "sizeof", "new", "function", "task"}
 

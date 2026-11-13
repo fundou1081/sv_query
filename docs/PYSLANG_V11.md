@@ -34,7 +34,7 @@ pyslang 11.0 (2026-05-15 发布) 引入了两个层面的 breaking changes:
 
 ## 3. v11 alias bridge (替代 compat shim 的机制)
 
-[位置: `src/trace/__init__.py` 顶部 ~25 行]
+[位置: `src/sv_query/trace/__init__.py` 顶部 ~25 行]
 
 **问题**: v11 把几乎所有 AST 类型搬到子模块, 但业务代码常用 `pyslang.X` 顶层形式:
 ```python
@@ -67,13 +67,13 @@ _pyslang.__getattr__ = _pyslang_getattr
 
 ## 4. ast_utils.py (helper 迁移目的地)
 
-[位置: `src/trace/core/ast_utils.py` 末尾]
+[位置: `src/sv_query/trace/core/ast_utils.py` 末尾]
 
 `is_syntax_list` / `iter_syntax_list` 从原 `_pyslang_compat.py` 迁过来, 简化 v11-only 实现:
 - `is_syntax_list(node)`: `isinstance(node, list)` 或 `kind` 含 `SeparatedList` / `SyntaxList`
 - `iter_syntax_list(node)`: 直接 `list(node)`
 
-调用方 (`semantic_adapter.py` 8 处 + `base.py` 2 处) 改 `from trace.core.ast_utils import is_syntax_list, iter_syntax_list`。
+调用方 (`semantic_adapter.py` 8 处 + `base.py` 2 处) 改 `from sv_query.sv_query.trace.core.ast_utils import is_syntax_list, iter_syntax_list`。
 
 ## 5. 测试覆盖
 

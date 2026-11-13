@@ -13,8 +13,8 @@ import typer
 
 from cli._common import _build_tracer, handle_compilation_error
 from cli._output import emit_json
-from trace.core.compiler import CompilationError
-from trace.core.query.architecture import (
+from sv_query.trace.core.compiler import CompilationError
+from sv_query.trace.core.query.architecture import (
     build_architecture, build_architecture_from_graph, to_dot,
 )
 

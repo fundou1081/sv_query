@@ -24,10 +24,10 @@ def test_repo_semantic_regex_clean():
 
 def test_checker_detects_non_uvm_regex():
     text = "import re\n\ndef f(x):\n    return re.search('a', x)\n"
-    bad = csr.scan_text(text, "src/trace/core/class_graph_builder.py")
+    bad = csr.scan_text(text, "src/sv_query/trace/core/class_graph_builder.py")
     assert {v["kind"] for v in bad} >= {"import_re", "re.search"}
 
 
 def test_checker_allows_uvm_macro_regex():
     text = "import re\n\n_RE = re.compile(r'`uvm_object_utils')\n"
-    assert csr.scan_text(text, "src/trace/core/query/uvm.py") == []
+    assert csr.scan_text(text, "src/sv_query/trace/core/query/uvm.py") == []

@@ -169,7 +169,7 @@ svq:    48/48
 ## Python API
 
 ```python
-from trace.unified_tracer import UnifiedTracer
+from sv_query.sv_query.trace.unified_tracer import UnifiedTracer
 
 tracer = UnifiedTracer(sources={"top.sv": src})
 tracer.build_graph()
@@ -187,7 +187,7 @@ for d in drivers:
 
 ```
 sv_query/
-├── src/trace/              # 核心图/追踪/校验
+├── src/sv_query/trace/              # 核心图/追踪/校验
 │   ├── unified_tracer.py   # 统一入口
 │   ├── core/
 │   │   ├── graph/          # SignalGraph / models / analyzer

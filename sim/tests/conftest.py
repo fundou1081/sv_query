@@ -18,7 +18,7 @@ from pathlib import Path
 
 # [FIX 2026-07-30] sys.path MUST be set at module-level (not inside
 # pytest_configure hook) so it takes effect before test file collection.
-# Python stdlib has a "trace" module that shadows src/trace/.
+# Python stdlib has a "trace" module that shadows src/sv_query/trace/.
 _PKG_ROOT = Path(__file__).resolve().parents[2]  # sv_query root
 _src = str(_PKG_ROOT / "src")
 _tools = str(_PKG_ROOT / "tools")
@@ -87,7 +87,7 @@ import pytest  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def _restore_trace_log_levels():
-    """每个测试前后快照并恢复 `trace` / `trace.core` 的 logger 级别。
+    """每个测试前后快照并恢复 `trace` / `sv_query.trace.core` 的 logger 级别。
 
     背景: `UnifiedTracer.set_log_level()` 会改**模块级 logger** 的级别
     (`_root_logger.setLevel`)。某些测试用 `--log-level ERROR` 跑完之后不复位,
@@ -97,7 +97,7 @@ def _restore_trace_log_levels():
     """
     import logging
 
-    names = ("trace", "trace.core")
+    names = ("trace", "sv_query.trace.core")
     baseline = logging.WARNING      # 项目默认 (unified_tracer 的 _default_log_level)
 
     def _reset() -> None:

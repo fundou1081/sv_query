@@ -172,7 +172,7 @@ class DataFlowGraph:
         data 边; CLOCK / RESET 只能作为时序注解, 不能成为路径节点,
         BIT_SELECT 只能作为**位展开** (端点归一化), 不能是路径的一段。
 
-        edge 分类的唯一实现: `trace.core.graph.contracts.data_edge_view`。
+        edge 分类的唯一实现: `sv_query.trace.core.graph.contracts.data_edge_view`。
         """
         if self._data_graph_cache is None:
             self._data_graph_cache = data_edge_view(self.signal_graph)
@@ -217,7 +217,7 @@ class DataFlowGraph:
     def _first_data_edge(self, src: str, dst: str):
         """取 (src, dst) 之间优先级最高的**数据边** (DRIVER / CONNECTION)。
 
-        [P158.1] edge 分类的唯一实现是 `trace.core.graph.contracts`。
+        [P158.1] edge 分类的唯一实现是 `sv_query.trace.core.graph.contracts`。
         非数据边 (CLOCK / RESET / BIT_SELECT / MEMBER_SELECT) 返回 None ——
         它们不是数据驱动关系。
         """
@@ -583,7 +583,7 @@ class DataFlowGraph:
         # CLOCK / RESET / BIT_SELECT / MEMBER_SELECT 不得成为数据路径的段。
         # BIT_SELECT 仍然用于**位展开** (端点归一化), 但那在下面用 full_graph 做,
         # 不是路径上的一段。
-        # edge 契约的唯一实现: trace.core.graph.contracts
+        # edge 契约的唯一实现: sv_query.trace.core.graph.contracts
         nx_graph = self._data_graph()
         # full_graph 仍用于查边属性 (BIT_SELECT 亲子关系 / struct 成员识别)
         _full = full_graph

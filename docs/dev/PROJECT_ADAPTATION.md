@@ -14,7 +14,7 @@
 ```
 
 具体项目的命名、FIFO 实现、接口封装不属于 core 语义。
-把 `prim_fifo_sync` / `i2c_fifos` 之类的名字写进 `src/trace` 会导致：
+把 `prim_fifo_sync` / `i2c_fifos` 之类的名字写进 `src/sv_query/trace` 会导致：
 
 - core 被单项目“调参”；
 - 其他项目误判；
@@ -24,7 +24,7 @@
 ## 2. 规则
 
 1. **项目名不进 core 自动推断**  
-   `src/trace` 不得以 `i2c` / `uart` / `prim_fifo` 等具体名字建立隐式边。
+   `src/sv_query/trace` 不得以 `i2c` / `uart` / `prim_fifo` 等具体名字建立隐式边。
 
 2. **需要适配时，用显式 adapter**  
    adapter 在 `examples/project_adaptations/<project>/` 或独立仓库；

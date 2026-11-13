@@ -16,8 +16,8 @@ from cli.core.semantic.trace_lookup import _build_aliases, _collect_paths, _look
 from cli.core.semantic.trace_profile import (
     _build_stage_index, _build_type_lookup, _profile_signal,
 )
-from trace.core.compiler import CompilationError
-from trace.core.trace_evidence import TraceEvidenceResolver
+from sv_query.trace.core.compiler import CompilationError
+from sv_query.trace.core.trace_evidence import TraceEvidenceResolver
 
 
 def manifest(

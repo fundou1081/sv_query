@@ -22,7 +22,7 @@ class TestNoDirectTraceEdgeInDriverExtractor(unittest.TestCase):
 
         path = os.path.join(
             os.path.dirname(__file__),
-            '..', '..', '..', 'src', 'trace', 'core', 'driver_extractor.py'
+            '..', '..', '..', 'src', 'sv_query', 'trace', 'core', 'driver_extractor.py'
         )
         with open(path) as f:
             content = f.read()
@@ -67,7 +67,7 @@ class TestNoDirectTraceEdgeInDriverExtractor(unittest.TestCase):
         """self._append_edge 必须存在"""
         path = os.path.join(
             os.path.dirname(__file__),
-            '..', '..', '..', 'src', 'trace', 'core', 'driver_extractor.py'
+            '..', '..', '..', 'src', 'sv_query', 'trace', 'core', 'driver_extractor.py'
         )
         with open(path) as f:
             content = f.read()

@@ -27,7 +27,7 @@ sys.path.insert(0, str(_REPO_ROOT / "src"))
 
 import pytest  # noqa: E402
 import pyslang  # noqa: E402
-import trace  # noqa: E402,F401  # 触发 alias bridge (pyslang.X → pyslang.ast.X)
+import sv_query.trace  # noqa: E402,F401  # 触发 alias bridge (pyslang.X → pyslang.ast.X)
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -43,7 +43,7 @@ CASE27_PATH = str(_REPO_ROOT / "sim" / "tests" / "fixtures" / "golden_mini"
 # 用法: python3 -c SNIPPET <fixture> <case>; case: prod | acc | missing | i
 _LOOKUPNAME_SNIPPET = r"""import sys
 sys.path.insert(0,"src")
-import trace, pyslang
+import sv_query.trace, pyslang
 C=sys.argv[2]
 src=open(sys.argv[1]).read()
 sm=pyslang.SourceManager(); tree=pyslang.SyntaxTree.fromText(src,sourceManager=sm,name="case27.sv")

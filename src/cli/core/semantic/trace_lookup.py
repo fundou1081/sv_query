@@ -19,7 +19,7 @@ from cli._common import _build_tracer, handle_compilation_error
 from cli._output import emit_json
 logger = logging.getLogger(__name__)
 
-from trace.core.compiler import CompilationError
+from sv_query.trace.core.compiler import CompilationError
 
 
 def _norm_path(p: str) -> str:
