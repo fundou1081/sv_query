@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P62.2 交互式 debug（gate） <待做>
+current item : P171.1 pin pyslang/jsonschema + CI green <进行中>
 
 ## 计划树
 
@@ -522,6 +522,16 @@ P165 arch_eval 评审采纳（2026-11-11，来源 architecture/arch_eval_2026-11
 -- P165.3.5 mutation coverage 20 (multi-driver/generate/wrapper) <已完成>
 -- P165.3.6 multi-driver conflict facts <已完成>
 -- P165.4 filelist 依赖闭包自动化（当前人工整理是真实项目落地最大摩擦；与 P159 E-3 同源） <已完成>
+
+P171 CI / evidence-chain repair (2026-11-13 worker review) <进行中>
+-- P171.1 pin pyslang/jsonschema + CI green <进行中>
+-- P171.2 fixture hermeticity (absolute .f paths + mutation CWD) <待做>
+-- P171.3 verify structural coverage contract <待做>
+-- P171.4 merge fanin/fanout + drivers control opt-in <待做>
+-- P171.5 unexecuted/metric correctness <待做>
+-- P171.6 benchmark fail->fail + mutation gate <待做>
+-- P171.7 timing_risk/clock-reset heuristic labeling <待做>
+-- P171.8 docs/CLAIMS/plan cleanup <待做>
 
 P166 opensource golden calibration after P158.12.4/11.2b <已完成>
 -- P166.1 rebaseline stats/dataflow goldens <已完成>
