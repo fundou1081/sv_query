@@ -24,7 +24,7 @@ sys.path.insert(0, str(_REPO_ROOT / "src"))
 
 import unittest  # noqa: E402
 
-from trace.unified_tracer import UnifiedTracer  # noqa: E402
+from sv_query.trace.unified_tracer import UnifiedTracer  # noqa: E402
 
 FIXTURE_DIR = _REPO_ROOT / "sim" / "tests" / "fixtures" / "golden_mini"
 

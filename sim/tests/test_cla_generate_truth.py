@@ -26,7 +26,7 @@ sys.path.insert(0, str(_REPO_ROOT / "src"))
 
 import unittest  # noqa: E402
 
-from trace.unified_tracer import UnifiedTracer  # noqa: E402
+from sv_query.trace.unified_tracer import UnifiedTracer  # noqa: E402
 
 FIXTURE = _REPO_ROOT / "sim" / "tests" / "fixtures" / "golden_mini" / "golden_dataflow_41_cla_nested_generate.v"
 
@@ -35,9 +35,9 @@ def _build_graph():
     # [iter_113] 必须 target 模式 (instance-path driver): 无 target 时 driver 走
     # type-level 旧路径, generate 实例内部不提取 (cordic truth 亦同 — 其断言
     # 只到 connection 层). CLA truth 断言的是 driver 内部逻辑 → target 必须.
-    from trace.core.compiler import SVCompiler  # noqa: E402
-    from trace.core.graph_builder import GraphBuilder  # noqa: E402
-    from trace.core.semantic_adapter import SemanticAdapter  # noqa: E402
+    from sv_query.trace.core.compiler import SVCompiler  # noqa: E402
+    from sv_query.trace.core.graph_builder import GraphBuilder  # noqa: E402
+    from sv_query.trace.core.semantic_adapter import SemanticAdapter  # noqa: E402
     comp = SVCompiler({str(FIXTURE): FIXTURE.read_text()})
     adapter = SemanticAdapter(comp.get_root(), target_module="carry_lookahead_adder")
     return GraphBuilder(adapter, target_module="carry_lookahead_adder").build()

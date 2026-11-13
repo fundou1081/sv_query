@@ -18,7 +18,7 @@ SRC = str(PROJECT_ROOT / "src")
 if SRC not in sys.path:
     sys.path.insert(0, SRC)
 
-from trace.unified_tracer import UnifiedTracer  # noqa: E402
+from sv_query.trace.unified_tracer import UnifiedTracer  # noqa: E402
 
 SRC_SV = """
 module leaf(input logic a, output logic y);

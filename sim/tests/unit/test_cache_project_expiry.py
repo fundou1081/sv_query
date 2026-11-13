@@ -22,7 +22,7 @@ import pytest
 REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO / "src"))
 
-from trace.core.cache.ast_cache import (  # noqa: E402
+from sv_query.trace.core.cache.ast_cache import (  # noqa: E402
     CACHE_VERSION,
     DEFAULT_MAX_AGE_DAYS,
     ENV_CACHE_MAX_AGE_DAYS,

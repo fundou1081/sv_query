@@ -11,7 +11,7 @@ remove_strict_in_file.py — 逐文件彻底移除 `strict` (AST 精确区间) [
     形参下标"表判定并精确删除;
   - **函数体裸引用** (删形参后会 NameError) → 把 Load 上下文的 `strict` 替换为 `True`,
     `if strict:` / `if not strict:` 显式改写;
-  - **跳过核心语义层** (`self._strict` 属 `src/trace`, 需单独设计) → 本工具拒绝处理
+  - **跳过核心语义层** (`self._strict` 属 `src/sv_query/trace`, 需单独设计) → 本工具拒绝处理
     含 `self._strict` 的文件, 由调用方显式 `--allow-core` 才处理 (默认拒绝)。
 
 只处理**一个文件**; 调用方负责跑测试 / 全量门禁。

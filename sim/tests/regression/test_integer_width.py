@@ -15,8 +15,8 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO / "src"))
 
-from trace.core.graph.models import SignalGraph  # noqa: E402
-from trace.unified_tracer import UnifiedTracer  # noqa: E402
+from sv_query.trace.core.graph.models import SignalGraph  # noqa: E402
+from sv_query.trace.unified_tracer import UnifiedTracer  # noqa: E402
 
 SRC = """
 module top(input clk, input [7:0] din, output reg [7:0] y);

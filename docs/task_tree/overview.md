@@ -528,3 +528,4 @@ Open-source project visualization is **correct and verified**. Ready for next ta
 | **392** | **2026-11-12** | **L3** | **P158.12.2~12.5 P2 清理 (iter_494)** | 用户: 接着做 | 26 文件硬编码清零（SVQ_OPENRTL_ROOT）；pytest-randomly 入 dev；R-026 恒自环清除 + golden 重捕（A3 冲突裁决支持 R-026）；R-027 异常留行 | canonical 全量 2710/0 独立复核 | **✅ 完成** |
 | **393** | **2026-11-12** | **L3** | **P158.12.6 绿色口径统一 (iter_495)** | 用户: 继续 | report_status.py 7 类状态 + 合并视图；false_confident 分母=answered_n；REPORT_STATUS.md | canonical 2718/0 独立复核 | **✅ 完成** |
 | **394** | **2026-11-12** | **L3** | **P165.3.2 mutation (iter_502)** | 方豆: 继续 | mutation diff + Verilator oracle | 4/4 pilot passed | **✅ 完成** |
+| **395** | **2026-11-13** | **L3** | **P165.2 packaging (iter_503)** | 方豆: 先改 packaging | trace→sv_query.trace; 85 模块/600 imports | wheel/console 实测; 2729/0 | **✅ 完成** |

@@ -25,7 +25,7 @@ SRC = str(PROJECT_ROOT / "src")
 if SRC not in sys.path:
     sys.path.insert(0, SRC)
 
-from trace.unified_tracer import UnifiedTracer  # noqa: E402
+from sv_query.trace.unified_tracer import UnifiedTracer  # noqa: E402
 
 FILELIST = PROJECT_ROOT / "sim/tests/fixtures/minimal_3module/filelist.f"
 
@@ -71,7 +71,7 @@ class TestInstanceScope:
 
     def test_directed_path_agrees_with_dataflow(self, scoped):
         """C: instance_scope 下 paths(directed) 与 dataflow 结论一致。"""
-        from trace.core.graph.dataflow import DataFlowGraph
+        from sv_query.trace.core.graph.dataflow import DataFlowGraph
 
         pairs = [
             ("top_minimal.valid_i", "top_minimal.sa1.valid_i"),

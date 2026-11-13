@@ -36,9 +36,9 @@ FIXTURE = _REPO_ROOT / "sim" / "tests" / "fixtures" / "golden_mini" / "golden_da
 def _build_graph():
     # [iter_113] target 模式: 无 target 时 driver 走 type-level 旧路径, generate
     # 实例内部不提取 (iter_111 盲区 — 旧 DRIVER 计数是 connection 端口自环)
-    from trace.core.compiler import SVCompiler  # noqa: E402
-    from trace.core.graph_builder import GraphBuilder  # noqa: E402
-    from trace.core.semantic_adapter import SemanticAdapter  # noqa: E402
+    from sv_query.trace.core.compiler import SVCompiler  # noqa: E402
+    from sv_query.trace.core.graph_builder import GraphBuilder  # noqa: E402
+    from sv_query.trace.core.semantic_adapter import SemanticAdapter  # noqa: E402
     comp = SVCompiler({str(FIXTURE): FIXTURE.read_text()})
     adapter = SemanticAdapter(comp.get_root(), target_module="cordic")
     return GraphBuilder(adapter, target_module="cordic").build()

@@ -34,7 +34,7 @@ def ports_cmd(
     if tracer is None:
         return
 
-    from trace.core.graph.models import NodeKind
+    from sv_query.trace.core.graph.models import NodeKind
 
     graph = tracer.get_graph()
     port_kinds = {NodeKind.PORT_IN, NodeKind.PORT_OUT, NodeKind.PORT_INOUT}

@@ -24,7 +24,7 @@ SRC = str(PROJECT_ROOT / "src")
 if SRC not in sys.path:
     sys.path.insert(0, SRC)
 
-from trace.unified_tracer import UnifiedTracer  # noqa: E402
+from sv_query.trace.unified_tracer import UnifiedTracer  # noqa: E402
 
 SRC_SV = PROJECT_ROOT / "sim/tests/fixtures/golden_mini/inst_demo.sv"
 FILELIST = PROJECT_ROOT / "sim/tests/fixtures/minimal_3module/filelist.f"
@@ -58,7 +58,7 @@ class TestCacheHit:
         g1 = t1.build_graph(use_cache=True)
 
         # 第二次: 如果缓存命中, GraphBuilder.build 不应被调用
-        from trace.core.graph_builder import GraphBuilder
+        from sv_query.trace.core.graph_builder import GraphBuilder
 
         calls = {"n": 0}
         orig = GraphBuilder.build

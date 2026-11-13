@@ -8,7 +8,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
 
-from trace.core.builder.graph_pipeline import GraphPipeline, Stage  # noqa: E402
+from sv_query.trace.core.builder.graph_pipeline import GraphPipeline, Stage  # noqa: E402
 
 
 def _stage(name, log=None, requires=(), provides=()):

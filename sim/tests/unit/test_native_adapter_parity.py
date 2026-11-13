@@ -21,8 +21,8 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'tools'))
 
-from trace.core.compiler import SVCompiler
-from trace.core.semantic_adapter import SemanticAdapter
+from sv_query.trace.core.compiler import SVCompiler
+from sv_query.trace.core.semantic_adapter import SemanticAdapter
 
 # ============================================================================
 # Test Fixtures
@@ -285,7 +285,7 @@ class TestNativeAdapterParity(unittest.TestCase):
     def _skip_if_no_native(self):
         """[Helper] 如果 native_adapter 没实现, skip."""
         try:
-            from trace.core.native_adapter import get_module_instances_native
+            from sv_query.trace.core.native_adapter import get_module_instances_native
             return get_module_instances_native
         except ImportError:
             self.skipTest("native_adapter not yet implemented (Phase 1)")
@@ -297,7 +297,7 @@ class TestNativeAdapterParity(unittest.TestCase):
         adapter = _make_adapter(SOURCES['simple'])
         old = _instances_to_comparable(adapter)
         # Native: needs pyslang root symbol. Get it via SVCompiler
-        from trace.core.compiler import SVCompiler
+        from sv_query.trace.core.compiler import SVCompiler
         comp = SVCompiler({'test.sv': SOURCES['simple']})
         root = comp.get_root()
         new = get_native(root, target_module='top')
@@ -320,7 +320,7 @@ class TestNativeAdapterParity(unittest.TestCase):
 
         adapter = _make_adapter(SOURCES['generate_block'])
         old = _instances_to_comparable(adapter)
-        from trace.core.compiler import SVCompiler
+        from sv_query.trace.core.compiler import SVCompiler
         comp = SVCompiler({'test.sv': SOURCES['generate_block']})
         root = comp.get_root()
         new = get_native(root, target_module='top')
@@ -339,7 +339,7 @@ class TestNativeAdapterParity(unittest.TestCase):
 
         adapter = _make_adapter(SOURCES['multi_depth'])
         old = _instances_to_comparable(adapter)
-        from trace.core.compiler import SVCompiler
+        from sv_query.trace.core.compiler import SVCompiler
         comp = SVCompiler({'test.sv': SOURCES['multi_depth']})
         root = comp.get_root()
         new = get_native(root, target_module='top')

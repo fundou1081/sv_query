@@ -12,7 +12,7 @@
 
 | 加载器 | 用途 | 相对路径基准 | 嵌套 `-f` 基准 |
 |---|---|---|---|
-| `src/trace/core/compiler.py::SVCompiler.add_filelist` | 真正编译入口 | filelist 所在目录 | **cwd** |
+| `src/sv_query/trace/core/compiler.py::SVCompiler.add_filelist` | 真正编译入口 | filelist 所在目录 | **cwd** |
 | `src/cli/_common.py::_read_filelist` | CLI 辅助 (供 SVA/coverage 等要 sources 的命令) | base_dir (cwd/项目根) | filelist 所在目录 |
 
 实测症状 (iter_190 发现): `cwd=/` 而 filelist 在 `/tmp/flprobe/fl_rel.f` (内容 `sub/m.sv`)
@@ -25,7 +25,7 @@
 
 | 方案 | 做法 | 利 | 弊 |
 |---|---|---|---|
-| **A (选定)** | 抽出**纯解析器** `src/trace/core/filelist.py::parse_filelist()` → 结构化 `FilelistSpec{files, include_dirs, defines, missing, filelists}`; 两个消费方变薄封装 | 单一实现; 结构化数据 (AGENTS §6); 两侧天然零分歧; 解析器可单测 | 需精确保持既有语义 (有全量 + parity 测试兜底) |
+| **A (选定)** | 抽出**纯解析器** `src/sv_query/trace/core/filelist.py::parse_filelist()` → 结构化 `FilelistSpec{files, include_dirs, defines, missing, filelists}`; 两个消费方变薄封装 | 单一实现; 结构化数据 (AGENTS §6); 两侧天然零分歧; 解析器可单测 | 需精确保持既有语义 (有全量 + parity 测试兜底) |
 | B | CLI 侧调用 tracer 的解析函数 | 改动小 | 耦合方向错 (CLI → core 私有); `+incdir+`/`+define+` 语义差异仍需分支 |
 | C | CLI 侧构造 `SVCompiler` 加载 | 复用彻底 | 引入编译副作用与开销 (CLI 只想读文件内容) → 拒绝 |
 

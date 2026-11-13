@@ -11,7 +11,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace import UnifiedTracer
+from sv_query.trace import UnifiedTracer
 
 
 class TestGenerateIf(unittest.TestCase):

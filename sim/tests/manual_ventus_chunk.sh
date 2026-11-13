@@ -19,7 +19,7 @@ analyze_module() {
 import sys, gc
 sys.path.insert(0, '$PYSV/src')
 from cli._common import _build_tracer
-from trace.core.module_extractor import extract_module_from_graph
+from sv_query.trace.core.module_extractor import extract_module_from_graph
 from cli.view.arch import _render_dot
 tracer = _build_tracer(filelist='$filelist', strict=False)
 g = tracer.build_graph()

@@ -148,7 +148,7 @@ pyslang semantic AST；源码文本 regex **仅允许 UVM 宏相关部分**。
 
 **强制约束**:
 
-- UVM regex 只放在 `src/trace/core/query/uvm.py`；
+- UVM regex 只放在 `src/sv_query/trace/core/query/uvm.py`；
 - 所有结果标 `confidence: "syntactic"`，**不得**当作 verify 证明；
 - 其他 class/constraint/covergroup/UVM 语义模块出现 `import re` / `re.*` = 违规；
 - 已有 ID / literal / search 的字符串解析不属于“语义提取”，不在本规则范围。
@@ -205,7 +205,7 @@ svq visualize module --filelist project.f --target top      # ✅
 | 顺序 | 检查项 | 工具 |
 |---|---|---|
 | 1 | 测试 fixture 源码 (`sim/tests/fixtures/...`) | 读文件 / 单独 parse |
-| 2 | 功能代码 (`src/trace/...`) | `git log -p` / `git blame` / 最小单测 |
+| 2 | 功能代码 (`src/sv_query/trace/...`) | `git log -p` / `git blame` / 最小单测 |
 | 3 | filelist (`sim/filelists/`, `*.f`) | 对比可用的 filelist |
 | 4 | 环境 (pyslang / Python / 依赖) | `pip show pyslang` / `python --version` |
 | 5 | (最后) 工具/CLI 自身的 bug | 复现 + 隔离测试 |

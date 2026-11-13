@@ -20,11 +20,11 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.core.bit_select_handler import BitSelectHandler
-from trace.core.compiler import SVCompiler
-from trace.core.graph.models import EdgeKind
-from trace.core.graph_builder import GraphBuilder
-from trace.core.semantic_adapter import SemanticAdapter
+from sv_query.trace.core.bit_select_handler import BitSelectHandler
+from sv_query.trace.core.compiler import SVCompiler
+from sv_query.trace.core.graph.models import EdgeKind
+from sv_query.trace.core.graph_builder import GraphBuilder
+from sv_query.trace.core.semantic_adapter import SemanticAdapter
 
 
 def _process(source):

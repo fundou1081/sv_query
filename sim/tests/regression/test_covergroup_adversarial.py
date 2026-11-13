@@ -15,8 +15,8 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.core.covergroup_extractor import CovergroupExtractor  # noqa: E402
-from trace.unified_tracer import UnifiedTracer  # noqa: E402
+from sv_query.trace.core.covergroup_extractor import CovergroupExtractor  # noqa: E402
+from sv_query.trace.unified_tracer import UnifiedTracer  # noqa: E402
 
 
 def _cgs(src):

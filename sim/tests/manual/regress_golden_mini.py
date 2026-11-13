@@ -33,11 +33,11 @@ if str(_REPO_ROOT / 'src') not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT / 'src'))
 
 from cli._viz_common import build_viz_tracer  # noqa: E402
-from trace.core.graph.analyzer.signal_classifier import classify_graph  # noqa: E402
-from trace.core.graph.viz import VizBuildOptions, build_viz_data  # noqa: E402
-from trace.core.graph.viz.checker import check_viz_render  # noqa: E402
-from trace.core.graph.viz.elk_bridge import _build_elk_for_viz, run_elk_layout  # noqa: E402
-from trace.core.graph.viz.viz_engine import render_dataflow  # noqa: E402
+from sv_query.trace.core.graph.analyzer.signal_classifier import classify_graph  # noqa: E402
+from sv_query.trace.core.graph.viz import VizBuildOptions, build_viz_data  # noqa: E402
+from sv_query.trace.core.graph.viz.checker import check_viz_render  # noqa: E402
+from sv_query.trace.core.graph.viz.elk_bridge import _build_elk_for_viz, run_elk_layout  # noqa: E402
+from sv_query.trace.core.graph.viz.viz_engine import render_dataflow  # noqa: E402
 
 from .extract_target import extract_target  # noqa: E402
 

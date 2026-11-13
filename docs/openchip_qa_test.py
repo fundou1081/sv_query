@@ -11,7 +11,7 @@ import logging
 logging.disable(logging.CRITICAL)
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from trace.unified_tracer import UnifiedTracer
+from sv_query.sv_query.trace.unified_tracer import UnifiedTracer
 import pyslang
 
 

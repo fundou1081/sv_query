@@ -146,7 +146,7 @@ class TestPaths:
 
     def test_find_path_is_subset_of_find_all_paths(self):
         """不变式: find_path 的路径必然出现在 find_all_paths 里 (两者共用邻接定义)。"""
-        from trace.unified_tracer import UnifiedTracer
+        from sv_query.trace.unified_tracer import UnifiedTracer
 
         src = (PROJECT_ROOT / INST_DEMO).read_text()
         t = UnifiedTracer(sources={"inst_demo.sv": src})
@@ -161,7 +161,7 @@ class TestPaths:
 
     def test_mig_port_info_instance_scoped(self):
         """[iter_284] MIG 端口信息是实例级 (不再有 module_type.port 短名映射)。"""
-        from trace.unified_tracer import UnifiedTracer
+        from sv_query.trace.unified_tracer import UnifiedTracer
 
         src = (PROJECT_ROOT / INST_DEMO).read_text()
         t = UnifiedTracer(sources={"inst_demo.sv": src})

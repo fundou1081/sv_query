@@ -11,9 +11,9 @@
 # - 0 逻辑改动, 0 净代码
 #
 # 兼容性:
-# - graph_builder.py 加 re-export, 现有 import `from trace.core.graph_builder
+# - graph_builder.py 加 re-export, 现有 import `from sv_query.trace.core.graph_builder
 #   import DriverExtractor` 仍工作
-# - trace.core.__init__.py 通过 graph_builder 间接 re-export
+# - sv_query.trace.core.__init__.py 通过 graph_builder 间接 re-export
 # - cli/dev/expression.py 直接 import graph_builder, 仍工作
 # ==============================================================================
 
@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 
 # [P1 cycle 8/9] ExtractorResult 移到了 extractor_models.py (避免循环 import)
-# 这里 re-export 保持向后兼容 (from trace.core.driver_extractor import ExtractorResult)
+# 这里 re-export 保持向后兼容 (from sv_query.trace.core.driver_extractor import ExtractorResult)
 __all__ = ["DriverExtractor", "ExtractorResult"]
 class DriverExtractor:
     """Driver 提取器 — 从 semantic AST 的 always/assign 中提取 driver 边。"""
@@ -419,7 +419,7 @@ class DriverExtractor:
     def _get_signal(self, signal, genvar_ctx: dict | None = None) -> str | None:
         """[ARCHITECTURE_TODOLIST #1 Step 3 2026-08-27] 薄壳委托给 extractors._common.get_signal.
 
-        原实现 200 行已迁到 src/trace/core/extractors/_common.py (共享纯函数).
+        原实现 200 行已迁到 src/sv_query/trace/core/extractors/_common.py (共享纯函数).
         保留 self._get_signal 调用方零改动 — driver_extractor.py 内 ~40 个调用点.
         """
         from .extractors._common import get_signal
@@ -432,7 +432,7 @@ class DriverExtractor:
     def _fold_constant(self, expr, ctx: dict | None = None) -> int | None:
         """[ARCHITECTURE_TODOLIST #1 Step 3 2026-08-27] 薄壳委托给 extractors._common.fold_constant.
 
-        原实现 ~80 行已迁到 src/trace/core/extractors/_common.py (共享纯函数).
+        原实现 ~80 行已迁到 src/sv_query/trace/core/extractors/_common.py (共享纯函数).
         保留 self._fold_constant 调用方零改动.
         """
         from .extractors._common import fold_constant

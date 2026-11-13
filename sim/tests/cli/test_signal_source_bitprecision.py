@@ -15,7 +15,7 @@
 
 def _build_graph(src: str, target: str | None = None):
     """编译 SV 源码并提取 graph, 返回 SignalGraph"""
-    from trace.unified_tracer import UnifiedTracer
+    from sv_query.trace.unified_tracer import UnifiedTracer
 
     fname = f"_test_ds_{hash(src) & 0xFFFFFFFF}.sv"
     tracer = UnifiedTracer(sources={fname: src}, )
@@ -70,7 +70,7 @@ class TestSignalSourceBasic:
 
     def test_source_creation(self):
         """SignalSource dataclass 正确创建"""
-        from trace.core.graph.models import SignalSource
+        from sv_query.trace.core.graph.models import SignalSource
 
         ds = SignalSource(
             signal="a",
@@ -91,14 +91,14 @@ class TestSignalSourceBasic:
 
     def test_source_single_bit(self):
         """SignalSource 单 bit 选择"""
-        from trace.core.graph.models import SignalSource
+        from sv_query.trace.core.graph.models import SignalSource
 
         ds = SignalSource(signal="data", bit_start=3, bit_end=3)
         assert ds.bit_slice == "[3]"
 
     def test_source_no_bit(self):
         """SignalSource 无 bit 选择时 bit_slice 为空"""
-        from trace.core.graph.models import SignalSource
+        from sv_query.trace.core.graph.models import SignalSource
 
         ds = SignalSource(signal="data")
         assert ds.bit_slice == ""
@@ -227,7 +227,7 @@ class TestParseBitRange:
 
     def test_parse_bit_range(self):
         """检查静态方法是否正确解析 bit range"""
-        from trace.core.driver_extractor import DriverExtractor
+        from sv_query.trace.core.driver_extractor import DriverExtractor
 
         # 范围选择
         sig, hi, lo = DriverExtractor._parse_bit_range("a[7:0]")

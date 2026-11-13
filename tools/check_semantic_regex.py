@@ -4,7 +4,7 @@
 规则：class/constraint/covergroup/UVM 的**语义提取**必须走 pyslang
 semantic AST；源码文本 regex 仅允许 UVM 宏/调用部分（预处理会去掉宏）。
 
-允许：src/trace/core/query/uvm.py
+允许：src/sv_query/trace/core/query/uvm.py
 其他列出的语义模块出现 `import re` / `re.*xx` 即违规。
 """
 from __future__ import annotations
@@ -16,14 +16,14 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-ALLOWED = {"src/trace/core/query/uvm.py"}
+ALLOWED = {"src/sv_query/trace/core/query/uvm.py"}
 TARGETS = [
-    "src/trace/core/class_graph_builder.py",
-    "src/trace/core/covergroup_extractor.py",
-    "src/trace/core/query/constraint.py",
-    "src/trace/core/query/covergroup.py",
-    "src/trace/core/query/uvm.py",
-    "src/trace/core/semantic/classes.py",
+    "src/sv_query/trace/core/class_graph_builder.py",
+    "src/sv_query/trace/core/covergroup_extractor.py",
+    "src/sv_query/trace/core/query/constraint.py",
+    "src/sv_query/trace/core/query/covergroup.py",
+    "src/sv_query/trace/core/query/uvm.py",
+    "src/sv_query/trace/core/semantic/classes.py",
     "src/cli/core/semantic/classes.py",
     "src/cli/core/semantic/constraints.py",
     "src/cli/core/semantic/covergroups.py",

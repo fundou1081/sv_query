@@ -171,7 +171,7 @@ Options:
 #### 新建文件
 
 ```
-src/trace/core/graph/viz/viz_datapath_renderer.py  (~200行, 新文件)
+src/sv_query/trace/core/graph/viz/viz_datapath_renderer.py  (~200行, 新文件)
 src/cli/commands/datapath.py                        (~100行, 新文件, 注册到 visualize)
 ```
 

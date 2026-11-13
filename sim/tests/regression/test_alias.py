@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 
 import pyslang
 
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 
 def _build_graph(source):
@@ -55,7 +55,7 @@ class TestAlias(unittest.TestCase):
         src = 'module top(input logic a, output logic y); alias y = a; endmodule'
         pyslang.SyntaxTree.fromText(src)
         # pyslang strict elaboration 拒绝 (alias 仅 net): 期望 CompilationError
-        from trace.core.compiler import CompilationError
+        from sv_query.trace.core.compiler import CompilationError
 
         with self.assertRaises(CompilationError):
             _build_graph(src)

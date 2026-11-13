@@ -15,7 +15,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.core.semantic_adapter import SemanticAdapter  # noqa: E402
+from sv_query.trace.core.semantic_adapter import SemanticAdapter  # noqa: E402
 
 # ── 冻结表 (2026-09-08 分域拆分后实测) ───────────────────────────────────
 # 演进:
@@ -140,7 +140,7 @@ class TestSemanticAdapterApiSurface(unittest.TestCase):
 
     def test_facade_contract_smoke(self):
         """构造 + 关键属性 + 一个真实查询 (搬迁后行为不变的最小证据)"""
-        from trace.core.compiler import SVCompiler
+        from sv_query.trace.core.compiler import SVCompiler
         src = "module m(input logic a, output logic b); assign b = a; endmodule"
         comp = SVCompiler(sources={"t.sv": src})
         ad = SemanticAdapter(comp.get_root())

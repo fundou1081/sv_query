@@ -1,11 +1,11 @@
 """
 tools/_bootstrap.py — [iter_234 P2] 仓库内脚本的统一路径引导 (单一真相源)
 
-为什么需要: 脚本要 `import cli` / `import trace` (在 `<repo>/src` 下), 但
+为什么需要: 脚本要 `import cli` / `import sv_query.trace` (在 `<repo>/src` 下), 但
 **guarded insert 是错的**:
     if str(SRC) not in sys.path:      # ← src 已由 editable install 的 .pth 放进 sys.path,
         sys.path.insert(0, str(SRC))  #    但排在 stdlib 之后 → guard 跳过插入
-                                      #    → `import trace` 命中 **stdlib 的 trace.py**
+                                      #    → `import sv_query.trace` 命中 **stdlib 的 trace.py**
                                       #      ("'trace' is not a package")
 实测 (iter_234): `tools/fix_timescale.py` 因此长期无法运行 (用 `python3 -c` 直连
 _PYTHONPATH 时才"看起来正常"), 由新加的 tools 级测试首次暴露。

@@ -99,8 +99,8 @@ $ python run_cli.py coverage suggest \
 ### 2.2 Python API
 
 ```python
-from trace.unified_tracer import UnifiedTracer
-from trace.core.coverage_generator import ControlCoverageGenerator
+from sv_query.sv_query.trace.unified_tracer import UnifiedTracer
+from sv_query.sv_query.trace.core.coverage_generator import ControlCoverageGenerator
 
 # 1. 解析 SV 文件
 with open("my_module.sv") as f:
@@ -692,7 +692,7 @@ python run_cli.py coverage suggest -f top.sv --signal x --json
 
 ### Step 1: 数据结构 (`coverage_models.py`)
 
-**文件**: `src/trace/core/coverage_models.py`
+**文件**: `src/sv_query/trace/core/coverage_models.py`
 
 包含:
 - `SourceLocation`
@@ -705,7 +705,7 @@ python run_cli.py coverage suggest -f top.sv --signal x --json
 
 ### Step 2: 核心类 (`coverage_generator.py`)
 
-**文件**: `src/trace/core/coverage_generator.py`
+**文件**: `src/sv_query/trace/core/coverage_generator.py`
 
 包含:
 - `ControlCoverageGenerator` 类
@@ -778,10 +778,10 @@ class TraceEdge:
 
 | 文件 | 类型 | 行数估计 |
 |------|------|----------|
-| `src/trace/core/coverage_models.py` | 新建 | 100-150 |
-| `src/trace/core/coverage_generator.py` | 新建 | 400-600 |
-| `src/trace/core/data_models.py` | 修改 | +20 |
-| `src/trace/core/graph_builder.py` | 修改 | +80 |
+| `src/sv_query/trace/core/coverage_models.py` | 新建 | 100-150 |
+| `src/sv_query/trace/core/coverage_generator.py` | 新建 | 400-600 |
+| `src/sv_query/trace/core/data_models.py` | 修改 | +20 |
+| `src/sv_query/trace/core/graph_builder.py` | 修改 | +80 |
 | `src/cli/exp/verif/coverage.py` | 新建 | 100-150 |
 | `src/cli/main.py` | 修改 | +5 |
 | `sim/tests/unit/test_coverage_generator.py` | 新建 | 300-400 |
@@ -1047,7 +1047,7 @@ def _propagate_bit_select(self, parent_signal, parent_bits, child_signal):
 ## 文件结构
 
 ```
-src/trace/core/
+src/sv_query/trace/core/
   coverage_models.py       # 数据类 (SourceLocation, AtomicSignal, etc.)
   coverage_generator.py    # 核心类 (ControlCoverageGenerator)
 
@@ -1157,7 +1157,7 @@ $ python run_cli.py coverage suggest -f top.sv --signal top.x --json
 ### 2.3 例子
 
 ```python
-from trace.core.coverage_models import (
+from sv_query.sv_query.trace.core.coverage_models import (
     AtomicSignal, DecompositionResult, SourceLocation
 )
 result = DecompositionResult(
@@ -1290,7 +1290,7 @@ if json_output:
 
 | 文件 | 类型 | 行数估计 |
 |------|------|----------|
-| `src/trace/core/coverage_models.py` | 修改 | +60 (4 个 to_dict + 1 个 to_json) |
+| `src/sv_query/trace/core/coverage_models.py` | 修改 | +60 (4 个 to_dict + 1 个 to_json) |
 | `src/cli/exp/verif/coverage.py` | 修改 | -5 / +10 |
 | `sim/tests/unit/test_coverage_generator.py` | 修改 | +80 (新 JSON 测试) |
 | **总计** | | **~150 行** |

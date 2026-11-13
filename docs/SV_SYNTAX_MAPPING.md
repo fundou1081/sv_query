@@ -37,7 +37,7 @@
 > ⚠️ **assign_type 修正 (2026-08-27 13:48 首修, 13:55 复核)**: driver_extractor `_create_always_edges` **对 always_phys 和 always_comb 统一用 `assign_type="nonblocking"`**（代码不严格区分 blocking/nonblocking）。**标准取值仅 3 种** `continuous`/`nonblocking`/`alias`（**代码里没有 `blocking`**，早期推断 `always_comb→blocking` 是错的）。
 >
 > ⚠️ **assign_type 完整审计 (2026-08-27 13:55, 全库 grep)**: 除上述 3 种标准取值外，代码里还真实存在 **4 种非标准/辅助取值**，未在 TraceEdge 中统一建模：
-> - `internal` — connection_extractor 跨模块内部连接边 (src/trace/core/connection_extractor.py:441,459; graph_builder.py:573)
+> - `internal` — connection_extractor 跨模块内部连接边 (src/sv_query/trace/core/connection_extractor.py:441,459; graph_builder.py:573)
 > - `wrapper_passthrough` — wrapper 模块 port passthrough 边 (graph_builder.py:885)
 > - `connection` — 模块端口连接边 (connection_extractor.py:429,466)
 > - `port` — 输入端口外部驱动边 (handshake_detector.py:359)

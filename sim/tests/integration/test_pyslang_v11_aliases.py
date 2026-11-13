@@ -7,10 +7,10 @@ ValueDriver/NamedValueExpression) 通过 setattr 注入到 pyslang 顶层, 让
 `pyslang.X` 形式的代码 (compiler.py, native_adapter.py 等) 不用改.
 
 本测试验证:
-1. import trace 后, pyslang 顶层确实有这 6 个 alias
+1. import sv_query.trace 后, pyslang 顶层确实有这 6 个 alias
 2. alias 是同一个 object (不是 placeholder)
 3. ast_utils.py 的 is_syntax_list / iter_syntax_list 工作正常
-4. trace.core.semantic_adapter / compiler / base 能正常 import (P2 迁移后)
+4. sv_query.trace.core.semantic_adapter / compiler / base 能正常 import (P2 迁移后)
 5. compile_sources 能跑 (v11 pyslang.Compilation)
 """
 import sys
@@ -22,9 +22,9 @@ sys.path.insert(0, str(_REPO_ROOT / "src"))
 import pyslang  # noqa: E402
 import pytest  # noqa: E402
 
-# import trace triggers alias bridge in trace/__init__.py
-import trace  # noqa: F401, E402
-from trace.core.ast_utils import is_syntax_list, iter_syntax_list  # noqa: E402
+# import sv_query.trace triggers alias bridge in trace/__init__.py
+import sv_query.trace  # noqa: F401, E402
+from sv_query.trace.core.ast_utils import is_syntax_list, iter_syntax_list  # noqa: E402
 
 
 V11_ALIASED_TYPES = [
@@ -85,11 +85,11 @@ class TestImportPaths:
     """P2 迁移后, 关键模块仍能 import (没有 _pyslang_compat 依赖)"""
 
     def test_semantic_adapter(self):
-        from trace.core.semantic_adapter import SemanticAdapter
+        from sv_query.trace.core.semantic_adapter import SemanticAdapter
         assert SemanticAdapter is not None
 
     def test_compiler(self):
-        from trace.core.compiler import compile_sources
+        from sv_query.trace.core.compiler import compile_sources
         assert compile_sources is not None
 
     def test_base_legacy_layer_moved_out(self):
@@ -100,12 +100,12 @@ class TestImportPaths:
         """
         import os
         repo = os.path.join(os.path.dirname(__file__), '..', '..', '..')
-        assert not os.path.exists(os.path.join(repo, 'src', 'trace', 'core', 'base.py'))
-        from trace.core.semantic_adapter import SemanticAdapter
+        assert not os.path.exists(os.path.join(repo, 'src', 'sv_query', 'trace', 'core', 'base.py'))
+        from sv_query.trace.core.semantic_adapter import SemanticAdapter
         assert SemanticAdapter is not None
 
     def test_graph_builder(self):
-        from trace.core.graph_builder import GraphBuilder
+        from sv_query.trace.core.graph_builder import GraphBuilder
         assert GraphBuilder is not None
 
 
@@ -115,7 +115,7 @@ class TestRealV11Compilation:
     def test_compile_simple(self):
         # D5: 用 alias bridge 拿 pyslang.Compilation (顶层) + pyslang.SyntaxTree
         # 这是测 alias bridge 在 compile_sources 真实路径上工作
-        from trace.core.compiler import compile_sources
+        from sv_query.trace.core.compiler import compile_sources
         comp, _ = compile_sources({"test.sv": "module top; logic [7:0] data; endmodule"})
         root = comp.getRoot()
         assert root is not None

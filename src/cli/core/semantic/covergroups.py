@@ -12,7 +12,7 @@ import typer
 from cli._common import _build_tracer, handle_compilation_error
 from cli._output import emit_json
 from cli.core.semantic.trace_common import resolve_signal
-from trace.core.compiler import CompilationError
+from sv_query.trace.core.compiler import CompilationError
 
 
 def _cg_summary(cg) -> dict:

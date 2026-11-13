@@ -22,7 +22,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.core.covergroup_extractor import CovergroupExtractor
+from sv_query.trace.core.covergroup_extractor import CovergroupExtractor
 
 
 class TestCovergroupAdvanced(unittest.TestCase):
@@ -228,9 +228,9 @@ class TestCovergroupBehavior(unittest.TestCase):
     """
 
     def _analyze(self, source):
-        from trace.core.covergroup_analyzer import CovergroupAnalyzer
-        from trace.core.covergroup_extractor import CovergroupExtractor
-        from trace.unified_tracer import UnifiedTracer
+        from sv_query.trace.core.covergroup_analyzer import CovergroupAnalyzer
+        from sv_query.trace.core.covergroup_extractor import CovergroupExtractor
+        from sv_query.trace.unified_tracer import UnifiedTracer
 
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()

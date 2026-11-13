@@ -26,7 +26,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.unified_tracer import UnifiedTracer  # noqa: E402
+from sv_query.trace.unified_tracer import UnifiedTracer  # noqa: E402
 
 ZIPCPU_RTL = Path(os.environ.get("SVQ_OPENRTL_ROOT",
                        str(Path.home() / "my_dv_proj" / "openrtl"))) / "zipcpu/rtl"
@@ -79,7 +79,7 @@ class TestRealWorldGenerateStrict:
 
     def test_cross_module_driver_edges(self, zipcpu_graph):
         """[Golden] 真实 RTL 有跨模块 DRIVER 边 (generate 实例化的模块间连接)"""
-        from trace.core.graph.models import EdgeKind
+        from sv_query.trace.core.graph.models import EdgeKind
 
         driver_edges = 0
         for u, v in zipcpu_graph.edges():

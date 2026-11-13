@@ -38,7 +38,7 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 
 class TestMIGGenerateBlock(unittest.TestCase):

@@ -69,7 +69,7 @@ iter_180~184 记录的本语料"跨次波动"表 (保留为历史):
 - 症状组合 (乱码名 / getter 抛错 / 部分 elaboration / 节点数漂移) 全部由
   **内存复用模式** 决定 → 这正是"跑几次结果都不同"的来源。
 
-修复后 (`src/trace/core/compiler.py` 持有 `self._source_manager`) 本语料
+修复后 (`src/sv_query/trace/core/compiler.py` 持有 `self._source_manager`) 本语料
 指标见上节, 3/3 一致。
 
 ## 已知限制 (登记, 非静默)

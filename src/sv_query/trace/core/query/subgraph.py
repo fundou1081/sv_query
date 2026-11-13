@@ -18,7 +18,7 @@ class SubgraphError(ValueError):
 
 
 # [P158.1] 这张表是 **CLI 名字 → edge kind** 的映射 (用户可见词汇),
-# 不是"什么算数据"的策略 —— 策略的唯一实现在 trace.core.graph.contracts。
+# 不是"什么算数据"的策略 —— 策略的唯一实现在 sv_query.trace.core.graph.contracts。
 # `_DEFAULT_KINDS` 由 contracts.DATA_EDGE_KINDS 推导, 避免两份定义。
 _EDGE_NAMES = {
     "driver": {EdgeKind.DRIVER},

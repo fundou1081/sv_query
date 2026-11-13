@@ -2,7 +2,7 @@
 test_filelist_resolution.py — [iter_192] filelist 相对路径的两种基准都必须能解析
 
 背景: 项目里有**两套** filelist 加载器, 相对路径规则不同:
-  - `src/trace/core/compiler.py::add_filelist` (编译入口): 相对 **filelist 所在目录**
+  - `src/sv_query/trace/core/compiler.py::add_filelist` (编译入口): 相对 **filelist 所在目录**
   - `src/cli/_common.py::_read_filelist` (CLI 辅助, 供 SVA/coverage 等用):
 
 修复前 CLI 侧只按 base_dir (cwd) 解析 → 与 tracer 侧结果不一致, 且对**实际存在**

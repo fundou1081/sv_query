@@ -4,7 +4,7 @@
 
 ## 目标
 
-将 `src/trace/core/` 拆分为两个子包：
+将 `src/sv_query/trace/core/` 拆分为两个子包：
 - `core/graph/` — 图数据模型 + 图操作
 - `core/query/` — 查询接口
 
@@ -62,9 +62,9 @@ core/
 
 | 文件 | 改动 |
 |---|---|
-| `core/graph_traversal.py` | `from trace.core.graph_models` → `from trace.core.graph.models` |
-| `core/query/load.py` | `from trace.core.graph_models` → `from trace.core.graph.models` |
-| `core/bit_select_handler.py` | 4 处 `trace.core.graph_models` → `trace.core.graph.models` |
+| `core/graph_traversal.py` | `from sv_query.sv_query.trace.core.graph_models` → `from sv_query.sv_query.trace.core.graph.models` |
+| `core/query/load.py` | `from sv_query.sv_query.trace.core.graph_models` → `from sv_query.sv_query.trace.core.graph.models` |
+| `core/bit_select_handler.py` | 4 处 `sv_query.trace.core.graph_models` → `sv_query.trace.core.graph.models` |
 | `core/class_graph_builder.py` | `from .graph_models` → `from .graph.models` |
 | `core/unified_tracer.py` | `from .core.query_signal` → `from .core.query.signal` 等 4 处 |
 | `core/__init__.py` | 更新所有 export 路径 |
@@ -73,22 +73,22 @@ core/
 
 | 测试文件 | 需改的 import |
 |---|---|
-| `sim/tests/integration/test_graph_diff.py` | `trace.core.graph_diff` → `trace.core.graph.diff` |
-| `sim/tests/unit/test_graph_models.py` | `trace.core.graph_models` → `trace.core.graph.models` |
-| `sim/tests/unit/test_query_load.py` | `trace.core.query_load` → `trace.core.query.load` |
-| `sim/tests/integration/test_cdc_multiclock.py` | `trace.core.query_clock_domain` → `trace.core.query.clock_domain` |
-| `sim/tests/integration/test_port_inout.py` | `trace.core.query_module` → `trace.core.query.module` |
-| `sim/tests/integration/test_instance_connection.py` | `trace.core.query_signal` → `trace.core.query.signal` |
-| `sim/tests/integration/test_reset_edge.py` | `trace.core.query_clock_domain` → `trace.core.query.clock_domain` |
-| `sim/tests/regression/test_constraint_complete.py` | `trace.core.visitors.constraint_visitor`（visitor 路径不变） |
+| `sim/tests/integration/test_graph_diff.py` | `sv_query.trace.core.graph_diff` → `sv_query.trace.core.graph.diff` |
+| `sim/tests/unit/test_graph_models.py` | `sv_query.trace.core.graph_models` → `sv_query.trace.core.graph.models` |
+| `sim/tests/unit/test_query_load.py` | `sv_query.trace.core.query_load` → `sv_query.trace.core.query.load` |
+| `sim/tests/integration/test_cdc_multiclock.py` | `sv_query.trace.core.query_clock_domain` → `sv_query.trace.core.query.clock_domain` |
+| `sim/tests/integration/test_port_inout.py` | `sv_query.trace.core.query_module` → `sv_query.trace.core.query.module` |
+| `sim/tests/integration/test_instance_connection.py` | `sv_query.trace.core.query_signal` → `sv_query.trace.core.query.signal` |
+| `sim/tests/integration/test_reset_edge.py` | `sv_query.trace.core.query_clock_domain` → `sv_query.trace.core.query.clock_domain` |
+| `sim/tests/regression/test_constraint_complete.py` | `sv_query.trace.core.visitors.constraint_visitor`（visitor 路径不变） |
 
-**其他 100+ 测试文件只 import `trace.unified_tracer` 或 `trace`，不受影响。**
+**其他 100+ 测试文件只 import `sv_query.trace.unified_tracer` 或 `trace`，不受影响。**
 
 ### 文档（1 处）
 
 | 文件 | 改动 |
 |---|---|
-| `EXAMPLES.md` | `trace.core.query_clock_domain` → `trace.core.query.clock_domain` |
+| `EXAMPLES.md` | `sv_query.trace.core.query_clock_domain` → `sv_query.trace.core.query.clock_domain` |
 
 ## 改动汇总
 

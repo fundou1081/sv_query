@@ -23,7 +23,7 @@ sys.path.insert(0, str(TOOLS))
 
 from inputs import ensure_serv_filelist  # noqa: E402
 from score_long_range import score  # noqa: E402
-from trace.unified_tracer import UnifiedTracer  # noqa: E402
+from sv_query.trace.unified_tracer import UnifiedTracer  # noqa: E402
 
 TASKS = TOOLS / "long_range_tasks.json"
 RESULTS = ROOT / "docs" / "validation" / "long_range_12_2026-11-05.json"

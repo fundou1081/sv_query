@@ -20,7 +20,7 @@ test_compiler_non_design_unit_guard.py — [iter_189] 非设计单元输入不�
 """
 import pytest
 
-from trace.core.compiler import SVCompiler, CompilationError
+from sv_query.trace.core.compiler import SVCompiler, CompilationError
 
 EXPRESSION_INPUTS = {
     "filelist 内容 (路径被当源码)": "/tmp/does_not_matter/mod.sv\n",

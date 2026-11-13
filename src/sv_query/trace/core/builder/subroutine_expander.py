@@ -7,7 +7,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
-from trace.core.graph.models import EdgeKind, NodeKind, SignalSource, TraceEdge, TraceNode
+from sv_query.trace.core.graph.models import EdgeKind, NodeKind, SignalSource, TraceEdge, TraceNode
 
 from ..._safe import _safe_attr
 

@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 
 import pyslang
 
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 
 def _build_graph(source):

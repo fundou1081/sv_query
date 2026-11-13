@@ -36,7 +36,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from inputs import (  # noqa: E402
     ensure_serv_filelist, ensure_verilog_axi_filelist, picorv32_file,
 )
-from trace.unified_tracer import UnifiedTracer  # noqa: E402
+from sv_query.trace.unified_tracer import UnifiedTracer  # noqa: E402
 
 
 def _cases() -> list[dict]:

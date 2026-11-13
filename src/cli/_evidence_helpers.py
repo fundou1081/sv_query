@@ -18,8 +18,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from trace.core.trace_evidence import TraceEvidenceResolver
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.core.trace_evidence import TraceEvidenceResolver
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 # ----------------------------------------------------------------------------
 # 1. resolver 构建: 每个命令入口 build 一次,后续 resolve() 共享 graph + adapter

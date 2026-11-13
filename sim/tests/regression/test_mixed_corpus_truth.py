@@ -20,7 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.unified_tracer import UnifiedTracer  # noqa: E402
+from sv_query.trace.unified_tracer import UnifiedTracer  # noqa: E402
 
 CORPUS = Path(__file__).resolve().parents[1] / "fixtures" / "mixed_corpus"
 

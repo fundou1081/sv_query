@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 
 def test_indexed_part_select_normalized():

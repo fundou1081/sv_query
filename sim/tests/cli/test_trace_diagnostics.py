@@ -75,7 +75,7 @@ class TestTraversalDiagnostics:
 
     def test_cycle_cap_returns_none(self):
         """capped 三态：预算不足返回 None，不静默当 False。"""
-        from trace.unified_tracer import UnifiedTracer
+        from sv_query.trace.unified_tracer import UnifiedTracer
         t = UnifiedTracer(sources={"t.sv": CHAIN}, log_level="ERROR")
         g = t.build_graph()
         assert detect_cycles(g, "top.y", reverse=True, max_nodes=1) is None

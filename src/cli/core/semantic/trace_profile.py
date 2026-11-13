@@ -24,8 +24,8 @@ from cli.core.semantic.trace_common import (
 )
 logger = logging.getLogger(__name__)
 
-from trace.core.compiler import CompilationError
-from trace.core.trace_evidence import TraceEvidenceResolver
+from sv_query.trace.core.compiler import CompilationError
+from sv_query.trace.core.trace_evidence import TraceEvidenceResolver
 
 
 def _first_source(edge) -> tuple[str, int | None]:
@@ -106,8 +106,8 @@ def _build_stage_index(graph) -> dict[str, int]:
     只给 detect_pipeline 识别出的 pipeline reg 映射；状态机/控制/组合不做猜测。
     """
     try:
-        from trace.core.graph.analyzer.signal_classifier import classify_graph
-        from trace.core.graph.analyzer.pipeline_viz import detect_pipeline
+        from sv_query.trace.core.graph.analyzer.signal_classifier import classify_graph
+        from sv_query.trace.core.graph.analyzer.pipeline_viz import detect_pipeline
         classification = classify_graph(graph)
         info = detect_pipeline(graph, classification)
         out = {}

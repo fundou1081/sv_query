@@ -12,7 +12,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.core.covergroup_extractor import CovergroupExtractor
+from sv_query.trace.core.covergroup_extractor import CovergroupExtractor
 
 
 def _cgs(source):

@@ -17,7 +17,7 @@ ensure_on_path(SRC_DIR, PROJECT_ROOT)
 
 # [A3 2026-06-28] Global --quiet support for LLM consumers.
 # 在 Typer 启动前检查 sys.argv, 如果有 --quiet / -q / SVQ_QUIET env,
-# 则调用 trace.core.compiler.set_quiet(True) 抑制所有 stderr 输出 (SWAP warning, INFO log, 等).
+# 则调用 sv_query.trace.core.compiler.set_quiet(True) 抑制所有 stderr 输出 (SWAP warning, INFO log, 等).
 # 同时从 sys.argv 中移除 --quiet / -q 避免 Typer 报 unknown option.
 # 这样 LLM 收到的 stdout 只有合法 JSON, 不会被警告污染.
 def _apply_quiet_flag() -> None:
@@ -26,7 +26,7 @@ def _apply_quiet_flag() -> None:
     env_quiet = os.environ.get("SVQ_QUIET", "").lower() in ("1", "true", "yes")
     if env_quiet or any(arg in quiet_signals for arg in sys.argv[1:]):
         try:
-            from trace.core.compiler import set_quiet
+            from sv_query.trace.core.compiler import set_quiet
             set_quiet(True)
         except ImportError as e:
             logger.debug("%s: 忽略 ImportError: %s", __name__, e)
@@ -43,7 +43,7 @@ import typer
 # 甚至更不稳定 (4GB 分配 + 父进程已有 reclaim 时累积). 只依赖 conftest.py
 # 在 pytest session 开始时跑一次, subprocess 不重复 reclaim.
 # reclaim_memory_if_needed() 函数仍保留供未来需要时调用.
-from src.cli._common import (
+from cli._common import (
     _build_tracer,
     handle_compilation_error,
 )
@@ -116,7 +116,7 @@ app.add_typer(architecture_app, name="architecture", hidden=True)
 
 # [iter_252] 删除 `expression` (dev 层 3 命令): 内部调试用, 0 测试, `--file` 路径未实现;
 # 模块已归档到 docs/archive/2026-10-19-src-archived/cli_dev/。构造 expression 节点请用
-# Python API `trace.core.builder.expression_builder.ExpressionBuilder`。
+# Python API `sv_query.trace.core.builder.expression_builder.ExpressionBuilder`。
 
 # [FIX 2026-07-06] graph 是早期写但从未注册的 Typer app (dump/nodes/edges/find 4 commands)
 # 修 dump 的 TraceNode attribute bug 之后, 重新启用
@@ -148,7 +148,7 @@ def stats_callback(
     [ADD 2026-06-11 Req-9] 支持 --filelist 跑多文件项目.
     [ADD 2026-06-11 任务3] elaboration error 统一 catch, 错误信息干净.
     """
-    from trace.core.compiler import CompilationError
+    from sv_query.trace.core.compiler import CompilationError
 
     if not file and not filelist:
         typer.echo("Error: --file or --filelist is required", err=True)
@@ -262,7 +262,7 @@ def _compute_fanout_rank(graph) -> dict:
 
     注意：过滤掉 CONST 节点（字面量），因为它们不是真正的驱动源
     """
-    from trace.core.graph.models import EdgeKind, NodeKind
+    from sv_query.trace.core.graph.models import EdgeKind, NodeKind
 
     # 计算每个信号的扇出（下游 DRIVER 负载数）
     fanout_map = {}  # signal_id -> {"count": int, "kind": str, "loads": []}
@@ -412,7 +412,7 @@ def main(ctx: typer.Context) -> None:
 #   - `SVQ_DEBUG=1` 时 re-raise, 保留完整 traceback 供开发定位。
 def run() -> None:
     """CLI 统一入口 (console script `sv_query` 与 `run_cli.py` 共用)。"""
-    from trace.core.compiler import CompilationError  # 延迟 import: 入口期不加载分析栈
+    from sv_query.trace.core.compiler import CompilationError  # 延迟 import: 入口期不加载分析栈
 
     try:
         app()

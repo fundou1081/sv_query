@@ -31,9 +31,9 @@ FIXTURE = _REPO_ROOT / "sim" / "tests" / "fixtures" / "golden_mini" / "golden_da
 
 
 def _build_graph():
-    from trace.core.compiler import SVCompiler  # noqa: E402
-    from trace.core.graph_builder import GraphBuilder  # noqa: E402
-    from trace.core.semantic_adapter import SemanticAdapter  # noqa: E402
+    from sv_query.trace.core.compiler import SVCompiler  # noqa: E402
+    from sv_query.trace.core.graph_builder import GraphBuilder  # noqa: E402
+    from sv_query.trace.core.semantic_adapter import SemanticAdapter  # noqa: E402
     comp = SVCompiler({str(FIXTURE): FIXTURE.read_text()})
     adapter = SemanticAdapter(comp.get_root(), target_module="top")
     return GraphBuilder(adapter, target_module="top").build()

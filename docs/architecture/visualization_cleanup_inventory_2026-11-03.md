@@ -51,19 +51,19 @@
 | `src/cli/view/arch.py` | 966 | arch show |
 | `src/cli/view/design.py` | 485 | design show |
 | `src/cli/_viz_common.py` | — | visualize 共享 |
-| `src/trace/core/graph/viz/` | ~5k | VizData/ELK/checker/engine/expression tree |
-| `src/trace/core/graph/analyzer/dataflow_viz.py` | 206 | 旧 dataflow DOT |
-| `src/trace/core/graph/analyzer/viz_legend.py` | 174 | 旧图例 |
-| `src/trace/core/graph/analyzer/_dot_common.py` | — | 旧 DOT 共享 |
-| `src/trace/core/graph/viz/elk_layout.js` | — | ELK 布局资源 |
+| `src/sv_query/trace/core/graph/viz/` | ~5k | VizData/ELK/checker/engine/expression tree |
+| `src/sv_query/trace/core/graph/analyzer/dataflow_viz.py` | 206 | 旧 dataflow DOT |
+| `src/sv_query/trace/core/graph/analyzer/viz_legend.py` | 174 | 旧图例 |
+| `src/sv_query/trace/core/graph/analyzer/_dot_common.py` | — | 旧 DOT 共享 |
+| `src/sv_query/trace/core/graph/viz/elk_layout.js` | — | ELK 布局资源 |
 
 ### 3.2 保留 / 拆分
 
 | 文件 | 处置 |
 |---|---|
-| `src/trace/core/graph/analyzer/pipeline_viz.py` | **拆分**：保留 `detect_pipeline`；删除 DOT 渲染函数 |
-| `src/trace/core/graph/analyzer/signal_classifier.py` | 保留（core 分类） |
-| `src/trace/core/graph/dataflow.py` | 保留（只保留 `detect_pipeline` 调用） |
+| `src/sv_query/trace/core/graph/analyzer/pipeline_viz.py` | **拆分**：保留 `detect_pipeline`；删除 DOT 渲染函数 |
+| `src/sv_query/trace/core/graph/analyzer/signal_classifier.py` | 保留（core 分类） |
+| `src/sv_query/trace/core/graph/dataflow.py` | 保留（只保留 `detect_pipeline` 调用） |
 | `src/cli/core/semantic/trace_common.py` | 保留 `_generate_trace_dot`（过渡局部图） |
 | `src/cli/core/semantic/trace_overview.py` | 保留 |
 
@@ -123,7 +123,7 @@
 
 ## 6. 冻结规则（P59.1 生效）
 
-- 不再向旧 `src/cli/view`、`src/trace/core/graph/viz` 添加功能；
+- 不再向旧 `src/cli/view`、`src/sv_query/trace/core/graph/viz` 添加功能；
 - 不再修旧全图渲染 bug（除阻塞清理的导入错误）；
 - 旧命令仍隐藏，等待 P59.2 删除；
 - 新开发只允许 P60 `graph subgraph` core / P61 findings。
@@ -134,7 +134,7 @@
 
 1. 删除 CLI 注册与 `_registry` 条目；
 2. 删除 `src/cli/view` + `_viz_common`；
-3. 删除 `src/trace/core/graph/viz` + 旧 analyzer 渲染；
+3. 删除 `src/sv_query/trace/core/graph/viz` + 旧 analyzer 渲染；
 4. 拆分 `pipeline_viz`，保留 `detect_pipeline`；
 5. 删除/改写测试；
 6. 归档/改写文档；

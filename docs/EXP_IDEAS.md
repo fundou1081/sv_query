@@ -2,7 +2,7 @@
 
 > **性质**: 原 exp 区的 10 条创意 backlog。
 > **现状 (iter_288, PLAN P3.3)**: 已**重新设计并落地**为 `svq audit` 的检查项
-> （`src/trace/core/analysis/audit.py`）。不是搬回旧代码，而是按"证据 + 候选 + 置信度"
+> （`src/sv_query/trace/core/analysis/audit.py`）。不是搬回旧代码，而是按"证据 + 候选 + 置信度"
 > 重写，每条检查都有回归测试，输出显式标注 `confidence`（pattern / measured / heuristic）。
 > **旧实现**仍归档在 `docs/archive/2026-10-20-exp-attic/`（仅作历史参考）。
 

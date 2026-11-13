@@ -13,8 +13,8 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.core.compiler import CompilationError  # noqa: E402
-from trace.core.covergroup_extractor import CovergroupExtractor  # noqa: E402
+from sv_query.trace.core.compiler import CompilationError  # noqa: E402
+from sv_query.trace.core.covergroup_extractor import CovergroupExtractor  # noqa: E402
 
 _FIXTURES = os.path.join(os.path.dirname(__file__), '..', 'fixtures')
 _ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))

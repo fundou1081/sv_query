@@ -30,8 +30,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 
 import pyslang
 
-from trace.core.graph.models import EdgeKind
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.core.graph.models import EdgeKind
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 
 def _build_graph(source):
@@ -73,8 +73,8 @@ class TestConstraintDerivative(unittest.TestCase):
 
         同时把 adapter 存到 self._adapter 供成员判定复用。
         """
-        from trace.core.compiler import SVCompiler
-        from trace.core.semantic_adapter import SemanticAdapter
+        from sv_query.trace.core.compiler import SVCompiler
+        from sv_query.trace.core.semantic_adapter import SemanticAdapter
         comp = SVCompiler(sources={'test.sv': source})
         self._adapter = SemanticAdapter(comp.get_root())
         return self._adapter.get_classes()

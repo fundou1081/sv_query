@@ -97,7 +97,7 @@ STRUCTURAL_EDGE_KINDS = {BIT_SELECT, MEMBER_SELECT}
 - `paths --directed` 与 `verify claim path` 曾对 CLOCK 边返回 `verified`；
 - 三条消费者曾各自维护 edge 策略。
 
-**现状（2026-11-11 复测）**：三者共用 `src/trace/core/graph/contracts.py`；
+**现状（2026-11-11 复测）**：三者共用 `src/sv_query/trace/core/graph/contracts.py`；
 回归 `sim/tests/unit/test_p158_data_edge_contract.py`（含 mutation）；
 `paths top_minimal.sa1.clk top_minimal.sa1.ready_q --directed` → `found:false, mode:"data"`，
 `verify claim type=path` 同一对 → `contradicted`。

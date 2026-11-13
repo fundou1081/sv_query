@@ -21,9 +21,9 @@ from pathlib import Path
 
 import typer
 
-from trace.core.compiler import CompilationError
-from trace.core.top_prune import prune_sources
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.core.compiler import CompilationError
+from sv_query.trace.core.top_prune import prune_sources
+from sv_query.trace.unified_tracer import UnifiedTracer
 import logging
 
 logger = logging.getLogger(__name__)
@@ -202,7 +202,7 @@ def _read_filelist_full(filelist_path: str, base_dir: Path) -> tuple[dict[str, s
     而同一 filelist 用 `trace` (走 `SVCompiler.add_filelist`) 却正常 —— 两条路径
     行为不一致。iter_193 的解析器本就有 `spec.include_dirs`, 这里把它交出去。
     """
-    from trace.core.filelist import parse_filelist
+    from sv_query.trace.core.filelist import parse_filelist
 
     base_dirs = [base_dir]
     if Path.cwd() != Path(base_dir).resolve():

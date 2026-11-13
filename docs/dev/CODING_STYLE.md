@@ -214,7 +214,7 @@ max 142，CC>10 占 25.8% —— 存量债不该阻塞每次提交。棘轮只�
 `uvm_declare_p_sequencer` / `type_id::create` / factory create）。
 原因：预处理器把宏从 semantic syntax 中去掉，当前 pyslang 版本不提供宏节点。
 
-- 例外代码只允许在 `src/trace/core/query/uvm.py`；
+- 例外代码只允许在 `src/sv_query/trace/core/query/uvm.py`；
 - 输出必须标 `confidence: "syntactic"`；
 - 机械检查：`python3 tools/check_semantic_regex.py`；
 - 详细规则见 [DISCIPLINE §3.5](DISCIPLINE.md)。

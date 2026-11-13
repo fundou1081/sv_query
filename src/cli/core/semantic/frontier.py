@@ -8,8 +8,8 @@ import typer
 from cli._common import _build_tracer, handle_compilation_error
 from cli._output import emit_json
 from cli.core.semantic.trace_common import resolve_signal, _load_tracer_from_snapshot
-from trace.core.compiler import CompilationError
-from trace.core.query.frontier import analyze_frontier
+from sv_query.trace.core.compiler import CompilationError
+from sv_query.trace.core.query.frontier import analyze_frontier
 
 
 def _frontier_payload(signal, direction, max_depth, max_frontier, max_visits,

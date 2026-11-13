@@ -18,7 +18,7 @@ from pathlib import Path
 
 #: `src/cli/` (本文件所在目录)
 CLI_DIR: Path = Path(__file__).resolve().parent
-#: `src/` (import `trace` / `cli` 的根)
+#: `src/` (import `sv_query.trace` / `cli` 的根)
 SRC_DIR: Path = CLI_DIR.parent
 #: 仓库根 (含 tools/ docs/ sim/)
 PROJECT_ROOT: Path = SRC_DIR.parent

@@ -141,7 +141,7 @@ class ClassHierarchy:
 
 **不进 SignalGraph**，纯数据层。下游任务自己判断是否需要向上追约束。
 
-实现位置：`src/trace/core/class_hierarchy.py`（新文件）
+实现位置：`src/sv_query/trace/core/class_hierarchy.py`（新文件）
 
 ---
 
@@ -200,7 +200,7 @@ class ConstraintVisitor:
         """ForeachConstraint → CONSTRAINT_FOREACH"""
 ```
 
-文件位置：`src/trace/core/visitors/constraint_visitor.py`
+文件位置：`src/sv_query/trace/core/visitors/constraint_visitor.py`
 
 ---
 

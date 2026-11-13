@@ -8,7 +8,7 @@ from pathlib import Path
 import typer
 
 from cli._common import display_path, _build_tracer, handle_compilation_error  # [ADD 2026-06-11 Req-9]
-from trace.core.compiler import CompilationError  # [ADD 2026-06-11 任务3]
+from sv_query.trace.core.compiler import CompilationError  # [ADD 2026-06-11 任务3]
 
 from cli._paths import ensure_on_path, PROJECT_ROOT  # noqa: E402
 ensure_on_path(PROJECT_ROOT)
@@ -25,10 +25,10 @@ from cli._evidence_helpers import (
 from cli._evidence_helpers import (  # noqa: E402
     make_resolver as _make_evidence_resolver,
 )
-from trace.core.graph.analyzer.controlflow_analyzer import (
+from sv_query.trace.core.graph.analyzer.controlflow_analyzer import (
     ControlFlowAnalyzer,
 )
-from trace.core.graph_builder import GraphBuilder
+from sv_query.trace.core.graph_builder import GraphBuilder
 from cli._output import emit_json
 
 
@@ -130,8 +130,8 @@ def analyze(
         return
 
     # Build GraphBuilder for analyzer
-    from trace.core.compiler import SVCompiler
-    from trace.core.semantic_adapter import SemanticAdapter
+    from sv_query.trace.core.compiler import SVCompiler
+    from sv_query.trace.core.semantic_adapter import SemanticAdapter
 
     compiler = SVCompiler(sources)
     semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
@@ -253,8 +253,8 @@ def list_conditioned(
         handle_compilation_error(e)
         return
 
-    from trace.core.compiler import SVCompiler
-    from trace.core.semantic_adapter import SemanticAdapter
+    from sv_query.trace.core.compiler import SVCompiler
+    from sv_query.trace.core.semantic_adapter import SemanticAdapter
 
     compiler = SVCompiler(sources)
     semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)

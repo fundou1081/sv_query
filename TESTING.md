@@ -9,7 +9,7 @@
 
 | 项 | 值（引自 INDEX） | 说明 |
 |---|---|---|
-| 全量 (canonical) | **2729 passed / 0 failed** | `sim/tests/`, `-m "not opensource"`；0 skipped / 123 deselected；35 subtests（2026-11-11 实测，P158）。**0 skipped 不代表测试健康**，见 §语义测试 |
+| 全量 (canonical) | **2731 passed / 0 failed** | `sim/tests/`, `-m "not opensource"`；0 skipped / 123 deselected；35 subtests（2026-11-11 实测，P158）。**0 skipped 不代表测试健康**，见 §语义测试 |
 | 回归基线 (unit + regression) | 见 INDEX | `-m "not opensource"` |
 | CLI / integration | 见 INDEX | `sim/tests/cli sim/tests/integration` |
 
@@ -218,7 +218,7 @@ python3 tools/graph_snapshot.py diff a.json b.json [--json]
 
 ### 沙箱 / 受限环境验证手段 (iter_082 定型, iter_086 补警告)
 
-`src/trace/core/cache/ast_cache.py` 的 `resolve_cache_dir()` (顺序: 显式 > `SVQ_CACHE_DIR` >
+`src/sv_query/trace/core/cache/ast_cache.py` 的 `resolve_cache_dir()` (顺序: 显式 > `SVQ_CACHE_DIR` >
 `$XDG_CACHE_HOME/svq` > `~/.svq/cache`) — 当运行环境的 HOME 不可写 (如沙箱), 所有走
 `run_cli.py` subprocess 的测试 (human_output / tree_output / real_project_viz /
 trace_include_flags 等) 会报 `Operation not permitted: ~/.svq/cache/...` 假失败,

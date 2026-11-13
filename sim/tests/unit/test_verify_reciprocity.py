@@ -6,8 +6,8 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 from cli.core.semantic.verify import _check_reciprocity  # noqa: E402
-from trace.core.graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode  # noqa: E402
-from trace.core.query.signal import SignalTracer  # noqa: E402
+from sv_query.trace.core.graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode  # noqa: E402
+from sv_query.trace.core.query.signal import SignalTracer  # noqa: E402
 
 
 class TestVerifyReciprocity(unittest.TestCase):

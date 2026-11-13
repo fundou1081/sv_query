@@ -18,13 +18,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 
 import pyslang
 
-from trace.core.graph.diff import (
+from sv_query.trace.core.graph.diff import (
     compute_coupling_warning,
     compute_health_score,
     compute_stable_core,
     diff_with_health,
 )
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 
 def get_tree_source(tree):

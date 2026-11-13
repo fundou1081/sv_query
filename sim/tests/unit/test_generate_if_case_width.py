@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "generate_if_case_width.sv"
 

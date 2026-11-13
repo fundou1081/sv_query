@@ -167,7 +167,7 @@ TARGET_CFG=cv64a6_imafdc_sv39 \
 ### 直接传 filelist
 
 ```python
-from trace.unified_tracer import UnifiedTracer
+from sv_query.sv_query.trace.unified_tracer import UnifiedTracer
 
 tracer = UnifiedTracer(
     sources={},                    # 留空
@@ -196,7 +196,7 @@ graph = tracer.build_graph()
 compiler = tracer._get_compiler()
 sources = compiler._sources
 
-from trace.core.sva_extractor import SVAExtractor
+from sv_query.sv_query.trace.core.sva_extractor import SVAExtractor
 sva = SVAExtractor(sources).extract()
 ```
 
@@ -237,7 +237,7 @@ pyslang 不能完整展开某些复杂宏。
 python -c "
 import sys
 sys.path.insert(0, 'src')
-from trace.core.compiler import SVCompiler
+from sv_query.sv_query.trace.core.compiler import SVCompiler
 import os
 c = SVCompiler()
 c.add_filelist(

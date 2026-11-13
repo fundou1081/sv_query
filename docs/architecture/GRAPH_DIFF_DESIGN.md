@@ -197,7 +197,7 @@ def diff_with_health(G1, G2) -> Dict:
 
 ## 存储方案（已实现）
 
-**SnapshotManager** (src/trace/core/snapshot_manager.py)：
+**SnapshotManager** (src/sv_query/trace/core/snapshot_manager.py)：
 
 ```
 .svq/snapshots/

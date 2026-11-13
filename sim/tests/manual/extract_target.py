@@ -35,8 +35,8 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(_REPO_ROOT / 'src') not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT / 'src'))
 
-from trace.core.compiler import compile_sources  # noqa: E402
-from trace.core.semantic_adapter import SemanticAdapter  # noqa: E402
+from sv_query.trace.core.compiler import compile_sources  # noqa: E402
+from sv_query.trace.core.semantic_adapter import SemanticAdapter  # noqa: E402
 
 # pyslang binary garbage 兜底名 — 跳过这些, 不要返给 caller
 _BAD_NAMES = frozenset({'_unknown_', '_inst_', '_bad_', 'unknown', ''})

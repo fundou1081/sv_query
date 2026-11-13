@@ -34,9 +34,9 @@
 
 | 术语 | 含义 | 本仓库的具体所指 |
 |---|---|---|
-| **core 层** | 只读的分析内核 | `src/trace/core/`。消费者是 agent, 输出契约只可加字段不可改语义 (不变量 I2) |
+| **core 层** | 只读的分析内核 | `src/sv_query/trace/core/`。消费者是 agent, 输出契约只可加字段不可改语义 (不变量 I2) |
 | **CLI 层** | 命令行入口 | `src/cli/`。禁止任何文件写操作 (R3) |
-| **exp 层** | 实验性能力 | `src/trace/exp/`, 退役后归档到 `archive/2026-10-20-exp-atic`。在 `capabilities` 里显式降级, 不伪装成稳定能力 (I4) |
+| **exp 层** | 实验性能力 | `src/sv_query/trace/exp/`, 退役后归档到 `archive/2026-10-20-exp-atic`。在 `capabilities` 里显式降级, 不伪装成稳定能力 (I4) |
 | **capabilities** | 能力声明 | CLI 输出的能力清单。降级的能力在这里显式标记 (不变量 I4) |
 | **单文件 / filelist** | 两种源码输入形态 | `-f/--file` 只接受**单文件**; `--filelist` 接受 `.f` 文件列表。二者混用会触发原生 SIGTRAP (纪律 4) |
 | **strict 模式** | 恒定严格 | 不完整 RTL / elaboration 报错直接失败, 不做 graceful degradation。禁 `--no-strict` |

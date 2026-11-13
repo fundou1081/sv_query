@@ -92,9 +92,9 @@ G2 实测 (commit `78eb602` / `49b475c`) 推翻了 "重复实现" 的判断, 但
 ⚠️ **未完成, 未提交** — 详见 iter_035。
 
 已有**未提交**的实现 (前一 session 按 06:36 指示所做):
-- `src/trace/core/extractors/_common.py` — 新增 `BitSelectHit` / `iter_bit_selects()` /
+- `src/sv_query/trace/core/extractors/_common.py` — 新增 `BitSelectHit` / `iter_bit_selects()` /
   `_PyslangSelectWalker` (+492 行)
-- `src/trace/core/graph_builder.py` — `_create_hierarchical_bit_nodes` 改用 helper (+145 行)
+- `src/sv_query/trace/core/graph_builder.py` — `_create_hierarchical_bit_nodes` 改用 helper (+145 行)
 - `sim/tests/unit/test_common_bit_selects.py` — 新增单测 (未跟踪)
 
 **遗留问题 (需后续处理)**:

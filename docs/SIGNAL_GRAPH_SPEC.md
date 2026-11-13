@@ -179,7 +179,7 @@ GraphBuilder(adapter, target_module)  .build()  →  SignalGraph
 SignalGraph 构建分**两层**：`UnifiedTracer.build_graph()`（高层编排）调用 `GraphBuilder.build()`（节点/边抽取）。**前一版 spec 把高层步骤错误归到了 GraphBuilder，现已修正**。
 
 ```
-UnifiedTracer.build_graph()  (src/trace/unified_tracer.py:435)
+UnifiedTracer.build_graph()  (src/sv_query/trace/unified_tracer.py:435)
 ├─ 1. 缓存加载 (use_cache + content-hash key)   [拿到则直接返回]
 ├─ 2. root = compiler.get_root()
 ├─ 3. SemanticAdapter(root, compiler, target_module)
@@ -196,7 +196,7 @@ UnifiedTracer.build_graph()  (src/trace/unified_tracer.py:435)
 └─ 14. 缓存保存 (use_cache)
 ```
 
-### 3.2 GraphBuilder.build() 内部 11 步 (src/trace/core/graph_builder.py:63)
+### 3.2 GraphBuilder.build() 内部 11 步 (src/sv_query/trace/core/graph_builder.py:63)
 
 ```
 if target_module: _configure_instance_paths()
@@ -232,7 +232,7 @@ if target_module: _filter_by_target()
 | `to_dict()` / `from_dict()` | 序列化（缓存用） |
 | `_adapter` | 挂载的 semantic adapter (供 coverage_generator) |
 
-> 前版 spec 漏了 `get_node`/`get_edge`/`get_edges`/`set_node_modport_dir`/`compute_effective_condition`（2026-08-27 复核补全，见 src/trace/core/graph/models.py:322-435）。
+> 前版 spec 漏了 `get_node`/`get_edge`/`get_edges`/`set_node_modport_dir`/`compute_effective_condition`（2026-08-27 复核补全，见 src/sv_query/trace/core/graph/models.py:322-435）。
 
 ---
 

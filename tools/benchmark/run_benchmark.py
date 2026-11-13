@@ -34,14 +34,14 @@ os.environ.setdefault("SV_QUERY_LOG_LEVEL", "ERROR")
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from trace.unified_tracer import UnifiedTracer  # noqa: E402
-from trace.core.graph.models import NodeKind  # noqa: E402
-from trace.core.module_extractor import (  # noqa: E402
+from sv_query.trace.unified_tracer import UnifiedTracer  # noqa: E402
+from sv_query.trace.core.graph.models import NodeKind  # noqa: E402
+from sv_query.trace.core.module_extractor import (  # noqa: E402
     extract_module,
     extract_module_edges_from_graph,
 )
-from trace.core.semantic_adapter import SemanticAdapter  # noqa: E402
-from trace.core.query.signal import SignalTracer  # noqa: E402
+from sv_query.trace.core.semantic_adapter import SemanticAdapter  # noqa: E402
+from sv_query.trace.core.query.signal import SignalTracer  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -192,8 +192,8 @@ def measure_flakiness(
 import sys, os
 sys.path.insert(0, '{PROJECT_ROOT}/src')
 os.environ['SV_QUERY_LOG_LEVEL'] = 'ERROR'
-from trace.unified_tracer import UnifiedTracer
-from trace.core.graph.models import NodeKind
+from sv_query.trace.unified_tracer import UnifiedTracer
+from sv_query.trace.core.graph.models import NodeKind
 {init_code}
     include_dirs={include_dirs!r},
     log_level='ERROR',

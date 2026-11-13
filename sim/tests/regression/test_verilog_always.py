@@ -6,8 +6,8 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.core.graph.models import NodeKind
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.core.graph.models import NodeKind
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 
 def _build(source, filename='test.v'):

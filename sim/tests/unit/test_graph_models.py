@@ -9,7 +9,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.core.graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
+from sv_query.trace.core.graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
 
 
 class TestGraphModels(unittest.TestCase):

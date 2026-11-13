@@ -14,9 +14,9 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.core.compiler import SVCompiler  # noqa: E402
-from trace.core.graph_builder import GraphBuilder  # noqa: E402
-from trace.core.semantic_adapter import SemanticAdapter  # noqa: E402
+from sv_query.trace.core.compiler import SVCompiler  # noqa: E402
+from sv_query.trace.core.graph_builder import GraphBuilder  # noqa: E402
+from sv_query.trace.core.semantic_adapter import SemanticAdapter  # noqa: E402
 
 
 def _graph(source, target='top'):

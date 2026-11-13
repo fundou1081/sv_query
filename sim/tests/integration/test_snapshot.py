@@ -16,8 +16,8 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.core.graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
-from trace.core.snapshot_manager import SnapshotManager
+from sv_query.trace.core.graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
+from sv_query.trace.core.snapshot_manager import SnapshotManager
 
 
 class TestSignalGraphSerialization(unittest.TestCase):

@@ -12,7 +12,7 @@ ParenthesizedExpression.expression = [a, Star, b]
 本模块将这种扁平的 token 序列递归解析为嵌套的 ExprNode 树。
 
 用法:
-    from trace.core.graph.viz.expression_tree import ExpressionTree
+    from sv_query.trace.core.graph.viz.expression_tree import ExpressionTree
     
     tree = ExpressionTree.build(assign_node)
     # tree.root → ExprNode

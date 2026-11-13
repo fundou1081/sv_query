@@ -14,7 +14,7 @@ import typer
 from cli._common import _build_tracer, handle_compilation_error
 from cli.core.semantic._common import node_dict
 from cli._output import emit_json
-from trace.core.compiler import CompilationError
+from sv_query.trace.core.compiler import CompilationError
 
 
 def _params_for(tracer, path: str) -> list[dict]:

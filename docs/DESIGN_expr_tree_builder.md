@@ -61,7 +61,7 @@ driver_extractor  : self._store_expr_tree (被上面注入)
 
 ## 📐 设计: ExpressionTreeBuilder
 
-### 新模块: `src/trace/core/extractors/expr_tree_builder.py`
+### 新模块: `src/sv_query/trace/core/extractors/expr_tree_builder.py`
 
 ```python
 @dataclass

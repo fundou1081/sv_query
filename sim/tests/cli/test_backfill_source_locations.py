@@ -31,7 +31,7 @@ def strict_uart_graph():
     import shutil
     for p in Path(SRC).rglob("__pycache__"):
         shutil.rmtree(p, ignore_errors=True)
-    from trace.unified_tracer import UnifiedTracer
+    from sv_query.trace.unified_tracer import UnifiedTracer
     src = SYNCHRONIZER.read_text()
     tracer = UnifiedTracer(sources={"synchronizer.sv": src}, )
     return tracer.build_graph()

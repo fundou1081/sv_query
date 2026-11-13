@@ -2,7 +2,7 @@
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-SIGNAL = ROOT / "src/trace/core/query/signal.py"
+SIGNAL = ROOT / "src/sv_query/trace/core/query/signal.py"
 
 
 def test_signal_tracer_has_no_full_edges_scan():

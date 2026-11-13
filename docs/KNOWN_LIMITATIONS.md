@@ -9,7 +9,7 @@
 
 D5 锁定: 以后仅支持 v11 API, 不再考虑 v9/v10 兼容.
 
-**当前 compat shim**: `src/trace/core/_pyslang_compat.py` (8327 bytes)
+**当前 compat shim**: `src/sv_query/trace/core/_pyslang_compat.py` (8327 bytes)
 - `_detect_version()` — 版本探测 (v11 不需要)
 - `_KIND_ALIASES` — kind 名字 v10/v11 映射
 - `is_syntax_list` / `iter_syntax_list` — v11 已拆 plain list, 可能不需要
@@ -62,7 +62,7 @@ slang 走 script 模式 → 根节点成了**表达式** (`DivideExpression`, �
 `pyslang` 的 `Compilation.addSyntaxTree()` **直接 SIGTRAP** (exit 133, 无输出、
 无 Python 异常可捕获, `faulthandler` 也拿不到栈)。
 
-**本项目已加的守卫 (机械保障)**: `src/trace/core/compiler.py::_reject_non_design_unit`
+**本项目已加的守卫 (机械保障)**: `src/sv_query/trace/core/compiler.py::_reject_non_design_unit`
 在 `addSyntaxTree` 之前检查根节点类型, 表达式根 → 抛可行动的 `CompilationError`
 (提示"请用 `--filelist`")。合法输入 (根节点 `CompilationUnit` /
 `ModuleDeclaration` / `ClassDeclaration` / 空文件 / 仅 `define`) 不受影响。
@@ -235,9 +235,9 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 不在本次修复范围。
 
 **根因位置（历史）**：
-- `src/trace/core/query/signal.py::_trace_missing_node`（缺位回退不带位索引 → 无法过滤切片父）
-- `src/trace/core/query/signal.py::_maybe_lift_to_parent_bus`（`not drivers` 门槛挡住死胡同位）
-- `src/trace/core/graph_builder.py::_expand_bus_conn_bit_bridges`（只在**两侧都有位节点**时建位桥）
+- `src/sv_query/trace/core/query/signal.py::_trace_missing_node`（缺位回退不带位索引 → 无法过滤切片父）
+- `src/sv_query/trace/core/query/signal.py::_maybe_lift_to_parent_bus`（`not drivers` 门槛挡住死胡同位）
+- `src/sv_query/trace/core/graph_builder.py::_expand_bus_conn_bit_bridges`（只在**两侧都有位节点**时建位桥）
 
 **测试缺口**：位相关测试 27 个（3 个文件）+ A2 若干，但断言多为"节点存在 / 边存在 /
 `len(drivers)>=1`"；`test_accuracy_a1_a2.py:97` 明确接受总线粒度结果。
@@ -347,7 +347,7 @@ signal 级 `precision` + `coarse_fallback`）；`capabilities.bit_precision` 契
 
 | snapshot | 边级证据 | 来源 |
 |---|---|---|
-| P119 之后重建的 | ✅ 有 `expression` / `bit_slice` / `source_location` | `src/trace/core/graph/models.py` |
+| P119 之后重建的 | ✅ 有 `expression` / `bit_slice` / `source_location` | `src/sv_query/trace/core/graph/models.py` |
 | P119 **之前**生成的 | ❌ **没有**（旧格式仍可反序列化，但字段缺失） | 兼容性保留，不回填 |
 
 **可观察后果**：拿旧 snapshot 跑 `intent=evidence`，模型拿到的仍然只是**节点声明行**

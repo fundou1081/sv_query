@@ -20,9 +20,9 @@ import typer
 from cli._common import _build_tracer, handle_compilation_error
 from cli._output import emit_json
 from cli.core.semantic.trace_common import resolve_signal, _load_tracer_from_snapshot
-from trace.core.compiler import CompilationError
-from trace.core.graph.contracts import STRUCTURAL_EDGE_KINDS, has_data_edge
-from trace.core.query.structural import StructuralError, symmetry_findings
+from sv_query.trace.core.compiler import CompilationError
+from sv_query.trace.core.graph.contracts import STRUCTURAL_EDGE_KINDS, has_data_edge
+from sv_query.trace.core.query.structural import StructuralError, symmetry_findings
 
 verify_app = typer.Typer(help="客观检查：双向一致性 + claim verification (只读, JSON-first)")
 
@@ -121,7 +121,7 @@ def _is_bit_like(node) -> bool:
 def _has_data_edge(graph, a: str, b: str) -> bool:
     """该对节点之间是否存在**数据边** (DRIVER / CONNECTION)。
 
-    [P158.1] edge 分类的唯一实现是 `trace.core.graph.contracts`;
+    [P158.1] edge 分类的唯一实现是 `sv_query.trace.core.graph.contracts`;
     这里只引用, 不自己写 `kind.name in (...)` (避免第二份实现)。
     """
     return has_data_edge(graph.get_edges(a, b))

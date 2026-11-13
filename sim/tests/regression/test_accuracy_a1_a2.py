@@ -11,7 +11,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 
 def _graph(source, target=None):
@@ -586,7 +586,7 @@ endmodule
     def _df(self, src):
         tr = UnifiedTracer(sources={'test.sv': src}, log_level='ERROR')
         g = tr.build_graph(use_cache=False, target_module='top')
-        from trace.core.graph.dataflow import DataFlowGraph
+        from sv_query.trace.core.graph.dataflow import DataFlowGraph
         return DataFlowGraph(g, getattr(tr, '_module_graph', None))
 
     def test_genfor_bus_aggregates_all_entries(self):

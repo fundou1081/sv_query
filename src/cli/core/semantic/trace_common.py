@@ -19,8 +19,8 @@ from pathlib import Path
 import typer
 
 from cli._output import emit_json
-from trace.core.graph.models import EdgeKind
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.core.graph.models import EdgeKind
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 logger = logging.getLogger(__name__)
 
@@ -838,7 +838,7 @@ def _apply_filters(
 ) -> list[dict]:
     """[B2 2026-07-03] Apply 5 filters to driver/load dicts.
 
-    Uses fnmatch (NOT regex - project discipline: no regex in src/trace/core/).
+    Uses fnmatch (NOT regex - project discipline: no regex in src/sv_query/trace/core/).
     Returns filtered list (preserves order). Empty list if all filtered out.
     """
     import fnmatch
@@ -884,7 +884,7 @@ def _load_tracer_from_snapshot(
     Raises:
         ValueError: snapshot tag not found.
     """
-    from trace.core.snapshot_manager import SnapshotManager
+    from sv_query.trace.core.snapshot_manager import SnapshotManager
 
     manager = SnapshotManager()
     snap = manager.load(tag)

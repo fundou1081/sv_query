@@ -26,9 +26,9 @@ SRC = str(PROJECT_ROOT / "src")
 if SRC not in sys.path:
     sys.path.insert(0, SRC)
 
-from trace.unified_tracer import UnifiedTracer  # noqa: E402
-from trace.core.graph.models import EdgeKind, SignalGraph, TraceEdge, TraceNode  # noqa: E402
-from trace.core.graph.models import NodeKind  # noqa: E402
+from sv_query.trace.unified_tracer import UnifiedTracer  # noqa: E402
+from sv_query.trace.core.graph.models import EdgeKind, SignalGraph, TraceEdge, TraceNode  # noqa: E402
+from sv_query.trace.core.graph.models import NodeKind  # noqa: E402
 
 MINIMAL_FILELIST = str(PROJECT_ROOT / "sim/tests/fixtures/minimal_3module/filelist.f")
 

@@ -43,7 +43,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-# 必须插到最前: sys.path 里可能有其他路径下的 `trace.py`（stdlib 就有）, 会遮蔽 src/trace
+# 必须插到最前: sys.path 里可能有其他路径下的 `trace.py`（stdlib 就有）, 会遮蔽 src/sv_query/trace
 SRC = REPO / "src"
 if sys.path[0] != str(SRC):
     sys.path.insert(0, str(SRC))
@@ -114,7 +114,7 @@ def build_snapshot(
     use_cache: bool = False,
 ) -> dict:
     """构建一份规范化图快照（供 CLI 与测试共用）。"""
-    from trace.unified_tracer import UnifiedTracer  # 延迟导入（tools 环境）
+    from sv_query.trace.unified_tracer import UnifiedTracer  # 延迟导入（tools 环境）
 
     if source_dir:
         pattern = sorted(Path(source_dir).glob("*.sv")) + sorted(Path(source_dir).glob("*.v"))

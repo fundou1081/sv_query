@@ -16,7 +16,7 @@ SourceManager), 所以本测试必须传 include_dirs。
 """
 import gc
 
-from trace.core.compiler import SVCompiler
+from sv_query.trace.core.compiler import SVCompiler
 
 TOP_SV = """
 module sm_top;

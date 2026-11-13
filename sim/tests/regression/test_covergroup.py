@@ -19,8 +19,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 
 import pyslang
 
-from trace.core.covergroup_extractor import CovergroupExtractor
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.core.covergroup_extractor import CovergroupExtractor
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 
 def _extract(source):
@@ -213,7 +213,7 @@ class TestCovergroupBehavior(unittest.TestCase):
 
     def _analyze(self, source):
         """建图 + 提取 + 分析, 返回 CoverageGap 列表."""
-        from trace.core.covergroup_analyzer import CovergroupAnalyzer
+        from sv_query.trace.core.covergroup_analyzer import CovergroupAnalyzer
 
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()

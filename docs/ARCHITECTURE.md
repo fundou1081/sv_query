@@ -2,8 +2,8 @@
 
 > ⚠️ **2026-11-11 校准：本文正文是 2026-08-26 快照，已不代表当前实现。**
 > 已知差异：CLI 命令面 23 → **45（core 40 + exp 5）**；VizData/`visualize` 全设计图已退役；
-> 构建走 `src/trace/core/pipeline.py` 的 **11 步声明式 DAG**；边分类唯一实现在
-> `src/trace/core/graph/contracts.py`（data/control/structural）。
+> 构建走 `src/sv_query/trace/core/pipeline.py` 的 **11 步声明式 DAG**；边分类唯一实现在
+> `src/sv_query/trace/core/graph/contracts.py`（data/control/structural）。
 > 恢复上下文请读 [HANDOFF §4](dev/HANDOFF.md) / [SEMANTIC_CONTRACTS](dev/SEMANTIC_CONTRACTS.md)，
 > 本文只作历史设计记录。
 
@@ -64,7 +64,7 @@
 
 ### 2.1 SignalGraph — 信号关系图
 
-**文件**: `src/trace/core/graph/models.py` (744 行)
+**文件**: `src/sv_query/trace/core/graph/models.py` (744 行)
 
 ```python
 class NodeKind(Enum):
@@ -217,7 +217,7 @@ class VizEdge:
 ### 4.3 文件结构
 
 ```
-src/trace/core/graph/viz/
+src/sv_query/trace/core/graph/viz/
 ├── __init__.py            # 公开 API
 ├── viz_data_models.py     # VizNode / VizEdge / VizData
 ├── viz_data_builder.py    # build_viz_data(graph, options)

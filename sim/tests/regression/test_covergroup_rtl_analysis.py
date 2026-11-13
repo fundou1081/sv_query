@@ -12,8 +12,8 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.core.covergroup_extractor import CovergroupExtractor
-from trace.unified_tracer import UnifiedTracer
+from sv_query.trace.core.covergroup_extractor import CovergroupExtractor
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 
 def _build_all(source):
@@ -158,7 +158,7 @@ def suggest_cross_signals(graph, signal_name):
     suggestions = []
 
     # 找同 constraint 中的其他信号
-    from trace.core.graph.models import EdgeKind
+    from sv_query.trace.core.graph.models import EdgeKind
 
     # 找信号所在的 constraint block
     constraint_blocks = set()

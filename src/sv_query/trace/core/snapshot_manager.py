@@ -278,13 +278,13 @@ class SnapshotManager:
             return None
 
         # 使用 SignalGraph 的序列化/反序列化
-        from trace.core.graph.models import SignalGraph
+        from sv_query.trace.core.graph.models import SignalGraph
 
         G1 = SignalGraph.from_dict(data1)
         G2 = SignalGraph.from_dict(data2)
 
         # 使用 diff_with_health 进行完整对比
-        from trace.core.graph.diff import diff_with_health
+        from sv_query.trace.core.graph.diff import diff_with_health
 
         result = diff_with_health(G1, G2)
 

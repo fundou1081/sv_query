@@ -1,4 +1,4 @@
-"""Test trace._safe canonical implementations (P0-1)
+"""Test sv_query.trace._safe canonical implementations (P0-1)
 
 Verifies:
 - safe_str handles None, normal strings, null bytes, control chars
@@ -8,7 +8,7 @@ Verifies:
 """
 import pytest
 
-from trace._safe import clean_name, safe_attr, safe_str
+from sv_query.trace._safe import clean_name, safe_attr, safe_str
 
 # ---- safe_str ----
 
@@ -110,7 +110,7 @@ def test_safe_attr_none():
 
 def test_semantic_adapter_clean_name_uses_canonical():
     """[P0-1] SemanticAdapter.clean_name delegates to _safe.clean_name"""
-    from trace.core.semantic_adapter import SemanticAdapter
+    from sv_query.trace.core.semantic_adapter import SemanticAdapter
     adapter = SemanticAdapter.__new__(SemanticAdapter)  # skip __init__
 
     # Should behave identically to _safe.clean_name

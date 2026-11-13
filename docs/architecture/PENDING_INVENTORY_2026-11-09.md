@@ -10,7 +10,7 @@
 扫描：
 
 ```text
-src/cli, src/trace, tools/agent, tools/benchmark
+src/cli, src/sv_query/trace, tools/agent, tools/benchmark
 ```
 
 结果：

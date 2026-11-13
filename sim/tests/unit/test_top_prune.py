@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-MOD = ROOT / "src" / "trace" / "core" / "top_prune.py"
+MOD = ROOT / "src" / "sv_query" / "trace" / "core" / "top_prune.py"
 
 
 def _load():

@@ -19,7 +19,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from trace.core.query.signal import SignalTracer
+from sv_query.trace.core.query.signal import SignalTracer
 
 # ============================================================================
 # Mock graph 模拟 pulp axi_xbar_dp_ram hierarchy

@@ -3,7 +3,7 @@
 **交接时间**: 2026-11-12 10:10 (Asia/Shanghai)
 **仓库**: `/Users/fundou/my_dv_proj/sv_query`
 **HEAD**: 以 `git log -1` 为准（不要依赖文档里的哈希）
-**状态**: canonical 2729 passed / 0 failed、opensource 114 passed / 9 skipped / 0 failed；
+**状态**: canonical 2731 passed / 0 failed、opensource 114 passed / 9 skipped / 0 failed；
 按 [REPORT_STATUS.md](REPORT_STATUS.md) 口径 **0 failed 不等于全绿**（合计 132 个单元未执行）；
 P158.12.7 / P167 / P165.1 / P165.4 已完成；剩余 P165.3 与 P165.2
 
@@ -27,7 +27,7 @@ sv_query 是 agent 的 RTL 查询 + 客观校验层；
 当前测试：
 
 ```text
-canonical:   2729 passed / 0 skipped / 123 deselected / 0 failed
+canonical:   2731 passed / 0 skipped / 123 deselected / 0 failed
 opensource:  114 passed / 9 skipped / 0 failed
 ```
 
@@ -94,17 +94,17 @@ d1325aaf — docs(P159): record full pitfalls and lessons history
 
 | 文件/模块 | 责任 | 注意 |
 |---|---|---|
-| `src/trace/core/graph/contracts.py` | **唯一** edge 分类 | 不允许在命令里另写 edge 集合 |
-| `src/trace/core/module_instance_graph.py` | PathResolver / MIG | 路径有界；不要恢复全 edge 遍历 |
-| `src/trace/core/graph/dataflow.py` | dataflow 段/路径 | 必须只走数据边；BIT_SELECT 只做端点位展开 |
-| `src/trace/core/snapshot_manager.py` | snapshot CRUD/大小/损坏 | 文件名是 tag 权威；损坏文件可见 |
-| `src/trace/unified_tracer.py` | `load_snapshot` 唯一构造入口 | 不要再手工设 4 个私有字段 |
+| `src/sv_query/trace/core/graph/contracts.py` | **唯一** edge 分类 | 不允许在命令里另写 edge 集合 |
+| `src/sv_query/trace/core/module_instance_graph.py` | PathResolver / MIG | 路径有界；不要恢复全 edge 遍历 |
+| `src/sv_query/trace/core/graph/dataflow.py` | dataflow 段/路径 | 必须只走数据边；BIT_SELECT 只做端点位展开 |
+| `src/sv_query/trace/core/snapshot_manager.py` | snapshot CRUD/大小/损坏 | 文件名是 tag 权威；损坏文件可见 |
+| `src/sv_query/trace/unified_tracer.py` | `load_snapshot` 唯一构造入口 | 不要再手工设 4 个私有字段 |
 | `src/cli/_registry.py` | capabilities/registry/contract | 39 core 命令的 group/contract（2026-11-11 impact 降 exp 后） |
 | `tools/agent/run_spi_corpus.py` | 真实 corpus runner | 9 tasks；不要改成“只打印” |
 | `tools/run_gates.sh` / `tools/run_lint.sh` | CI/本地 gate | 不要绕过 |
 | `.github/workflows/tests.yml` | CI | opensource 可见但不阻塞 |
 
-**不要修改** `src/trace/core` 去做 OpenTitan 特定 FIFO/接口推断；
+**不要修改** `src/sv_query/trace/core` 去做 OpenTitan 特定 FIFO/接口推断；
 项目适配只能在 `examples/project_adaptations/` 或外部显式调用。
 
 ---
@@ -115,7 +115,7 @@ d1325aaf — docs(P159): record full pitfalls and lessons history
 
 落地（commit 见 git log `feat(P158.11.2b)`）：
 
-- `src/trace/core/graph/search_budget.py::SearchBudget`：预算记账唯一实现
+- `src/sv_query/trace/core/graph/search_budget.py::SearchBudget`：预算记账唯一实现
   （从 MIG 的 `_SearchBudget` 抽出共享，旧名保留别名）；
 - `dataflow._find_paths` 全部 `list(nx.all_simple_paths(...))` 替换为同遍历序的有界 DFS
   `_bounded_simple_paths`（每考察一条出边记 1 次 expansion）；
@@ -229,7 +229,7 @@ python3 -m pytest sim/tests/ -m "opensource" -q -p no:randomly
 当前期望：
 
 ```text
-canonical:   2729 passed / 0 failed
+canonical:   2731 passed / 0 failed
 opensource:  114 passed / 0 failed / 17 explicit skips
 ```
 
