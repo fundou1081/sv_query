@@ -253,6 +253,104 @@
           ]
         }
       }
+    },
+    {
+      "id": "ternary_condition_invert",
+      "source": "sim/tests/fixtures/golden_mini/golden_dataflow_7_ternary.sv",
+      "top": "with_ternary",
+      "query": "controlflow",
+      "signal": "with_ternary.y",
+      "mutation": {
+        "old": "assign y = sel_a ?",
+        "new": "assign y = !sel_a ?"
+      },
+      "expect": {
+        "before": {
+          "contains": [
+            "sel_a && sel_b"
+          ]
+        },
+        "after": {
+          "contains": [
+            "!sel_a && sel_b"
+          ]
+        }
+      }
+    },
+    {
+      "id": "case_selector_invert",
+      "source": "sim/tests/fixtures/golden_mini/mux_demo.sv",
+      "top": "mux_demo",
+      "query": "controlflow",
+      "signal": "mux_demo.y_case",
+      "mutation": {
+        "old": "case (sel_b)",
+        "new": "case (!sel_b)"
+      },
+      "expect": {
+        "before": {
+          "contains": [
+            "sel_b == 2'b0",
+            "sel_b == default"
+          ]
+        },
+        "after": {
+          "contains": [
+            "!sel_b == 2'b0",
+            "!sel_b == default"
+          ]
+        }
+      }
+    },
+    {
+      "id": "wrapper_passthrough_swap",
+      "source": "sim/tests/fixtures/wrapper_chain/wrapper_chain.sv",
+      "top": "wrapper_chain",
+      "query": "drivers",
+      "signal": "wrapper_chain.s_axi_rlast_o",
+      "mutation": {
+        "old": "assign s_axi_rlast_o  = s_axi_arvalid_i;",
+        "new": "assign s_axi_rlast_o  = s_axi_awvalid_i;"
+      },
+      "expect": {
+        "before": {
+          "contains": [
+            "wrapper_chain.s_axi_arvalid_i"
+          ]
+        },
+        "after": {
+          "contains": [
+            "wrapper_chain.s_axi_awvalid_i"
+          ],
+          "not_contains": [
+            "wrapper_chain.s_axi_arvalid_i"
+          ]
+        }
+      }
+    },
+    {
+      "id": "wrapper_path_removed",
+      "source": "sim/tests/fixtures/wrapper_chain/wrapper_chain.sv",
+      "top": "wrapper_chain",
+      "query": "paths",
+      "signal": "wrapper_chain.s_axi_arvalid_i",
+      "to_signal": "wrapper_chain.s_axi_rlast_o",
+      "mutation": {
+        "old": "assign s_axi_rlast_o  = s_axi_arvalid_i;",
+        "new": "assign s_axi_rlast_o  = s_axi_awvalid_i;"
+      },
+      "expect": {
+        "before": {
+          "fields": {
+            "found": true
+          }
+        },
+        "after": {
+          "fields": {
+            "found": false
+          }
+        }
+      }
     }
   ]
 }
