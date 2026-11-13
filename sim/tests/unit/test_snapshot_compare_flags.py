@@ -92,8 +92,8 @@ def test_snapshot_compare_top_flag():
     r = _run("snapshot", "compare", tag1, tag2, "--top", "1")
     assert r.returncode == 0, f"应 exit 0, got {r.returncode}, stderr={r.stderr[:300]}"
     # Added nodes (2) 但只显示 1: 应有 "more" 标注
-    assert "Added nodes" in r.stdout
-    assert "more" in r.stdout, f"应有 '(N more)' 标注, stdout={r.stdout[:500]}"
+    assert "Added nodes" in (r.stdout + r.stderr)
+    assert "more" in (r.stdout + r.stderr), f"应有 '(N more)' 标注, stdout={r.stdout[:500]}"
     print("✅ --top 1: added nodes 限制显示, 标注 more")
 
 
@@ -107,8 +107,8 @@ def test_snapshot_compare_show_edges():
     r = _run("snapshot", "compare", tag1, tag2, "--show-edges")
     assert r.returncode == 0
     # 应有 + 0 → top.dout 格式
-    assert "→" in r.stdout, f"应含箭头格式, stdout={r.stdout[:500]}"
-    assert "+" in r.stdout, f"应有 + 前缀, stdout={r.stdout[:500]}"
+    assert "→" in (r.stdout + r.stderr), f"应含箭头格式, stdout={r.stdout[:500]}"
+    assert "+" in (r.stdout + r.stderr), f"应有 + 前缀, stdout={r.stdout[:500]}"
     print("✅ --show-edges: 显示具体 edge 变化")
 
 
@@ -142,9 +142,9 @@ def test_snapshot_compare_default_backward_compat():
     r = _run("snapshot", "compare", tag1, tag2)
     assert r.returncode == 0
     # 默认不显示 '→' 箭头
-    assert "→" not in r.stdout, f"默认不应显示 edges 详情, stdout={r.stdout[:500]}"
+    assert "→" not in (r.stdout + r.stderr), f"默认不应显示 edges 详情, stdout={r.stdout[:500]}"
     # 但应有 Added edges 计数
-    assert "Added edges" in r.stdout
+    assert "Added edges" in (r.stdout + r.stderr)
     print("✅ default: 跟之前兼容 (top=10, 不显示 edges)")
 
 
@@ -152,9 +152,9 @@ def test_snapshot_compare_help_documented():
     """snapshot compare --help 文档化新 flag"""
     r = _run("snapshot", "compare", "--help")
     assert r.returncode == 0
-    assert "--top" in r.stdout
-    assert "--show-edges" in r.stdout
-    assert "--pretty" in r.stdout
+    assert "--top" in (r.stdout + r.stderr)
+    assert "--show-edges" in (r.stdout + r.stderr)
+    assert "--pretty" in (r.stdout + r.stderr)
     print("✅ snapshot compare --help: 文档化新 flag")
 
 

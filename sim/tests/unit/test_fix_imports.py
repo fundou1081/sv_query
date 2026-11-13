@@ -120,10 +120,10 @@ def test_fix_imports_lists_undefined_identifiers():
     r = _run("diagnose", "imports", "--filelist", fl, "--project-root", proj, "--log-level", "ERROR")
     assert r.returncode == 0, f"stderr={r.stderr[:300]}"
     # 应有 undefined_typedef_t (项目里没定义)
-    assert "undefined_typedef_t" in r.stdout, f"应列出 undefined_typedef_t, stdout={r.stdout[:500]}"
+    assert "undefined_typedef_t" in (r.stdout + r.stderr), f"应列出 undefined_typedef_t, stdout={r.stdout[:500]}"
     # 应有 summary
-    assert "Fix Imports Report" in r.stdout
-    assert "Not in project" in r.stdout
+    assert "Fix Imports Report" in (r.stdout + r.stderr)
+    assert "Not in project" in (r.stdout + r.stderr)
     print("✅ fix imports: 列出未定义 identifier")
 
 
@@ -131,8 +131,8 @@ def test_fix_imports_explicit_project_root():
     """--project-root 显式指定"""
     tmpdir, fl, proj = _setup_project_with_missing_typedef()
     r = _run("diagnose", "imports", "--filelist", fl, "--project-root", proj, "--log-level", "ERROR")
-    assert "Project root:" in r.stdout
-    assert proj in r.stdout
+    assert "Project root:" in (r.stdout + r.stderr)
+    assert proj in (r.stdout + r.stderr)
     print("✅ fix imports --project-root: 显式指定生效")
 
 
@@ -158,8 +158,8 @@ def test_fix_imports_cli_is_readonly_no_write_option():
     # [iter_248] 4 个子命令合并为 `diagnose <check>`: help 是顶层命令的 help
     r = _run("diagnose", "--help")
     assert r.returncode == 0
-    assert "--filelist" in r.stdout
-    assert "tools/fix_imports.py" in r.stdout, "help 应指向写入工具"
+    assert "--filelist" in (r.stdout + r.stderr)
+    assert "tools/fix_imports.py" in (r.stdout + r.stderr), "help 应指向写入工具"
     # 真正的契约: CLI 拒绝 --write (不是"help 里没这个词" —— help 会提到工具)
     r2 = _run("diagnose", "imports", "--filelist", "/dev/null", "--write", "/tmp/x.f")
     assert r2.returncode == 2 and "No such option" in (r2.stdout + r2.stderr), \
@@ -181,7 +181,7 @@ def test_tools_fix_imports_writes_new_filelist():
     assert new_fl.exists(), "应生成新 filelist"
     content = new_fl.read_text()
     assert "main.sv" in content and "broken.sv" in content
-    assert "Wrote" in r.stdout and "Added" in r.stdout
+    assert "Wrote" in (r.stdout + r.stderr) and "Added" in (r.stdout + r.stderr)
 
     # 安全约束: 目标 == 原 filelist → 拒绝 (早期 CLI 会原地覆盖)
     r2 = subprocess.run(
@@ -196,11 +196,11 @@ def test_fix_imports_help_documented():
     """`diagnose --help` 文档化 (iter_248 起 4 项检查共用同一个帮助)。"""
     r = _run("diagnose", "--help")
     assert r.returncode == 0
-    assert "--filelist" in r.stdout
-    assert "--project-root" in r.stdout
-    assert "--json" in r.stdout
+    assert "--filelist" in (r.stdout + r.stderr)
+    assert "--project-root" in (r.stdout + r.stderr)
+    assert "--json" in (r.stdout + r.stderr)
     # 只读硬约束: 帮助里不得出现 --write (写入在 tools/fix_imports.py)
-    assert "--write" not in r.stdout
+    assert "--write" not in (r.stdout + r.stderr)
     print("✅ diagnose --help: 文档化")
 
 

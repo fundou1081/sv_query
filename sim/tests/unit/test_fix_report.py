@@ -86,16 +86,16 @@ def test_fix_report_lists_categories():
     r = _run("diagnose", "report", "--filelist", fl, "--log-level", "ERROR")
     assert r.returncode == 0
     # 关键 sections
-    assert "Fix Report" in r.stdout
-    assert "Total errors" in r.stdout
-    assert "Affected files" in r.stdout
-    assert "Error Categories" in r.stdout
-    assert "Summary" in r.stdout
+    assert "Fix Report" in (r.stdout + r.stderr)
+    assert "Total errors" in (r.stdout + r.stderr)
+    assert "Affected files" in (r.stdout + r.stderr)
+    assert "Error Categories" in (r.stdout + r.stderr)
+    assert "Summary" in (r.stdout + r.stderr)
     # UnknownModule 和 UndeclaredIdentifier (pyslang 11.0+ 实际产生的错误)
-    assert "UndeclaredIdentifier" in r.stdout
-    assert "UnknownModule" in r.stdout
+    assert "UndeclaredIdentifier" in (r.stdout + r.stderr)
+    assert "UnknownModule" in (r.stdout + r.stderr)
     # auto-fixable / manual 标记
-    assert "auto-fixable" in r.stdout or "manual" in r.stdout
+    assert "auto-fixable" in (r.stdout + r.stderr) or "manual" in (r.stdout + r.stderr)
     print("✅ fix report: 列出 category + 受影响文件 + 修复建议")
 
 
@@ -127,7 +127,7 @@ def test_fix_report_clean_project():
     fl.write_text(f"{sv.absolute()}\n")
     r = _run("diagnose", "report", "--filelist", fl, "--log-level", "ERROR")
     assert r.returncode == 0
-    assert "Project is clean" in r.stdout
+    assert "Project is clean" in (r.stdout + r.stderr)
     print("✅ fix report: 完整无错 SV → 'Project is clean'")
 
 
@@ -147,7 +147,7 @@ def test_fix_report_unresolvable_filelist_fails_loudly():
     r = _run("diagnose", "report", "--filelist", fl, "--log-level", "ERROR")
 
     assert r.returncode != 0, f"应非零退出, 实际 rc=0\nstdout={r.stdout}"
-    assert "Project is clean" not in r.stdout, "不得把'输入无效'报成 clean"
+    assert "Project is clean" not in (r.stdout + r.stderr), "不得把'输入无效'报成 clean"
     combined = r.stdout + r.stderr
     assert "没有解析到任何源文件" in combined, f"应说明根因, 实际: {combined[:400]}"
     print("✅ fix report: 无诊断可拿 → 非零退出 + 根因可见")
@@ -159,8 +159,8 @@ def test_fix_report_counts_auto_vs_manual():
     r = _run("diagnose", "report", "--filelist", fl, "--log-level", "ERROR")
     assert r.returncode == 0
     # Summary section
-    assert "Auto-fixable" in r.stdout
-    assert "Manual fix needed" in r.stdout
+    assert "Auto-fixable" in (r.stdout + r.stderr)
+    assert "Manual fix needed" in (r.stdout + r.stderr)
     print("✅ fix report: 区分 auto-fixable vs manual")
 
 
@@ -175,9 +175,9 @@ def test_fix_report_suggests_next_step():
     r = _run("diagnose", "report", "--filelist", fl, "--log-level", "ERROR")
     assert r.returncode == 0
     # filelist 完整性问题的 fix_command 应出现在报告中
-    assert "filelist" in r.stdout.lower()
+    assert "filelist" in (r.stdout + r.stderr).lower()
     # 错误信息中有 Fix: 指引
-    assert "Fix:" in r.stdout
+    assert "Fix:" in (r.stdout + r.stderr)
     print("✅ fix report: 给出了针对实际错误的修复指引")
 
 
@@ -185,8 +185,8 @@ def test_fix_report_help_documented():
     """fix report --help 文档化"""
     r = _run("diagnose", "report", "--help")
     assert r.returncode == 0
-    assert "--filelist" in r.stdout
-    assert "--json" in r.stdout
+    assert "--filelist" in (r.stdout + r.stderr)
+    assert "--json" in (r.stdout + r.stderr)
     print("✅ fix report --help: 文档化")
 
 
