@@ -525,8 +525,8 @@ P165 arch_eval 评审采纳（2026-11-11，来源 architecture/arch_eval_2026-11
 
 P171 CI / evidence-chain repair (2026-11-13 worker review) <进行中>
 -- P171.1 pin pyslang/jsonschema + CI green <进行中>
--- P171.2 fixture hermeticity (absolute .f paths + mutation CWD) <待做>
--- P171.3 verify structural coverage contract <待做>
+-- P171.2 fixture hermeticity (absolute .f paths + mutation CWD) <已完成>
+-- P171.3 verify structural coverage contract <已完成>
 -- P171.4 merge fanin/fanout + drivers control opt-in <待做>
 -- P171.5 unexecuted/metric correctness <待做>
 -- P171.6 benchmark fail->fail + mutation gate <待做>

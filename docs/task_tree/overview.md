@@ -533,3 +533,4 @@ Open-source project visualization is **correct and verified**. Ready for next ta
 | **397** | **2026-11-13** | **L3** | **P165.3.4 mutation 14 (iter_505)** | 方豆: 继续 | ternary/case/wrapper + detection_rate | 14/14 | **✅ 完成** |
 | **398** | **2026-11-13** | **L3** | **P165.3.5 mutation 20 (iter_506)** | 方豆: 继续 | multi/generate/wrapper/case | 20/20 | **✅ 完成** |
 | **399** | **2026-11-13** | **L3** | **P165.3.6 multi-driver conflict (iter_507)** | 方豆: 加 multi driver conflict | driver_count/multi_driver/driver_conflict | 21/21; 6 tests | **✅ 完成** |
+| **400** | **2026-11-13** | **L3** | **P171.2/.3 (iter_508/509)** | worker review | hermeticity + structural coverage | 2739/0; CI pending | **✅ 本地** |
