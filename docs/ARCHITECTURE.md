@@ -1,7 +1,7 @@
 # sv_query 架构文档 v2.0
 
 > ⚠️ **2026-11-11 校准：本文正文是 2026-08-26 快照，已不代表当前实现。**
-> 已知差异：CLI 命令面 23 → **45（core 40 + exp 5）**；VizData/`visualize` 全设计图已退役；
+> 已知差异：CLI 命令面 23 → **45（core 39 + exp 6）**；VizData/`visualize` 全设计图已退役；
 > 构建走 `src/sv_query/trace/core/pipeline.py` 的 **11 步声明式 DAG**；边分类唯一实现在
 > `src/sv_query/trace/core/graph/contracts.py`（data/control/structural）。
 > 恢复上下文请读 [HANDOFF §4](dev/HANDOFF.md) / [SEMANTIC_CONTRACTS](dev/SEMANTIC_CONTRACTS.md)，

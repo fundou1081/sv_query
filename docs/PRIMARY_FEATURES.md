@@ -2,7 +2,7 @@
 
 **Status**: Stable, actively maintained.
 
-**Audience**: 需要查询 RTL 信号因果、条件、位精确来源与结构一致性的工程师/agent。
+**Audience**: 需要查询 RTL 信号因果、条件、位级来源（scope 见 KNOWN_LIMITATIONS）与结构一致性的工程师/agent。
 
 **Last updated**: 2026-11-03（可视化退役；核心查询/校验为准）
 
@@ -12,7 +12,7 @@
 
 | 命令 | 价值 |
 |---|---|
-| `drivers` / `loads` | 谁驱动/使用这个信号；跨模块、位精确 |
+| `drivers` / `loads` | 谁驱动/使用这个信号；跨模块、位级（scope 见 KNOWN_LIMITATIONS） |
 | `trace fanin/fanout` | 带 depth/condition/evidence 的追踪 |
 | `paths` / `dataflow analyze` | A→B 路径、latency、跨模块 |
 | `controlflow analyze` | if/case 条件树 |
@@ -50,7 +50,7 @@ sv_query controlflow analyze top.y -f top.sv --json
 sv_query trace evidence top.y -f top.sv --json
 
 # 4. 验证 claim
-sv_query verify claim --claim '{"kind":"driver","signal":"top.y","driver":"top.a"}' -f top.sv --json
+sv_query verify claim --claim '{"type":"driver","signal":"top.y","driver":"top.a"}' -f top.sv --json
 ```
 
 ---

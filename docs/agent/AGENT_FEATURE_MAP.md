@@ -3,7 +3,7 @@
 > **读者**: 正在决定"下一步该调哪个稳定命令"的 agent 开发者。
 > **范围**: 只收 `core` 层、带 `--json`、声明稳定 schema 的命令。
 > **明确排除**: `exp` / `view` / `dev` / `out` 四层（`audit`、`diagnose`、
-> `trace overview`、`review render`、`architecture graph` 等均不在此表）。
+> `trace overview`、`trace impact`、`review render`、`architecture graph` 等均不在此表）。
 > **快照**: 本文基于 `8a8afe5c`（P141/P142）并经 P143 校验（`trace constraint-chain` mode 修正为 `trace`）
 > 实测，数据源见文末「来源」。
 > **写法**: 中文说明 + 英文命令/字段名；所有字段均与真实 CLI 输出核对过，
@@ -15,7 +15,7 @@
 
 1. 先跑 `sv_query capabilities --json`。它是命令面唯一真相源，含
    `layer/group/mode/cost/json/stateful/recommended/schema_version`。
-2. `core` 共 **40** 个命令，`schema_version = "1"`（层级声明）。
+2. `core` 共 **39** 个命令，`schema_version = "1"`（层级声明）。
 3. **判断成功看 `ok`，不要只看 exit code**：`drivers` 对未知信号返回
    `ok:false` 但 exit code 仍为 0。
 4. 图里"没有这条关系"用 `found:false`；"端点根本不存在"用 `ok:false`
@@ -27,7 +27,7 @@
 
 ---
 
-## 1. 汇总表（40 / 40 core JSON 命令）
+## 1. 汇总表（39 / 39 core JSON 命令）
 
 | 命令 | 解决的问题 | 典型消费步骤 | schema version |
 |---|---|---|---|
@@ -45,7 +45,6 @@
 | `dataflow analyze` | 源→目标的数据流/时序/条件 | 2. 跨模块数据流 | 1 |
 | `controlflow analyze` | 驱动该信号的条件 | 2. 解释何时被驱动 | 1 |
 | `controlflow list-conditioned` | 枚举所有带条件驱动的信号 | 2. 找分析入口 | 1 |
-| `trace impact` | 下游影响面 + 启发式风险排序 | 2. 改动影响评估 | 1 |
 | `trace frontier` | 结构 trace 停在哪、下一步查什么 | 2. 遇断点继续查 | 1 |
 | `trace evidence` | 源码 always/if 块证据 | 2. 为结论找原文 | 1 |
 | `trace profile` | 信号画像：位映射/clock/reset/时序 | 2. 波形关联前置 | 1 |
@@ -287,21 +286,6 @@
 - **坑**: 这是枚举/入口发现，不解释条件；逐个信号仍需
   `controlflow analyze`。成本标为 `expensive`。
 - **例**: `sv_query controlflow list-conditioned --filelist rtl.f --json`
-
-#### `trace impact`
-- **解决**: 改动一个信号的下游影响面：路径、覆盖标签、启发式风险分。
-- **输入**: `trace impact [signal] [--min-risk 30] [--batch ...]
-  [--max-results N]`
-- **result**: `signals[]`, `total_signals`, `total_paths`,
-  `total_high_risk_count`, `failed_signals`, `risk_model`。
-  signal：`signal/index/resolved_signal/resolution/precision/
-  coarse_fallback/total_paths/high_risk_count/modules[]/paths[]`。
-  path：`path/path_type/risk/risk_score/fanout/coverage/condition/
-  clock_domain/suggestion`。
-- **坑**: `risk_model = "heuristic_v1 (未标定; 仅用于相对排序)"`。
-  `risk_score` **不能**当绝对风险；只在同一张图内做相对排序。
-  `coverage` 是 SVA/covergroup 标签，不是覆盖率数字。
-- **例**: `sv_query trace impact top.rst_n --filelist rtl.f --json`
 
 #### `trace frontier`
 - **解决**: 结构 trace 走到断点时，报告断点类型、所在实例、路径，以及
@@ -778,7 +762,7 @@ Worker 原始盘点列出了 9 个三方不一致；现在都已在 registry/con
 - `src/cli/_registry.py` — `LAYERS`、`COMMANDS`、`mode_of()`、
   `JSON_CONTRACT`、`BIT_PRECISION`、`to_json()`（capabilities payload）。
 - `docs/CLI_SURFACE.md` — 由 `tools/gen_cli_surface.py` 从注册表生成，
-  用于核对 40 个 core 命令与别名。
+  用于核对 39 个 core 命令与别名。
 - `src/cli/errors.py` — 稳定 `E_*` error code（如
   `E_SIGNAL_NOT_FOUND`、`E_SIGNAL_AMBIGUOUS`）。
 - `src/cli/_output.py` — 失败信封与 `--json` 输出纪律。
@@ -843,7 +827,6 @@ python3 run_cli.py paths calc_chain.a calc_chain.y -f sim/tests/fixtures/golden_
 python3 run_cli.py dataflow analyze calc_chain.a calc_chain.y -f sim/tests/fixtures/golden_mini/calc_chain.sv --json
 python3 run_cli.py controlflow analyze calc_chain.s3 -f sim/tests/fixtures/golden_mini/calc_chain.sv --json
 python3 run_cli.py controlflow list-conditioned -f sim/tests/fixtures/golden_mini/if_demo.sv --json
-python3 run_cli.py trace impact calc_chain.a -f sim/tests/fixtures/golden_mini/calc_chain.sv --json
 python3 run_cli.py trace frontier top.x -f sim/tests/fixtures/arch_pair.sv --json
 python3 run_cli.py trace evidence calc_chain.s1 -f sim/tests/fixtures/golden_mini/calc_chain.sv --json
 python3 run_cli.py trace profile calc_chain.s1 -f sim/tests/fixtures/golden_mini/calc_chain.sv --json

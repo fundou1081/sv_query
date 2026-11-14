@@ -3,6 +3,7 @@
 # ⚠️ 本文是 2026-08-26 的人工速查, 已部分过期 (命令增删多次)。
 #    **权威清单 = docs/CLI_SURFACE.md** (由 tools/gen_cli_surface.py 从注册表生成);
 #    本文保留作为"按场景怎么用"的示例集, 结构类描述以 CLI_SURFACE 为准。
+# 注意: 本文含已退役/过期命令 (visualize/cdc/timing/sva/risk 等); 以 CLI_SURFACE 为准.
 # Updated 2026-08-26 from `sv_query --help` + `sv_query <cmd> --help`
 
 用法: `sv_query <command> [subcommand] [OPTIONS]`

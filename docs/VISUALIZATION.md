@@ -1,3 +1,7 @@
+> **已退役（2026-11-03）**: `visualize` / `arch show` / `design show` 已删除。
+> 本文仅作为历史设计记录，不可作为当前命令参考。
+> 当前能力见 [CLI_SURFACE.md](CLI_SURFACE.md) 与 `sv_query capabilities --json`。
+
 # 信号图可视化
 
 > ⚠️ **本文档为 V5 era (2026-07 之前), 只覆盖 `visualize graph` 子命令**.

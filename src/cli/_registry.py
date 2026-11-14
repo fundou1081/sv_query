@@ -59,7 +59,7 @@ LAYERS: dict[str, LayerSpec] = {
     "exp": LayerSpec(
         name="exp", consumer="none", stability="unstable", readonly=True,
         json_required=False, in_capabilities=False, schema_version=None,
-        note="降级区: 规范入口 svq exp <组> <子> (老路径为别名); 无 schema 承诺, 只修 bug; --include-exp 才列出",
+        note="降级区: 直接命令 (hidden, 无统一 exp 命名空间入口); 无 schema 承诺, 只修 bug; --include-exp 才列出",
     ),
     "dev": LayerSpec(
         name="dev", consumer="dev", stability="none", readonly=True,

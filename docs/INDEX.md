@@ -2,7 +2,7 @@
 
 > **唯一文档入口** — 所有文档从本文件进入;新增文档必须在本文件登记
 > (由 `tools/check_docs.py` 强制检查)。
-> **最后整理**: 2026-09-08 (iter_171 文档清理 — 63 份过期/重复文档归档至
+> **最后整理**: 2026-11-15 (P173 状态清理；历史 2026-09-08 iter_171 文档清理 — 63 份过期/重复文档归档至
 > `docs/archive/2026-09-08-cleanup/`,原 INDEX / DOC_INDEX / LLM_INDEX 三份
 > 索引合并为本文件)。
 
@@ -12,12 +12,12 @@
 
 | 项 | 值 | 说明 |
 |---|---|---|
-| 源码规模 | 137 文件 / 49,377 行 | `find src -name "*.py"`（2026-11-11 实测） |
-| 测试规模 | 378 测试文件 / 64,311 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-11 实测） |
-| 全量 (canonical) | **2746 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-12 独立复核**（iter_511，P171.5 后干净工作树；deferred 口径）；含 R-026 自环清除后的 golden 重捕；**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
+| 源码规模 | 139 文件 / 49,650 行 | `find src -name "*.py"`（2026-11-15 实测） |
+| 测试规模 | 392 测试文件 / 65,465 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-15 实测） |
+| 全量 (canonical) | **2737 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-15 P173 全量复核**（本机；deferred 口径）；含 zombie tests 清理后的 canonical；**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (508 份, 只增不改) | 每次迭代一份（2026-11-14 实测） |
+| 迭代记录 | `docs/task_tree/iterations/` (512 份, 只增不改) | 每次迭代一份（2026-11-15 实测） |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 | 语义 regex 纪律 | `python3 tools/check_semantic_regex.py` 必须 ✅ | 仅 UVM 宏例外；class/constraint/covergroup 语义走 slang (iter_368) |
@@ -59,7 +59,7 @@
 | [dev/WORKFLOW.md](dev/WORKFLOW.md) | 开发流程: 任务生命周期 / 迭代记录 / 文档卫生 / 测试与冒烟 / 机械检查 / ADR / 提交合并 |
 | [dev/PROJECT_ADAPTATION.md](dev/PROJECT_ADAPTATION.md) | **项目适配理念**: core 不自动推断特定项目；外部 adapter 模板 |
 | [agent/GUIDED_TRACE.md](agent/GUIDED_TRACE.md) | **P139 guided trace**: frontier + next probes；不分类 FIFO |
-| [agent/AGENT_FEATURE_MAP.md](agent/AGENT_FEATURE_MAP.md) | **P143**: core 40 个 schema 命令的能力地图 |
+| [agent/AGENT_FEATURE_MAP.md](agent/AGENT_FEATURE_MAP.md) | **P143**: core 39 个 schema 命令的能力地图 |
 | [agent/AGENT_TASK_CORPUS.md](agent/AGENT_TASK_CORPUS.md) | **P145**: 13 个可执行 agent 任务 + false-confident/found 指标 |
 | [validation/P145_VALIDATION_BASELINE_2026-11-10.md](validation/P145_VALIDATION_BASELINE_2026-11-10.md) | **P145**: full gate 环境 skip + agent corpus |
 | [validation/P145_WORKER_REVIEW_2026-11-10.md](validation/P145_WORKER_REVIEW_2026-11-10.md) | **P145 worker replay**: APPROVE WITH NITS；nits 已修 |
@@ -91,6 +91,7 @@
 | [validation/P171_4_2_MERGE_ATTEMPT_2026-11-14.md](validation/P171_4_2_MERGE_ATTEMPT_2026-11-14.md) | **P171.4.2**: attempted merge, reverted (CC=32) |
 | [validation/P171_4_2_FULL_MERGE_2026-11-14.md](validation/P171_4_2_FULL_MERGE_2026-11-14.md) | **P171.4.2**: merged facts/formatter; worker PASS WITH NITS |
 | [validation/P62_2_INTERACTIVE_DEBUG_GATE_2026-11-14.md](validation/P62_2_INTERACTIVE_DEBUG_GATE_2026-11-14.md) | **P62.2**: gate blocked; no review-time/session evidence |
+| [validation/P173_STATUS_CLEANUP_2026-11-15.md](validation/P173_STATUS_CLEANUP_2026-11-15.md) | **P173**: CLI/exp truth + status docs + zombie test cleanup |
 | [validation/P172_1_COVERAGE_GEN_RETIRE_2026-11-14.md](validation/P172_1_COVERAGE_GEN_RETIRE_2026-11-14.md) | **P172.1**: retire stale coverage-gen workflow |
 | [validation/P172_2_CHECK_CRAP_BASE_2026-11-14.md](validation/P172_2_CHECK_CRAP_BASE_2026-11-14.md) | **P172.2**: local gate defaults --base HEAD~1 |
 | [validation/P171_6_2_MUTATION_GATE_2026-11-14.md](validation/P171_6_2_MUTATION_GATE_2026-11-14.md) | **P171.6.2**: 20-task repo-only mutation gate |
@@ -116,9 +117,9 @@
 | 文档 | 作用 |
 |---|---|
 | [PRIMARY_FEATURES.md](PRIMARY_FEATURES.md) | 主推功能: 查询/追踪/校验（visualize 已退役） |
-| [EXPERIMENTAL_FEATURES.md](EXPERIMENTAL_FEATURES.md) | 实验功能说明（**正文为 2026-07-04 快照，命令名已失效**；当前 exp 5 个命令以 `capabilities --include-exp` 为准） |
+| [EXPERIMENTAL_FEATURES.md](EXPERIMENTAL_FEATURES.md) | 实验功能说明（**正文为 2026-07-04 快照，命令名已失效**；当前 exp 6 个 hidden 命令以 `capabilities --include-exp` 为准） |
 | [EXP_IDEAS.md](EXP_IDEAS.md) | **exp 创意清单 (未落地)**: 10 条想法 + 各自要解决的问题场景 |
-| [EXP_NAMESPACE.md](EXP_NAMESPACE.md) | exp 层已退役说明 (代码归档在 archive/2026-10-20-exp-attic) |
+| [EXP_NAMESPACE.md](EXP_NAMESPACE.md) | **当前 exp 层**: 6 个 hidden 直接命令；`svq exp` 统一入口已退役 |
 | [poc/2026-10-23_native_connectivity.md](poc/2026-10-23_native_connectivity.md) | **POC**: slang-native 连通性 vs 现有两套路径实现 (影子节点 30~38%、0 可达; PathResolver 终点错误 60%+) |
 | [architecture/signal_graph_accuracy_audit.md](architecture/signal_graph_accuracy_audit.md) | **Accuracy Claim 分层声明** (L1/L2/L3 + 反例表 + covergroup 观察域) |
 | [architecture/trace_capability_review_2026-10-27.md](architecture/trace_capability_review_2026-10-27.md) | **信号追踪能力评审** (2026-10-27): 现状矩阵 + P0~P3 缺口 backlog（含缓存模式 P0 bug） |

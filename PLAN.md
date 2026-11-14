@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P172.2 check_crap 默认 base <已完成>
+current item : P173.3 examples/tests hygiene <已完成>
 
 ## 计划树
 
@@ -63,7 +63,7 @@ P61 结构审查 findings（对称性/typo） <已完成>
 
 P62 局部 review artifact / debug 交互 <已完成>
 -- P62.1 finding 局部 SVG/HTML <已完成>
--- P62.2 交互式 debug（gate） <已完成>
+-- P62.2 交互式 debug gate 评估（结论 no-go，不开发 UI） <已完成>
 
 P63 class / constraint / covergroup 语义增强 <已完成>
 -- P63.1 class relations 增强（约束块/covergroup 摘要） <已完成>
@@ -540,6 +540,11 @@ P171 CI / evidence-chain repair (2026-11-13 worker review) <已完成>
 -- P171.8 docs/CLAIMS/plan cleanup <已完成>
 -- P171.9 worker review fixes <已完成>
 
+P173 full status/evidence cleanup (2026-11-15 review) <已完成>
+-- P173.1 CLI/exp truth <已完成>
+-- P173.2 status docs <已完成>
+-- P173.3 examples/tests hygiene <已完成>
+
 P172 CI hygiene after P171 <已完成>
 -- P172.1 Coverage Gen workflow 收口 <已完成>
 -- P172.2 check_crap 默认 base <已完成>
@@ -819,3 +824,6 @@ P4 已完成归档 <已完成>
 | 2026-11-12 | P158.12.2~12.5 完成（iter_494）：26 文件硬编码路径清零（SVQ_OPENRTL_ROOT + 显式 skip）；pytest-randomly 入 dev；R-026 恒自环边清除 + 4 回归测试；R-027 异常留行；剩余 12.6 口径 / 12.7 skills |
 | 2026-11-11 | P158.9.2 快照保真（iter_493）：to_dict/from_dict 补齐 condition_chain/source/function 标记/extra；condition_ast 显式不保证；SNAPSHOT_SURFACE.md 矩阵；CLI live/snapshot parity 测试 |2026-11-11 后接 |
 | 2026-11-11 | P158.12.1 trace impact 降级 exp（方豆拍板）：core 40→39 / exp 5→6；capabilities 默认隐藏、kind=experimental；KNOWN_LIMITATIONS §3.4 加处置注记 |
+| 2026-11-13~14 | P171 CI/evidence-chain repair：依赖 pin、fixture hermeticity、verify structural coverage、fanin/fanout 合并、deferred 口径、mutation gate、risk_model/role_source、docs/CLAIMS；canonical 2746 |
+| 2026-11-14 | P172 CI hygiene：退役 stale coverage-gen workflow；check_crap 本地默认 --base HEAD~1；P62.2 gate 评估 no-go |
+| 2026-11-15 | P173 full status/evidence cleanup（review 后）：CLI/exp truth、当前状态文档、zombie tests/旧示例 |
