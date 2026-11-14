@@ -10,8 +10,8 @@
 canonical 与 opensource 长期各自报一个 `0 failed`：
 
 ```text
-canonical:   2746 passed / 0 failed / 123 deselected
-opensource:  112 passed / 11 skipped / 0 failed        (P161 口径)
+canonical:   2737 passed / 0 failed / 123 deferred
+opensource:  112 passed / 11 skipped / 0 failed        (当前口径)
 ```
 
 两个 `0 failed` 容易被读成“全绿”，但 canonical 有 **123 deferred**

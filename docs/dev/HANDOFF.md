@@ -1,374 +1,102 @@
-# 交接文档 (HANDOFF)
+# HANDOFF — 当前交接状态
 
-**交接时间**: 2026-11-12 10:10 (Asia/Shanghai)
+**日期**: 2026-11-15
 **仓库**: `/Users/fundou/my_dv_proj/sv_query`
-**HEAD**: 以 `git log -1` 为准（不要依赖文档里的哈希）
-**状态**: canonical 2746 passed / 0 failed、opensource 112 passed / 11 skipped / 0 failed；
-按 [REPORT_STATUS.md](REPORT_STATUS.md) 口径 **0 failed 不等于全绿**（9 个从未执行 + 123 deferred/opensource）；
-P158.12.7 / P167 / P165.1 / P165.4 已完成；剩余 P165.3 与 P165.2
+**HEAD**: 以 `git log -1` 为准
+**旧会话快照**: [HANDOFF_2026-11-12.md](HANDOFF_2026-11-12.md)（历史，不要当当前状态）
 
-> 给接手 agent：先读完本文件，再按 [AGENTS.md](../../AGENTS.md) §0 的顺序恢复上下文。
-> **本次会话（2026-11-12）详细交接见 [HANDOFF_2026-11-12.md](HANDOFF_2026-11-12.md)**：
-> 三次提交 / 设计裁决 / 待拍板事项 / 踩坑 / 接手 checklist。
-> 本文件是交接状态，不是计划树唯一真相源；PLAN.md 仍是唯一计划源。
+> 计划树唯一真相源：[PLAN.md](../../PLAN.md)。
+> 本文件只回答“现在是什么状态、从哪里接手”。
 
 ---
 
 ## 1. 一句话状态
 
 ```text
-sv_query 是 agent 的 RTL 查询 + 客观校验层；
-核心语义契约、数据边、确定性、snapshot MIG、真实 corpus 已经落地；
-当前不是“完成品”，剩余工作集中在：
-9 个 opensource skip 处置；P158.12.7 skills 已完成；
-11.2b timeout / 9.2 快照保真 / 12.1~12.6 已完成。
+主线 query + verify 健康；
+当前在做 P173：清理 review 发现的状态文档 / CLI truth / zombie tests / 旧示例。
 ```
 
-当前测试：
+## 2. 基线
 
 ```text
-canonical:   2746 passed / 0 skipped / 123 deselected / 0 failed
-opensource:  112 passed / 11 skipped / 0 failed
+canonical:  2737 passed / 0 failed / 123 deferred / 0 unexecuted
+opensource: 112 passed / 11 skipped / 0 failed
+mutation:   20/20
 ```
 
-opensource 的 9 个 skip 都有显式原因，见 §7。
+- 123 deferred 是 opensource suite，不是 unexecuted；
+- 11 skip 中 2 个是 SPI snapshot 外部 fixture 缺失；
+- 计数只信 [docs/INDEX.md](../INDEX.md) 的“当前基线”。
 
----
+## 3. 当前主线
 
-## 2. 必须先读
+```text
+39 core commands:
+  semantic 24 / verify 3 / scope 1 / locate 7 / state 4
+```
 
-按顺序：
+稳定、只读、JSON、schema v1。代表命令：
 
-1. [AGENTS.md](../../AGENTS.md) — 铁律、完成判定、开工/收尾
-2. [产品方向](../architecture/product_direction_2026-10-31.md) — 做什么/不做什么
-3. [PLAN.md](../../PLAN.md) — 唯一计划树 + `current item`
-4. [CURRENT_TODO.md](../../CURRENT_TODO.md)
-5. [DISCIPLINE.md](DISCIPLINE.md)
-6. [SEMANTIC_CONTRACTS.md](SEMANTIC_CONTRACTS.md) — **本项目的核心**
-7. [CLAIMS.md](CLAIMS.md) — 公开 claim 的状态
-8. [TESTING.md](../../TESTING.md)
-9. [P160 triage](../validation/P160_OPENSOURCE_TRIAGE_2026-11-11.md) 与
-   [P161 remediation](../validation/P161_OPENSOURCE_REMEDIATION_2026-11-11.md)
-10. [本轮对话/工作记录](../sessions/2026-11-11_sv_query_session_log.md)（事实重建，非逐字）
+```text
+drivers / loads / paths / dataflow / controlflow
+verify consistency / verify claim / verify structural
+trace profile / evidence / lookup / manifest
+scope / instances / hierarchy / ports / params / connections
+class / constraints / covergroups / graph / snapshot
+```
 
-如果只读一份历史复盘：
+## 4. exp（6 个，hidden）
 
-- [2026-11-11_pitfalls.md](../lessons/2026-11-11_pitfalls.md)
-  — 22 个坑、10 条正面经验、20 条反模式、10 个重来决策
+```text
+audit / diagnose / trace impact / trace overview
+review render / architecture graph
+```
 
----
+- 没有 `svq exp` 统一入口；
+- 默认不进 help/capabilities；`--include-exp` 才列；
+- 无 schema/claim 承诺，只修 bug。
 
-## 3. 已完成（不要重复做）
+## 5. 历史/退役
 
-| 任务 | 结果 |
+| 功能 | 状态 |
 |---|---|
-| P158.1 | 数据边唯一策略：`DRIVER/CONNECTION`；CLOCK/RESET/BIT_SELECT 不是数据路径 |
-| P158.2 | paths work budget + deadline + 显式 `truncated` |
-| P158.3 | 构建确定性；根因是 `id(pyslang wrapper)` 被 GC 地址复用；已用强引用保活 |
-| P158.4 | SPI corpus runner；9 tasks |
-| P158.5 | `filelist prune` 默认 dry-run、`--apply`、`.f/.fl`、`--force` + `.bak` |
-| P158.6 | `verify consistency` 的 `verified` 纳入 `coverage_complete`；sample/truncated 不再 verified |
-| P158.7 | snapshot 统一 `load_snapshot()`；损坏 snapshot 显式错误；MIG `module_ports` 持久化 |
-| P158.8 | bit/reciprocity true-positive + legacy snapshot 回归 |
-| P158.9.1 | capabilities `core_groups` 修正；核心命令 json_contract 覆盖 |
-| P158.10 | `tools/run_gates.sh`；CI 与本地同一条 gate；增量 ruff |
-| P158.11.1 | `dataflow analyze --from-snapshot`；frontier `--max-visits` |
-| P158.11.2a | snapshot size guard `SVQ_SNAPSHOT_MAX_MB` + size metadata |
-| P159 | 全量踩坑历史 |
-| P160/P161 | opensource 38 failed -> 0 failed；随后 P167 将 8 个 retired exp 归档，剩 9 个显式 skip |
-| P166 | R-026/11.2b 后重捕 stats/dataflow golden；opensource 复核 0 failed |
+| coverage generate / coverage suggest | 历史 POC；workflow 已退役；不恢复 CLI |
+| rng / randomize | 退役；仅剩 fixtures/旧文档 |
+| visualize / cdc / timing / sva / risk | 退役；部分逻辑只在 audit |
+| 全设计图 | 退役 |
+| interactive debug（P62.2） | gate 评估 no-go；不做 UI/REPL |
+| constraint SAT 分析 | 不在本仓库；见独立项目 `constraint_diagnoise` |
 
-关键提交：
+## 6. 当前 P173 清理
 
-```text
-20ed39d6 — fix(P158.11.2a): snapshot size guard and metadata
-38a68621 — fix(P161): remediate opensource test failures
-b6899917 — test(P160): triage opensource failures
-2106bac2 — feat(P158.11.1): dataflow from snapshot and frontier visit cap
-d1325aaf — docs(P159): record full pitfalls and lessons history
-```
+1. **P173.1 CLI/exp truth**
+   - `trace impact` 已 hidden；
+   - 注册表不再宣传 `svq exp`；
+   - CLI_SURFACE / AGENT_FEATURE_MAP / EXP_NAMESPACE 对齐 39 core、6 exp。
 
----
+2. **P173.2 status docs**
+   - CURRENT_TODO 重写；
+   - HANDOFF 重写；
+   - PLAN/契约/README 计数与旧“下一步”清理。
 
-## 4. 当前架构/所有权边界
+3. **P173.3 examples/tests hygiene**
+   - 退役 zombie tests；
+   - 修 README/USER_GUIDE/FILELIST/PRIMARY 的不可运行示例；
+   - 处理 coverage POC 与 canonical test 的耦合。
 
-| 文件/模块 | 责任 | 注意 |
-|---|---|---|
-| `src/sv_query/trace/core/graph/contracts.py` | **唯一** edge 分类 | 不允许在命令里另写 edge 集合 |
-| `src/sv_query/trace/core/module_instance_graph.py` | PathResolver / MIG | 路径有界；不要恢复全 edge 遍历 |
-| `src/sv_query/trace/core/graph/dataflow.py` | dataflow 段/路径 | 必须只走数据边；BIT_SELECT 只做端点位展开 |
-| `src/sv_query/trace/core/snapshot_manager.py` | snapshot CRUD/大小/损坏 | 文件名是 tag 权威；损坏文件可见 |
-| `src/sv_query/trace/unified_tracer.py` | `load_snapshot` 唯一构造入口 | 不要再手工设 4 个私有字段 |
-| `src/cli/_registry.py` | capabilities/registry/contract | 39 core 命令的 group/contract（2026-11-11 impact 降 exp 后） |
-| `tools/agent/run_spi_corpus.py` | 真实 corpus runner | 9 tasks；不要改成“只打印” |
-| `tools/run_gates.sh` / `tools/run_lint.sh` | CI/本地 gate | 不要绕过 |
-| `.github/workflows/tests.yml` | CI | opensource 可见但不阻塞 |
+## 7. 已知风险
 
-**不要修改** `src/sv_query/trace/core` 去做 OpenTitan 特定 FIFO/接口推断；
-项目适配只能在 `examples/project_adaptations/` 或外部显式调用。
+- 公开文档仍有旧命令/旧 import，不能直接照抄；
+- `trace impact` 是未标定启发式，不能当绝对风险；
+- coverage POC 不是当前产品；若重启要单开项目；
+- `check_crap` 依赖 crapper；缺失时是 exit 3，不是 pass。
 
----
-
-## 5. 剩余工作
-
-### 5.1 P158.11.2b：通用长查询 timeout（✅ 已完成，2026-11-11）
-
-落地（commit 见 git log `feat(P158.11.2b)`）：
-
-- `src/sv_query/trace/core/graph/search_budget.py::SearchBudget`：预算记账唯一实现
-  （从 MIG 的 `_SearchBudget` 抽出共享，旧名保留别名）；
-- `dataflow._find_paths` 全部 `list(nx.all_simple_paths(...))` 替换为同遍历序的有界 DFS
-  `_bounded_simple_paths`（每考察一条出边记 1 次 expansion）；
-- `DataFlowResult` 新增 `truncated / truncation_reason / expansions / search_status`；
-  耗尽时 `is_reachable=None`（unknown），不再伪装 `found:false`；
-- CLI `dataflow analyze` 新增 `--max-expansions`（默认 200000）/ `--timeout`（秒），
-  JSON 输出同步截断字段；json_contract / capabilities result_fields 已同步；
-- 机械 gate：`sim/tests/unit/test_p158_11_dataflow_budget.py`（diamond fixture，
-  max_paths 截断 / expansions 耗尽 / timeout=0 → unknown）。
-
-边界：`verify` / `subgraph` 等其余命令若将来出现无界枚举，同样走 `SearchBudget`。
-
-### 5.2 P158.9.2：snapshot surface 矩阵（9.1 已完成）
-
-问题：`--from-snapshot` 半状态（有的命令支持，有的不支持）。
-
-需要：
-
-- 一张唯一矩阵：命令 → graph-only / graph+MIG / 需要 semantic adapter；
-- `capabilities` / `--help` / `json_contract` 同源；
-- 不支持的命令显式失败/unknown，不静默 fallback。
-
-### 5.3 P158.12：P2 清理
-
-建议按这个顺序：
-
-1. ~~**26 个测试文件**硬编码 `/Users/fundou/...`~~ **已解决（2026-11-12，P158.12.2）**：
-   仓库相对推导 + `SVQ_OPENRTL_ROOT`（默认 `~/my_dv_proj/openrtl`）+ 缺失显式 skip；
-2. ~~`-p no:randomly` no-op~~ **已解决（2026-11-12，P158.12.3）**：pytest-randomly 入
-   dev 依赖，addopts 默认禁用随机（随机压力用 `-p randomly`）；auto-bless 核查为非问题；
-3. ~~`trace impact` heuristic 在 core~~ **已解决（2026-11-11，P158.12.1）**：降级 exp，
-   `kind=experimental`、默认隐藏、`--include-exp` 列出；KNOWN_LIMITATIONS §3.4 已加处置注记；
-4. ~~408 条空 expression 的 self-loop~~ **已解决（2026-11-12，P158.12.4）**：
-   connection_extractor 对实例 output port 恒加 `child_signal_id→inst_port_id`（两者同串），
-   零信息自环；跳过后 408 模式归零，真实自依赖（带 expression）不受影响；
-   复现/回归 = `test_p158_12_selfloop.py`；
-5. ~~`false_confident` 指标在 task exception 时漏计~~ **已解决（P158.12.5/6）**：
-   runner 异常留行（rc=130 + task_error 标记）不挂整轮；12.6 起
-   `false_confident` 分母 = answered_n（实际作答数），无答案归 unknown
-   不进分母；**该分母口径为当前默认，待方豆确认**（改一处即可推翻，
-   `test_unexecuted_does_not_dilute_false_confident_rate` 会变红提醒）；
-6. ~~文档/help/skills 漂移~~ **已完成（2026-11-12，P158.12.7）**：
-   `skills/sv-query` 已按 39+6 命令面校正；`SKILL.md`/`references/*`/
-   `scripts/sv_analyze.py`/`tools/llm_schema.json` 已同步；
-   `test_skill_surface.py` 防回退。
-
-剩余：**P165.3 外部故障集**、P165.2 packaging。
-
-### 5.4 9 个 opensource skip 分类
-
-不要直接删除；逐项判断：
-
-```text
-benchmark timeout (3)      -> 能否加预算/标记 slow
-long-range pilot (2)       -> 环境永久缺失还是应提供 fixture
-TLUL (2)                   -> 依赖闭包缺失
-CVA6/prim_fifo (2)         -> 依赖闭包缺失
-naplespu retired exp (8)   -> 已退休；可归档，不恢复旧命令
-```
-
----
-
-## 6. 工作流（接手 agent 必读）
-
-### 6.1 恢复上下文
-
-```bash
-cd /Users/fundou/my_dv_proj/sv_query
-git status --porcelain
-git log --oneline -5
-sed -n '20,24p' PLAN.md
-grep -n "^current item" PLAN.md        # 比行号稳定，推荐
-python3 tools/check_plan.py
-```
-
-先核对 `PLAN.md` 的 `current item` 是否与代码/测试一致；
-不一致先修正计划树，不要凭印象继续。
-
-### 6.2 开工
-
-- 先在 `PLAN.md` 登记（新工作挂到对应 `P*`；不要另立计划列表）；
-- 建 `docs/task_tree/tasks/L<N>_<任务>.md`；
-- 更新 `CURRENT_TODO.md` / `overview.md`；
-- 写清验收命令和反例。
-
-### 6.3 提交前
+## 8. 接手命令
 
 ```bash
 bash tools/run_gates.sh
-```
-
-它会跑：
-
-```text
-canonical pytest
-check_docs
-check_except_pass
-check_semantic_regex
-check_cli_layers
-gen_cli_surface --check
-check_crap
-check_plan
-```
-
-opensource 是独立套件：
-
-```bash
+python3 -m pytest sim/tests/ -m "not opensource" -q -p no:randomly
 python3 -m pytest sim/tests/ -m "opensource" -q -p no:randomly
+python3 tools/run_mutation_gate.py
 ```
-
-当前期望：
-
-```text
-canonical:   2746 passed / 0 failed
-opensource:  112 passed / 0 failed / 11 explicit skips
-```
-
-**解释器必须先对齐**（2026-11-11 实测坑）：`run_gates.sh` 与测试内部都调用 `python3`。
-若 PATH 里的 `python3` 不是装了 typer/pyslang 的那个（本机默认可能是 3.13.x），
-CLI 子进程测试会成片报 `ModuleNotFoundError: No module named 'typer'`——这是环境假失败，
-不是产品回归。本机正确用法：
-
-```bash
-export PATH="$HOME/miniconda3/bin:$PATH"   # 3.11.4 + pyslang 11.0.0
-bash tools/run_gates.sh
-```
-
-计数若变化，只更新 `docs/INDEX.md` 的“当前基线”；不要在其他地方写死。
-
----
-
-## 7. 9 个 opensource skip 的现状
-
-```text
-3 × test_benchmark_pr5        wrapper benchmark 300s timeout
-2 × test_run_long_range_runner pilot axi/serv 无 .v
-2 × dataflow_controlflow      TLUL fixture/dependency incomplete
-2 × dataflow_latency         CVA6 / prim_fifo dependency incomplete
-8 × test_naplespu_filelist    retired exp commands, explicit skip
-```
-
-规则：
-
-- 环境缺失是显式环境 skip，不是产品通过；
-- retired exp 测试不能靠“移出统计”变绿；当前是显式 skip，理由可审计；
-- 不要把新的 fail 改成 skip 来变绿。
-
----
-
-## 8. 外部环境 / 复现
-
-### SPI snapshot
-
-```bash
-export SVQ_SNAPSHOT_DIR=/tmp/opentitan_svq_spi/snapshots
-# snapshot tag: opentitan_spi
-# filelist: /tmp/opentitan_svq_spi/opentitan_spi.clean.f
-```
-
-重建：
-
-```bash
-cd /Users/fundou/.dsh/opencode-workers-lite/opentitan-pilot/workspace
-SVQ_SNAPSHOT_DIR=/tmp/opentitan_svq_spi/snapshots \
-python3 /Users/fundou/my_dv_proj/sv_query/tools/agent/setup_snapshot.py \
-  --path . --tag opentitan_spi \
-  --filelist /tmp/opentitan_svq_spi/opentitan_spi.clean.f \
-  --snapshot-dir /tmp/opentitan_svq_spi/snapshots \
-  --source-root . --json
-```
-
-### SPI corpus
-
-```bash
-cd /Users/fundou/my_dv_proj/sv_query
-SVQ_SNAPSHOT_DIR=/tmp/opentitan_svq_spi/snapshots \
-python3 tools/agent/run_spi_corpus.py --json
-# expect 9/9
-```
-
-### 机器依赖
-
-- Python 3.11 / 3.12；**本机实测可用解释器**：`~/miniconda3/bin/python3`（3.11.4）
-- pyslang（GitHub source）；本机 `pyslang 11.0.0`
-- `crapper`（复杂度门禁；没有会 exit 3，不是 pass）
-- macOS（部分外部路径是机器绑定的）
-- 注意：本机 PATH 默认 `python3` 可能是 3.13.x（无 typer/pyslang），见 §6.3 解释器说明
-
----
-
-## 9. Worker / 并行 agent 协议
-
-如果要开 worker：
-
-1. worker 必须从当前 HEAD 建独立 worktree；
-2. 任务 prompt 必须包含：
-   - 读 `SEMANTIC_CONTRACTS` / `DISCIPLINE §0.1` / `CLAIMS`
-   - 不允许改 PLAN/docs/CLAIMS（除非主会话明确）
-   - 必须提交 commit hash
-   - 必须给复现命令 + 反例
-3. worker 的 `APPROVE` 不是证据；主会话至少复现 P0；
-4. worker 配额 429 / 中断时，主会话从 worktree 取 diff，重新验证后合并；
-5. 不要让两个 worker 同时改同一文件（尤其 `dataflow.py` / `module_instance_graph.py`）。
-
-本仓库真实教训：P160 worker 遇到 429，主会话接管；P158.3 worker 的源码位置 key 方案导致 18 个 generate 测试失败，被回退后采用强引用方案。
-
----
-
-## 10. 完成 / 交回 checklist
-
-交回前：
-
-- [ ] `bash tools/run_gates.sh` 0 退出码
-- [ ] canonical 0 failed；opensource 0 failed 或每个 skip 有 reason
-- [ ] 新增/变更行为有 true-positive 测试和反例
-- [ ] 没有自动 bless golden / 没有 fail->skip
-- [ ] `PLAN.md` / `CURRENT_TODO` / `overview` / `docs/INDEX` 同步
-- [ ] `CLAIMS.md` 中相关 claim 状态更新
-- [ ] 列出未修问题、环境限制、外部 fixture 依赖
-- [ ] 最终报告写清：改了什么、证据、风险、下一步
-
----
-
-## 11. 不要做
-
-- 不要为了绿灯删除/跳过测试；
-- 不要用一次 fresh parse 证明 determinism；
-- 不要在命令里另写一份 edge 策略；
-- 不要把 CLOCK/RESET 当数据路径；
-- 不要在 sample/truncated 上返回 `verified:true`；
-- 不要在 core 里做 OpenTitan 特定推断；
-- 不要静默覆盖用户文件；
-- 不要把 worker APPROVE 当真实项目通过；
-- “所有查询都有界”仍需谨慎表述：paths/frontier/dataflow 有 gate；
-  新增长查询必须复用 `SearchBudget`（见 SEMANTIC_CONTRACTS §3）。
-
----
-
-## 12. 建议接手顺序
-
-```text
-0. 文档状态校准（P164，2026-11-11 已完成：PLAN/CURRENT_TODO/契约/基线/HANDOFF 对齐）
-1. P158.11.2b generic timeout（2026-11-11 已完成）
-2. P158.9 snapshot surface 矩阵（9.2）（2026-11-11 已完成：往返保真 +
-   SNAPSHOT_SURFACE.md 矩阵，见 docs/dev/SNAPSHOT_SURFACE.md）
-3. P158.12 P2 清理（12.1~12.6 已全部完成：impact 降 exp / 硬编码路径 /
-   no:randomly / 自环 / 异常计数 / 绿色口径；P158.12.7 / P167 / P165.1 / P165.4 已完成）
-4. P165 arch_eval 评审采纳（signal.py pred/succ 化 → 外部效度 → packaging 重命名；
-   方案 B 拒绝、方案 C 暂缓，决策记录在 PLAN P165）
-5. 9 个 skip 分类
-```
-
-如果只接一个任务，选 **P158.12.7 skills 文档漂移（✅ 已完成）**：
-`skills/sv-query/` 仍按旧命令面（40 core + 5 exp）描述，而当前是
-39 core + 6 exp；被撤销的经验回放分支 `replay/agent-3530f163`
-有现成的逐项校正内容，可参考重做（注意按新命令面复核）。

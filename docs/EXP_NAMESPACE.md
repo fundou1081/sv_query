@@ -1,37 +1,61 @@
-# exp 命名空间 —— 已退役 (2026-10-20)
+# exp layer status (2026-11-15)
 
-> **状态**: ❌ **不再存在**。`svq exp ...` 与其 10 个历史顶层组均已删除。
-> **想法去哪了**: [docs/EXP_IDEAS.md](EXP_IDEAS.md) —— 只记想法 + 要解决的问题场景。
-> **代码去哪了**: `docs/archive/2026-10-20-exp-attic/`（含测试，可追溯）。
+> **状态**: `svq exp ...` 统一命名空间已退役；但 **exp 层仍有 6 个直接 hidden 命令**。
+> 它们没有 canonical group entrypoint，不是 core，也没有 schema/claim 承诺。
+> 历史 exp 资产在 [docs/archive/2026-10-20-exp-attic/](archive/2026-10-20-exp-attic/)。
+> 想法记录在 [EXP_IDEAS.md](EXP_IDEAS.md)。
 
 ---
 
-## 为什么取消这一层
+## 1. 当前 exp 命令（6）
 
-exp 当初的定位是"降级区"：能力先放进来，靠真实项目慢慢验证，达标再转正。
-实际运行下来，这一层**没有一条完成转正**：
+| 命令 | 说明 |
+|---|---|
+| `audit` | 启发式 audit/risk/verification gaps；低成熟度 |
+| `diagnose` | 编译/依赖问题诊断 |
+| `trace impact` | 下游影响面 + **未标定**启发式风险排序 |
+| `trace overview` | trace 的概览/摘要 |
+| `review render` | finding 局部 SVG/HTML artifact |
+| `architecture graph` | 架构图（非全设计图） |
 
-- 没有真实项目验证（只有 fixture 与 demo）
-- 没有锁定的判定语义（同一输入的解释不稳定）
-- 没有写清失效场景
+这些命令：
 
-留着它的代价是实实在在的：使用者会以为可用（而输出可能是错的），
-agent 会在 `capabilities --include-exp` 里看到 24 个"看起来能用"的工具。
+- 默认 **不出现在 help**（`hidden=True`）；
+- 默认 **不进 `capabilities`**；需要 `--include-exp`；
+- 没有 schema/claim 承诺，只修 bug；
+- 不能被写成 core 的“规范入口”。
 
-方豆决定（2026-10-20）：**整体退役**，想法留档，将来逐个重新设计。
+## 2. 为什么不再有 `svq exp`
 
-## 现在的层模型
+2026-10-20 曾整体退役旧的 `svq exp` 命名空间：它没有真实项目验证、没有稳定语义，
+却让 agent 以为有 24 个可用工具。
 
-| 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | 说明 |
-|---|---|---|---|---|---|
-| `core` | agent | stable | ✅ | ✅ | 只读事实与语义查询 |
-| `view` | human | stable | ✅ | — | 人眼图与叙述 |
-| `out` | — | — | — | — | 会写文件的能力，已移出 CLI → `tools/` |
+现在保留了少量 **直接 hidden 命令** 做内部/实验用途，但不重新建立统一入口，
+避免再次出现“看起来是一层产品能力”的误导。
 
-`dev` 层同样已清空（iter_252 归档 `expression` 三个命令）。
+## 3. 层模型
 
-## 机械检查里的历史规则
+| 层 | 消费者 | 稳定性 | 默认 capabilities | 说明 |
+|---|---|---|---|---|
+| `core` | agent | stable | ✅ | 只读事实与语义查询，JSON/schema v1 |
+| `view` | human | stable | ✅ | 人眼图/叙述 |
+| `exp` | none | unstable | ❌ | 6 个 hidden 直接命令；无 schema |
+| `dev` | dev | none | ❌ | 当前无命令 |
+| `out` | none | none | ❌ | 会写文件的能力，已移出 CLI → `tools/` |
 
-`tools/check_cli_layers.py` 的 R5（exp 名不得出现在 core/view 帮助里）与
-R6（exp 不得进 capabilities 默认输出）**保留但已无对象** —— 它们仍是正确的约束，
-将来若引入新的实验层可以直接复用。
+## 4. 机械规则
+
+- `check_cli_layers.py` R5/R6：exp 名不得出现在 core/view help，也不得进默认 capabilities；
+- `gen_cli_surface.py --check`：CLI surface 必须与注册表一致；
+- 新增 exp 命令必须显式 `hidden=True`，不得新增 `svq exp` 组。
+
+## 5. 真实入口
+
+命令面的唯一真相源是：
+
+```bash
+sv_query capabilities --json
+sv_query capabilities --json --include-exp
+```
+
+不是本文，也不是旧的 `svq exp --help`。

@@ -7,13 +7,13 @@
 
 > 回归基线见 [docs/INDEX.md 当前基线](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里) | Python 3.11+ | pyslang 语义 AST | NetworkX graph | 真实项目 + 性能基准 + agent 对照（内部）
 
-> 更新日期: 2026-11-11（基线计数不再写死，统一引用 INDEX）
+> 更新日期: 2026-11-15（基线计数不再写死，统一引用 INDEX）
 
 ---
 
 ## 为什么用 sv_query
 
-- **位精确追踪**: `SignalSource` 结构化存储 bit_range + op + casts，知道信号 `[7:0]` 的确切来源；位对位跨模块贯通
+- **位级追踪（scoped）**: `SignalSource` 结构化存储 bit_range + op + casts；位对位只在已建模算子/连接上成立，比较/变量移位等仍总线粒度（见 KNOWN_LIMITATIONS）
 - **穿透子模块**: wrapper port passthrough + bus 位桥（同构直连 / 切片偏移）
 - **语义优先**: class / constraint / covergroup / UVM role 走 pyslang semantic AST；
   UVM 宏/调用因预处理器会丢宏，是唯一 `syntactic` regex 例外（显式标 confidence，不作为 verify 证明）
@@ -117,7 +117,7 @@ sv_query trace fanin cdc_bug.dst_valid   -f examples/anti_hallucination_cdc/cdc_
 
 | 项 | 状态 |
 |---|---|
-| 全量回归 | 见 [INDEX 当前基线](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里)：canonical 0 failed；opensource 114 passed / 9 显式 skip |
+| 全量回归 | 见 [INDEX 当前基线](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里)：canonical 0 failed；opensource 112 passed / 11 显式 skip |
 | 开源 smoke | strict_uart / verilog-axi / picorv32 / SERV |
 | 性能基准 | picorv32 / verilog-axi / SERV；build、warm query、cold CLI、peak RSS |
 | 反幻觉 | 单级 CDC walkthrough：profile + fanin/fanout 反驳“两级同步器” |
@@ -169,7 +169,7 @@ svq:    48/48
 ## Python API
 
 ```python
-from sv_query.sv_query.trace.unified_tracer import UnifiedTracer
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 tracer = UnifiedTracer(sources={"top.sv": src})
 tracer.build_graph()

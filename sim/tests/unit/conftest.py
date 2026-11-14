@@ -21,12 +21,8 @@ sys.path.insert(0, str(PROJECT_ROOT / "tools"))
 OPENRTL_ROOT = Path(os.environ.get("SVQ_OPENRTL_ROOT",
                                 str(Path.home() / "my_dv_proj" / "openrtl")))
 
-# Import coverage_gen_demo helper
-from coverage_gen_demo import (  # noqa: E402
-    _parse_logic_type_str,
-    parse_width_from_pyslang,
-    parse_width_from_rtl,
-)
+# P173.3: coverage POC helper is imported lazily; the historical tool is not
+# a canonical-suite import-time dependency.
 
 # =============== 路径常量 ===============
 PYSV_TYPE_FIXTURES = PROJECT_ROOT / "sim" / "tests" / "pyslang_type_fixtures"
@@ -44,6 +40,7 @@ def type_taxonomy_sv() -> Path:
 def parse_pyslang_width():
     """包装 parse_width_from_pyslang (默认 strict=False 适合非完美 RTL)."""
     def _parse(sig_name, file=None, filelist=None, module_name=None, include_dirs=None):
+        from coverage_gen_demo import parse_width_from_pyslang
         return parse_width_from_pyslang(
             sig_name,
             file=file,
@@ -58,12 +55,14 @@ def parse_pyslang_width():
 def parse_rtl_width():
     """包装 parse_width_from_rtl (regex fallback)."""
     def _parse(sig_name, paths):
+        from coverage_gen_demo import parse_width_from_rtl
         return parse_width_from_rtl(sig_name, paths)
     return _parse
 
 
 @pytest.fixture(scope="module")
 def parse_logic_type_str():
+    from coverage_gen_demo import _parse_logic_type_str
     return _parse_logic_type_str
 
 

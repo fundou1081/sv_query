@@ -170,7 +170,7 @@ python3 run_cli.py verify consistency -f <file.sv>
 python3 run_cli.py verify consistency -f <file.sv> --checks reciprocity,bit,connection
 python3 run_cli.py verify consistency -f <file.sv> --signal top.data --full
 python3 run_cli.py verify structural -f <file.sv> --checks symmetry
-python3 run_cli.py verify claim --claim '{"signal": "top.data"}' -f <file.sv>
+python3 run_cli.py verify claim --claim '{"type":"driver","signal":"top.data","driver":"top.din"}' -f <file.sv>
 python3 run_cli.py verify claim --claim-file <claim.json> -f <file.sv>
 ```
 

@@ -15,18 +15,20 @@ filelist 是工业级 SV 项目（如 OpenHW Group CVA6、OpenTitan、SiFive 核
 
 ## CLI 使用
 
+> `visualize` 已退役；以下用当前 core 命令验证 filelist。
+
 ```bash
-# 单文件
-python run_cli.py visualize graph -f module.sv
+# 图规模/模块
+sv_query stats --filelist project.fl --json
 
-# 使用 filelist
-python run_cli.py visualize graph -f top.sv --filelist project.fl
+# 读取 filelist 并裁剪到 top（只读，不写用户文件）
+sv_query filelist prune --filelist project.fl --top top --json
 
-# 使用 include 路径
-python run_cli.py visualize graph -f module.sv -I path1,path2
+# 跨模块数据流
+sv_query dataflow analyze top.a top.y --filelist project.fl --json
 
-# 组合使用
-python run_cli.py visualize graph -f top.sv --filelist project.fl -I include/
+# 结构一致性
+sv_query verify consistency --filelist project.fl --json
 ```
 
 ---
@@ -108,14 +110,14 @@ export CVA6_REPO_DIR=/Users/fundou/my_dv_proj/openrtl/cva6
 export TARGET_CFG=cv64a6_imafdc_sv39
 export HPDCACHE_DIR=/path/to/hpdcache
 
-python run_cli.py visualize graph -f cva6.sv --filelist Flist.cva6
+sv_query stats --filelist Flist.cva6 --json
 ```
 
 ### 命令行一次性
 
 ```bash
 CVA6_REPO_DIR=/path/to/cva6 TARGET_CFG=cv64a6_imafdc_sv39 \
-  python run_cli.py visualize graph -f cva6.sv --filelist Flist.cva6
+  sv_query stats --filelist Flist.cva6 --json
 ```
 
 ---
@@ -152,13 +154,11 @@ ${CVA6_REPO_DIR}/core/cvfpu/src/fpnew_pkg.sv
 cd ~/my_dv_proj/sv_query
 CVA6_REPO_DIR=/Users/fundou/my_dv_proj/openrtl/cva6 \
 TARGET_CFG=cv64a6_imafdc_sv39 \
-  python run_cli.py visualize graph \
-    -f ~/my_dv_proj/openrtl/cva6/core/cva6.sv \
-    --filelist /tmp/cva6_test.fl \
-    --svg /tmp/cva6.svg
+  sv_query dataflow analyze cva6.id_stage_i.pc_id cva6.id_stage_i.pc_if \
+    --filelist /tmp/cva6_test.fl --json
 ```
 
-**结果**: 加载 152 个 SV 文件 + 6 个 include 路径。
+`visualize` 已退役；filelist 的验证改用 `dataflow/paths/verify`。
 
 ---
 
@@ -167,7 +167,7 @@ TARGET_CFG=cv64a6_imafdc_sv39 \
 ### 直接传 filelist
 
 ```python
-from sv_query.sv_query.trace.unified_tracer import UnifiedTracer
+from sv_query.trace.unified_tracer import UnifiedTracer
 
 tracer = UnifiedTracer(
     sources={},                    # 留空
@@ -196,7 +196,7 @@ graph = tracer.build_graph()
 compiler = tracer._get_compiler()
 sources = compiler._sources
 
-from sv_query.sv_query.trace.core.sva_extractor import SVAExtractor
+from sv_query.trace.core.sva_extractor import SVAExtractor
 sva = SVAExtractor(sources).extract()
 ```
 
@@ -237,7 +237,7 @@ pyslang 不能完整展开某些复杂宏。
 python -c "
 import sys
 sys.path.insert(0, 'src')
-from sv_query.sv_query.trace.core.compiler import SVCompiler
+from sv_query.trace.core.compiler import SVCompiler
 import os
 c = SVCompiler()
 c.add_filelist(
@@ -275,7 +275,7 @@ for k in to_remove:
 ```bash
 # 只看顶层 (避免子模块级 parameter type 错误)
 TARGET_CFG=cv64a6_imafdc_sv39 \
-  python run_cli.py visualize graph -f top.sv --filelist Flist.cva6
+  sv_query stats --filelist Flist.cva6 --json
 ```
 
 ---

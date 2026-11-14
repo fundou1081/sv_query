@@ -1,7 +1,7 @@
 # CLI 能力清单 (生成物 — 请勿手改)
 
 > **生成方式**: `python3 tools/gen_cli_surface.py`  (数据源: `src/cli/_registry.py` + typer introspection)
-> **生成日期**: 2026-11-11  |  **漂移校验**: `python3 tools/gen_cli_surface.py --check`
+> **生成日期**: 2026-11-15  |  **漂移校验**: `python3 tools/gen_cli_surface.py --check`
 > **分层检查**: `python3 tools/check_cli_layers.py` (R1~R6)
 
 ## 总览
@@ -14,7 +14,7 @@
 |---|---|---|---|---|---|---|
 | `core` | agent | stable | ✅ | ✅ | 1 | agent 一等公民: 只读 + JSON + 稳定 schema; readonly = 不改 RTL/项目文件, cache/output 由 write_scope 标记 |
 | `view` | human | stable | ✅ | — | — | 人眼面 (图/叙述); 默认含于 capabilities, 后续重点开发 |
-| `exp` | none | unstable | ✅ | — | — | 降级区: 规范入口 svq exp <组> <子> (老路径为别名); 无 schema 承诺, 只修 bug; --include-exp 才列出 |
+| `exp` | none | unstable | ✅ | — | — | 降级区: 直接命令 (hidden, 无统一 exp 命名空间入口); 无 schema 承诺, 只修 bug; --include-exp 才列出 |
 | `dev` | dev | none | ✅ | — | — | 开发者内部调试 (当前无命令; expression 已于 iter_252 归档) |
 | `out` | none | none | ✅ | — | — | 移出 CLI (会写 RTL/项目文件) → tools/; 不算产品命令 |
 

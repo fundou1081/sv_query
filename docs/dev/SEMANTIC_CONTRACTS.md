@@ -3,7 +3,7 @@
 > **本文是 `AGENTS.md` 的细则文件之一。**
 > 目的: 把"路径、驱动、verified、snapshot、完成"这些词从**口头共识**变成**可执行契约**。
 > **状态**: 规范已立; P158 逐项落地。未落地的条目必须标记为“目标契约”，不得假装已生效。
-> **最后修订**: 2026-11-11
+> **最后修订**: 2026-11-15
 
 ---
 
@@ -332,7 +332,7 @@ worker / reviewer 的 `APPROVE` 不是证据。必须提供：
 | snapshot surface/schema | `cli/test_json_contract.py` + `regression/test_schema_contract_resolution.py`（9.1）+ `unit/test_p158_9_2_snapshot_surface.py`（9.2 往返保真/parity） | ✅ P158.9（矩阵见 [SNAPSHOT_SURFACE.md](SNAPSHOT_SURFACE.md)） |
 | CI 一致性 | `.github/workflows/tests.yml` → `bash tools/run_gates.sh`（同一命令，`SVQ_GATE_BASE`） | ✅ P158.10 |
 | 长查询有界 | `test_p158_11_dataflow_budget`（dataflow budget/timeout）+ paths/frontier gate | ✅ P158.11 |
-| P2 清理 | — | ❌ P158.12 |
+| P2 清理 | — | ✅ P158.12 |
 
 **规则**：没有机械 gate 的契约，在 P158 完成前只能算“目标契约”，
 不得在汇报中写成“已保证”。

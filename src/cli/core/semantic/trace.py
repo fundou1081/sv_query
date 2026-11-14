@@ -342,7 +342,7 @@ def _output_impact_human(data: dict, tree: bool = False) -> None:
         print("💡  Review these paths before making changes")
 
 
-trace_app = typer.Typer(help="Trace signal drivers (fanin), loads (fanout), or impact analysis")
+trace_app = typer.Typer(help="Trace signal drivers (fanin) and loads (fanout)")
 
 
 def _validate_trace_modes(file, filelist, top, from_snapshot):
@@ -843,7 +843,7 @@ def fanout(
         raise typer.Exit(code=1) from None
 
 
-@trace_app.command()
+@trace_app.command(hidden=True)
 def impact(
     signal: str = typer.Argument(None, help="Signal to analyze impact (e.g., top.rst_ni). Optional when --batch or --batch-file is used."),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),

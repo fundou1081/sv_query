@@ -540,3 +540,5 @@ Open-source project visualization is **correct and verified**. Ready for next ta
 | **404** | **2026-11-14** | **L3** | **P62.2 gate (iter_520)** | gate assessment | no-go | 条件 3/4 缺证据 | **✅ 评估完成** |
 | **405** | **2026-11-14** | **L3** | **P172.1 (iter_521)** | CI hygiene | coverage-gen retire | 测试归档，不伪装 pass | **✅ 完成** |
 | **406** | **2026-11-14** | **L3** | **P172.2 (iter_522)** | CI hygiene | check_crap base | clean tree no longer no-op | **✅ 完成** |
+| **407** | **2026-11-15** | **L3** | **P173 full cleanup (iter_523+)** | full review | mainline/history drift | — | **🔄 进行中** |
+| **408** | **2026-11-15** | **L3** | **P173.2/.3 (iter_524/525)** | full review | status docs + examples/tests | 2737/0; gate green | **✅ 完成** |

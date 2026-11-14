@@ -1,18 +1,10 @@
 """
 TDD: 所有 CLI 命令 --file vs --filelist 行为一致 (Req-9 任务2)
 
-[ADD 2026-06-11 Req-9 任务2] 9 个命令都加 --filelist 支持
-本测试验证: 同样输入下, --file 和 --filelist 输出完全相同 (行为一致)
-
-覆盖命令:
-- risk analyze
-- cdc analyze
-- coverage suggest
+[P173.3 2026-11-15] 只保留当前 core 命令的 --file vs --filelist 一致性:
 - dataflow analyze
-- controlflow analyze / list-conditioned / conditions
-- sva extract / coverage / timing
-- timing analyze
-- verify gap
+- controlflow analyze / list-conditioned / --conditions-only
+退役的 risk/cdc/coverage/sva/timing/verify-gap 测试已删除。
 
 每个命令测试 4 个场景:
 1. --file 模式跑通
@@ -99,25 +91,6 @@ def _setup_workdir(use_cond=False):
 # 风险分析 risk analyze
 # ----------------------------------------------------------------------------
 
-def test_cdc_no_args_errors():
-    r = _run("exp", "cdc", "analyze", cwd="/tmp")
-    assert r.returncode != 0
-    print(f"✅ cdc analyze no-args: exit {r.returncode}")
-
-
-# ----------------------------------------------------------------------------
-# Coverage suggest
-# ----------------------------------------------------------------------------
-
-def test_coverage_suggest_file_vs_filelist_parity():
-    tmpdir, sv, fl = _setup_workdir()
-    r1 = _run("exp", "coverage", "suggest", "-f", sv, "--signal", "top.q", "--log-level", "ERROR", cwd=tmpdir)
-    r2 = _run("exp", "coverage", "suggest", "--filelist", fl, "--signal", "top.q", "--log-level", "ERROR", cwd=tmpdir)
-    # coverage suggest may exit 1 (no atomic signals) but should not crash
-    assert r1.stdout == r2.stdout, f"file != filelist:\n{diff(r1.stdout, r2.stdout)}"
-    print("✅ coverage suggest: --file == --filelist")
-
-
 # ----------------------------------------------------------------------------
 # Dataflow analyze
 # ----------------------------------------------------------------------------
@@ -126,6 +99,7 @@ def test_dataflow_file_vs_filelist_parity():
     tmpdir, sv, fl = _setup_workdir(use_cond=True)
     r1 = _run("dataflow", "analyze", "top.clk", "top.dout", "-f", sv, "--log-level", "ERROR", cwd=tmpdir)
     r2 = _run("dataflow", "analyze", "top.clk", "top.dout", "--filelist", fl, "--log-level", "ERROR", cwd=tmpdir)
+    assert r1.returncode == 0 and r2.returncode == 0
     assert r1.stdout == r2.stdout, f"file != filelist:\n{diff(r1.stdout, r2.stdout)}"
     print("✅ dataflow analyze: --file == --filelist")
 
@@ -162,50 +136,6 @@ def test_controlflow_conditions_file_vs_filelist_parity():
 
 
 # ----------------------------------------------------------------------------
-# SVA extract / coverage / timing
-# ----------------------------------------------------------------------------
-
-def test_sva_coverage_file_vs_filelist_parity():
-    tmpdir, sv, fl = _setup_workdir()
-    r1 = _run("exp", "sva", "coverage", "-f", sv, "--log-level", "ERROR", cwd=tmpdir)
-    r2 = _run("exp", "sva", "coverage", "--filelist", fl, "--log-level", "ERROR", cwd=tmpdir)
-    assert r1.stdout == r2.stdout, f"file != filelist:\n{diff(r1.stdout, r2.stdout)}"
-    print("✅ sva coverage: --file == --filelist")
-
-
-def test_sva_timing_file_vs_filelist_parity():
-    tmpdir, sv, fl = _setup_workdir()
-    r1 = _run("exp", "sva", "timing", "-f", sv, "--log-level", "ERROR", cwd=tmpdir)
-    r2 = _run("exp", "sva", "timing", "--filelist", fl, "--log-level", "ERROR", cwd=tmpdir)
-    assert r1.stdout == r2.stdout, f"file != filelist:\n{diff(r1.stdout, r2.stdout)}"
-    print("✅ sva timing: --file == --filelist")
-
-
-# ----------------------------------------------------------------------------
-# Timing analyze
-# ----------------------------------------------------------------------------
-
-def test_timing_file_vs_filelist_parity():
-    tmpdir, sv, fl = _setup_workdir()
-    r1 = _run("exp", "timing", "analyze", "-f", sv, "--log-level", "ERROR", cwd=tmpdir)
-    r2 = _run("exp", "timing", "analyze", "--filelist", fl, "--log-level", "ERROR", cwd=tmpdir)
-    assert r1.stdout == r2.stdout, f"file != filelist:\n{diff(r1.stdout, r2.stdout)}"
-    print("✅ timing analyze: --file == --filelist")
-
-
-# ----------------------------------------------------------------------------
-# Verify gap
-# ----------------------------------------------------------------------------
-
-def test_verify_file_vs_filelist_parity():
-    tmpdir, sv, fl = _setup_workdir()
-    r1 = _run("exp", "verify", "gap", "-f", sv, "--log-level", "ERROR", cwd=tmpdir)
-    r2 = _run("exp", "verify", "gap", "--filelist", fl, "--log-level", "ERROR", cwd=tmpdir)
-    assert r1.stdout == r2.stdout, f"file != filelist:\n{diff(r1.stdout, r2.stdout)}"
-    print("✅ verify gap: --file == --filelist")
-
-
-# ----------------------------------------------------------------------------
 # Visualize graph (HTML 输出)
 # ----------------------------------------------------------------------------
 
@@ -218,28 +148,3 @@ def diff(a, b):
 # ----------------------------------------------------------------------------
 # Main
 # ----------------------------------------------------------------------------
-
-if __name__ == "__main__":
-    tests = [
-        test_risk_file_vs_filelist_parity,
-        test_risk_no_args_errors,
-        test_cdc_file_vs_filelist_parity,
-        test_cdc_no_args_errors,
-        test_coverage_suggest_file_vs_filelist_parity,
-        test_dataflow_file_vs_filelist_parity,
-        test_controlflow_analyze_file_vs_filelist_parity,
-        test_controlflow_list_conditioned_file_vs_filelist_parity,
-        test_controlflow_conditions_file_vs_filelist_parity,
-        test_sva_extract_file_vs_filelist_parity,
-        test_sva_coverage_file_vs_filelist_parity,
-        test_sva_timing_file_vs_filelist_parity,
-        test_timing_file_vs_filelist_parity,
-        test_verify_file_vs_filelist_parity,
-    ]
-    for t in tests:
-        try:
-            t()
-        except Exception as e:
-            print(f"❌ {t.__name__}: {e}")
-            sys.exit(1)
-    print(f"\n🎉 All {len(tests)} CLI filelist parity tests passed!")

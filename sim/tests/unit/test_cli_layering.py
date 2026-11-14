@@ -129,7 +129,7 @@ class TestCapabilities:
         """[iter_327] 低完成度能力 (audit/diagnose/view) 降级 exp, 默认不提供。"""
         from cli._registry import COMMANDS
         exp_keys = {c.key for c in COMMANDS if c.layer == "exp"}
-        assert {"audit", "diagnose", "trace overview"} <= exp_keys
+        assert {"audit", "diagnose", "trace overview", "trace impact"} <= exp_keys
         default = _json("capabilities", "--json")
         assert not any(c["layer"] == "exp" for c in default["commands"])
         full = _json("capabilities", "--json", "--include-exp")
@@ -146,6 +146,12 @@ class TestCapabilities:
         assert "visualize" not in top and "design" not in top
         trace_help = _run("trace", "--help").stdout
         assert "overview" not in trace_help
+        assert "impact" not in trace_help
+
+    def test_capabilities_do_not_advertise_nonexistent_exp_entrypoint(self):
+        d = _json("capabilities", "--json")
+        assert "svq exp" not in d["layers"]["exp"]["note"]
+        assert "直接命令" in d["layers"]["exp"]["note"]
 
     def test_recommended_is_subset(self):
         d = _json("capabilities", "--json", "--recommended")
