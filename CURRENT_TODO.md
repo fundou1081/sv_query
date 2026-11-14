@@ -10,7 +10,7 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P171.4.2 full fanin/fanout merge** `<待做>`
+- **当前 item**: **P171.4.2 full fanin/fanout merge** `<进行中>`
   - 剩余：P171.4.2 full merge（已尝试回退）；opensource 112/11/0
   - 待方豆确认（不阻塞）：`false_confident` 分母口径当前默认
     = answered_n（实际作答数），见 [REPORT_STATUS](docs/dev/REPORT_STATUS.md)

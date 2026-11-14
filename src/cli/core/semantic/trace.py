@@ -400,6 +400,323 @@ def _prepare_trace_tracer(file, filelist, top, prune, from_snapshot,
     tops = tracer.list_top_modules()
     return tracer, tops, len(tops) > 1 and top is None
 
+from dataclasses import dataclass
+
+
+@dataclass
+class _TraceFacts:
+    items: list[dict]
+    count: int
+    pre_filter_count: int
+    precision: str
+    coarse_fallback: bool
+    conditions: list[dict]
+    condition_truncated: bool
+    cycles_detected: bool
+    truncated_by_depth: bool
+    dynamic_index: bool
+    function_call: bool
+    runtime_system_call: bool
+    driver_stats: tuple | None = None
+
+
+def _query_trace_items(tracer, direction, query_sig, depth,
+                       include_clock, include_reset, include_control):
+    if direction == "fanin":
+        raw = tracer.trace_fanin(
+            query_sig, depth=depth, include_clock=include_clock,
+            include_reset=include_reset, include_control=include_control)
+    else:
+        raw = tracer.trace_fanout(
+            query_sig, depth=depth, include_clock=include_clock,
+            include_reset=include_reset, include_control=include_control)
+    return [_node_to_dict(n) for n in (raw if hasattr(raw, "__iter__") else [])
+            if hasattr(n, "id")]
+
+
+def _attach_trace_metadata(graph, direction, sig, query_sig, items, depth):
+    reverse = direction == "fanin"
+    root = resolve_node_id(graph, query_sig)
+    root_node = graph.get_node(root) if root else None
+    attach_distances(graph, query_sig, items, reverse=reverse)
+    if reverse:
+        conditions = attach_edge_conditions(
+            graph, items, [sig, query_sig], reverse=True, depth=depth)
+    else:
+        conditions = attach_edge_conditions(
+            graph, items, [query_sig, root], reverse=False, depth=depth)
+    flags = {
+        "dynamic_index": (node_is_dynamic(root_node)
+                          or any(x.get("dynamic_index") for x in items)),
+        "function_call": (node_is_function_call(root_node)
+                          or any(x.get("function_call") for x in items)),
+        "runtime_system_call": (node_is_runtime_system_call(root_node)
+                                or any(x.get("runtime_system_call") for x in items)),
+    }
+    return {
+        "root": root,
+        "root_node": root_node,
+        "conditions": conditions,
+        "condition_truncated": any(x.get("condition_truncated") for x in items),
+        "cycles_detected": detect_cycles(graph, root, reverse=reverse),
+        "truncated_by_depth": truncated_by_depth(
+            graph, items, depth, reverse=reverse),
+        **flags,
+    }
+
+
+def _filter_and_cap(items, type_filter, module_filter, width_min,
+                    width_max, exclude, max_results):
+    pre_filter_count = len(items)
+    items = _apply_filters(
+        items, type_filter=type_filter, module_filter=module_filter,
+        width_min=width_min, width_max=width_max, exclude=exclude)
+    truncated = False
+    if max_results is not None and len(items) > max_results:
+        items = items[:max_results]
+        truncated = True
+    return items, pre_filter_count, truncated
+
+
+def _trace_signal_facts(tracer, direction, sig, query_sig, depth,
+                        include_clock, include_reset, include_control,
+                        type_filter, module_filter, width_min, width_max,
+                        exclude, max_results, evidence):
+    graph = tracer.get_graph()
+    items = _query_trace_items(
+        tracer, direction, query_sig, depth,
+        include_clock, include_reset, include_control)
+    meta = _attach_trace_metadata(graph, direction, sig, query_sig, items, depth)
+    stats = driver_stats(graph, meta["root"]) if direction == "fanin" else None
+    precision, coarse_fallback = query_precision(sig, list(items))
+    items, pre_filter_count, truncated = _filter_and_cap(
+        items, type_filter, module_filter, width_min, width_max,
+        exclude, max_results)
+    if evidence:
+        attach_edge_evidence(graph, query_sig, items,
+                             reverse=(direction == "fanin"))
+    if (meta["dynamic_index"] or meta["function_call"]
+            or meta["runtime_system_call"]):
+        precision = "unknown"
+    return _TraceFacts(
+        items=items, count=len(items), pre_filter_count=pre_filter_count,
+        precision=precision, coarse_fallback=coarse_fallback,
+        conditions=meta["conditions"],
+        condition_truncated=meta["condition_truncated"],
+        cycles_detected=meta["cycles_detected"],
+        truncated_by_depth=meta["truncated_by_depth"],
+        dynamic_index=meta["dynamic_index"],
+        function_call=meta["function_call"],
+        runtime_system_call=meta["runtime_system_call"],
+        driver_stats=stats,
+    ), truncated, meta["root"]
+
+
+def _success_row(direction, sig, index, res, facts, root, graph,
+                 tops, top_ambiguous):
+    key = "drivers" if direction == "fanin" else "loads"
+    row = {
+        "signal": sig,
+        "index": index,
+        key: facts.items,
+        "count": facts.count,
+        "pre_filter_count": facts.pre_filter_count,
+        "truncated": False,
+        "precision": facts.precision,
+        "coarse_fallback": facts.coarse_fallback,
+        "top_modules": tops,
+        "top_ambiguous": top_ambiguous,
+        "bit_fallback": res.get("status") == "bit_base_fallback",
+        "dynamic_index": facts.dynamic_index,
+        "function_call": facts.function_call,
+        "runtime_system_call": facts.runtime_system_call,
+        "conditions": facts.conditions,
+        "condition_truncated": facts.condition_truncated,
+        "truncated_by_depth": facts.truncated_by_depth,
+        "cycles_detected": facts.cycles_detected,
+        "error": "",
+        **resolution_fields(res),
+    }
+    if direction == "fanin":
+        driver_count, multi_driver, conditional = facts.driver_stats
+        conflict = driver_conflict_analysis(facts.items)
+        row.update({
+            "driver_count": driver_count,
+            "multi_driver": multi_driver,
+            "driver_conflict": conflict["status"],
+            "driver_conflict_analysis": conflict,
+            "conditional_drivers": conditional,
+        })
+    return row
+
+
+def _error_value(err, res, attr, key, default=None):
+    return (getattr(err, attr, None)
+            or (res or {}).get(key, default))
+
+
+def _error_row(direction, sig, index, err_data, _res, tops, top_ambiguous):
+    key = "drivers" if direction == "fanin" else "loads"
+    err = err_data.get("_error")
+    resolved = _error_value(err, _res, "resolved", "resolved")
+    resolution = _error_value(err, _res, "resolution", "status", "internal")
+    candidates = _error_value(err, _res, "candidates", "candidates", [])
+    suggestions = _error_value(err, _res, "suggestions", "suggestions", [])
+    row = {
+        "signal": sig, "index": index, key: [], "count": 0,
+        "pre_filter_count": 0, "truncated": False, "precision": "unknown",
+        "coarse_fallback": False, "top_modules": tops,
+        "top_ambiguous": top_ambiguous, "bit_fallback": False,
+        "dynamic_index": False, "function_call": False,
+        "runtime_system_call": False, "conditions": [],
+        "condition_truncated": False, "truncated_by_depth": False,
+        "cycles_detected": False, "error": err_data["error"],
+        "resolved_signal": resolved, "resolution": resolution,
+        "candidates": candidates, "suggestions": suggestions,
+    }
+    if direction == "fanin":
+        row.update({"driver_count": 0, "multi_driver": False,
+                    "conditional_drivers": False})
+    return row
+
+
+def _trace_one_row(direction, tracer, sig, index, tops, top_ambiguous, args):
+    res = None
+    try:
+        res = resolve_signal(tracer.get_graph(), sig)
+        if not res["ok"]:
+            raise SignalResolutionError(
+                resolution_error_message(sig, res),
+                error_code=("E_SIGNAL_AMBIGUOUS" if res["status"] == "ambiguous"
+                            else "E_SIGNAL_NOT_FOUND"),
+                resolution=res["status"], candidates=res.get("candidates"),
+                suggestions=res.get("suggestions"),
+            )
+        query_sig = res["resolved"]
+        facts, truncated, root = _trace_signal_facts(
+            tracer, direction, sig, query_sig, args["depth"],
+            args["include_clock"], args["include_reset"], args["include_control"],
+            args["type_filter"], args["module_filter"], args["width_min"],
+            args["width_max"], args["exclude"], args["max_results"],
+            args["evidence"])
+        row = _success_row(direction, sig, index, res, facts, root,
+                           tracer.get_graph(), tops, top_ambiguous)
+        row["truncated"] = truncated
+        return row, None
+    except Exception as sig_err:
+        from cli.errors import code_for_exception, make_error
+        err_data = make_error(
+            code_for_exception(sig_err), str(sig_err),
+            command=f"trace_{direction}")
+        err_data["_error"] = sig_err
+        err = {"signal": sig, "index": index, "error": err_data["error"],
+               "error_code": err_data.get("error_code", "E_INTERNAL")}
+        return _error_row(direction, sig, index, err_data, res,
+                          tops, top_ambiguous), err
+
+
+def _execute_trace_rows(direction, signals, tracer, tops, top_ambiguous, args):
+    rows = []
+    errors = []
+    total_count = 0
+    total_pre_filter = 0
+    truncated_global = False
+    for i, sig in enumerate(signals):
+        row, err = _trace_one_row(
+            direction, tracer, sig, i, tops, top_ambiguous, args)
+        rows.append(row)
+        if err is not None:
+            errors.append(err)
+            continue
+        total_count += row["count"]
+        total_pre_filter += row["pre_filter_count"]
+        truncated_global = truncated_global or row["truncated"]
+    return rows, errors, total_count, total_pre_filter, truncated_global
+
+
+def _build_trace_data(direction, signal, batch_file, batch, file, depth,
+                      evidence, filelist, top, prune, include_clock,
+                      include_reset, include_control, preprocess_macros,
+                      max_results, type_filter, module_filter, width_min,
+                      width_max, exclude, from_snapshot, no_cache):
+    signals = _collect_signals(signal, batch_file, batch)
+    tracer, tops, top_ambiguous = _prepare_trace_tracer(
+        file, filelist, top, prune, from_snapshot, preprocess_macros, no_cache)
+    args = {
+        "depth": depth, "evidence": evidence, "include_clock": include_clock,
+        "include_reset": include_reset, "include_control": include_control,
+        "max_results": max_results, "type_filter": type_filter,
+        "module_filter": module_filter, "width_min": width_min,
+        "width_max": width_max, "exclude": exclude,
+    }
+    rows, errors, total_count, total_pre_filter, truncated_global = (
+        _execute_trace_rows(direction, signals, tracer, tops,
+                            top_ambiguous, args))
+    data = {
+        "ok": not errors,
+        "command": f"trace_{direction}",
+        "params": {
+            "signals": signals, "file": str(file), "depth": depth,
+            "max_results": max_results, "batch_file": batch_file,
+            "batch": batch, "type": type_filter, "module": module_filter,
+            "width_min": width_min, "width_max": width_max,
+            "exclude": exclude, "from_snapshot": from_snapshot,
+            "no_cache": no_cache,
+        },
+        "result": {
+            "signals": rows, "total_signals": len(signals),
+            "total_count": total_count,
+            "total_pre_filter": total_pre_filter,
+            "truncated": truncated_global, "failed_signals": len(errors),
+        },
+        "errors": errors,
+    }
+    if prune:
+        data["prune"] = getattr(tracer, "_svq_prune_info", None)
+    return data
+
+
+def _emit_dot(direction, data, depth, output):
+    signals = data["params"]["signals"]
+    key = "drivers" if direction == "fanin" else "loads"
+    all_items = [item for row in data["result"]["signals"]
+                 for item in row.get(key, [])]
+    node_kinds = {}
+    for item in all_items:
+        kind = item.get("kind", "")
+        if isinstance(kind, dict):
+            kind = kind.get("name", "SIGNAL")
+        node_kinds[item.get("id", "")] = str(kind)
+    dot_content = _generate_trace_dot(
+        signal=signals[0] if signals else "",
+        drivers_or_loads=all_items, direction=direction,
+        depth=depth, node_kinds=node_kinds)
+    if not output:
+        typer.echo(dot_content)
+        return
+    Path(output).write_text(dot_content)
+    if output.endswith(".png"):
+        import subprocess
+        try:
+            subprocess.run(["dot", "-Tpng", "/dev/stdin", "-o", output],
+                           input=dot_content, text=True, check=True, timeout=30)
+        except Exception as e:
+            typer.echo(f"Warning: failed to render PNG: {e}", err=True)
+    typer.echo(f"✓ DOT written: {output}")
+
+
+def _emit_trace_output(direction, data, json_output, format, pretty,
+                       human, tree, output, depth):
+    if json_output:
+        emit_json(data, pretty)
+    elif format == "dot":
+        _emit_dot(direction, data, depth, output)
+    elif format == "json":
+        emit_json(data)
+    else:
+        output_text(data, human=human, tree=tree)
+
+
 def fanin(
     signal: str = typer.Argument(None, help="Signal to trace (e.g., top.clk). Optional when --batch or --batch-file is used."),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
@@ -447,221 +764,15 @@ def fanin(
                   sv_query trace fanin top.a --format dot -o /tmp/fanin.png  # auto-renders
     """
     try:
-        signals = _collect_signals(signal, batch_file, batch)
-        tracer, _tops, _top_ambiguous = _prepare_trace_tracer(
-            file, filelist, top, prune, from_snapshot,
-            preprocess_macros, no_cache)
-
-        # [B1 2026-07-03] Batch mode: 1 tracer parse, N signals trace
-        # [A3 2026-07-04] Per-signal try/except: failed signals go to errors[], continue on others
-        signals_result = []
-        per_signal_errors = []
-        total_count = 0
-        total_pre_filter = 0
-        truncated_global = False
-        for i, sig in enumerate(signals):
-            _res = None
-            try:
-                _g = tracer.get_graph()
-                _res = resolve_signal(_g, sig)
-                if not _res["ok"]:
-                    raise SignalResolutionError(
-                        resolution_error_message(sig, _res),
-                        error_code=("E_SIGNAL_AMBIGUOUS" if _res["status"] == "ambiguous"
-                                    else "E_SIGNAL_NOT_FOUND"),
-                        resolution=_res["status"], candidates=_res.get("candidates"),
-                        suggestions=_res.get("suggestions"),
-                    )
-                _query_sig = _res["resolved"]
-                _is_bit_fallback = _res.get("status") == "bit_base_fallback"
-                result = tracer.trace_fanin(
-                    _query_sig, depth=depth,
-                    include_clock=include_clock,
-                    include_reset=include_reset,
-                    include_control=include_control,
-                )
-                drivers = []
-                for d in result if hasattr(result, "__iter__") else []:
-                    if hasattr(d, "id"):
-                        drivers.append(_node_to_dict(d))
-                attach_distances(tracer.get_graph(), _query_sig, drivers, reverse=True)
-                # [iter_303 / PLAN P13.2] 粒度判定必须在过滤前（过滤会掩盖粗粒度回退）
-                precision, coarse_fallback = query_precision(sig, list(drivers))
-                # [iter_307 / PLAN P13.6] 直接驱动统计（多驱动/条件分支）
-                _g = tracer.get_graph()
-                _root = resolve_node_id(_g, _query_sig)
-                driver_count, multi_driver, conditional_drivers = driver_stats(_g, _root)
-                _root_node = _g.get_node(_root) if _root else None
-                _conditions = attach_edge_conditions(_g, drivers, [sig, _query_sig], reverse=True, depth=depth)
-                _condition_truncated = any(d.get("condition_truncated") for d in drivers)
-                _cycles_detected = detect_cycles(_g, _root, reverse=True)
-                _depth_truncated = truncated_by_depth(_g, drivers, depth, reverse=True)
-                _dynamic = (node_is_dynamic(_root_node)
-                            or any(d.get("dynamic_index") for d in drivers))
-                _function = (node_is_function_call(_root_node)
-                             or any(d.get("function_call") for d in drivers))
-                _runtime_system = (node_is_runtime_system_call(_root_node)
-                                   or any(d.get("runtime_system_call") for d in drivers))
-                if _dynamic or _function or _runtime_system:
-                    precision = "unknown"
-                # [B2 2026-07-03] Apply 5 filters
-                drivers_pre = len(drivers)
-                drivers = _apply_filters(
-                    drivers,
-                    type_filter=type_filter,
-                    module_filter=module_filter,
-                    width_min=width_min,
-                    width_max=width_max,
-                    exclude=exclude,
-                )
-                # [C1 2026-06-28 LLM] Cap per-signal results
-                truncated = False
-                if max_results is not None and len(drivers) > max_results:
-                    drivers = drivers[:max_results]
-                    truncated = True
-                    truncated_global = True
-                if evidence:
-                    attach_edge_evidence(_g, _query_sig, drivers, reverse=True)
-                _conflict = driver_conflict_analysis(drivers)
-                signals_result.append({
-                    "signal": sig,
-                    "index": i,
-                    "drivers": drivers,
-                    "count": len(drivers),
-                    "pre_filter_count": drivers_pre,
-                    "truncated": truncated,
-                    "precision": precision,
-                    "coarse_fallback": coarse_fallback,
-                    "top_modules": _tops,
-                    "top_ambiguous": _top_ambiguous,
-                    "bit_fallback": _is_bit_fallback,
-                    "driver_count": driver_count,
-                    "multi_driver": multi_driver,
-                    "driver_conflict": _conflict["status"],
-                    "driver_conflict_analysis": _conflict,
-                    "conditional_drivers": conditional_drivers,
-                    "dynamic_index": _dynamic,
-                    "function_call": _function,
-                    "runtime_system_call": _runtime_system,
-                    "conditions": _conditions,
-                    "condition_truncated": _condition_truncated,
-                    "truncated_by_depth": _depth_truncated,
-                    "cycles_detected": _cycles_detected,
-                    "error": "",
-                    **resolution_fields(_res),
-                })
-                total_count += len(drivers)
-                total_pre_filter += drivers_pre
-            except Exception as sig_err:
-                # [A3 2026-07-04] Per-signal failure → record error, continue with others
-                from cli.errors import code_for_exception, make_error
-                err_data = make_error(
-                    code_for_exception(sig_err), str(sig_err), command="trace_fanin",
-                )
-                per_signal_errors.append({
-                    "signal": sig,
-                    "index": i,
-                    "error": err_data["error"],
-                    "error_code": err_data.get("error_code", "E_INTERNAL"),
-                })
-                # Add empty entry to signals_result to preserve order
-                signals_result.append({
-                    "signal": sig,
-                    "index": i,
-                    "drivers": [],
-                    "count": 0,
-                    "pre_filter_count": 0,
-                    "truncated": False,
-                    "precision": "unknown",
-                    "coarse_fallback": False,
-                    "top_modules": _tops,
-                    "top_ambiguous": _top_ambiguous,
-                    "bit_fallback": False,
-                    "driver_count": 0,
-                    "multi_driver": False,
-                    "conditional_drivers": False,
-                    "dynamic_index": False,
-                    "function_call": False,
-                    "runtime_system_call": False,
-                    "conditions": [],
-                    "condition_truncated": False,
-                    "truncated_by_depth": False,
-                    "cycles_detected": False,
-                    "error": err_data["error"],
-                    "resolved_signal": (getattr(sig_err, "resolved", None)
-                                        or (_res or {}).get("resolved")),
-                    "resolution": (getattr(sig_err, "resolution", None)
-                                   or (_res or {}).get("status", "internal")),
-                    "candidates": (getattr(sig_err, "candidates", None)
-                                   or (_res or {}).get("candidates", [])),
-                    "suggestions": (getattr(sig_err, "suggestions", None)
-                                    or (_res or {}).get("suggestions", [])),
-                })
-
-        data = {
-            "ok": per_signal_errors == [],  # [A3] ok=False if any sig failed
-            "command": "trace_fanin",
-            "params": {"signals": signals, "file": str(file), "depth": depth, "max_results": max_results, "batch_file": batch_file, "batch": batch, "type": type_filter, "module": module_filter, "width_min": width_min, "width_max": width_max, "exclude": exclude, "from_snapshot": from_snapshot, "no_cache": no_cache},
-            "result": {
-                "signals": signals_result,
-                "total_signals": len(signals),
-                "total_count": total_count,
-                "total_pre_filter": total_pre_filter,
-                "truncated": truncated_global,
-                "failed_signals": len(per_signal_errors),
-            },
-            "errors": per_signal_errors,
-        }
-        if prune:
-            data["prune"] = getattr(tracer, "_svq_prune_info", None)
-
-        if json_output:
-            emit_json(data, pretty)
-        elif format == "dot":
-            # [Phase 2 2026-07-09] Generate DOT visualization for fanin
-            all_drivers = []
-            for sig_res in signals_result:
-                all_drivers.extend(sig_res.get("drivers", []))
-            node_kinds = {}
-            for d in all_drivers:
-                kind_str = d.get("kind", "")
-                if isinstance(kind_str, dict):
-                    kind_str = kind_str.get("name", "SIGNAL")
-                node_kinds[d.get("id", "")] = str(kind_str)
-            dot_content = _generate_trace_dot(
-                signal=signals[0] if signals else signal,
-                drivers_or_loads=all_drivers,
-                direction="fanin",
-                depth=depth,
-                node_kinds=node_kinds,
-            )
-            if output:
-                Path(output).write_text(dot_content)
-                if output.endswith(".png"):
-                    import subprocess
-                    try:
-                        subprocess.run(
-                            ["dot", "-Tpng", "/dev/stdin", "-o", output],
-                            input=dot_content,
-                            text=True,
-                            check=True,
-                            timeout=30,
-                        )
-                    except Exception as e:
-                        typer.echo(f"Warning: failed to render PNG: {e}", err=True)
-                typer.echo(f"✓ DOT written: {output}")
-            else:
-                typer.echo(dot_content)
-        elif format == "json":
-            # [iter_203] `--format json` 是旧别名, 过去落到 text 分支 → stdout 变成
-            # **被 JSON 转义的字符串** (实测 `"Fanin of '...':\n  (no drivers)\n"`),
-            # 不是结构化 JSON。现与 `--json` 走同一路径 (单一实现)。
-            emit_json(data)
-        else:
-            output_text(data, human=human, tree=tree)
-
+        data = _build_trace_data(
+            "fanin", signal, batch_file, batch, file, depth, evidence,
+            filelist, top, prune, include_clock, include_reset,
+            include_control, preprocess_macros, max_results, type_filter,
+            module_filter, width_min, width_max, exclude, from_snapshot,
+            no_cache)
+        _emit_trace_output("fanin", data, json_output, format, pretty,
+                           human, tree, output, depth)
     except Exception as e:
-        # [Phase 2 B2 2026-06-28] LLM-friendly error with stable code
         from cli.errors import code_for_exception, make_error
         data = make_error(code_for_exception(e), str(e), command="trace_fanin")
         if json_output:
@@ -717,216 +828,17 @@ def fanout(
     Batch:        sv_query trace fanout --batch 'top.clk,top.data' -f top.sv
     """
     try:
-        signals = _collect_signals(signal, batch_file, batch)
-        tracer, _tops, _top_ambiguous = _prepare_trace_tracer(
-            file, filelist, top, prune, from_snapshot,
-            preprocess_macros, no_cache)
-
-        # [B1 2026-07-03] Batch mode
-        # [A3 2026-07-04] Per-signal try/except: failed signals go to errors[], continue on others
-        signals_result = []
-        per_signal_errors = []
-        total_count = 0
-        total_pre_filter = 0
-        truncated_global = False
-        for i, sig in enumerate(signals):
-            _res = None
-            try:
-                _g = tracer.get_graph()
-                _res = resolve_signal(_g, sig)
-                if not _res["ok"]:
-                    raise SignalResolutionError(
-                        resolution_error_message(sig, _res),
-                        error_code=("E_SIGNAL_AMBIGUOUS" if _res["status"] == "ambiguous"
-                                    else "E_SIGNAL_NOT_FOUND"),
-                        resolution=_res["status"], candidates=_res.get("candidates"),
-                        suggestions=_res.get("suggestions"),
-                    )
-                _query_sig = _res["resolved"]
-                _is_bit_fallback = _res.get("status") == "bit_base_fallback"
-                result = tracer.trace_fanout(
-                    _query_sig, depth=depth,
-                    include_clock=include_clock,
-                    include_reset=include_reset,
-                    include_control=include_control,
-                )
-                loads = []
-                for load in result if hasattr(result, "__iter__") else []:
-                    if hasattr(load, "id"):
-                        loads.append(_node_to_dict(load))
-                # [iter_278] 填真实跳数 (原 distance 恒为 1)
-                attach_distances(tracer.get_graph(), _query_sig, loads, reverse=False)
-                # [iter_303 / PLAN P13.2] 粒度判定必须在过滤前
-                precision, coarse_fallback = query_precision(sig, list(loads))
-                _g = tracer.get_graph()
-                _root = resolve_node_id(_g, _query_sig)
-                _root_node = _g.get_node(_root) if _root else None
-                _conditions = attach_edge_conditions(_g, loads, [_query_sig, _root], reverse=False, depth=depth)
-                _condition_truncated = any(x.get("condition_truncated") for x in loads)
-                _cycles_detected = detect_cycles(_g, _root, reverse=False)
-                _depth_truncated = truncated_by_depth(_g, loads, depth, reverse=False)
-                _dynamic = (node_is_dynamic(_root_node)
-                            or any(x.get("dynamic_index") for x in loads))
-                _function = (node_is_function_call(_root_node)
-                             or any(x.get("function_call") for x in loads))
-                _runtime_system = (node_is_runtime_system_call(_root_node)
-                                   or any(x.get("runtime_system_call") for x in loads))
-                if _dynamic or _function or _runtime_system:
-                    precision = "unknown"
-                # [B2 2026-07-03] Apply 5 filters
-                loads_pre = len(loads)
-                loads = _apply_filters(
-                    loads,
-                    type_filter=type_filter,
-                    module_filter=module_filter,
-                    width_min=width_min,
-                    width_max=width_max,
-                    exclude=exclude,
-                )
-                truncated = False
-                if max_results is not None and len(loads) > max_results:
-                    loads = loads[:max_results]
-                    truncated = True
-                    truncated_global = True
-                if evidence:
-                    attach_edge_evidence(_g, _query_sig, loads, reverse=False)
-                signals_result.append({
-                    "signal": sig,
-                    "index": i,
-                    "loads": loads,
-                    "count": len(loads),
-                    "pre_filter_count": loads_pre,
-                    "truncated": truncated,
-                    "precision": precision,
-                    "coarse_fallback": coarse_fallback,
-                    "top_modules": _tops,
-                    "top_ambiguous": _top_ambiguous,
-                    "bit_fallback": _is_bit_fallback,
-                    "dynamic_index": _dynamic,
-                    "function_call": _function,
-                    "runtime_system_call": _runtime_system,
-                    "conditions": _conditions,
-                    "condition_truncated": _condition_truncated,
-                    "truncated_by_depth": _depth_truncated,
-                    "cycles_detected": _cycles_detected,
-                    "error": "",
-                    **resolution_fields(_res),
-                })
-                total_count += len(loads)
-                total_pre_filter += loads_pre
-            except Exception as sig_err:
-                # [A3 2026-07-04] Per-signal failure → record error, continue
-                from cli.errors import code_for_exception, make_error
-                err_data = make_error(
-                    code_for_exception(sig_err), str(sig_err), command="trace_fanout",
-                )
-                per_signal_errors.append({
-                    "signal": sig,
-                    "index": i,
-                    "error": err_data["error"],
-                    "error_code": err_data.get("error_code", "E_INTERNAL"),
-                })
-                signals_result.append({
-                    "signal": sig,
-                    "index": i,
-                    "loads": [],
-                    "count": 0,
-                    "pre_filter_count": 0,
-                    "truncated": False,
-                    "precision": "unknown",
-                    "coarse_fallback": False,
-                    "top_modules": _tops,
-                    "top_ambiguous": _top_ambiguous,
-                    "bit_fallback": False,
-                    "dynamic_index": False,
-                    "function_call": False,
-                    "runtime_system_call": False,
-                    "conditions": [],
-                    "condition_truncated": False,
-                    "truncated_by_depth": False,
-                    "cycles_detected": False,
-                    "error": err_data["error"],
-                    "resolved_signal": (getattr(sig_err, "resolved", None)
-                                        or (_res or {}).get("resolved")),
-                    "resolution": (getattr(sig_err, "resolution", None)
-                                   or (_res or {}).get("status", "internal")),
-                    "candidates": (getattr(sig_err, "candidates", None)
-                                   or (_res or {}).get("candidates", [])),
-                    "suggestions": (getattr(sig_err, "suggestions", None)
-                                    or (_res or {}).get("suggestions", [])),
-                })
-
-        data = {
-            "ok": per_signal_errors == [],
-            "command": "trace_fanout",
-            "params": {"signals": signals, "file": str(file), "depth": depth, "max_results": max_results, "batch_file": batch_file, "batch": batch, "type": type_filter, "module": module_filter, "width_min": width_min, "width_max": width_max, "exclude": exclude, "from_snapshot": from_snapshot, "no_cache": no_cache},
-            "result": {
-                "signals": signals_result,
-                "total_signals": len(signals),
-                "total_count": total_count,
-                "total_pre_filter": total_pre_filter,
-                "truncated": truncated_global,
-                "failed_signals": len(per_signal_errors),
-            },
-            "errors": per_signal_errors,
-        }
-        if prune:
-            data["prune"] = getattr(tracer, "_svq_prune_info", None)
-
-        if json_output:
-            emit_json(data, pretty)
-        elif format == "dot":
-            # [Phase 2 2026-07-09] Generate DOT visualization for fanout
-            all_loads = []
-            for sig_res in signals_result:
-                all_loads.extend(sig_res.get("loads", []) if "loads" in sig_res else sig_res.get("drivers", []))
-            node_kinds = {}
-            for ln in all_loads:
-                kind_str = ln.get("kind", "") if isinstance(ln, dict) else ""
-                if isinstance(kind_str, dict):
-                    kind_str = kind_str.get("name", "SIGNAL")
-                nid = ln.get("id", "") if isinstance(ln, dict) else ""
-                node_kinds[nid] = str(kind_str)
-            dot_content = _generate_trace_dot(
-                signal=signals[0] if signals else signal,
-                drivers_or_loads=all_loads,
-                direction="fanout",
-                depth=depth,
-                node_kinds=node_kinds,
-            )
-            if output:
-                Path(output).write_text(dot_content)
-                if output.endswith(".png"):
-                    import subprocess
-                    try:
-                        subprocess.run(
-                            ["dot", "-Tpng", "/dev/stdin", "-o", output],
-                            input=dot_content,
-                            text=True,
-                            check=True,
-                            timeout=30,
-                        )
-                    except Exception as e:
-                        typer.echo(f"Warning: failed to render PNG: {e}", err=True)
-                typer.echo(f"✓ DOT written: {output}")
-            else:
-                typer.echo(dot_content)
-        elif format == "json":
-            # [iter_203] `--format json` 是旧别名, 过去落到 text 分支 → stdout 变成
-            # **被 JSON 转义的字符串** (实测 `"Fanin of '...':\n  (no drivers)\n"`),
-            # 不是结构化 JSON。现与 `--json` 走同一路径 (单一实现)。
-            emit_json(data)
-        else:
-            output_text(data, human=human, tree=tree)
-
+        data = _build_trace_data(
+            "fanout", signal, batch_file, batch, file, depth, evidence,
+            filelist, top, prune, include_clock, include_reset,
+            include_control, preprocess_macros, max_results, type_filter,
+            module_filter, width_min, width_max, exclude, from_snapshot,
+            no_cache)
+        _emit_trace_output("fanout", data, json_output, format, pretty,
+                           human, tree, output, depth)
     except Exception as e:
-        # [Phase 2 B2 2026-06-28] LLM-friendly error with stable code
         from cli.errors import code_for_exception, make_error
-        data = make_error(
-            code_for_exception(e),
-            str(e),
-            command="trace_fanout",
-        )
+        data = make_error(code_for_exception(e), str(e), command="trace_fanout")
         if json_output:
             emit_json(data)
         else:

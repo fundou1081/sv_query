@@ -536,3 +536,4 @@ Open-source project visualization is **correct and verified**. Ready for next ta
 | **400** | **2026-11-13** | **L3** | **P171.2/.3 (iter_508/509)** | worker review | hermeticity + structural coverage | 2739/0; CI pending | **✅ 本地** |
 | **401** | **2026-11-14** | **L3** | **P171.4.1/.5 (iter_510/511)** | 两个 worker review | drivers flags + deferred metric | 2741?/0 | **✅ 完成** |
 | **402** | **2026-11-14** | **L3** | **P171.4.2 merge attempt (iter_514)** | worker review | generic executor CC=32 | 回退，保留 TODO | **↩️ 回退** |
+| **403** | **2026-11-14** | **L3** | **P171.4.2 full merge (iter_519)** | worker review | facts + formatter | canonical pending worker | **🔄 进行中** |
