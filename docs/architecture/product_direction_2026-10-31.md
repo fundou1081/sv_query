@@ -134,6 +134,19 @@ scope 定位候选与 canonical ID
 | 静态 X/四态求解 | 波形可提供值；静态求解成本高、易假阳性 |
 | 继续给 exp 扩契约 | 不稳定输出不应冻结 |
 | 纯启发式协议/风险评分作为主功能 | 违背“事实优先”，只保留 exp/标注 |
+| Coverage generation / `coverage.gen` 作为当前功能 | 当前产品以查询 + 校验为主；coverage 生成是独立验证工作流，若重启，以 sv_query 为基底单开项目 |
+
+### 4.1 Coverage generation 的项目边界（2026-11-14）
+
+目前 sv_query 的重心是 **RTL 查询 + 客观校验**，不是 coverage 生成。
+`ControlCoverageGenerator` / `coverage_gen_demo.py` 保留为历史 POC，不进入 core、
+不恢复 CLI、不登记为新 claim。
+
+如果未来要做 coverage 生成：
+
+- **以 sv_query 为基底**（复用 query / graph / snapshot / verify 的只读事实层）；
+- **单开一个项目**，独立测试、CI、claim 和发布节奏；
+- 不把 covergroup 生成逻辑重新塞回本仓库的 core 或默认 CLI。
 
 ---
 

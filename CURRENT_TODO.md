@@ -12,7 +12,7 @@
 
 - **当前 item**: **无（P171/P172 全部完成；P62.2 gate 评估为 no-go）** `<已完成>`
   - 基线：canonical 2746 / 0 failed / 123 deferred；opensource 112/11/0
-  - Coverage Generator / `coverage.gen` POC：**暂不推进**（workflow 已退役，工具保留历史 POC，无 claim/gate）
+  - Coverage Generator / `coverage.gen` POC：**暂不推进**（workflow 已退役，工具保留历史 POC，无 claim/gate）；若重启，以 sv_query 为基底单开项目，不并入 core/CLI
   - 待方豆确认（不阻塞）：`false_confident` 分母口径当前默认
     = answered_n（实际作答数），见 [REPORT_STATUS](docs/dev/REPORT_STATUS.md)
 
