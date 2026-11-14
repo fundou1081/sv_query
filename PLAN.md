@@ -531,7 +531,7 @@ P171 CI / evidence-chain repair (2026-11-13 worker review) <进行中>
 -- P171.4.1 drivers include-clock/reset opt-in <已完成>
 -- P171.4.2 full fanin/fanout merge <待做>
 -- P171.5 unexecuted/metric correctness <已完成>
--- P171.6 benchmark fail->fail + mutation gate <进行中>
+-- P171.6 benchmark fail->fail + mutation gate <已完成>
 -- P171.6.1 benchmark fail->fail <已完成>
 -- P171.6.2 mutation corpus gate <已完成>
 -- P171.7 timing_risk/clock-reset heuristic labeling <已完成>
