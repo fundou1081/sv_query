@@ -109,3 +109,4 @@ if __name__ == "__main__":
             print(f"❌ {t.__name__}: {e}")
             sys.exit(1)
     print(f"\n🎉 All {len(tests)} trace include flag tests passed!")
+

@@ -1744,24 +1744,58 @@ class SignalTracer:
             bit_index=_orig_bit))
 
     def trace_fanin(self, signal: str, module: str = None, depth: int | None = None,
-                    allow_cross_module: bool | None = None) -> list[TraceNode]:
+                    allow_cross_module: bool | None = None,
+                    include_clock: bool = False,
+                    include_reset: bool = False,
+                    include_control: bool = False) -> list[TraceNode]:
         """Trace signal fanin (drivers of this signal)
 
         Args:
             signal: signal name
             module: module name (optional, for relative paths)
             depth: 1=direct drivers only, N=recursive N levels, None=recursive all
+            include_clock/include_reset: include direct CLOCK/RESET sensitivity edges
+            include_control: unsupported (no CONTROL edges are emitted)
         """
+        if include_control:
+            raise ValueError(
+                "include_control is unsupported: graph builder emits no CONTROL edges; "
+                "use include_conditional / --include-conditional for branch conditions"
+            )
         signal_id = self.make_id(signal, module)
         # [iter_240] 作用域同上 (显式覆盖优先: 内部调用已传完整 id, 不能再按 module 推导)
         allow_cross = (module is None) if allow_cross_module is None else allow_cross_module
         scope_prefix = self._scope_prefix_for(signal_id, allow_cross)
         if depth == 1:
-            return self._find_drivers(signal_id, allow_cross_module=allow_cross,
-                                      scope_prefix=scope_prefix)
-        return self._collect_all_drivers(signal_id, max_depth=depth,
-                                        allow_cross_module=allow_cross,
+            result = self._find_drivers(signal_id, allow_cross_module=allow_cross,
                                         scope_prefix=scope_prefix)
+        else:
+            result = self._collect_all_drivers(signal_id, max_depth=depth,
+                                               allow_cross_module=allow_cross,
+                                               scope_prefix=scope_prefix)
+        self._append_control_drivers(signal_id, result, include_clock, include_reset)
+        return result
+
+    def _append_control_drivers(self, signal_id, result,
+                                include_clock: bool, include_reset: bool) -> None:
+        wanted = set()
+        if include_clock:
+            wanted.add(EdgeKind.CLOCK)
+        if include_reset:
+            wanted.add(EdgeKind.RESET)
+        if not wanted:
+            return
+        seen = {n.id for n in result}
+        for src in self.graph.predecessors(signal_id):
+            if src == signal_id or src in seen:
+                continue
+            for edge in self.graph.get_edges(src, signal_id):
+                if edge.kind in wanted:
+                    node = self.graph.get_node(src)
+                    if node is not None:
+                        result.append(node)
+                        seen.add(src)
+                    break
 
     def trace_fanin_detailed(self, signal: str, module: str = None, depth: int | None = None,
                              allow_cross_module: bool | None = None) -> list[DriverInfo]:

@@ -344,6 +344,62 @@ def _output_impact_human(data: dict, tree: bool = False) -> None:
 trace_app = typer.Typer(help="Trace signal drivers (fanin), loads (fanout), or impact analysis")
 
 
+def _validate_trace_modes(file, filelist, top, from_snapshot):
+    if from_snapshot and (file or filelist):
+        raise ValueError("--from-snapshot is mutually exclusive with --file/--filelist")
+    if from_snapshot and top:
+        raise ValueError("--top cannot be used with --from-snapshot")
+
+
+def _validate_prune_modes(filelist, top, prune, from_snapshot):
+    if prune and (from_snapshot or not filelist):
+        raise ValueError("--prune requires --filelist (and is incompatible with --from-snapshot)")
+    if prune and not top:
+        raise ValueError("--prune requires --top")
+
+
+def _validate_trace_inputs(file, filelist, top, prune, from_snapshot):
+    _validate_trace_modes(file, filelist, top, from_snapshot)
+    _validate_prune_modes(filelist, top, prune, from_snapshot)
+
+def _build_trace_tracer(file, filelist, top, prune, from_snapshot,
+                        preprocess_macros, no_cache):
+    if from_snapshot:
+        tracer = _load_tracer_from_snapshot(
+            from_snapshot, log_level="ERROR",
+            preprocess_macros=preprocess_macros)
+    elif filelist and prune:
+        tracer = _build_pruned_tracer(
+            filelist, top, log_level="ERROR",
+            preprocess_macros=preprocess_macros, use_cache=not no_cache)
+    elif filelist:
+        tracer = UnifiedTracer(
+            filelist=filelist, log_level="ERROR",
+            preprocess_macros=preprocess_macros,
+            top_modules=[top] if top else None)
+    else:
+        if file is None:
+            raise ValueError("Either --file, --filelist, or --from-snapshot must be provided")
+        with open(str(file)) as f:
+            source = f.read()
+        tracer = UnifiedTracer(
+            sources={str(file): source}, log_level="ERROR",
+            preprocess_macros=preprocess_macros,
+            top_modules=[top] if top else None)
+    if tracer.get_graph() is None:
+        _ = tracer.build_graph(use_cache=not no_cache)
+    return tracer
+
+
+def _prepare_trace_tracer(file, filelist, top, prune, from_snapshot,
+                          preprocess_macros, no_cache):
+    """Shared validation/tracer construction for drivers + loads (P171.4)."""
+    _validate_trace_inputs(file, filelist, top, prune, from_snapshot)
+    tracer = _build_trace_tracer(
+        file, filelist, top, prune, from_snapshot, preprocess_macros, no_cache)
+    tops = tracer.list_top_modules()
+    return tracer, tops, len(tops) > 1 and top is None
+
 def fanin(
     signal: str = typer.Argument(None, help="Signal to trace (e.g., top.clk). Optional when --batch or --batch-file is used."),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
@@ -356,6 +412,9 @@ def fanin(
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
     top: str = typer.Option(None, "--top", help="[P71] 多 top filelist 时指定顶层模块"),
     prune: bool = typer.Option(False, "--prune", help="[P91] 先按 --top 裁剪 filelist；失败自动回退完整 filelist"),
+    include_clock: bool = typer.Option(False, "--include-clock", help="[P171.4] Include direct CLOCK sensitivity edges"),
+    include_reset: bool = typer.Option(False, "--include-reset", help="[P171.4] Include direct RESET sensitivity edges"),
+    include_control: bool = typer.Option(False, "--include-control", help="[UNSUPPORTED] no CONTROL edges are emitted; returns explicit error"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments"),
     max_results: int | None = typer.Option(None, "--max-results", "-N", help="[C1 2026-06-28 LLM] Cap number of results per signal (None=unlimited). Returns truncated=true if any signal capped."),
     batch_file: str = typer.Option(None, "--batch-file", help="[B1 2026-07-03] Path to file with one signal per line (# comment, blank skipped)."),
@@ -389,37 +448,9 @@ def fanin(
     """
     try:
         signals = _collect_signals(signal, batch_file, batch)
-        # [B4 2026-07-03] Mutually exclusive: --from-snapshot vs --file/--filelist
-        if from_snapshot and (file or filelist):
-            raise ValueError("--from-snapshot is mutually exclusive with --file/--filelist")
-        if from_snapshot and top:
-            raise ValueError("--top cannot be used with --from-snapshot")
-        if prune and (from_snapshot or not filelist):
-            raise ValueError("--prune requires --filelist (and is incompatible with --from-snapshot)")
-        if prune and not top:
-            raise ValueError("--prune requires --top")
-        if from_snapshot:
-            tracer = _load_tracer_from_snapshot(from_snapshot, log_level="ERROR", preprocess_macros=preprocess_macros)
-        elif filelist and prune:
-            tracer = _build_pruned_tracer(filelist, top, log_level="ERROR",
-                                          preprocess_macros=preprocess_macros,
-                                          use_cache=not no_cache)
-        elif filelist:
-            tracer = UnifiedTracer(filelist=filelist, log_level="ERROR",
-                                   preprocess_macros=preprocess_macros,
-                                   top_modules=[top] if top else None)
-        else:
-            if file is None:
-                raise ValueError("Either --file, --filelist, or --from-snapshot must be provided")
-            with open(str(file)) as f:
-                source = f.read()
-            tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR",
-                                   preprocess_macros=preprocess_macros,
-                                   top_modules=[top] if top else None)
-        if tracer.get_graph() is None:
-            _ = tracer.build_graph(use_cache=not no_cache)
-        _tops = tracer.list_top_modules()
-        _top_ambiguous = len(_tops) > 1 and top is None
+        tracer, _tops, _top_ambiguous = _prepare_trace_tracer(
+            file, filelist, top, prune, from_snapshot,
+            preprocess_macros, no_cache)
 
         # [B1 2026-07-03] Batch mode: 1 tracer parse, N signals trace
         # [A3 2026-07-04] Per-signal try/except: failed signals go to errors[], continue on others
@@ -443,7 +474,12 @@ def fanin(
                     )
                 _query_sig = _res["resolved"]
                 _is_bit_fallback = _res.get("status") == "bit_base_fallback"
-                result = tracer.trace_fanin(_query_sig, depth=depth)
+                result = tracer.trace_fanin(
+                    _query_sig, depth=depth,
+                    include_clock=include_clock,
+                    include_reset=include_reset,
+                    include_control=include_control,
+                )
                 drivers = []
                 for d in result if hasattr(result, "__iter__") else []:
                     if hasattr(d, "id"):
@@ -682,37 +718,9 @@ def fanout(
     """
     try:
         signals = _collect_signals(signal, batch_file, batch)
-        # [B4 2026-07-03] Mutually exclusive: --from-snapshot vs --file/--filelist
-        if from_snapshot and (file or filelist):
-            raise ValueError("--from-snapshot is mutually exclusive with --file/--filelist")
-        if from_snapshot and top:
-            raise ValueError("--top cannot be used with --from-snapshot")
-        if prune and (from_snapshot or not filelist):
-            raise ValueError("--prune requires --filelist (and is incompatible with --from-snapshot)")
-        if prune and not top:
-            raise ValueError("--prune requires --top")
-        if from_snapshot:
-            tracer = _load_tracer_from_snapshot(from_snapshot, log_level="ERROR", preprocess_macros=preprocess_macros)
-        elif filelist and prune:
-            tracer = _build_pruned_tracer(filelist, top, log_level="ERROR",
-                                          preprocess_macros=preprocess_macros,
-                                          use_cache=not no_cache)
-        elif filelist:
-            tracer = UnifiedTracer(filelist=filelist, log_level="ERROR",
-                                   preprocess_macros=preprocess_macros,
-                                   top_modules=[top] if top else None)
-        else:
-            if file is None:
-                raise ValueError("Either --file, --filelist, or --from-snapshot must be provided")
-            with open(str(file)) as f:
-                source = f.read()
-            tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR",
-                                   preprocess_macros=preprocess_macros,
-                                   top_modules=[top] if top else None)
-        if tracer.get_graph() is None:
-            _ = tracer.build_graph(use_cache=not no_cache)
-        _tops = tracer.list_top_modules()
-        _top_ambiguous = len(_tops) > 1 and top is None
+        tracer, _tops, _top_ambiguous = _prepare_trace_tracer(
+            file, filelist, top, prune, from_snapshot,
+            preprocess_macros, no_cache)
 
         # [B1 2026-07-03] Batch mode
         # [A3 2026-07-04] Per-signal try/except: failed signals go to errors[], continue on others
