@@ -1,9 +1,19 @@
 # Control Coverage Generator
 
-> 用户文档
+> 用户文档（历史 POC）
 > 创建时间: 2026-06-02
-> 状态: V1 实现完成 (8 个 TDD cycle)
+> 状态: V1 POC 完成；**2026-11-14 起暂不推进**
 > 关联: [抽取覆盖总表](EXTRACTION_COVERAGE.md)
+
+> **项目边界（2026-11-14，方豆决定）**
+>
+> sv_query 目前以 **RTL 查询 + 客观校验**为主，不做 coverage 生成。
+> 本文的 `ControlCoverageGenerator` / `coverage_gen_demo.py` 保留为历史 POC：
+> 不恢复 CLI、不进入 core、不登记新 claim、不纳入当前 CI。
+>
+> 如果未来重启 coverage 生成：**以 sv_query 为基底，单开一个项目**，
+> 复用 query / graph / snapshot / verify 的只读事实层，独立测试、CI、claim 和发布；
+> 不要重新塞回本仓库 core 或默认 CLI。
 
 ---
 
