@@ -7,6 +7,7 @@
 
 `test_benchmark_pr5.py` / `test_benchmark_picorv32.py`：
 
+- 外部 corpus 缺失：**module-level explicit skip**（环境缺失，不是产品失败）
 - benchmark 非零退出码：`pytest.skip` → `pytest.fail`
 - output 缺失：`pytest.skip` → `pytest.fail`
 - 300s timeout 仍是显式环境 skip（不是产品通过）

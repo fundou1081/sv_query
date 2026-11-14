@@ -14,8 +14,9 @@ canonical:   2744 passed / 0 failed / 123 deselected
 opensource:  112 passed / 11 skipped / 0 failed        (P161 口径)
 ```
 
-两个 `0 failed` 容易被读成“全绿”，但 **9 个单元根本没有执行**
-（123 **deferred**：由 opensource suite 执行；9 个显式 skip）。。`0 skipped` 更不是 KPI（P157 教训）。
+两个 `0 failed` 容易被读成“全绿”，但 canonical 有 **123 deferred**
+（opensource suite 执行），opensource 有 **11 个显式 skip**。
+`deferred` 不是 `unexecuted`；`0 skipped` 更不是 KPI（P157 教训）。
 R-028 要求：报告必须分离状态，不许把未执行揉进“通过”。
 
 ## 2. 七类状态（唯一定义）
@@ -26,20 +27,21 @@ R-028 要求：报告必须分离状态，不许把未执行揉进“通过”�
 | `failed` | 执行且不符 | pytest failed/error；task `exact=false` |
 | `unknown` | 执行但无有效结论 | task 无解析答案（`parsed=false`）；**不得计入 passed** |
 | `truncated` | 被预算/时限截断 | timeout、budget exhausted、`rc=124` |
-| `unexecuted` | 未执行 | pytest deselected；task 异常未跑（`rc=130`） |
+| `unexecuted` | 未执行 | task 异常未跑（`rc=130`）；pytest 里没有显式对应项 |
 | `skipped_with_reason` | 显式 skip 且带 reason | retired exp 测试、环境 skip |
 | `external_not_run` | 外部依赖缺失未跑 | openrtl corpus 缺失（`SVQ_OPENRTL_ROOT`） |
 
-`is_fully_green` 只有在除 `passed` 外 7 类全部为 0 时才返回真。
+另外 `deferred` 是**非七类计数**：pytest `deselected`，表示本轮未选、由互补 suite 执行。
+`is_fully_green` 只有在除 `passed` 外 7 类全部为 0 **且 `deferred=0`** 时才返回真。
 **只看 failed 数不构成全绿判定。**
 
 ## 3. 两套跑法怎么读
 
 ```text
-canonical (-m "not opensource")  : 核心门禁, 阻塞合并; deselected 计入 unexecuted
-opensource (-m "opensource")     : 非阻塞报告; 17 个显式 skip 计入
+canonical (-m "not opensource")  : 核心门禁, 阻塞合并; 123 计入 deferred
+opensource (-m "opensource")     : 非阻塞报告; 11 个显式 skip 计入
                                    skipped_with_reason, 不得从报告里消失
-合并视图                          : two runs 的 7 类逐项相加, VERDICT 基于 TOTAL
+合并视图                          : 7 类相加 + deferred 单独显示, VERDICT 基于 TOTAL
 ```
 
 生成合并视图（机器可读，避免人工抄数口径漂移）：
@@ -70,4 +72,5 @@ python3 tools/report_status.py --tasks results.json # benchmark {"results":[...]
 1. 汇报/文档写测试数字时至少给 `passed / failed / unexecuted /
    skipped_with_reason` 四项；禁止裸写 “0 failed 全绿”；
 2. 新增跑法（如 9 skip 处置后的新套件）必须纳入合并视图；
-3. INDEX「当前基线」行的 deselected 数字就是 `unexecuted`，不是“通过”。
+3. INDEX「当前基线」行的 deselected 数字记入 `deferred`，不是 `unexecuted`；
+   `deferred` 表示另一 suite 会执行，不等于“通过”，但也不等于“从未执行”。

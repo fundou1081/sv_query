@@ -44,7 +44,10 @@ WRAP_TARGET = "pr5_wrap"
 sys.path.insert(0, str(PROJECT_ROOT / "tools" / "benchmark"))
 import inputs  # noqa: E402
 
-FILENAME_LIST = inputs.ensure_pr5_wrap_filelist() or FILENAME_LIST
+FILENAME_LIST = inputs.ensure_pr5_wrap_filelist() or ""
+if not FILENAME_LIST or not Path(FILENAME_LIST).is_file():
+    pytest.skip("external AXI benchmark corpus missing; set SVQ_OPENRTL_ROOT",
+                allow_module_level=True)
 
 
 def _run_benchmark(runs: int = 1, skip_flakiness: bool = False, target: str = TARGET, depth: int = 4, output: Path = None) -> dict:

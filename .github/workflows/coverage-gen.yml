@@ -52,7 +52,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
-          pip install git+https://github.com/MikePopoloski/pyslang.git
 
       - name: Run coverage_gen_demo tests (unit + CLI)
         # 这些测试已移入 sim/tests/usage/ (依赖 OpenTitan/PicoRV32/NaplesPU)
@@ -115,7 +114,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
-          pip install git+https://github.com/MikePopoloski/pyslang.git
 
       - name: Clone picorv32 (industrial project #1)
         run: |

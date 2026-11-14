@@ -538,6 +538,7 @@ P171 CI / evidence-chain repair (2026-11-13 worker review) <进行中>
 -- P171.7.1 dataflow risk_model label <已完成>
 -- P171.7.2 clock/reset role source label <已完成>
 -- P171.8 docs/CLAIMS/plan cleanup <已完成>
+-- P171.9 worker review fixes <已完成>
 
 P166 opensource golden calibration after P158.12.4/11.2b <已完成>
 -- P166.1 rebaseline stats/dataflow goldens <已完成>

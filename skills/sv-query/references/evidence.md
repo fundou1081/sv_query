@@ -148,7 +148,7 @@ python3 run_cli.py audit -f top.sv --checks verification_gaps --json -q
 ```
 
 **关键字段**:
-- `role`: 信号角色 (`clock` / `reset` / `data`)
+- `role` / `role_source=name_heuristic`: 信号角色 (`clock` / `reset` / `data`)
 - `loads` / `drivers`: 扇入扇出计数
 - `score`: 风险分 (越大越值得先看)
 
