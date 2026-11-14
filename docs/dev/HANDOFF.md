@@ -28,7 +28,7 @@ sv_query 是 agent 的 RTL 查询 + 客观校验层；
 
 ```text
 canonical:   2744 passed / 0 skipped / 123 deselected / 0 failed
-opensource:  114 passed / 9 skipped / 0 failed
+opensource:  112 passed / 11 skipped / 0 failed
 ```
 
 opensource 的 9 个 skip 都有显式原因，见 §7。
@@ -230,7 +230,7 @@ python3 -m pytest sim/tests/ -m "opensource" -q -p no:randomly
 
 ```text
 canonical:   2744 passed / 0 failed
-opensource:  114 passed / 0 failed / 9 explicit skips
+opensource:  112 passed / 0 failed / 11 explicit skips
 ```
 
 **解释器必须先对齐**（2026-11-11 实测坑）：`run_gates.sh` 与测试内部都调用 `python3`。

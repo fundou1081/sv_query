@@ -275,6 +275,7 @@
     "paths_count": 8,
     "primary_is_async": false,
     "primary_latency_cycles": 0,
+    "risk_model": "heuristic_v1_uncalibrated",
     "search_status": "complete",
     "timing_risk": "safe",
     "to_resolved": "prim_arbiter_tree.gnt_o",
