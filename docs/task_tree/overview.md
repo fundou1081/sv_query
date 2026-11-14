@@ -537,3 +537,6 @@ Open-source project visualization is **correct and verified**. Ready for next ta
 | **401** | **2026-11-14** | **L3** | **P171.4.1/.5 (iter_510/511)** | 两个 worker review | drivers flags + deferred metric | 2741?/0 | **✅ 完成** |
 | **402** | **2026-11-14** | **L3** | **P171.4.2 merge attempt (iter_514)** | worker review | generic executor CC=32 | 回退，保留 TODO | **↩️ 回退** |
 | **403** | **2026-11-14** | **L3** | **P171.4.2 full merge (iter_519)** | worker review | facts + formatter | 2746/0; worker PASS WITH NITS | **✅ 完成** |
+| **404** | **2026-11-14** | **L3** | **P62.2 gate (iter_520)** | gate assessment | no-go | 条件 3/4 缺证据 | **✅ 评估完成** |
+| **405** | **2026-11-14** | **L3** | **P172.1 (iter_521)** | CI hygiene | coverage-gen retire | 测试归档，不伪装 pass | **✅ 完成** |
+| **406** | **2026-11-14** | **L3** | **P172.2 (iter_522)** | CI hygiene | check_crap base | clean tree no longer no-op | **✅ 完成** |

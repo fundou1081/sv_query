@@ -10,7 +10,7 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P62.2 交互式 debug（gate）** `<待做>`
+- **当前 item**: **无（P172.2 已完成；P62.2 gate 评估为 no-go）** `<已完成>`
   - 剩余：P171.4.2 full merge（已尝试回退）；opensource 112/11/0
   - 待方豆确认（不阻塞）：`false_confident` 分母口径当前默认
     = answered_n（实际作答数），见 [REPORT_STATUS](docs/dev/REPORT_STATUS.md)
