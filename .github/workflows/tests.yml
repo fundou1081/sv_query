@@ -71,6 +71,9 @@ jobs:
           PY
           PYTHONPATH=/tmp/svq-install /tmp/svq-install/bin/sv_query --help >/dev/null
 
+      - name: Mutation gate (repo-only)
+        run: python3 tools/run_mutation_gate.py
+
       - name: Check discipline
         # 3 个纪律: 1) 不在 src/trace/core/ 用 regex
         #           2) 不导入 igraph / graphviz

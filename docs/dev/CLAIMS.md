@@ -2,7 +2,7 @@
 
 > **公开 claim 的唯一登记处。** 纪律依据: [SEMANTIC_CONTRACTS.md](SEMANTIC_CONTRACTS.md) §8。
 > 没有 gate 的 claim = `unverified`；已知反例 = `known-broken`；不得写成“已支持”。
-> **最后更新**: 2026-11-13 (P165.2 packaging)
+> **最后更新**: 2026-11-14 (P171 evidence-chain repair)
 
 ---
 
@@ -34,6 +34,9 @@
 | C-11 | SPI `verify consistency` 的 bit/connection/reciprocity 全绿 | real-corpus | `--full` 实测 3152/3261/1734，0 violations | `scoped`（外部 snapshot） |
 | C-12 | worker `APPROVE` 等于真实项目通过 | 过程 | 无 | **known-broken**（需主会话复现） |
 | C-13 | 安装包不含 top-level `trace`，查询引擎为 `sv_query.trace` | packaging | `test_packaging_rename` + worker wheel install | `scoped`（CI 尚未构建/安装 wheel；人工 target install 已验证） |
+| C-14 | 20 个 repo-only mutation 能被查询事实检测，并有独立 Verilator oracle | mutation | `tools/run_mutation_gate.py` + `test_p171_mutation_gate` | `scoped`（注入故障，不是历史 bug benchmark） |
+| C-15 | `.core` → 可 elaborate filelist 对 UART/I2C/SPI 成立 | real-corpus | `filelist_closure` profiles + 0 elaboration errors | `scoped`（OpenTitan adapter/profile 特定） |
+| C-16 | Tests workflow 在 `6ae1d947` 为绿色 | CI | GitHub Actions Tests run 6ae1d947 | `scoped`（时点证据；后续提交需重跑） |
 
 ---
 

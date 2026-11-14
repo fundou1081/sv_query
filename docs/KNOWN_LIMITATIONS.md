@@ -297,7 +297,7 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 ### 4. 测试已知失败（2026-07-29 历史快照 — 不代表当前状态）
 
 > **2026-11-11 校准**：本表是当时的子集基线，只用于追溯口径。
-> P160/P161 之后 canonical 记录为 0 failed，opensource 为 114 passed / 17 skipped
+> P160/P161 之后 canonical 记录为 0 failed，opensource 为 114 passed / 9 skipped
 > （计数以 [INDEX 当前基线](INDEX.md#-当前基线-单一真相源--计数只写在这里) 为准）。
 > **不要**用本表判断当前失败数。
 
