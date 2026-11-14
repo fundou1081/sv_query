@@ -17,7 +17,7 @@
 | 全量 (canonical) | **2742 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-12 独立复核**（iter_511，P171.5 后干净工作树；deferred 口径）；含 R-026 自环清除后的 golden 重捕；**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (499 份, 只增不改) | 每次迭代一份（2026-11-14 实测） |
+| 迭代记录 | `docs/task_tree/iterations/` (500 份, 只增不改) | 每次迭代一份（2026-11-14 实测） |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 | 语义 regex 纪律 | `python3 tools/check_semantic_regex.py` 必须 ✅ | 仅 UVM 宏例外；class/constraint/covergroup 语义走 slang (iter_368) |
@@ -88,6 +88,7 @@
 | [validation/P171_5_DESELECTED_METRIC_2026-11-14.md](validation/P171_5_DESELECTED_METRIC_2026-11-14.md) | **P171.5**: 123 deselected are opensource tests |
 | [validation/P171_6_BENCHMARK_FAIL_2026-11-14.md](validation/P171_6_BENCHMARK_FAIL_2026-11-14.md) | **P171.6**: benchmark rc -> fail; timeout skip |
 | [validation/P171_7_RISK_MODEL_2026-11-14.md](validation/P171_7_RISK_MODEL_2026-11-14.md) | **P171.7**: dataflow risk_model label |
+| [validation/P171_4_2_MERGE_ATTEMPT_2026-11-14.md](validation/P171_4_2_MERGE_ATTEMPT_2026-11-14.md) | **P171.4.2**: attempted merge, reverted (CC=32) |
 | [validation/P165_3_3_MUTATION_COVERAGE_2026-11-13.md](validation/P165_3_3_MUTATION_COVERAGE_2026-11-13.md) | **P165.3.3**: 10 mutation tasks; driver/path/condition/CDC/bit |
 | [validation/P165_3_4_MUTATION_COVERAGE_2026-11-13.md](validation/P165_3_4_MUTATION_COVERAGE_2026-11-13.md) | **P165.3.4**: 14 mutations; detection_rate/by_query |
 | [validation/P165_3_5_MUTATION_COVERAGE_2026-11-13.md](validation/P165_3_5_MUTATION_COVERAGE_2026-11-13.md) | **P165.3.5**: 20 mutations; multi/generate/wrapper/case |
