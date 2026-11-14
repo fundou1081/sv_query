@@ -351,6 +351,8 @@ def check_verification_gaps(tracer, assertions: dict, coverage: dict) -> list[di
         if load_count < 2:
             continue
         gaps.append({"signal": node_id, "role": _role(name),
+                     "role_source": "name_heuristic",
+                     "role_method": "name_regex_v1",
                      "loads": load_count,
                      "has_assertion": has_sva, "has_coverage": has_cov})
     gaps.sort(key=lambda g: (-g["loads"], g["signal"]))
@@ -389,8 +391,11 @@ def check_risk(tracer) -> list[dict]:
         import math
 
         score = base * (1 + math.log10(1 + loads + drivers))
-        rows.append({"signal": node_id, "role": role, "loads": loads,
-                     "drivers": drivers, "score": round(score, 2)})
+        rows.append({"signal": node_id, "role": role,
+                     "role_source": "name_heuristic",
+                     "role_method": "name_regex_v1",
+                     "loads": loads, "drivers": drivers,
+                     "score": round(score, 2)})
     rows.sort(key=lambda r: (-r["score"], r["signal"]))
     return rows[:30]
 

@@ -132,6 +132,7 @@ def test_verification_gaps(audit):
     gaps = audit["sections"]["verification_gaps"]
     assert gaps, "fixture 有明显无断言的关键信号"
     roles = {g["role"] for g in gaps}
+    assert all(g["role_source"] == "name_heuristic" for g in gaps)
     assert roles & {"clock", "valid", "ready", "reset"}
     for g in gaps:
         assert g["loads"] >= 2
@@ -141,6 +142,7 @@ def test_risk_clock_ranks_high(audit):
     rows = audit["sections"]["risk"]
     assert rows
     top_role = rows[0]["role"]
+    assert all(r["role_source"] == "name_heuristic" for r in rows)
     assert top_role in ("clock", "reset"), f"时钟/复位应排最前，实际 {rows[0]}"
     clock_scores = [r["score"] for r in rows if r["role"] == "clock"]
     data_scores = [r["score"] for r in rows if r["role"] == "data"]
