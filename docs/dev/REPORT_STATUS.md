@@ -10,7 +10,7 @@
 canonical 与 opensource 长期各自报一个 `0 failed`：
 
 ```text
-canonical:   2744 passed / 0 failed / 123 deselected
+canonical:   2746 passed / 0 failed / 123 deselected
 opensource:  112 passed / 11 skipped / 0 failed        (P161 口径)
 ```
 

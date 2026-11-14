@@ -14,7 +14,7 @@
 |---|---|---|
 | 源码规模 | 137 文件 / 49,377 行 | `find src -name "*.py"`（2026-11-11 实测） |
 | 测试规模 | 378 测试文件 / 64,311 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-11 实测） |
-| 全量 (canonical) | **2744 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-12 独立复核**（iter_511，P171.5 后干净工作树；deferred 口径）；含 R-026 自环清除后的 golden 重捕；**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
+| 全量 (canonical) | **2746 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-12 独立复核**（iter_511，P171.5 后干净工作树；deferred 口径）；含 R-026 自环清除后的 golden 重捕；**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 迭代记录 | `docs/task_tree/iterations/` (505 份, 只增不改) | 每次迭代一份（2026-11-14 实测） |
@@ -89,6 +89,7 @@
 | [validation/P171_6_BENCHMARK_FAIL_2026-11-14.md](validation/P171_6_BENCHMARK_FAIL_2026-11-14.md) | **P171.6**: benchmark rc -> fail; timeout skip |
 | [validation/P171_7_RISK_MODEL_2026-11-14.md](validation/P171_7_RISK_MODEL_2026-11-14.md) | **P171.7**: dataflow risk_model label |
 | [validation/P171_4_2_MERGE_ATTEMPT_2026-11-14.md](validation/P171_4_2_MERGE_ATTEMPT_2026-11-14.md) | **P171.4.2**: attempted merge, reverted (CC=32) |
+| [validation/P171_4_2_FULL_MERGE_2026-11-14.md](validation/P171_4_2_FULL_MERGE_2026-11-14.md) | **P171.4.2**: merged facts/formatter; worker PASS WITH NITS |
 | [validation/P171_6_2_MUTATION_GATE_2026-11-14.md](validation/P171_6_2_MUTATION_GATE_2026-11-14.md) | **P171.6.2**: 20-task repo-only mutation gate |
 | [validation/P171_8_DOCS_CLAIMS_2026-11-14.md](validation/P171_8_DOCS_CLAIMS_2026-11-14.md) | **P171.8**: 17→9; 132→9+123 deferred; claims |
 | [validation/P171_7_2_ROLE_SOURCE_2026-11-14.md](validation/P171_7_2_ROLE_SOURCE_2026-11-14.md) | **P171.7.2**: audit role_source=name_heuristic |

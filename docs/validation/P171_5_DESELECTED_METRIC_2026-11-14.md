@@ -44,7 +44,7 @@ canonical deselected = 本轮未选，不是从未执行
 双套件合并示意：
 
 ```text
-canonical:  passed=2744 ... deferred=123
+canonical:  passed=2746 ... deferred=123
 opensource: passed=114 ... skipped=9
 TOTAL:      passed=2855 ... unexecuted=0, deferred=123,
             skipped_with_reason=9

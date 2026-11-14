@@ -1,6 +1,6 @@
 # Task: P171.4.2 full fanin/fanout merge
 
-**状态**: 进行中
+**状态**: ✅ 完成
 **日期**: 2026-11-14
 
 目标：fanin/fanout 共享 per-signal facts + filter/cap + output formatter，

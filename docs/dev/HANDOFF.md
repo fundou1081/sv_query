@@ -3,7 +3,7 @@
 **交接时间**: 2026-11-12 10:10 (Asia/Shanghai)
 **仓库**: `/Users/fundou/my_dv_proj/sv_query`
 **HEAD**: 以 `git log -1` 为准（不要依赖文档里的哈希）
-**状态**: canonical 2744 passed / 0 failed、opensource 112 passed / 11 skipped / 0 failed；
+**状态**: canonical 2746 passed / 0 failed、opensource 112 passed / 11 skipped / 0 failed；
 按 [REPORT_STATUS.md](REPORT_STATUS.md) 口径 **0 failed 不等于全绿**（9 个从未执行 + 123 deferred/opensource）；
 P158.12.7 / P167 / P165.1 / P165.4 已完成；剩余 P165.3 与 P165.2
 
@@ -27,7 +27,7 @@ sv_query 是 agent 的 RTL 查询 + 客观校验层；
 当前测试：
 
 ```text
-canonical:   2744 passed / 0 skipped / 123 deselected / 0 failed
+canonical:   2746 passed / 0 skipped / 123 deselected / 0 failed
 opensource:  112 passed / 11 skipped / 0 failed
 ```
 
@@ -229,7 +229,7 @@ python3 -m pytest sim/tests/ -m "opensource" -q -p no:randomly
 当前期望：
 
 ```text
-canonical:   2744 passed / 0 failed
+canonical:   2746 passed / 0 failed
 opensource:  112 passed / 0 failed / 11 explicit skips
 ```
 

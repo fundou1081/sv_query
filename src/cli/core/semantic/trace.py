@@ -10,6 +10,7 @@ Usage:
 
 import json
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 import typer
@@ -400,9 +401,6 @@ def _prepare_trace_tracer(file, filelist, top, prune, from_snapshot,
     tops = tracer.list_top_modules()
     return tracer, tops, len(tops) > 1 and top is None
 
-from dataclasses import dataclass
-
-
 @dataclass
 class _TraceFacts:
     items: list[dict]
@@ -455,7 +453,6 @@ def _attach_trace_metadata(graph, direction, sig, query_sig, items, depth):
     }
     return {
         "root": root,
-        "root_node": root_node,
         "conditions": conditions,
         "condition_truncated": any(x.get("condition_truncated") for x in items),
         "cycles_detected": detect_cycles(graph, root, reverse=reverse),
@@ -483,6 +480,9 @@ def _trace_signal_facts(tracer, direction, sig, query_sig, depth,
                         type_filter, module_filter, width_min, width_max,
                         exclude, max_results, evidence):
     graph = tracer.get_graph()
+    # Ordering is a semantic contract (P171.4.2):
+    #   driver_stats/precision/conditions/cycles = pre-filter
+    #   driver_conflict_analysis = post-filter (inside _success_row)
     items = _query_trace_items(
         tracer, direction, query_sig, depth,
         include_clock, include_reset, include_control)
@@ -509,45 +509,41 @@ def _trace_signal_facts(tracer, direction, sig, query_sig, depth,
         function_call=meta["function_call"],
         runtime_system_call=meta["runtime_system_call"],
         driver_stats=stats,
-    ), truncated, meta["root"]
+    ), truncated
 
 
-def _success_row(direction, sig, index, res, facts, root, graph,
+def _success_row(direction, sig, index, res, facts, truncated,
                  tops, top_ambiguous):
+    """Build a success row; driver_stats is pre-filter, conflict is post-filter."""
     key = "drivers" if direction == "fanin" else "loads"
-    row = {
-        "signal": sig,
-        "index": index,
-        key: facts.items,
-        "count": facts.count,
-        "pre_filter_count": facts.pre_filter_count,
-        "truncated": False,
-        "precision": facts.precision,
-        "coarse_fallback": facts.coarse_fallback,
-        "top_modules": tops,
+    base = {
+        "signal": sig, "index": index, key: facts.items,
+        "count": facts.count, "pre_filter_count": facts.pre_filter_count,
+        "truncated": truncated, "precision": facts.precision,
+        "coarse_fallback": facts.coarse_fallback, "top_modules": tops,
         "top_ambiguous": top_ambiguous,
         "bit_fallback": res.get("status") == "bit_base_fallback",
+    }
+    if direction == "fanin":
+        driver_count, multi_driver, conditional = facts.driver_stats
+        conflict = driver_conflict_analysis(facts.items)
+        base.update({
+            "driver_count": driver_count, "multi_driver": multi_driver,
+            "driver_conflict": conflict["status"],
+            "driver_conflict_analysis": conflict,
+            "conditional_drivers": conditional,
+        })
+    base.update({
         "dynamic_index": facts.dynamic_index,
         "function_call": facts.function_call,
         "runtime_system_call": facts.runtime_system_call,
         "conditions": facts.conditions,
         "condition_truncated": facts.condition_truncated,
         "truncated_by_depth": facts.truncated_by_depth,
-        "cycles_detected": facts.cycles_detected,
-        "error": "",
+        "cycles_detected": facts.cycles_detected, "error": "",
         **resolution_fields(res),
-    }
-    if direction == "fanin":
-        driver_count, multi_driver, conditional = facts.driver_stats
-        conflict = driver_conflict_analysis(facts.items)
-        row.update({
-            "driver_count": driver_count,
-            "multi_driver": multi_driver,
-            "driver_conflict": conflict["status"],
-            "driver_conflict_analysis": conflict,
-            "conditional_drivers": conditional,
-        })
-    return row
+    })
+    return base
 
 
 def _error_value(err, res, attr, key, default=None):
@@ -555,28 +551,30 @@ def _error_value(err, res, attr, key, default=None):
             or (res or {}).get(key, default))
 
 
-def _error_row(direction, sig, index, err_data, _res, tops, top_ambiguous):
+def _error_row(direction, sig, index, err_data, res, tops, top_ambiguous):
     key = "drivers" if direction == "fanin" else "loads"
     err = err_data.get("_error")
-    resolved = _error_value(err, _res, "resolved", "resolved")
-    resolution = _error_value(err, _res, "resolution", "status", "internal")
-    candidates = _error_value(err, _res, "candidates", "candidates", [])
-    suggestions = _error_value(err, _res, "suggestions", "suggestions", [])
+    resolved = _error_value(err, res, "resolved", "resolved")
+    resolution = _error_value(err, res, "resolution", "status", "internal")
+    candidates = _error_value(err, res, "candidates", "candidates", [])
+    suggestions = _error_value(err, res, "suggestions", "suggestions", [])
     row = {
         "signal": sig, "index": index, key: [], "count": 0,
         "pre_filter_count": 0, "truncated": False, "precision": "unknown",
         "coarse_fallback": False, "top_modules": tops,
         "top_ambiguous": top_ambiguous, "bit_fallback": False,
+    }
+    if direction == "fanin":
+        row.update({"driver_count": 0, "multi_driver": False,
+                    "conditional_drivers": False})
+    row.update({
         "dynamic_index": False, "function_call": False,
         "runtime_system_call": False, "conditions": [],
         "condition_truncated": False, "truncated_by_depth": False,
         "cycles_detected": False, "error": err_data["error"],
         "resolved_signal": resolved, "resolution": resolution,
         "candidates": candidates, "suggestions": suggestions,
-    }
-    if direction == "fanin":
-        row.update({"driver_count": 0, "multi_driver": False,
-                    "conditional_drivers": False})
+    })
     return row
 
 
@@ -593,15 +591,14 @@ def _trace_one_row(direction, tracer, sig, index, tops, top_ambiguous, args):
                 suggestions=res.get("suggestions"),
             )
         query_sig = res["resolved"]
-        facts, truncated, root = _trace_signal_facts(
+        facts, truncated = _trace_signal_facts(
             tracer, direction, sig, query_sig, args["depth"],
             args["include_clock"], args["include_reset"], args["include_control"],
             args["type_filter"], args["module_filter"], args["width_min"],
             args["width_max"], args["exclude"], args["max_results"],
             args["evidence"])
-        row = _success_row(direction, sig, index, res, facts, root,
-                           tracer.get_graph(), tops, top_ambiguous)
-        row["truncated"] = truncated
+        row = _success_row(direction, sig, index, res, facts, truncated,
+                           tops, top_ambiguous)
         return row, None
     except Exception as sig_err:
         from cli.errors import code_for_exception, make_error
