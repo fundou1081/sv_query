@@ -117,7 +117,7 @@ sv_query trace fanin cdc_bug.dst_valid   -f examples/anti_hallucination_cdc/cdc_
 
 | 项 | 状态 |
 |---|---|
-| 全量回归 | 见 [INDEX 当前基线](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里)：canonical 0 failed；opensource 114 passed / 17 显式 skip |
+| 全量回归 | 见 [INDEX 当前基线](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里)：canonical 0 failed；opensource 114 passed / 9 显式 skip |
 | 开源 smoke | strict_uart / verilog-axi / picorv32 / SERV |
 | 性能基准 | picorv32 / verilog-axi / SERV；build、warm query、cold CLI、peak RSS |
 | 反幻觉 | 单级 CDC walkthrough：profile + fanin/fanout 反驳“两级同步器” |

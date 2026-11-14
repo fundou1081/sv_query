@@ -10,7 +10,7 @@
 canonical 与 opensource 长期各自报一个 `0 failed`：
 
 ```text
-canonical:   2742 passed / 0 failed / 123 deselected
+canonical:   2744 passed / 0 failed / 123 deselected
 opensource:  114 passed / 9 skipped / 0 failed        (P161 口径)
 ```
 
@@ -69,5 +69,5 @@ python3 tools/report_status.py --tasks results.json # benchmark {"results":[...]
 
 1. 汇报/文档写测试数字时至少给 `passed / failed / unexecuted /
    skipped_with_reason` 四项；禁止裸写 “0 failed 全绿”；
-2. 新增跑法（如 17 skip 处置后的新套件）必须纳入合并视图；
+2. 新增跑法（如 9 skip 处置后的新套件）必须纳入合并视图；
 3. INDEX「当前基线」行的 deselected 数字就是 `unexecuted`，不是“通过”。

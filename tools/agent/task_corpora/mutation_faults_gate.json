@@ -1,0 +1,506 @@
+{
+  "description": "P171.6.2 mutation gate: repo-only tasks, no external picorv32.",
+  "tasks": [
+    {
+      "id": "simple_driver_swap",
+      "source": "sim/test_simple.sv",
+      "top": "top",
+      "query": "drivers",
+      "signal": "top.data",
+      "mutation": {
+        "old": "assign data = din;",
+        "new": "assign data = en;"
+      },
+      "expect": {
+        "before": {
+          "contains": [
+            "top.din"
+          ]
+        },
+        "after": {
+          "contains": [
+            "top.en"
+          ],
+          "not_contains": [
+            "top.din"
+          ]
+        }
+      }
+    },
+    {
+      "id": "simple_driver_removed",
+      "source": "sim/test_simple.sv",
+      "top": "top",
+      "query": "loads",
+      "signal": "top.din",
+      "mutation": {
+        "old": "assign data = din;",
+        "new": "assign data = 1'b0;"
+      },
+      "expect": {
+        "before": {
+          "contains": [
+            "top.data"
+          ]
+        },
+        "after": {
+          "not_contains": [
+            "top.data"
+          ]
+        }
+      }
+    },
+    {
+      "id": "sync_second_flop_swap",
+      "source": "sim/tests/fixtures/minimal_3module/top.sv",
+      "filelist": "sim/tests/fixtures/minimal_3module/filelist.f",
+      "query": "drivers",
+      "signal": "synchronizer.sync1",
+      "mutation": {
+        "old": "sync1 <= sync0;",
+        "new": "sync1 <= async_i;"
+      },
+      "expect": {
+        "before": {
+          "contains": [
+            "synchronizer.sync0"
+          ]
+        },
+        "after": {
+          "not_contains": [
+            "synchronizer.sync0"
+          ]
+        }
+      }
+    },
+    {
+      "id": "simple_path_removed",
+      "source": "sim/test_simple.sv",
+      "top": "top",
+      "query": "paths",
+      "signal": "top.din",
+      "to_signal": "top.dout",
+      "mutation": {
+        "old": "assign data = din;",
+        "new": "assign data = en;"
+      },
+      "expect": {
+        "before": {
+          "fields": {
+            "found": true
+          }
+        },
+        "after": {
+          "fields": {
+            "found": false
+          }
+        }
+      }
+    },
+    {
+      "id": "simple_path_added",
+      "source": "sim/test_simple.sv",
+      "top": "top",
+      "query": "paths",
+      "signal": "top.en",
+      "to_signal": "top.dout",
+      "mutation": {
+        "old": "assign data = din;",
+        "new": "assign data = en;"
+      },
+      "expect": {
+        "before": {
+          "fields": {
+            "found": false
+          }
+        },
+        "after": {
+          "fields": {
+            "found": true
+          }
+        }
+      }
+    },
+    {
+      "id": "simple_condition_invert",
+      "source": "sim/test_simple.sv",
+      "top": "top",
+      "query": "controlflow",
+      "signal": "top.dout",
+      "mutation": {
+        "old": "else if (en)",
+        "new": "else if (!en)"
+      },
+      "expect": {
+        "before": {
+          "contains": [
+            "!(!rst_n) && en"
+          ]
+        },
+        "after": {
+          "contains": [
+            "!(!rst_n) && !en"
+          ]
+        }
+      }
+    },
+    {
+      "id": "mux_condition_invert",
+      "source": "sim/tests/fixtures/golden_mini/mux_demo.sv",
+      "top": "mux_demo",
+      "query": "controlflow",
+      "signal": "mux_demo.y_simple_if",
+      "mutation": {
+        "old": "if (sel_a)",
+        "new": "if (!sel_a)"
+      },
+      "expect": {
+        "before": {
+          "contains": [
+            "sel_a",
+            "!sel_a"
+          ]
+        },
+        "after": {
+          "contains": [
+            "!(!sel_a)",
+            "!sel_a"
+          ],
+          "not_contains": [
+            "sel_a"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cdc_bypass_first_stage",
+      "source": "sim/tests/integration/dataflow_fixtures/two_flop_sync.sv",
+      "top": "two_flop_sync",
+      "query": "dataflow",
+      "signal": "two_flop_sync.data_in",
+      "to_signal": "two_flop_sync.data_out",
+      "mutation": {
+        "old": ".data_b_i(async_wire)",
+        "new": ".data_b_i(data_in)"
+      },
+      "expect": {
+        "before": {
+          "contains": [
+            "two_flop_sync.u_a.data_a_o"
+          ],
+          "fields": {
+            "primary_is_async": true
+          }
+        },
+        "after": {
+          "not_contains": [
+            "two_flop_sync.u_a.data_a_o"
+          ],
+          "fields": {
+            "primary_is_async": false
+          }
+        }
+      }
+    },
+    {
+      "id": "bit_select_swap",
+      "source": "sim/tests/fixtures/golden_mini/golden_dataflow_3_slice.sv",
+      "top": "with_trunc",
+      "query": "drivers",
+      "signal": "with_trunc.y_trunc",
+      "mutation": {
+        "old": "sum[7:0]",
+        "new": "sum[15:8]"
+      },
+      "expect": {
+        "before": {
+          "contains": [
+            "with_trunc.sum[7:0]"
+          ]
+        },
+        "after": {
+          "contains": [
+            "with_trunc.sum[15:8]"
+          ],
+          "not_contains": [
+            "with_trunc.sum[7:0]"
+          ]
+        }
+      }
+    },
+    {
+      "id": "ternary_condition_invert",
+      "source": "sim/tests/fixtures/golden_mini/golden_dataflow_7_ternary.sv",
+      "top": "with_ternary",
+      "query": "controlflow",
+      "signal": "with_ternary.y",
+      "mutation": {
+        "old": "assign y = sel_a ?",
+        "new": "assign y = !sel_a ?"
+      },
+      "expect": {
+        "before": {
+          "contains": [
+            "sel_a && sel_b"
+          ]
+        },
+        "after": {
+          "contains": [
+            "!sel_a && sel_b"
+          ]
+        }
+      }
+    },
+    {
+      "id": "case_selector_invert",
+      "source": "sim/tests/fixtures/golden_mini/mux_demo.sv",
+      "top": "mux_demo",
+      "query": "controlflow",
+      "signal": "mux_demo.y_case",
+      "mutation": {
+        "old": "case (sel_b)",
+        "new": "case (!sel_b)"
+      },
+      "expect": {
+        "before": {
+          "contains": [
+            "sel_b == 2'b0",
+            "sel_b == default"
+          ]
+        },
+        "after": {
+          "contains": [
+            "!sel_b == 2'b0",
+            "!sel_b == default"
+          ]
+        }
+      }
+    },
+    {
+      "id": "wrapper_passthrough_swap",
+      "source": "sim/tests/fixtures/wrapper_chain/wrapper_chain.sv",
+      "top": "wrapper_chain",
+      "query": "drivers",
+      "signal": "wrapper_chain.s_axi_rlast_o",
+      "mutation": {
+        "old": "assign s_axi_rlast_o  = s_axi_arvalid_i;",
+        "new": "assign s_axi_rlast_o  = s_axi_awvalid_i;"
+      },
+      "expect": {
+        "before": {
+          "contains": [
+            "wrapper_chain.s_axi_arvalid_i"
+          ]
+        },
+        "after": {
+          "contains": [
+            "wrapper_chain.s_axi_awvalid_i"
+          ],
+          "not_contains": [
+            "wrapper_chain.s_axi_arvalid_i"
+          ]
+        }
+      }
+    },
+    {
+      "id": "wrapper_path_removed",
+      "source": "sim/tests/fixtures/wrapper_chain/wrapper_chain.sv",
+      "top": "wrapper_chain",
+      "query": "paths",
+      "signal": "wrapper_chain.s_axi_arvalid_i",
+      "to_signal": "wrapper_chain.s_axi_rlast_o",
+      "mutation": {
+        "old": "assign s_axi_rlast_o  = s_axi_arvalid_i;",
+        "new": "assign s_axi_rlast_o  = s_axi_awvalid_i;"
+      },
+      "expect": {
+        "before": {
+          "fields": {
+            "found": true
+          }
+        },
+        "after": {
+          "fields": {
+            "found": false
+          }
+        }
+      }
+    },
+    {
+      "id": "multi_driver_literal",
+      "source": "sim/tests/fixtures/dataflow_budget/diamond.sv",
+      "top": "diamond_top",
+      "query": "drivers",
+      "signal": "diamond_top.p2_0",
+      "mutation": {
+        "old": "assign p2_0 = p1_0 | p1_1;",
+        "new": "assign p2_0 = p1_0 | p1_1;\n  assign p2_0 = 1'b1;"
+      },
+      "expect": {
+        "before": {
+          "not_contains": [
+            "1'b1"
+          ]
+        },
+        "after": {
+          "contains": [
+            "1'b1"
+          ]
+        }
+      }
+    },
+    {
+      "id": "generate_bit_select",
+      "source": "sim/tests/fixtures/generate_forms/gen_forms.sv",
+      "top": "top",
+      "query": "drivers",
+      "signal": "top.G[1].local_wire",
+      "mutation": {
+        "old": "local_wire = din[i]",
+        "new": "local_wire = din[0]"
+      },
+      "expect": {
+        "before": {
+          "contains": [
+            "top.din[1]"
+          ]
+        },
+        "after": {
+          "contains": [
+            "top.din[0]"
+          ],
+          "not_contains": [
+            "top.din[1]"
+          ]
+        }
+      }
+    },
+    {
+      "id": "wrapper_passthrough_swap2",
+      "source": "sim/tests/fixtures/wrapper_chain/wrapper_chain.sv",
+      "top": "wrapper_chain",
+      "query": "drivers",
+      "signal": "wrapper_chain.s_axi_rvalid_o",
+      "mutation": {
+        "old": "assign s_axi_rvalid_o = s_axi_bready_i;",
+        "new": "assign s_axi_rvalid_o = s_axi_wvalid_i;"
+      },
+      "expect": {
+        "before": {
+          "contains": [
+            "wrapper_chain.s_axi_bready_i"
+          ]
+        },
+        "after": {
+          "contains": [
+            "wrapper_chain.s_axi_wvalid_i"
+          ],
+          "not_contains": [
+            "wrapper_chain.s_axi_bready_i"
+          ]
+        }
+      }
+    },
+    {
+      "id": "wrapper_passthrough_path2",
+      "source": "sim/tests/fixtures/wrapper_chain/wrapper_chain.sv",
+      "top": "wrapper_chain",
+      "query": "paths",
+      "signal": "wrapper_chain.s_axi_bready_i",
+      "to_signal": "wrapper_chain.s_axi_rvalid_o",
+      "mutation": {
+        "old": "assign s_axi_rvalid_o = s_axi_bready_i;",
+        "new": "assign s_axi_rvalid_o = s_axi_wvalid_i;"
+      },
+      "expect": {
+        "before": {
+          "fields": {
+            "found": true
+          }
+        },
+        "after": {
+          "fields": {
+            "found": false
+          }
+        }
+      }
+    },
+    {
+      "id": "mux_case_default_driver",
+      "source": "sim/tests/fixtures/golden_mini/mux_demo.sv",
+      "top": "mux_demo",
+      "query": "drivers",
+      "signal": "mux_demo.y_case",
+      "mutation": {
+        "old": "default: y_case <= f;",
+        "new": "default: y_case <= g;"
+      },
+      "expect": {
+        "before": {
+          "contains": [
+            "mux_demo.f"
+          ]
+        },
+        "after": {
+          "contains": [
+            "mux_demo.g"
+          ],
+          "not_contains": [
+            "mux_demo.f"
+          ]
+        }
+      }
+    },
+    {
+      "id": "simple_path_driver_removed",
+      "source": "sim/test_simple.sv",
+      "top": "top",
+      "query": "paths",
+      "signal": "top.din",
+      "to_signal": "top.dout",
+      "mutation": {
+        "old": "assign data = din;",
+        "new": "assign data = 1'b0;"
+      },
+      "expect": {
+        "before": {
+          "fields": {
+            "found": true
+          }
+        },
+        "after": {
+          "fields": {
+            "found": false
+          }
+        }
+      }
+    },
+    {
+      "id": "multi_driver_conflict_simple",
+      "source": "sim/test_simple.sv",
+      "top": "top",
+      "query": "drivers",
+      "signal": "top.data",
+      "mutation": {
+        "old": "assign data = din;",
+        "new": "assign data = din;\n    assign data = en;"
+      },
+      "expect": {
+        "before": {
+          "fields": {
+            "driver_count": 1,
+            "multi_driver": false,
+            "driver_conflict": "none"
+          }
+        },
+        "after": {
+          "fields": {
+            "driver_count": 2,
+            "multi_driver": true,
+            "driver_conflict": "possible"
+          }
+        }
+      }
+    }
+  ]
+}
