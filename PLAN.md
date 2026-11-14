@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P62.2 交互式 debug（gate） <待做>
+current item : P172.2 check_crap 默认 base <已完成>
 
 ## 计划树
 
@@ -61,9 +61,9 @@ P61 结构审查 findings（对称性/typo） <已完成>
 -- P61.2 finding schema + verify structural <已完成>
 -- P61.3 测试/文档 <已完成>
 
-P62 局部 review artifact / debug 交互 <进行中>
+P62 局部 review artifact / debug 交互 <已完成>
 -- P62.1 finding 局部 SVG/HTML <已完成>
--- P62.2 交互式 debug（gate） <待做>
+-- P62.2 交互式 debug（gate） <已完成>
 
 P63 class / constraint / covergroup 语义增强 <已完成>
 -- P63.1 class relations 增强（约束块/covergroup 摘要） <已完成>
@@ -539,6 +539,10 @@ P171 CI / evidence-chain repair (2026-11-13 worker review) <已完成>
 -- P171.7.2 clock/reset role source label <已完成>
 -- P171.8 docs/CLAIMS/plan cleanup <已完成>
 -- P171.9 worker review fixes <已完成>
+
+P172 CI hygiene after P171 <已完成>
+-- P172.1 Coverage Gen workflow 收口 <已完成>
+-- P172.2 check_crap 默认 base <已完成>
 
 P166 opensource golden calibration after P158.12.4/11.2b <已完成>
 -- P166.1 rebaseline stats/dataflow goldens <已完成>
