@@ -18,11 +18,12 @@ from sv_query.trace.core.graph.models import EdgeKind, NodeKind, SignalGraph, Tr
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
-def _run(sig: str, src: str, tmp_path: Path) -> dict:
+def _run(sig: str, src: str, tmp_path: Path, *extra: str) -> dict:
     p = tmp_path / "t.sv"
     p.write_text(src)
     r = subprocess.run(
-        ["sv_query", "trace", "fanin", sig, "--file", str(p), "--json", "--no-cache"],
+        ["sv_query", "trace", "fanin", sig, "--file", str(p), "--json",
+         "--no-cache", *extra],
         capture_output=True, text=True, timeout=60, cwd=str(PROJECT_ROOT),
     )
     assert r.returncode == 0, r.stderr[-300:]
@@ -62,6 +63,34 @@ class TestDriverStats:
         assert s["driver_count"] == 2
         assert s["multi_driver"] is False
         assert s["conditional_drivers"] is True
+
+    def test_filter_preserves_pre_filter_driver_stats(self, tmp_path):
+        """P171.4.2: driver_stats is pre-filter; conflict is post-filter."""
+        s = _run("top.y", MULTI, tmp_path, "--exclude", "top.b")
+        assert s["count"] == 1
+        assert s["pre_filter_count"] == 2
+        assert s["driver_count"] == 2
+        assert s["multi_driver"] is True
+        assert s["driver_conflict"] == "none"
+
+    def test_error_row_keeps_fanin_stats_and_resolution(self, tmp_path):
+        """P171.4.2: fanin error rows keep the schema consumers rely on."""
+        p = tmp_path / "t.sv"
+        p.write_text(SINGLE)
+        r = subprocess.run(
+            ["sv_query", "trace", "fanin", "top.missing", "--file", str(p),
+             "--json", "--no-cache"],
+            capture_output=True, text=True, timeout=60, cwd=str(PROJECT_ROOT),
+        )
+        assert r.returncode == 0
+        data = json.loads(r.stdout)
+        s = data["result"]["signals"][0]
+        assert data["ok"] is False
+        assert s["driver_count"] == 0
+        assert s["multi_driver"] is False
+        assert s["conditional_drivers"] is False
+        assert s["resolution"] == "not_found"
+        assert data["errors"][0]["error_code"] == "E_SIGNAL_NOT_FOUND"
 
     def test_single_driver(self, tmp_path):
         s = _run("top.y", SINGLE, tmp_path)
