@@ -4,14 +4,15 @@
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **交接状态**: [docs/dev/HANDOFF.md](docs/dev/HANDOFF.md) — 剩余工作、环境、worker 协议；
 > [会话交接快照](docs/dev/HANDOFF_2026-11-12.md) — 本次会话交付、设计裁决、待拍板、踩坑。
-> **最后更新**: 2026-11-14 10:10 GMT+8 (交接文档就绪)
+> **最后更新**: 2026-11-14 20:36 GMT+8 (P171/P172 收口；coverage POC 暂不推进)
 
 ---
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **无（P172.2 已完成；P62.2 gate 评估为 no-go）** `<已完成>`
-  - 剩余：P171.4.2 full merge（已尝试回退）；opensource 112/11/0
+- **当前 item**: **无（P171/P172 全部完成；P62.2 gate 评估为 no-go）** `<已完成>`
+  - 基线：canonical 2746 / 0 failed / 123 deferred；opensource 112/11/0
+  - Coverage Generator / `coverage.gen` POC：**暂不推进**（workflow 已退役，工具保留历史 POC，无 claim/gate）
   - 待方豆确认（不阻塞）：`false_confident` 分母口径当前默认
     = answered_n（实际作答数），见 [REPORT_STATUS](docs/dev/REPORT_STATUS.md)
 
