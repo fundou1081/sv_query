@@ -69,7 +69,7 @@ def output_text(data: dict, human: bool = False, tree: bool = False) -> None:
                   f" (expansions={result.get('expansions')})")
         print(f"  Paths: {paths_count}")
         print(f"  Clock Domain: {clock_domain}")
-        print(f"  Timing Risk: {timing_risk}")
+        print(f"  Timing Risk: {timing_risk} ({result.get('risk_model', 'unlabeled')})")
 
         if intermediate:
             print(f"  Intermediate Signals ({len(intermediate)}):")
@@ -272,6 +272,7 @@ def analyze(
             "all_conditions": result.all_conditions,
             "clock_domain": result.clock_domain,
             "timing_risk": result.timing_risk,
+            "risk_model": result.risk_model,
             "paths": paths_data,
         },
         "errors": [],

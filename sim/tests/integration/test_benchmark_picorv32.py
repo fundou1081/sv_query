@@ -59,7 +59,7 @@ def _run_bench(target: str = "picorv32", depth: int = 2, output: Path = None, **
     if result.returncode != 0:
         pytest.skip(f"benchmark failed: rc={result.returncode}, stderr={result.stderr[:300]}")
     if not output.exists():
-        pytest.skip(f"benchmark output not found: {output}")
+        pytest.fail(f"benchmark output not found: {output}")
     with open(output) as f:
         return json.load(f)
 

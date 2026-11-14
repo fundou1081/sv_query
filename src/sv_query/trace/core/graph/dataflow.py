@@ -101,6 +101,7 @@ class DataFlowResult:
         all_conditions: 所有条件列表
         clock_domain: 主时钟域
         timing_risk: 路径风险级别 (safe/low/medium/high/critical)
+        risk_model: 风险模型标签（当前是未标定启发式，不是测量结论）
         truncated: 搜索是否不完整（硬预算中止 或 结果被上限截断）
         truncation_reason: max_expansions_reached / deadline_reached /
             max_paths_reached / max_depth_reached；空串 = 完整
@@ -117,6 +118,7 @@ class DataFlowResult:
     all_conditions: list[str] = field(default_factory=list)
     clock_domain: str | None = None
     timing_risk: str = "safe"
+    risk_model: str = "heuristic_v1_uncalibrated"
     # [ADD 2026-07-04] latency summary (从主 path 提取, 给快速 view)
     primary_latency_cycles: int | None = None
     primary_is_async: bool = False
