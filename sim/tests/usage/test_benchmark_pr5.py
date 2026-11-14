@@ -223,6 +223,7 @@ def _try_benchmark(target: str, depth: int = 4, runs: int = 1,
     完全一致。保留 attempts 作为环境兜底。
     """
     out = Path("/tmp/bench_pr5_wrap.json")
+    last_error = "unknown"
     for i in range(attempts):
         args = [
             sys.executable, str(BENCH),
@@ -243,8 +244,10 @@ def _try_benchmark(target: str, depth: int = 4, runs: int = 1,
         if result.returncode == 0 and out.exists():
             with open(out) as f:
                 return json.load(f)
+        last_error = (f"rc={result.returncode}, stderr={result.stderr[-300:]}")
         out.unlink(missing_ok=True)
-    return None
+    # A real benchmark failure must not be hidden as an environment skip.
+    pytest.fail(f"wrapper benchmark failed (not timeout): {last_error}")
 
 
 class TestBenchmarkWrapperDepth:

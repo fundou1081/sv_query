@@ -36,7 +36,7 @@
 | C-13 | 安装包不含 top-level `trace`，查询引擎为 `sv_query.trace` | packaging | `test_packaging_rename` + `tests.yml` wheel build/install smoke | `verified`（CI @ 6ae1d947） |
 | C-14 | 20 个 repo-only mutation 能被查询事实检测，并有独立 Verilator oracle | mutation | `tools/run_mutation_gate.py` + `test_p171_mutation_gate` | `scoped`（注入故障，不是历史 bug benchmark） |
 | C-15 | `.core` → 可 elaborate filelist 对 UART/I2C/SPI 成立 | real-corpus | `filelist_closure` profiles + 0 elaboration errors | `unverified`（一次性外部 OpenTitan 证据；需重复 gate） |
-| C-16 | Tests workflow 在 `6ae1d947` / `f6a46d5b` 为绿色 | CI | GitHub Actions Tests runs | `scoped`（时点证据；Benchmark/Coverage 仍红；后续提交需重跑） |
+| C-16 | Tests 与 Benchmark workflow 在 `4d58d7fb` 为绿色；Coverage Gen 仍红 | CI | GitHub Actions runs 43576810042 / 43576809982 | `scoped`（时点证据；Coverage Gen 的 stale test path 是独立问题；后续提交需重跑） |
 
 ---
 
