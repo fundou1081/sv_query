@@ -63,7 +63,10 @@ def classify_pytest_counts(counts: dict) -> dict[str, int]:
     out["passed"] = int(counts.get("passed", 0))
     out["failed"] = int(counts.get("failed", 0) + counts.get("errors", 0))
     out["skipped_with_reason"] = int(counts.get("skipped", 0))
-    out["unexecuted"] = int(counts.get("deselected", 0))
+    # P171.5: deselected is "not selected in this run", not "never executed".
+    # It is commonly the complementary suite (canonical deselects opensource).
+    out["unexecuted"] = int(counts.get("unexecuted", 0))
+    out["deferred"] = int(counts.get("deselected", 0))
     out["external_not_run"] = int(counts.get("external_not_run", 0))
     return out
 
@@ -92,17 +95,21 @@ def summarize(rows: list[dict]) -> dict:
 
 def is_fully_green(statuses: dict[str, int]) -> bool:
     """只有 7 类中除 passed 外全部为 0 才算全绿。0 failed 不构成全绿。"""
-    return all(statuses.get(s, 0) == 0 for s in STATUSES if s != "passed")
+    return (all(statuses.get(s, 0) == 0 for s in STATUSES if s != "passed")
+            and statuses.get("deferred", 0) == 0)
 
 
 def render_run(name: str, statuses: dict[str, int]) -> str:
     parts = " ".join(f"{s}={statuses.get(s, 0)}" for s in STATUSES)
+    if "deferred" in statuses:
+        parts += f" deferred={statuses['deferred']}"
     return f"run={name}: {parts}"
 
 
 def render_report(report: dict) -> str:
     lines: list[str] = []
     totals = empty_status()
+    totals["deferred"] = 0
     for run in report.get("runs", []):
         if "statuses" in run:
             statuses = {**empty_status(), **run["statuses"]}
@@ -111,24 +118,28 @@ def render_report(report: dict) -> str:
         lines.append(render_run(run["name"], statuses))
         for s in STATUSES:
             totals[s] += statuses.get(s, 0)
+        totals["deferred"] += statuses.get("deferred", 0)
     for task_run in report.get("task_runs", []):
         statuses = summarize(task_run["rows"])
         lines.append(render_run(task_run["name"], statuses))
         for s in STATUSES:
             totals[s] += statuses.get(s, 0)
+        totals["deferred"] += statuses.get("deferred", 0)
     if not lines:
         lines.append("(no runs)")
     lines.append("-" * 60)
     lines.append(render_run("TOTAL", totals))
     not_executed = sum(totals.get(s, 0) for s in STATUSES
-                       if s not in ("passed", "failed"))
+                       if s not in ("passed", "failed")) + totals["deferred"]
     if is_fully_green(totals):
         lines.append("VERDICT: fully green (all cells executed and passed)")
     else:
         lines.append(
             f"VERDICT: NOT fully green — 只看 failed 数不代表全绿; "
             f"未通过/未执行/未知单元 = {not_executed + totals['failed']} "
-            f"(其中未执行/未知 {not_executed}, failed {totals['failed']})"
+            f"(其中 unexecuted={totals['unexecuted']}, "
+            f"deferred={totals['deferred']}，skipped/unknown 见上；"
+            f"failed={totals['failed']})"
         )
     return "\n".join(lines)
 

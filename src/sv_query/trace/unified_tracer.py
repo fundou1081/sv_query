@@ -868,9 +868,16 @@ class UnifiedTracer:
             include_conditional=include_conditional,
         )
 
-    def trace_fanin(self, signal: str, module: str = None, depth: int | None = None) -> list:
+    def trace_fanin(self, signal: str, module: str = None, depth: int | None = None,
+                    include_clock: bool = False, include_reset: bool = False,
+                    include_control: bool = False) -> list:
         self.build_graph()
-        return self._signal_tracer.trace_fanin(signal, module, depth)
+        return self._signal_tracer.trace_fanin(
+            signal, module, depth,
+            include_clock=include_clock,
+            include_reset=include_reset,
+            include_control=include_control,
+        )
 
     def trace_detailed(self, signal: str, module: str = None) -> DriverChain:
         """[方案C] Trace signal with detailed driver information

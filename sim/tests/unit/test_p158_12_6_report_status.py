@@ -46,9 +46,10 @@ class TestSevenStatuses:
         st = classify_pytest_counts(
             {"passed": 2710, "failed": 0, "skipped": 0, "deselected": 131})
         assert st["passed"] == 2710
-        assert st["unexecuted"] == 131
+        assert st["unexecuted"] == 0
+        assert st["deferred"] == 131
         assert st["failed"] == 0
-        assert sum(st.values()) == 2841
+        assert sum(st[s] for s in STATUSES) == 2710
 
 
 class TestZeroFailedIsNotGreen:
@@ -62,11 +63,12 @@ class TestZeroFailedIsNotGreen:
             {"name": "canonical", "passed": 2710, "failed": 0,
              "skipped": 0, "deselected": 131},
             {"name": "opensource", "passed": 114, "failed": 0,
-             "skipped": 17, "deselected": 0},
+             "skipped": 9, "deselected": 0},
         ]}
         text = render_report(report)
         assert "run=canonical" in text and "run=opensource" in text
-        assert "unexecuted=131" in text and "skipped_with_reason=17" in text
+        assert "deferred=131" in text and "skipped_with_reason=9" in text
+        assert "unexecuted=0" in text
         assert "NOT fully green" in text
         assert "只看 failed 数不代表全绿" in text
         assert all(s in text for s in STATUSES), "7 类字段必须全打印"

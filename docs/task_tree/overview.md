@@ -534,3 +534,4 @@ Open-source project visualization is **correct and verified**. Ready for next ta
 | **398** | **2026-11-13** | **L3** | **P165.3.5 mutation 20 (iter_506)** | 方豆: 继续 | multi/generate/wrapper/case | 20/20 | **✅ 完成** |
 | **399** | **2026-11-13** | **L3** | **P165.3.6 multi-driver conflict (iter_507)** | 方豆: 加 multi driver conflict | driver_count/multi_driver/driver_conflict | 21/21; 6 tests | **✅ 完成** |
 | **400** | **2026-11-13** | **L3** | **P171.2/.3 (iter_508/509)** | worker review | hermeticity + structural coverage | 2739/0; CI pending | **✅ 本地** |
+| **401** | **2026-11-14** | **L3** | **P171.4.1/.5 (iter_510/511)** | 两个 worker review | drivers flags + deferred metric | 2741?/0 | **✅ 完成** |
