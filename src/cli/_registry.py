@@ -565,7 +565,7 @@ JSON_CONTRACT = {
                               "expansions", "elapsed_s", "paths_count",
                               "intermediate_signals", "primary_latency_cycles",
                               "primary_is_async", "all_conditions", "clock_domain",
-                              "timing_risk", "paths"],
+                              "timing_risk", "risk_model", "paths"],
             "path_fields": "dataflow_path",
             "segment_fields": "dataflow_segment",
         },

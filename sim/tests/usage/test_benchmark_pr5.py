@@ -68,9 +68,9 @@ def _run_benchmark(runs: int = 1, skip_flakiness: bool = False, target: str = TA
     except subprocess.TimeoutExpired:
         pytest.skip("benchmark exceeded 300s; environment-dependent (PR5)")
     if result.returncode != 0:
-        pytest.skip(f"benchmark failed: rc={result.returncode}, stderr={result.stderr[:500]}")
+        pytest.fail(f"benchmark failed: rc={result.returncode}, stderr={result.stderr[:500]}")
     if not output.exists():
-        pytest.skip(f"benchmark output not found: {output}")
+        pytest.fail(f"benchmark output not found: {output}")
     with open(output) as f:
         return json.load(f)
 
