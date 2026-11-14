@@ -30,13 +30,13 @@
 | C-07 | `verify consistency` 的 verified 覆盖全部请求证据 | fixture/snapshot | `test_verify_truncated` | `verified` |
 | C-08 | 新 snapshot 可从 MIG 离线执行 connection 检查 | fixture | `test_verify_consistency_snapshot` / `test_snapshot_robust` | `verified` |
 | C-09 | 旧 snapshot 缺 MIG 时显式 unknown，不静默 fallback | fixture | `test_verify_consistency_snapshot` legacy case | `verified` |
-| C-10 | canonical 0 skipped 代表测试健康 | CI | `run_gates.sh` + opensource 114/9/0 | `scoped`（canonical 与 opensource 分开；0 skip 仍不是健康指标） |
+| C-10 | canonical 0 skipped 代表测试健康 | CI | `run_gates.sh` + opensource 112/11/0；123 deferred | `scoped`（canonical 与 opensource 分开；deferred 不等于 unexecuted；0 skip 仍不是健康指标） |
 | C-11 | SPI `verify consistency` 的 bit/connection/reciprocity 全绿 | real-corpus | `--full` 实测 3152/3261/1734，0 violations | `scoped`（外部 snapshot） |
 | C-12 | worker `APPROVE` 等于真实项目通过 | 过程 | 无 | **known-broken**（需主会话复现） |
-| C-13 | 安装包不含 top-level `trace`，查询引擎为 `sv_query.trace` | packaging | `test_packaging_rename` + worker wheel install | `scoped`（CI 尚未构建/安装 wheel；人工 target install 已验证） |
+| C-13 | 安装包不含 top-level `trace`，查询引擎为 `sv_query.trace` | packaging | `test_packaging_rename` + `tests.yml` wheel build/install smoke | `verified`（CI @ 6ae1d947） |
 | C-14 | 20 个 repo-only mutation 能被查询事实检测，并有独立 Verilator oracle | mutation | `tools/run_mutation_gate.py` + `test_p171_mutation_gate` | `scoped`（注入故障，不是历史 bug benchmark） |
-| C-15 | `.core` → 可 elaborate filelist 对 UART/I2C/SPI 成立 | real-corpus | `filelist_closure` profiles + 0 elaboration errors | `scoped`（OpenTitan adapter/profile 特定） |
-| C-16 | Tests workflow 在 `6ae1d947` 为绿色 | CI | GitHub Actions Tests run 6ae1d947 | `scoped`（时点证据；后续提交需重跑） |
+| C-15 | `.core` → 可 elaborate filelist 对 UART/I2C/SPI 成立 | real-corpus | `filelist_closure` profiles + 0 elaboration errors | `unverified`（一次性外部 OpenTitan 证据；需重复 gate） |
+| C-16 | Tests workflow 在 `6ae1d947` / `f6a46d5b` 为绿色 | CI | GitHub Actions Tests runs | `scoped`（时点证据；Benchmark/Coverage 仍红；后续提交需重跑） |
 
 ---
 

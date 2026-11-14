@@ -22,6 +22,7 @@ strict_uart (33 nodes, 4 sub-module clk) + prim_arbiter_tree (33 nodes, 1 clk).
 - 反面: 2 (nonexistent file + empty result)
 """
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -33,6 +34,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 FILELIST_DIR = PROJECT_ROOT / "sim" / "tests" / "pyslang_type_fixtures" / "industrial_filelists"
 STRICT_UART_FILELIST = str(PROJECT_ROOT / "sim" / "tests" / "fixtures" / "strict_uart" / "filelist.f")
 PRIM_ARBITER_FILELIST = str(FILELIST_DIR / "opentitan_prim_arbiter_tree.f")
+OPENRTL_ROOT = Path(os.environ.get("SVQ_OPENRTL_ROOT",
+                                  str(Path.home() / "my_dv_proj" / "openrtl")))
+PRIM_SRC = OPENRTL_ROOT / "opentitan/hw/ip/prim/rtl/prim_arbiter_tree.sv"
 GOLDEN_DIR = PROJECT_ROOT / "sim" / "tests" / "golden" / "subfunction_open_source"
 GOLDEN_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -95,6 +99,8 @@ def _read_golden(name: str, project: str) -> dict:
 def _make_runner(args_func):
     """Wrap an arg builder that takes fixture name and returns list of CLI args."""
     def runner(project: str) -> subprocess.CompletedProcess:
+        if project == "prim_arbiter" and not PRIM_SRC.is_file():
+            pytest.skip("external OpenTitan prim_arbiter source missing")
         if project == "strict_uart":
             return _run("-q", *args_func("strict_uart"))
         elif project == "prim_arbiter":

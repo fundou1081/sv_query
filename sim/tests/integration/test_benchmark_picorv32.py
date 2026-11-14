@@ -22,7 +22,8 @@ import pytest
 OPENRTL_ROOT = Path(os.environ.get("SVQ_OPENRTL_ROOT",
                                 str(Path.home() / "my_dv_proj" / "openrtl")))
 pytestmark = [pytest.mark.opensource,
-            pytest.mark.skipif(not OPENRTL_ROOT.exists(), reason="external openrtl corpus missing; set SVQ_OPENRTL_ROOT")]
+            pytest.mark.skipif(not (OPENRTL_ROOT / "picorv32/picorv32.v").is_file(),
+                               reason="external picorv32 corpus missing; set SVQ_OPENRTL_ROOT")]
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 BENCH = PROJECT_ROOT / "tools" / "benchmark" / "run_benchmark.py"
@@ -57,7 +58,7 @@ def _run_bench(target: str = "picorv32", depth: int = 2, output: Path = None, **
         args, capture_output=True, text=True, timeout=120, cwd=PROJECT_ROOT,
     )
     if result.returncode != 0:
-        pytest.skip(f"benchmark failed: rc={result.returncode}, stderr={result.stderr[:300]}")
+        pytest.fail(f"benchmark failed: rc={result.returncode}, stderr={result.stderr[:300]}")
     if not output.exists():
         pytest.fail(f"benchmark output not found: {output}")
     with open(output) as f:

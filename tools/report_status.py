@@ -1,17 +1,18 @@
 """report_status.py — [P158.12.6 / R-028] 统一"绿色"口径
 
 背景 (REVIEW_2026-11-11 §5.5 / P160 §7):
-  canonical 报 `2710 passed / 0 failed`, opensource 报
-  `114 passed / 17 skipped / 0 failed` —— 两个 `0 failed` 容易
-  被读成"全绿", 但 131 deselected + 17 skipped 是**未执行**单元。
-  报告必须分离 7 类状态, "0 skipped / 0 failed" 不再是 KPI。
+  canonical 报 `2744 passed / 0 failed`, opensource 报
+  `112 passed / 11 skipped / 0 failed` —— 两个 `0 failed` 容易
+  被读成"全绿", 但 123 deselected 是**deferred**（由 opensource 执行），
+  11 skipped 才是显式未执行。报告必须分离 7 类状态 + deferred,
+  "0 skipped / 0 failed" 不再是 KPI。
 
 7 类状态:
   passed               : 执行且结果符合预期 (pytest passed / task exact)
   failed               : 执行且结果不符 (pytest failed / task exact=false)
   unknown              : 执行但无有效结论 (task 无解析答案; 不得计入 passed)
   truncated            : 执行被预算/时限截断 (timeout / budget exhausted)
-  unexecuted           : 未执行 (pytest deselected / task 异常未跑)
+  unexecuted           : 真正未执行 (task 异常未跑; deselected 不算)
   skipped_with_reason  : 显式 skip 且带 reason (pytest skip / retired exp)
   external_not_run     : 外部依赖缺失导致未跑 (openrtl corpus 等)
 
@@ -19,6 +20,7 @@
   false_confident 的分母 = answered_n (实际作答行数), 不含
   unknown / truncated / unexecuted / skipped / external_not_run;
   未执行单元既不算通过也不算失败, 但必须在报告中显式可见。
+  pytest deselected 单独记 deferred, 不并入 unexecuted。
 
 CLI:
   python3 tools/report_status.py --runs report.json

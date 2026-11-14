@@ -4,14 +4,14 @@
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **交接状态**: [docs/dev/HANDOFF.md](docs/dev/HANDOFF.md) — 剩余工作、环境、worker 协议；
 > [会话交接快照](docs/dev/HANDOFF_2026-11-12.md) — 本次会话交付、设计裁决、待拍板、踩坑。
-> **最后更新**: 2026-11-12 10:10 GMT+8 (交接文档就绪)
+> **最后更新**: 2026-11-14 10:10 GMT+8 (交接文档就绪)
 
 ---
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **当前 item**: **P171.4.2 full fanin/fanout merge** `<待做>`
-  - 按 HANDOFF §12 顺序：P158.12.7 → 17 skip 分类 → P165 采纳项
+  - 剩余：P171.4.2 full merge（已尝试回退）；opensource 112/11/0
   - 待方豆确认（不阻塞）：`false_confident` 分母口径当前默认
     = answered_n（实际作答数），见 [REPORT_STATUS](docs/dev/REPORT_STATUS.md)
 
@@ -82,7 +82,7 @@
 
 ```text
 1. P158.12.7  skills 文档漂移（按 39+6 命令面校正）  <- 当前 item
-2. 17 个 opensource skip 的最终处置（归档 retired exp / 补 fixture / 保留显式 skip）
+2. 9 个 opensource skip 的最终处置（归档 retired exp / 补 fixture / 保留显式 skip）
 3. P165.1     signal.py 全图扫描 pred/succ 化（O(V×E)→O(度)，小改动）
 4. P165.3/4   外部故障集 + filelist 闭包自动化（开源前）
 5. P165.2     packaging 重命名（随开源破坏性窗口）
