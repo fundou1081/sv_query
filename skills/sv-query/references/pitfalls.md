@@ -56,9 +56,9 @@ Each item was observed in the local task corpora or reproduced in 2026-11-15 rev
     return evidence; do not present its CDC/risk findings as verified.
 
 12. **`driver_count` is not `len(drivers)`**  
-    It counts only direct DRIVER-edge sources; CONNECTION/PORT, ternary/branch,
-    CLOCK/RESET and constants are not counted. Use `count`/`drivers[].id` for
-    “all direct drivers”.
+    It counts distinct DRIVER-edge sources (PORT_IN/CONST can count); it excludes
+    CLOCK/RESET/CONNECTION/BRANCH and self. Use `count`/`drivers[].id` for the
+    full direct-neighbor list.
 
 13. **Driver claim orientation**  
     `{"type":"driver","signal":TARGET,"driver":SOURCE}`: `signal` is the target,

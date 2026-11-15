@@ -27,6 +27,50 @@ from sv_query.trace.core.sva_extractor import SVAExtractor
 from sv_query.trace.unified_tracer import UnifiedTracer
 
 logger = logging.getLogger(__name__)
+_REPO_ROOT = Path(__file__).resolve().parents[4]
+
+
+def _read_source_text(file_name: str) -> str | None:
+    """Read a source file, tolerating relative paths from another cwd."""
+    p = Path(file_name)
+    candidates = [p] if p.is_absolute() else [Path.cwd() / p, _REPO_ROOT / p]
+    for candidate in candidates:
+        try:
+            return candidate.read_text(errors="ignore")
+        except OSError:
+            continue
+    return None
+
+
+def _line_is_lhs(text: str, signal: str) -> bool:
+    leaf = signal.rsplit(".", 1)[-1]
+    return bool(re.search(rf"\b{re.escape(leaf)}\s*(?:\[[^\]]+\])?\s*(?:<=|=|<)", text))
+
+
+def _nearest_if_is_reset(lines: list[str], lo: int, idx: int) -> bool:
+    for j in range(idx, lo - 1, -1):
+        line = lines[j]
+        if "if" in line:
+            m = re.search(r"if\s*\((.*?)\)", line)
+            return bool(m and _is_reset_condition(m.group(1)))
+    return False
+
+
+def _find_functional_assignment(signal: str, file_text: str,
+                                start: int, end: int) -> tuple[int, str] | None:
+    """Find the non-reset LHS assignment line for a signal in a source range."""
+    leaf = signal.rsplit(".", 1)[-1]
+    pat = re.compile(rf"\b{re.escape(leaf)}\s*(?:\[[^\]]+\])?\s*(?:<=|=|<)")
+    lines = file_text.splitlines()
+    lo = max(0, start - 1)
+    hi = min(len(lines), end if end else len(lines))
+    candidates = [i for i in range(lo, hi) if pat.search(lines[i])]
+    for idx in reversed(candidates):
+        if _nearest_if_is_reset(lines, lo, idx):
+            continue
+        return idx + 1, lines[idx].strip()
+    return None
+
 
 # ==============================================================================
 # Stage 3A: evidence 命令 - 召回 always/if 块完整源码
@@ -59,34 +103,16 @@ def _is_const_edge(graph, edge) -> bool:
 
 
 def _edge_source_text(loc, expression: str) -> str:
-    try:
-        lines = Path(loc.file).read_text(errors="ignore").splitlines()
+    text = _read_source_text(getattr(loc, "file", ""))
+    if text:
+        lines = text.splitlines()
         if 0 < getattr(loc, "line_start", 0) <= len(lines):
             return lines[loc.line_start - 1].strip()
-    except OSError as exc:
-        logger.debug("edge source read failed for %s: %s", loc.file, exc)
     return expression
 
 
-def _find_functional_assignment(signal: str, file_text: str,
-                                start: int, end: int) -> tuple[int, str] | None:
-    """Find the non-reset LHS assignment line for a signal in a source range."""
-    leaf = signal.rsplit(".", 1)[-1]
-    pat = re.compile(rf"\b{re.escape(leaf)}\s*(?:\[[^\]]+\])?\s*(?:<=|=|<)")
-    lines = file_text.splitlines()
-    lo = max(0, start - 1)
-    hi = min(len(lines), end if end else len(lines))
-    candidates = [i for i in range(lo, hi) if pat.search(lines[i])]
-    for idx in reversed(candidates):
-        prefix = "\n".join(lines[max(lo, idx - 12):idx]).lower()
-        if ("rst" in prefix or "reset" in prefix) and "else" not in prefix:
-            continue
-        return idx + 1, lines[idx].strip()
-    return None
-
-
 def _edge_line_ok(text: str, signal: str) -> bool:
-    return bool(text) and signal.rsplit(".", 1)[-1] in text
+    return bool(text) and _line_is_lhs(text, signal)
 
 
 def _snapshot_edge_evidence(graph, signal: str) -> dict | None:
@@ -156,9 +182,8 @@ def _with_functional_line(ev_dict, signal: str):
     file_name = loc.get("file", "")
     if not file_name:
         return ev_dict
-    try:
-        text = Path(file_name).read_text(errors="ignore")
-    except OSError:
+    text = _read_source_text(file_name)
+    if text is None:
         return ev_dict
     always = ev_dict.get("enclosing_always") or {}
     start = always.get("line_start") or max(1, loc.get("line_start", 0) - 12)
@@ -181,7 +206,8 @@ def _resolve_evidence_dict(resolver, graph, signal: str) -> dict | None:
     fallback = _snapshot_edge_evidence(graph, signal)
     text, _ = _evidence_source(ev_dict)
     if not ev_dict or not text:
-        return fallback if fallback is not None else ev_dict
+        return _with_functional_line(
+            fallback if fallback is not None else ev_dict, signal)
     if (fallback is not None and _evidence_is_reset(graph, signal, ev_dict)
             and not _evidence_is_reset(graph, signal, fallback)):
         return _with_functional_line(fallback, signal)

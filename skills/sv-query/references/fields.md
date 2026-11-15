@@ -27,9 +27,9 @@ result.signals[]                # one per requested signal
   signal, index, count, pre_filter_count, truncated, resolution,
   resolved_signal, candidates, suggestions, error
   drivers[] / loads[]           # nodes
-  driver_count                  # distinct direct DRIVER-edge sources only;
-                                # excludes CONNECTION/PORT, ternary/branch,
-                                # CLOCK/RESET, constants; NOT capped by -N
+  driver_count                  # distinct DRIVER-edge sources (may include
+                                # PORT_IN/CONST); excludes CLOCK/RESET/
+                                # CONNECTION/BRANCH and self; NOT capped by -N
   driver_conflict               # drivers only, heuristic
   dynamic_index, function_call, runtime_system_call
   conditions[], condition_truncated
@@ -85,7 +85,7 @@ false in that case. Read `unknown_checks`/`checked`; do not treat it as a pass.
 `trace evidence`:
 
 ```text
-result.signals[0].evidence   # can be null for buses/arrays or legacy snapshots
+result.signals[0].evidence   # keyed object; source_location may be null
   source_location {file,line_start,line_end,column}
   source_text, enclosing_always/if/assign/class/constraint,
   enclosing_chain, credibility_score, is_verified
@@ -133,7 +133,7 @@ Reasons include `no_structural_edge`, `instance_boundary`, `cycle_or_all_seen`,
 | missing `-f`/`--filelist` | 1 | graph core often JSON; class/constraints now JSON error |
 | unknown flag | 2 | plain text |
 | `--json` audit invalid checks | 1 | plain text, **no JSON** |
-| `trace evidence --from-snapshot` bus/legacy | 0 | `evidence:null`; bit nodes may work |
+| `trace evidence --from-snapshot` bus/legacy | 0 | keyed evidence; source_location null, is_verified false |
 
 Rules:
 

@@ -35,6 +35,8 @@ dout <= data;
   - `sync_fifo.reg_stage1` → line 32；
   - `top.dout` → line 19；
 - `trace profile.source.driver` 同步改为 functional assignment；
+- snapshot evidence 也走 LHS 扫描，source 路径可跨 cwd 回退；
+- 支持 reset-in-else；不再取最后一个 reset 赋值；
 - 读取失败不再 `except: pass`，改为 logger.debug。
 
 ## 4. 测试

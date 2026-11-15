@@ -72,7 +72,8 @@ Snapshot support is command-specific. It works for graph queries such as
 `drivers/loads/paths/dataflow/verify claim/verify consistency/instances/ports/connections/hierarchy`;
 semantic/source commands (`class`, `constraints`, `covergroups`, `controlflow`, `scope`,
 `params`, `graph`, `trace profile`) require `--filelist`. `trace evidence` accepts
-`--from-snapshot`, but evidence may be null when the snapshot cannot recover source.
+`--from-snapshot`; its `source_location` may be null and `is_verified` false when
+the snapshot cannot recover source (the evidence object itself remains keyed).
 
 See [references/snapshot.md](references/snapshot.md).
 
@@ -162,7 +163,7 @@ not a boolean. For `verify consistency`, read `result.verified`,
 
 | Query | Identity | Count / budget |
 |---|---|---|
-| `drivers` | `result.signals[0].drivers[].id`; `driver_count` counts **only direct DRIVER-edge sources** (not CONNECTION/PORT, ternary/branch, clock/reset/const) | `count` (all returned items, post-cap), `pre_filter_count`, `truncated`, `truncated_by_depth` |
+| `drivers` | `result.signals[0].drivers[].id`; `driver_count` counts distinct DRIVER-edge sources (can include PORT_IN/CONST); excludes CLOCK/RESET/CONNECTION/BRANCH and self | `count` (all returned nodes, post-cap), `pre_filter_count`, `truncated`, `truncated_by_depth` |
 | `loads` | `result.signals[0].loads[].id` | `count`, `pre_filter_count`, `truncated` |
 | `paths --canonical` | `found`, `hop_count`, `path`, `candidate_count`, `canonical_policy` | `truncated` |
 | `paths --all` | `count`, `all_paths` | `truncated`, `truncation_reason` |
@@ -172,8 +173,8 @@ not a boolean. For `verify consistency`, read `result.verified`,
 | `verify consistency` | `verified`, `checks[].status`, `checks[].checked`, `checks[].violations` | `coverage_complete`, `unknown_checks`, `total_violations` |
 
 `count` is the returned item count after cap. `driver_count` is a separate
-count of **DRIVER-edge sources only**; it excludes CONNECTION/PORT, ternary/branch,
-CLOCK/RESET, and constants, and is **not capped** by `--max-results`.
+count of **DRIVER-edge sources**; it can include PORT_IN/CONST, excludes
+CLOCK/RESET/CONNECTION/BRANCH and self, and is **not capped** by `--max-results`.
 For “list all direct drivers”, use `count`/`drivers[].id`, not `driver_count`.
 `pre_filter_count` is the count before cap.
 `truncated_by_depth=true` means more edges exist below the depth boundary.
@@ -206,8 +207,8 @@ See [references/fields.md](references/fields.md).
    `driver_count`, and `truncated` separately.
 6. **Evidence is a source pointer, not proof.** `credibility_score` is discrete
    `{0.0,0.2,0.4,0.6,1.0}`; `is_verified` is snippet+expr/name cross-check.
-   Source `trace evidence` can be null for buses/arrays and can point at a reset
-   branch; use `trace profile.source.driver` for the functional assignment.
+   `trace evidence` can have null/empty source fields for buses/arrays and can point
+   at a reset branch; use `trace profile.source.driver` for the functional assignment.
    Do not dump `enclosing_chain` into context.
 7. **Semantic domain is source-only.** `class`/`constraints`/`covergroups`/`controlflow`
    need `--filelist`, not snapshot. Class members must be instance-qualified.

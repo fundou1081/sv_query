@@ -70,3 +70,42 @@ def test_reset_branch_falls_back_to_functional_assignment():
     ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
     assert ev["source_location"]["line_start"] == 19
     assert ev["source_text"] == "dout <= data;"
+
+
+def test_snapshot_evidence_uses_lhs_assignment(tmp_path):
+    import os
+    env = dict(os.environ, SVQ_SNAPSHOT_DIR=str(tmp_path))
+    save = subprocess.run(
+        ["sv_query", "snapshot", "save",
+         "sim/tests/integration/dataflow_fixtures/sync_fifo.sv",
+         "--tag", "review", "--no-preprocess", "--json", "-q"],
+        capture_output=True, text=True, timeout=120, cwd=str(PROJECT_ROOT), env=env)
+    assert save.returncode == 0, save.stderr[-500:]
+    r = subprocess.run(
+        ["sv_query", "trace", "evidence", "sync_fifo.reg_stage1",
+         "--from-snapshot", "review", "--json", "-q"],
+        capture_output=True, text=True, timeout=120, cwd=str(tmp_path), env=env)
+    assert r.returncode == 0, r.stderr[-500:]
+    ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
+    assert ev["source_location"]["line_start"] == 32
+    assert ev["source_text"] == "if (wr_en) reg_stage1 <= push_data_i;"
+    assert ev["is_verified"] is True
+
+
+def test_reset_in_else_does_not_win(tmp_path):
+    src = tmp_path / "reset_last.sv"
+    src.write_text(
+        "module top(input clk, rst_n, en, d, output reg q);\n"
+        "  always_ff @(posedge clk or negedge rst_n) begin\n"
+        "    if (en) q <= d;\n"
+        "    else if (!rst_n) q <= 1'b0;\n"
+        "  end\n"
+        "endmodule\n")
+    r = subprocess.run(
+        ["sv_query", "trace", "evidence", "top.q", "-f", str(src),
+         "--json", "-q"], capture_output=True, text=True, timeout=60,
+        cwd=str(PROJECT_ROOT))
+    assert r.returncode == 0, r.stderr[-300:]
+    ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
+    assert ev["source_location"]["line_start"] == 3
+    assert ev["source_text"] == "if (en) q <= d;"
