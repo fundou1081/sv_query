@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P175.3 skill regression tests <已完成>
+current item : P176.3 skill regression tests <已完成>
 
 ## 计划树
 
@@ -539,6 +539,11 @@ P171 CI / evidence-chain repair (2026-11-13 worker review) <已完成>
 -- P171.7.2 clock/reset role source label <已完成>
 -- P171.8 docs/CLAIMS/plan cleanup <已完成>
 -- P171.9 worker review fixes <已完成>
+
+P176 skill re-review fixes (2026-11-15) <已完成>
+-- P176.1 runnable templates + field contract <已完成>
+-- P176.2 corpus workflows <已完成>
+-- P176.3 skill regression tests <已完成>
 
 P175 agent skill rewrite from short/long task corpora (2026-11-15) <已完成>
 -- P175.1 corpus extraction + protocol <已完成>

@@ -8,11 +8,12 @@ not prove coverage closure.
 ```bash
 sv_query class <Class> --relations --filelist rtl.f --json -q
 sv_query class <Class> --member <member> --filelist rtl.f --json -q
-sv_query class <Class> --member <member> --instance <instance> --filelist rtl.f --json -q
+sv_query class <Class> --member <member> --filelist rtl.f --json -q
 ```
 
 Use instance-qualified member ids (`top.e.p.addr`). Relative `p.addr` can be
-`not_found`.
+`not_found`. `class` has no `--instance` option; `--instance` belongs to
+`trace covergroup`.
 
 ## Constraints
 
@@ -25,6 +26,9 @@ sv_query trace constraint-chain top.e.p.addr top.e.p.len --filelist rtl.f --json
 
 Fields to report: block id, `defined_in`, `inherited`, `vars`, `conditions`,
 `expr_count`, `rand_vars`, `solve_before`, `dist`.
+
+`class` member facts include `rand_mode` and declared `type`; use those for
+rand/randc questions. `--instance` is **not** a `class` option.
 
 This is **co-membership / declared constraints**, not SAT/UNSAT or an implication
 proof.

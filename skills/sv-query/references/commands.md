@@ -49,7 +49,7 @@ sv_query trace profile  top.y -f top.sv --json -q
 | Flag | Applies to | Meaning |
 |---|---|---|
 | `--depth/-d` | drivers/loads | `1` = direct; omit = recursive |
-| `--max-results/-N` | drivers/loads | post-cap result count |
+| `--max-results/-N` | drivers/loads | post-cap `count`; `driver_count` remains pre-cap |
 | `--max/-n` | `paths --all` | max returned paths |
 | `--max-paths/-n` | `dataflow analyze` | max returned paths |
 | `--max-nodes/--max-edges` | graph subgraph | local graph budget |
@@ -57,7 +57,6 @@ sv_query trace profile  top.y -f top.sv --json -q
 | `--directed/-d` | paths | follow data direction only |
 | `--canonical` | paths | deterministic structural variant |
 | `--include-clock/--include-reset` | loads (and fanout) | include sensitivity edges |
-| `--include-conditional` | dataflow/fanout (see help) | branch conditions |
 
 ## 4. Snapshot vs source
 

@@ -65,6 +65,15 @@ def test_skill_has_no_removed_compat_or_helper():
         assert stale not in text
 
 
+def test_skill_has_no_known_broken_templates():
+    text = "\n".join(_text(p) for p in (SKILL, COMMANDS)) + "\n" + _text(
+        SKILL.parent / "references/semantics.md") + "\n" + _text(
+        SKILL.parent / "references/examples.md")
+    for stale in ("--include-conditional", "top.q", "top.u_mid.u_leaf.d",
+                  "class pkt", "compare_status"):
+        assert stale not in text, stale
+
+
 def test_skill_links_resolve():
     for path in (SKILL, COMMANDS):
         for target in re.findall(r"\]\(([^)]+\.md)\)", _text(path)):

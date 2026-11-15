@@ -6,7 +6,8 @@ description: Read-only SystemVerilog query + objective verification for RTL debu
 # sv-query — agent query + verify protocol
 
 `sv_query` is the installed CLI (fallback: `python3 run_cli.py` from the repo).
-It is **read-only**: it does not modify RTL or project files.
+It is **read-only with respect to RTL**: queries do not modify RTL/project files.
+`snapshot save` and `filelist prune --apply` write cache/requested output files only.
 
 > The command surface is defined by `sv_query capabilities --json`.
 > Do not trust stale command lists in docs or memory.
@@ -70,7 +71,8 @@ sv_query snapshot save top.sv --filelist top.f --tag "$TAG" --json -q
 Snapshot support is command-specific. It works for graph queries such as
 `drivers/loads/paths/dataflow/verify claim/verify consistency/instances/ports/connections/hierarchy`;
 semantic/source commands (`class`, `constraints`, `covergroups`, `controlflow`, `scope`,
-`params`, `graph`, `trace profile/evidence`) require `--filelist`.
+`params`, `graph`, `trace profile`) require `--filelist`. `trace evidence` accepts
+`--from-snapshot`, but evidence may be null when the snapshot cannot recover source.
 
 See [references/snapshot.md](references/snapshot.md).
 
@@ -80,7 +82,7 @@ See [references/snapshot.md](references/snapshot.md).
 
 ```bash
 sv_query instances --from-snapshot "$TAG" --json -q
-sv_query hierarchy --from-snapshot "$TAG" --depth 3 --json -q
+sv_query hierarchy --from-snapshot "$TAG" --depth 3 --json -q  # deep trees may need 4+
 sv_query ports <instance> --from-snapshot "$TAG" --json -q
 sv_query connections <instance> --from-snapshot "$TAG" --json -q
 ```
@@ -94,6 +96,14 @@ sv_query scope <instance> --filelist rtl.f --json -q
 sv_query params <instance> --filelist rtl.f --json -q
 sv_query graph subgraph <seed> --depth 2 --direction in \
   --edge-kinds driver,connection --max-nodes 80 --filelist rtl.f --json -q
+```
+
+Control/mux branches are a separate edge kind:
+
+```bash
+sv_query graph subgraph <ternary-or-control-node> --edge-kinds branch \
+  --depth 2 --filelist rtl.f --json -q
+sv_query graph nodes --kind OP_TERNARY --filelist rtl.f --json -q
 ```
 
 ### Q. Query facts
@@ -119,6 +129,7 @@ and can mix terminal/control sources into the answer.
 
 ```bash
 sv_query trace evidence <ID> --filelist rtl.f --json -q
+sv_query trace evidence <ID> --from-snapshot "$TAG" --json -q   # may be null
 sv_query trace profile  <ID> --filelist rtl.f --json -q
 ```
 
@@ -128,6 +139,7 @@ points to the declaration/driver. Snapshot mode may return `evidence:null`.
 ### V. Verify before concluding
 
 ```bash
+# signal = target; driver = source (fanin(signal) must contain driver)
 sv_query verify claim --claim '{"type":"driver","signal":"S","driver":"D"}' \
   --from-snapshot "$TAG" --json -q
 
@@ -145,18 +157,19 @@ not a boolean.
 
 | Query | Identity | Count / budget |
 |---|---|---|
-| `drivers` | `result.signals[0].drivers[].id`, `driver_count` | `pre_filter_count`, `truncated`, `truncated_by_depth` |
+| `drivers` | `result.signals[0].drivers[].id`, `driver_count` (distinct DRIVER sources; excludes CLOCK/RESET; pre-cap) | `count` (returned items, post-cap), `pre_filter_count`, `truncated`, `truncated_by_depth` |
 | `loads` | `result.signals[0].loads[].id` | `count`, `pre_filter_count`, `truncated` |
 | `paths --canonical` | `found`, `hop_count`, `path`, `candidate_count`, `canonical_policy` | `truncated` |
 | `paths --all` | `count`, `all_paths` | `truncated`, `truncation_reason` |
 | `dataflow analyze` | `is_reachable`, `paths[]`, `search_status` | `truncated`, `truncation_reason` |
 | `trace evidence` | `result.signals[0].evidence.source_location`, `source_text` | `credibility_score`, `is_verified` |
 | `verify claim` | `result.status` | `result.machine.unknown_kind` |
-| `verify consistency` | `verified`, `checks[].status` | `coverage_complete`, `total_violations` |
+| `verify consistency` | `verified`, `checks[].status`, `checks[].checked`, `checks[].violations` | `coverage_complete`, `unknown_checks`, `total_violations` |
 
-`count`/`driver_count` is the returned count after cap; `pre_filter_count` is the
-true neighbor count before cap. `truncated_by_depth=true` means more edges exist
-below the depth boundary.
+`count` is the returned item count after cap. `driver_count` is a separate
+distinct direct-DRIVER count: it excludes CLOCK/RESET and is **not capped** by
+`--max-results`. `pre_filter_count` is the count before cap.
+`truncated_by_depth=true` means more edges exist below the depth boundary.
 
 See [references/fields.md](references/fields.md).
 
@@ -181,12 +194,15 @@ See [references/fields.md](references/fields.md).
    Check node `kind`/`trace profile` and filter; `loads` excludes CLOCK/RESET by default,
    `--include-clock --include-reset` opts in.
 4. **Bare names are ambiguous.** Use canonical/hierarchical ids from `instances`/`drivers`.
-5. **`count` is post-cap.** Inspect `pre_filter_count` and `truncated`.
+5. **`count` is post-cap, but `driver_count` is not.** Inspect `pre_filter_count`,
+   `driver_count`, and `truncated` separately.
 6. **Evidence is a source pointer, not proof.** `credibility_score` is discrete
-   `{0.0,0.2,0.4,0.6,0.8,1.0}`; `is_verified` is snippet+expr/name cross-check.
+   `{0.0,0.2,0.4,0.6,1.0}`; `is_verified` is snippet+expr/name cross-check.
    Do not dump `enclosing_chain` into context.
 7. **Semantic domain is source-only.** `class`/`constraints`/`covergroups`/`controlflow`
    need `--filelist`, not snapshot. Class members must be instance-qualified.
+8. **Driver claim orientation.** `signal` is the target; `driver` is the source.
+   Reversing them changes verified ↔ contradicted.
 
 Detailed pitfalls and real evidence: [references/pitfalls.md](references/pitfalls.md).
 
@@ -207,15 +223,15 @@ See [references/semantics.md](references/semantics.md).
 
 ## 8. Output discipline for agents
 
-Return strict JSON. Include an explicit `queries[]` log with the exact command and
-key result fields. Never invent ids; use canonical ids from the tool.
+If the task specifies exact output keys, return **exactly those keys**; do not wrap
+them or add extra keys. Otherwise return strict JSON with key facts and an optional
+`queries[]` audit log. Never invent ids; use canonical ids from the tool.
 
 ```json
 {
   "answer": {"drivers": ["..."], "loads": ["..."]},
   "status": "verified|contradicted|unknown|found|not_found",
-  "queries": [{"cmd": "drivers ... --depth 1", "ok": true}],
-  "notes": "truncated/unknown/runtime caveat"
+  "queries": [{"cmd": "drivers ... --depth 1", "ok": true}]
 }
 ```
 

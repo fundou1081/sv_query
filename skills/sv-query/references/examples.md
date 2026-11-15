@@ -33,31 +33,33 @@ sv_query paths picorv32_axi.axi_adapter.mem_axi_awvalid \
 sv_query filelist prune --filelist axi.f --top axi_adapter --output ax.f --apply --json -q
 sv_query snapshot save axi_adapter.sv --filelist ax.f --tag axi --json -q
 
-sv_query drivers axi_adapter.s_axi_awready --from-snapshot axi --depth 1 --json -q
-# drivers=1, loads=0 (replayed)
-sv_query loads axi_adapter.s_axi_rready --from-snapshot axi --depth 1 --json -q
+sv_query drivers axi_adapter.s_axi_awready --from-snapshot "$TAG" --depth 1 --json -q
+# drivers=1, loads=0 (replayed on pruned AXI snapshot)
+sv_query loads axi_adapter.s_axi_rready --from-snapshot "$TAG" --depth 1 --json -q
 # drivers=0, loads=1
 ```
 
 ## Short: OpenTitan UART neighbors
 
 ```bash
-sv_query drivers uart.u_reg.intr_test_qe --from-snapshot uart --depth 1 --json -q
-sv_query loads   uart.u_reg.intr_test_qe --from-snapshot uart --depth 1 --json -q
-# current: 1 driver, 9 loads; frozen expected had 2 drivers — report current.
+sv_query drivers uart.u_reg.intr_test_qe --from-snapshot "$TAG" --depth 1 --json -q
+sv_query loads   uart.u_reg.intr_test_qe --from-snapshot "$TAG" --depth 1 --json -q
+# current: 1 driver (primary side), 9 loads. The corpus's "empty side" qe
+# has 2 drivers; do not conflate the two signals.
 ```
 
 ## Short: verify claims
 
 ```bash
+# signal = TARGET, driver = SOURCE
 sv_query verify claim \
-  --claim '{"type":"driver","signal":"i2c.i2c_core.scl_out_fsm","driver":"i2c.cio_scl_en_o"}' \
-  --from-snapshot i2c --json -q
-# status=contradicted (directness matters; do not substitute transitive path)
+  --claim '{"type":"driver","signal":"i2c.cio_scl_en_o","driver":"i2c.i2c_core.scl_out_fsm"}' \
+  --from-snapshot "$TAG" --json -q
+# direct-driver claim: contradicted (not a direct edge); do not substitute a path
 
 sv_query verify claim \
   --claim '{"type":"path","from":"uart.uart_core.nonexistent_sig","to":"uart.uart_core.rx_val_q"}' \
-  --from-snapshot uart --json -q
+  --from-snapshot "$TAG" --json -q
 # status=unknown; report unknown, not false.
 ```
 
@@ -65,19 +67,21 @@ sv_query verify claim \
 
 ```bash
 # 1. scope
-sv_query instances --from-snapshot deep --json -q
+sv_query instances --from-snapshot "$TAG" --json -q
 
 # 2. path
-sv_query paths top.din top.dout --directed --canonical --from-snapshot deep --json -q
+sv_query paths top.din top.dout --directed --canonical --from-snapshot "$TAG" --json -q
 
-# 3. mux sink neighbors
-sv_query drivers top.u_mid.u_leaf.d --from-snapshot deep --depth 1 --json -q
+# 3. mux sink neighbors (correct hierarchical id)
+sv_query drivers top.u_mid.u_stage.u_leaf.d --from-snapshot "$TAG" --depth 1 --json -q
 
-# 4. conditions
-sv_query controlflow analyze top.u_mid.u_leaf.d --filelist deep_chain.sv --json -q
+# 4. control/mux branches (paths do not traverse them)
+sv_query graph subgraph top.u_mid.u_stage.u_leaf.d --edge-kinds branch \
+  --depth 2 -f deep_chain.sv --json -q
 
-# 5. source evidence
-sv_query trace evidence top.u_mid.u_leaf.d --filelist deep_chain.sv --json -q
+# 5. conditions / evidence (use -f for a single .sv, not --filelist)
+sv_query controlflow analyze top.u_mid.u_stage.u_leaf.d -f deep_chain.sv --json -q
+sv_query trace evidence top.dout -f deep_chain.sv --json -q
 ```
 
 Current canonical path is 10 hops (11 nodes); older ground truth expected 11 hops
@@ -88,10 +92,11 @@ reason for the difference.
 ## Long: class/constraint chain
 
 ```bash
-sv_query class pkt --relations --filelist rand_coverage.sv --json -q
-sv_query trace constraints top.e.p.len --filelist rand_coverage.sv --json -q
+sv_query class packet --relations -f rand_coverage.sv --json -q
+sv_query class packet --member addr -f rand_coverage.sv --json -q
+sv_query trace constraints top.e.p.len -f rand_coverage.sv --json -q
 sv_query trace constraint-chain top.e.p.addr top.e.p.len \
-  --filelist rand_coverage.sv --json -q
+  -f rand_coverage.sv --json -q
 ```
 
 Use instance-qualified members, and state that constraint links are declared

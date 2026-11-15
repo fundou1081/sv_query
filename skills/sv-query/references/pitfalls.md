@@ -36,7 +36,7 @@ Each item was observed in the local task corpora or reproduced in 2026-11-15 rev
    wholesale; extract `source_location`/`source_text`.
 
 8. **Evidence trust is limited**  
-   `credibility_score` is one of `{0.0,0.2,0.4,0.6,0.8,1.0}`; `is_verified` is a
+   `credibility_score` is one of `{0.0,0.2,0.4,0.6,1.0}`; `is_verified` is a
    snippet+expr/name check. Neither is a proof. A 0.4/0.6 result needs human review.
 
 9. **Semantic commands are source-only**  
@@ -54,5 +54,13 @@ Each item was observed in the local task corpora or reproduced in 2026-11-15 rev
     `audit --checks cdc,risk` is hidden, unstable, and not a fact. It does not
     return evidence; do not present its CDC/risk findings as verified.
 
-12. **`-q` is not a guarantee**  
+12. **Driver claim orientation**  
+    `{"type":"driver","signal":TARGET,"driver":SOURCE}`: `signal` is the target,
+    `driver` is the source. Reversing them flips verified/contradicted.
+
+13. **Control/mux edges need `branch`**  
+    `graph subgraph --edge-kinds driver,connection` omits OP_TERNARY/branch edges.
+    Use `--edge-kinds branch` and `graph nodes --kind OP_TERNARY`.
+
+14. **`-q` is not a guarantee**  
     Some lower-level warnings can still reach stderr. Always parse stdout separately.
