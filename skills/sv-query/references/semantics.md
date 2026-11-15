@@ -11,9 +11,11 @@ sv_query class <Class> --member <member> --filelist rtl.f --json -q
 sv_query class <Class> --member <member> --filelist rtl.f --json -q
 ```
 
-Use instance-qualified member ids (`top.e.p.addr`). Relative `p.addr` can be
-`not_found`. `class` has no `--instance` option; `--instance` belongs to
-`trace covergroup`.
+`class --member` takes a **member name** (`addr`), not an instance-qualified id.
+It returns `candidates[]` (e.g. `top.e.p.addr`); `count=0` can mean “no graph
+instance”, so report candidates. `class` has no `--instance` option;
+`--instance` belongs to `trace covergroup`. For `trace constraints`, use the
+instance-qualified id (`top.e.p.addr`).
 
 ## Constraints
 

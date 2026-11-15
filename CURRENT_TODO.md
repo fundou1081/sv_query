@@ -9,14 +9,14 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **无（P176 完成；P62.2 gate no-go）** `<已完成>`
+- **当前 item**: **无（P177 完成；P62.2 gate no-go）** `<已完成>`
   - P173 full status/evidence cleanup：已完成；无 active item
   - P62.2 gate assessment：no-go，不做交互式 debug UI/REPL
 
 ## 📌 当前真实基线
 
 ```text
-canonical:  2741 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  2742 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 
@@ -39,7 +39,7 @@ opensource: 112 passed / 11 skipped / 0 failed
 
 1. CLI/exp truth：`trace impact` 已隐藏；CLI_SURFACE/feature map/EXP_NAMESPACE 已对齐；
 2. 状态文档：CURRENT_TODO/HANDOFF/PLAN/契约已对齐；
-3. 证据：退役 zombie/coverage-suggest tests；canonical 2741；
+3. 证据：退役 zombie/coverage-suggest tests；canonical 2742；
 4. coverage POC：conftest 改为 lazy import；公开示例已改写/归档。
 
 ## 🚫 不要再做的事

@@ -14,9 +14,17 @@ sv_query loads picorv32_axi.axi_adapter.mem_valid \
   -f picorv32.v --depth 1 --json -q
 # current local replay: 6 direct loads; count=6, truncated=false
 
+# default one-path mode: use for shortest/minimal questions
 sv_query paths picorv32_axi.axi_adapter.mem_axi_bvalid \
-  picorv32_axi.axi_adapter.mem_valid --directed --canonical -f picorv32.v --json -q
+  picorv32_axi.axi_adapter.mem_valid --directed -f picorv32.v --json -q
 # found=true; hop_count=12 (directed). Undirected would be misleading.
+
+# canonical mode selects a max-nodes variant, not necessarily shortest:
+# for P111 bvalid -> xfer_done, default is 2 hops but --canonical is 13 hops.
+sv_query paths picorv32_axi.axi_adapter.mem_axi_bvalid \
+  picorv32_axi.axi_adapter.xfer_done --directed -f picorv32.v --json -q
+# found=true; hop_count=2. Do not add --canonical unless the question asks for
+# the most granular deterministic variant.
 ```
 
 ## Short: negative answer
@@ -44,8 +52,9 @@ sv_query loads axi_adapter.s_axi_rready --from-snapshot "$TAG" --depth 1 --json 
 ```bash
 sv_query drivers uart.u_reg.intr_test_qe --from-snapshot "$TAG" --depth 1 --json -q
 sv_query loads   uart.u_reg.intr_test_qe --from-snapshot "$TAG" --depth 1 --json -q
-# current: 1 driver (primary side), 9 loads. The corpus's "empty side" qe
-# has 2 drivers; do not conflate the two signals.
+# primary side: 1 driver, 9 loads.
+# empty-side `tx_watermark.qe`: current = 1 driver / 0 loads;
+# old corpus expected 2 drivers — semantic drift, report current and note it.
 ```
 
 ## Short: verify claims
@@ -88,6 +97,15 @@ Current canonical path is 10 hops (11 nodes); older ground truth expected 11 hop
 including a ternary node. The ternary is a control edge, not a data path (see
 [pitfalls.md](pitfalls.md)). Report the current canonical result and the semantic
 reason for the difference.
+
+For mux/control questions, do not seed `paths` or `graph subgraph` with `top.q`:
+first find ternaries, then expand branch edges:
+
+```bash
+sv_query graph nodes --kind OP_TERNARY -f mux_neighborhood.sv --json -q
+sv_query graph subgraph 'top.u.lo.ternary_sel[0]' --edge-kinds branch \
+  --depth 2 -f mux_neighborhood.sv --json -q
+```
 
 ## Long: class/constraint chain
 

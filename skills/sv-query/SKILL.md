@@ -114,7 +114,11 @@ Direct neighbors must use `--depth 1`:
 sv_query drivers <ID> --from-snapshot "$TAG" --depth 1 --json -q
 sv_query loads   <ID> --from-snapshot "$TAG" --depth 1 --json -q
 
+# default: one path, suitable for shortest/minimal questions
+sv_query paths <SRC> <DST> --directed --from-snapshot "$TAG" --json -q
+# canonical: max-nodes deterministic variant, for "most granular" deep chains
 sv_query paths <SRC> <DST> --directed --canonical --from-snapshot "$TAG" --json -q
+# all variants
 sv_query paths <SRC> <DST> --directed --all --max 20 --from-snapshot "$TAG" --json -q
 
 sv_query dataflow analyze <SRC> <DST> --max-paths 5 --from-snapshot "$TAG" --json -q
@@ -149,15 +153,16 @@ sv_query verify claim --claim '{"type":"path","from":"A","to":"B"}' \
 sv_query verify consistency --checks connection --from-snapshot "$TAG" --json -q
 ```
 
-Read `result.status`: `verified` / `contradicted` / `unknown`.
+For `verify claim`, read `result.status`: `verified` / `contradicted` / `unknown`.
 `unknown` is not false. For a claim with a missing endpoint, report the status,
-not a boolean.
+not a boolean. For `verify consistency`, read `result.verified`,
+`unknown_checks[]`, and `checks[].checked`; there is no top-level `result.status`.
 
 ## 4. Field contract (the short list)
 
 | Query | Identity | Count / budget |
 |---|---|---|
-| `drivers` | `result.signals[0].drivers[].id`, `driver_count` (distinct DRIVER sources; excludes CLOCK/RESET; pre-cap) | `count` (returned items, post-cap), `pre_filter_count`, `truncated`, `truncated_by_depth` |
+| `drivers` | `result.signals[0].drivers[].id`; `driver_count` counts **only direct DRIVER-edge sources** (not CONNECTION/PORT, ternary/branch, clock/reset/const) | `count` (all returned items, post-cap), `pre_filter_count`, `truncated`, `truncated_by_depth` |
 | `loads` | `result.signals[0].loads[].id` | `count`, `pre_filter_count`, `truncated` |
 | `paths --canonical` | `found`, `hop_count`, `path`, `candidate_count`, `canonical_policy` | `truncated` |
 | `paths --all` | `count`, `all_paths` | `truncated`, `truncation_reason` |
@@ -167,8 +172,10 @@ not a boolean.
 | `verify consistency` | `verified`, `checks[].status`, `checks[].checked`, `checks[].violations` | `coverage_complete`, `unknown_checks`, `total_violations` |
 
 `count` is the returned item count after cap. `driver_count` is a separate
-distinct direct-DRIVER count: it excludes CLOCK/RESET and is **not capped** by
-`--max-results`. `pre_filter_count` is the count before cap.
+count of **DRIVER-edge sources only**; it excludes CONNECTION/PORT, ternary/branch,
+CLOCK/RESET, and constants, and is **not capped** by `--max-results`.
+For “list all direct drivers”, use `count`/`drivers[].id`, not `driver_count`.
+`pre_filter_count` is the count before cap.
 `truncated_by_depth=true` means more edges exist below the depth boundary.
 
 See [references/fields.md](references/fields.md).
@@ -185,24 +192,29 @@ See [references/fields.md](references/fields.md).
   stdout and stderr separately and check whether stdout parses.
 - `-q` suppresses most stderr, not all; do not merge stderr into JSON.
 
-## 6. Seven pitfalls
+## 6. Pitfalls
 
 1. **`paths` default is undirected.** Always use `--directed` for dataflow direction.
 2. **Ternary/mux is not a data path.** `paths` uses DRIVER/CONNECTION; `OP_TERNARY`
    is control/branch. Do not claim a path passes through ternary unless edges show it.
 3. **`drivers --depth 1` can include CLOCK/RESET/constant/ternary sources.**
    Check node `kind`/`trace profile` and filter; `loads` excludes CLOCK/RESET by default,
-   `--include-clock --include-reset` opts in.
+   `--include-clock --include-reset` opts in. `driver_count` is not the same as
+   `len(drivers)`; it counts only DRIVER-edge sources.
 4. **Bare names are ambiguous.** Use canonical/hierarchical ids from `instances`/`drivers`.
 5. **`count` is post-cap, but `driver_count` is not.** Inspect `pre_filter_count`,
    `driver_count`, and `truncated` separately.
 6. **Evidence is a source pointer, not proof.** `credibility_score` is discrete
    `{0.0,0.2,0.4,0.6,1.0}`; `is_verified` is snippet+expr/name cross-check.
+   Source `trace evidence` can be null for buses/arrays and can point at a reset
+   branch; use `trace profile.source.driver` for the functional assignment.
    Do not dump `enclosing_chain` into context.
 7. **Semantic domain is source-only.** `class`/`constraints`/`covergroups`/`controlflow`
    need `--filelist`, not snapshot. Class members must be instance-qualified.
 8. **Driver claim orientation.** `signal` is the target; `driver` is the source.
    Reversing them changes verified ↔ contradicted.
+9. **`class --member` takes a member name, not an instance-qualified id.**
+   It returns `candidates[]`; `--instance` belongs to `trace covergroup`.
 
 Detailed pitfalls and real evidence: [references/pitfalls.md](references/pitfalls.md).
 

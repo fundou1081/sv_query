@@ -9,7 +9,8 @@
 |---|---|
 | Who drives X? | `drivers X --depth 1` |
 | Who reads X? | `loads X --depth 1` |
-| Is there a directed path A→B? | `paths A B --directed --canonical` |
+| Shortest/minimal directed path A→B? | `paths A B --directed` |
+| Most-granular deterministic variant? | `paths A B --directed --canonical` |
 | All paths / variants? | `paths A B --directed --all --max 20` |
 | Value/data flow with conditions/latency? | `dataflow analyze A B --max-paths 5` |
 | Why is X driven this way? | `controlflow analyze X` |
@@ -33,6 +34,7 @@ sv_query drivers top.u.data --from-snapshot "$TAG" --depth 1 --json -q
 sv_query loads   top.u.data --from-snapshot "$TAG" --depth 1 --json -q
 
 # paths
+sv_query paths top.a top.y --directed --from-snapshot "$TAG" --json -q
 sv_query paths top.a top.y --directed --canonical --from-snapshot "$TAG" --json -q
 sv_query paths top.a top.y --directed --all --max 20 --from-snapshot "$TAG" --json -q
 

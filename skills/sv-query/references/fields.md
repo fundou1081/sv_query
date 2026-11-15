@@ -27,8 +27,9 @@ result.signals[]                # one per requested signal
   signal, index, count, pre_filter_count, truncated, resolution,
   resolved_signal, candidates, suggestions, error
   drivers[] / loads[]           # nodes
-  driver_count                  # drivers only: distinct direct DRIVER sources;
-                                # excludes CLOCK/RESET; NOT capped by -N
+  driver_count                  # distinct direct DRIVER-edge sources only;
+                                # excludes CONNECTION/PORT, ternary/branch,
+                                # CLOCK/RESET, constants; NOT capped by -N
   driver_conflict               # drivers only, heuristic
   dynamic_index, function_call, runtime_system_call
   conditions[], condition_truncated
@@ -68,20 +69,31 @@ timing_risk, risk_model
 
 `timing_risk`/`risk_model` are heuristic labels, not measurement.
 
-Snapshot caveat: a legacy snapshot without MIG can return
-`checks[].status=unknown, checked=0` while `coverage_complete=true`.
-Read `unknown_checks` and `checks[].checked`; do not treat that as a pass.
+## 4.1 Verify consistency
+
+```text
+verified, coverage_complete, unknown_checks, total_violations,
+checks[] {check,status,checked,skipped,violations}
+```
+
+There is no top-level `result.status` for consistency. A legacy snapshot without
+MIG can return `checks[].status=unknown, checked=0` while `coverage_complete=true`;
+read `unknown_checks`/`checked`, do not treat that as a pass.
 
 ## 5. Evidence / profile
 
 `trace evidence`:
 
 ```text
-result.signals[0].evidence
+result.signals[0].evidence   # can be null for buses/arrays or legacy snapshots
   source_location {file,line_start,line_end,column}
   source_text, enclosing_always/if/assign/class/constraint,
   enclosing_chain, credibility_score, is_verified
 ```
+
+If evidence is null or points at a reset branch, use
+`trace profile.source.driver` for the functional assignment; bit-slice evidence
+may work when the bus evidence does not.
 
 `credibility_score ∈ {0.0,0.2,0.4,0.6,1.0}` (0.8 is unreachable). `is_verified`
 is a snippet + expression/name cross-check, **not** a proof.

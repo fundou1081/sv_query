@@ -41,8 +41,9 @@ Each item was observed in the local task corpora or reproduced in 2026-11-15 rev
 
 9. **Semantic commands are source-only**  
    `class`, `trace constraints`, `trace covergroups`, `controlflow analyze` do not
-   accept `--from-snapshot` (see [snapshot.md](snapshot.md)). Class members need
-   instance-qualified ids (`top.e.p.addr`, not `p.addr`).
+   accept `--from-snapshot` (see [snapshot.md](snapshot.md)). `class --member`
+   takes a member name (`addr`); `trace constraints`/coverpoint queries use the
+   instance-qualified id (`top.e.p.addr`).
 
 10. **Coverpoint reverse lookup can fail**  
     `trace coverpoints <instance member>` may return `count=0` with
@@ -54,13 +55,18 @@ Each item was observed in the local task corpora or reproduced in 2026-11-15 rev
     `audit --checks cdc,risk` is hidden, unstable, and not a fact. It does not
     return evidence; do not present its CDC/risk findings as verified.
 
-12. **Driver claim orientation**  
+12. **`driver_count` is not `len(drivers)`**  
+    It counts only direct DRIVER-edge sources; CONNECTION/PORT, ternary/branch,
+    CLOCK/RESET and constants are not counted. Use `count`/`drivers[].id` for
+    “all direct drivers”.
+
+13. **Driver claim orientation**  
     `{"type":"driver","signal":TARGET,"driver":SOURCE}`: `signal` is the target,
     `driver` is the source. Reversing them flips verified/contradicted.
 
-13. **Control/mux edges need `branch`**  
+14. **Control/mux edges need `branch`**  
     `graph subgraph --edge-kinds driver,connection` omits OP_TERNARY/branch edges.
     Use `--edge-kinds branch` and `graph nodes --kind OP_TERNARY`.
 
-14. **`-q` is not a guarantee**  
+15. **`-q` is not a guarantee**  
     Some lower-level warnings can still reach stderr. Always parse stdout separately.

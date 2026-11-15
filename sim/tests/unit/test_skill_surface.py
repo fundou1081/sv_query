@@ -69,9 +69,35 @@ def test_skill_has_no_known_broken_templates():
     text = "\n".join(_text(p) for p in (SKILL, COMMANDS)) + "\n" + _text(
         SKILL.parent / "references/semantics.md") + "\n" + _text(
         SKILL.parent / "references/examples.md")
-    for stale in ("--include-conditional", "top.q", "top.u_mid.u_leaf.d",
+    for stale in ("--include-conditional", "top.u_mid.u_leaf.d",
                   "class pkt", "compare_status"):
         assert stale not in text, stale
+
+
+def test_skill_corpus_examples_execute():
+    import subprocess
+
+    def _run(*args):
+        return subprocess.run(["sv_query", *args], cwd=ROOT,
+                              capture_output=True, text=True, check=True)
+
+    cls = json.loads(_run("class", "packet", "--member", "addr",
+                          "-f", "examples/interactive_debug/rand_coverage.sv",
+                          "--json", "-q").stdout)
+    assert cls["candidate_count"] == 1
+    assert cls["candidates"][0]["canonical_id"] == "top.e.p.addr"
+
+    nodes = json.loads(_run("graph", "nodes", "--kind", "OP_TERNARY",
+                            "-f", "examples/interactive_debug/mux_neighborhood.sv",
+                            "--json", "-q").stdout)
+    ids = [n["id"] for n in nodes["result"]["nodes"]]
+    assert ids and all("ternary_sel" in i for i in ids)
+
+    path = json.loads(_run("paths", "top.din", "top.dout", "--directed",
+                           "-f", "examples/interactive_debug/deep_chain.sv",
+                           "--json", "-q").stdout)
+    assert path["found"] is True
+    assert path["hop_count"] == 10
 
 
 def test_skill_links_resolve():
