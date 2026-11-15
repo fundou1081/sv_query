@@ -50,7 +50,8 @@ different flags blindly.
 ## 4. Snapshot limits
 
 - Snapshot stores graph + optional MIG; source recovery may be unavailable.
-  `trace evidence --from-snapshot` can return `evidence:null` — report the limitation,
-  do not say “no assignment exists”.
+  `trace evidence --from-snapshot` returns a keyed evidence object; when source is
+  unavailable, `source_location` is null and `is_verified=false` — report the
+  limitation, do not say “no assignment exists”.
 - A snapshot is a time-point artifact. If the code changed, rebuild it.
 - `snapshot list` returns a top-level array; `snapshot compare` uses tags.

@@ -139,7 +139,8 @@ sv_query trace profile  <ID> --filelist rtl.f --json -q
 ```
 
 `trace evidence` points to the assignment/always line. `trace profile.source`
-points to the declaration/driver. Snapshot mode may return `evidence:null`.
+points to the declaration/driver. Snapshot mode returns a keyed evidence object;
+`source_location` may be null and `is_verified=false` when source isn't recoverable.
 
 ### V. Verify before concluding
 

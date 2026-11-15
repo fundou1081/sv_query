@@ -44,27 +44,31 @@ def _read_source_text(file_name: str) -> str | None:
 
 def _line_is_lhs(text: str, signal: str) -> bool:
     leaf = signal.rsplit(".", 1)[-1]
-    return bool(re.search(rf"\b{re.escape(leaf)}\s*(?:\[[^\]]+\])?\s*(?:<=|=|<)", text))
+    code = (text or "").split("//")[0].strip()
+    if code.startswith("/*"):
+        return False
+    pat = re.compile(
+        rf"^(?:else\s+)?(?:if\s*\([^)]*\)\s*)?(?:assign\s+)?"
+        rf"{re.escape(leaf)}\b\s*(?:\[[^\]]+\])?\s*(?:<=|=(?!=))")
+    return bool(pat.search(code))
 
 
 def _nearest_if_is_reset(lines: list[str], lo: int, idx: int) -> bool:
     for j in range(idx, lo - 1, -1):
-        line = lines[j]
-        if "if" in line:
-            m = re.search(r"if\s*\((.*?)\)", line)
-            return bool(m and _is_reset_condition(m.group(1)))
+        code = lines[j].split("//")[0]
+        m = re.search(r"\bif\s*\(([^)]*)\)", code)
+        if m:
+            return _is_reset_condition(m.group(1))
     return False
 
 
 def _find_functional_assignment(signal: str, file_text: str,
                                 start: int, end: int) -> tuple[int, str] | None:
     """Find the non-reset LHS assignment line for a signal in a source range."""
-    leaf = signal.rsplit(".", 1)[-1]
-    pat = re.compile(rf"\b{re.escape(leaf)}\s*(?:\[[^\]]+\])?\s*(?:<=|=|<)")
     lines = file_text.splitlines()
     lo = max(0, start - 1)
     hi = min(len(lines), end if end else len(lines))
-    candidates = [i for i in range(lo, hi) if pat.search(lines[i])]
+    candidates = [i for i in range(lo, hi) if _line_is_lhs(lines[i], signal)]
     for idx in reversed(candidates):
         if _nearest_if_is_reset(lines, lo, idx):
             continue
@@ -78,7 +82,7 @@ def _find_functional_assignment(signal: str, file_text: str,
 
 def _is_reset_condition(cond: str) -> bool:
     c = (cond or "").strip().lower()
-    return any(tok in c for tok in ("rst", "reset")) and "&&" not in c and "||" not in c
+    return bool(re.search(r"\b(?:rst|reset)(?:_|\b)", c)) and "&&" not in c and "||" not in c
 
 
 def _line_has_reset_edge(graph, signal: str, line: int) -> bool:

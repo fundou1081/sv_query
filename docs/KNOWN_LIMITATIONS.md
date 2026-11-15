@@ -356,7 +356,7 @@ signal 级 `precision` + `coarse_fallback`）；`capabilities.bit_precision` 契
 
 | 路径 | 能给什么 | 不能给什么 |
 |---|---|---|
-| `trace evidence --from-snapshot` | 边的 `file` / `line` / `expression` / `condition` | **源码原文**（不伪造 `source_text`） |
+| `trace evidence --from-snapshot` | 边的 `file` / `line` / `expression` / `condition`；能访问源码树时读真实 `source_text` | 无源码树时的源码行（不伪造） |
 | tool 侧 `intent=evidence` | `edge_evidence[]`：src/dst/file/line/expression/condition/`source_line` | `source_line` 需 `SVQ_SOURCE_ROOT` 下能按 basename 唯一命中 |
 
 **可观察后果**：CLI 的 snapshot 路径**只给位置**，不给源码行；agent 侧要拿到

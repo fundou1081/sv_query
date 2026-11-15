@@ -109,3 +109,44 @@ def test_reset_in_else_does_not_win(tmp_path):
     ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
     assert ev["source_location"]["line_start"] == 3
     assert ev["source_text"] == "if (en) q <= d;"
+
+
+def test_comparison_is_not_assignment(tmp_path):
+    src = tmp_path / "cmp.sv"
+    src.write_text(
+        "module top(input clk, en, d, output reg q, output reg valid);\n"
+        "  always_ff @(posedge clk) begin\n"
+        "    if (en) q <= d;\n"
+        "    if (q == 1'b0) valid <= 1'b1;\n"
+        "  end\n"
+        "endmodule\n")
+    r = subprocess.run(
+        ["sv_query", "trace", "evidence", "top.q", "-f", str(src),
+         "--json", "-q"], capture_output=True, text=True, timeout=60,
+        cwd=str(PROJECT_ROOT))
+    assert r.returncode == 0, r.stderr[-300:]
+    ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
+    assert ev["source_location"]["line_start"] == 3
+    assert ev["source_text"] == "if (en) q <= d;"
+
+
+def test_reset_comment_does_not_defeat_functional_branch(tmp_path):
+    src = tmp_path / "reset_comment.sv"
+    src.write_text(
+        "module top(input clk, rst_n, en, d, output reg q);\n"
+        "  always_ff @(posedge clk or negedge rst_n) begin\n"
+        "    if (en) q <= d;\n"
+        "    else if (!rst_n) begin\n"
+        "      // shift reset to zero\n"
+        "      q <= 1'b0;\n"
+        "    end\n"
+        "  end\n"
+        "endmodule\n")
+    r = subprocess.run(
+        ["sv_query", "trace", "evidence", "top.q", "-f", str(src),
+         "--json", "-q"], capture_output=True, text=True, timeout=60,
+        cwd=str(PROJECT_ROOT))
+    assert r.returncode == 0, r.stderr[-300:]
+    ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
+    assert ev["source_location"]["line_start"] == 3
+    assert ev["source_text"] == "if (en) q <= d;"

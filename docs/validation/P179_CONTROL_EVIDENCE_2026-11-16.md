@@ -37,6 +37,8 @@ dout <= data;
 - `trace profile.source.driver` 同步改为 functional assignment；
 - snapshot evidence 也走 LHS 扫描，source 路径可跨 cwd 回退；
 - 支持 reset-in-else；不再取最后一个 reset 赋值；
+- assignment 扫描只接受真正 LHS（排除 `==`/`<`/注释）；
+- reset 条件用 word boundary，避免 `first` 误命中 `rst`；
 - 读取失败不再 `except: pass`，改为 logger.debug。
 
 ## 4. 测试
