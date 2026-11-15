@@ -30,8 +30,23 @@ logger = logging.getLogger(__name__)
 _REPO_ROOT = Path(__file__).resolve().parents[4]
 
 
-def _read_source_text(file_name: str) -> str | None:
-    """Read a source file, tolerating relative paths from another cwd."""
+def _compiler_sources(adapter) -> dict[str, str]:
+    compiler = getattr(adapter, "_compiler", None)
+    if compiler is None:
+        return {}
+    return dict(getattr(compiler, "sources", {}) or {})
+
+
+def _read_source_text(file_name: str, sources: dict[str, str] | None = None) -> str | None:
+    """Read a source file, tolerating basenames from filelist mode."""
+    if sources:
+        for key, text in sources.items():
+            if Path(key).name != Path(file_name).name:
+                continue
+            try:
+                return Path(key).read_text(errors="ignore")
+            except OSError:
+                return text
     p = Path(file_name)
     candidates = [p] if p.is_absolute() else [Path.cwd() / p, _REPO_ROOT / p]
     for candidate in candidates:
@@ -42,11 +57,15 @@ def _read_source_text(file_name: str) -> str | None:
     return None
 
 
+def _strip_block_comments(text: str) -> str:
+    def _blank(match):
+        return "".join("\n" if ch == "\n" else " " for ch in match.group(0))
+    return re.sub(r"/\*.*?\*/", _blank, text, flags=re.S)
+
+
 def _line_is_lhs(text: str, signal: str) -> bool:
     leaf = signal.rsplit(".", 1)[-1]
-    code = (text or "").split("//")[0].strip()
-    if code.startswith("/*"):
-        return False
+    code = _strip_block_comments(text or "").split("//")[0].strip()
     pat = re.compile(
         rf"^(?:else\s+)?(?:if\s*\([^)]*\)\s*)?(?:assign\s+)?"
         rf"{re.escape(leaf)}\b\s*(?:\[[^\]]+\])?\s*(?:<=|=(?!=))")
@@ -65,7 +84,7 @@ def _nearest_if_is_reset(lines: list[str], lo: int, idx: int) -> bool:
 def _find_functional_assignment(signal: str, file_text: str,
                                 start: int, end: int) -> tuple[int, str] | None:
     """Find the non-reset LHS assignment line for a signal in a source range."""
-    lines = file_text.splitlines()
+    lines = _strip_block_comments(file_text).splitlines()
     lo = max(0, start - 1)
     hi = min(len(lines), end if end else len(lines))
     candidates = [i for i in range(lo, hi) if _line_is_lhs(lines[i], signal)]
@@ -82,7 +101,7 @@ def _find_functional_assignment(signal: str, file_text: str,
 
 def _is_reset_condition(cond: str) -> bool:
     c = (cond or "").strip().lower()
-    return bool(re.search(r"\b(?:rst|reset)(?:_|\b)", c)) and "&&" not in c and "||" not in c
+    return bool(re.search(r"\b(?:rst|reset|arst|nrst)\w*\b", c)) and "&&" not in c and "||" not in c
 
 
 def _line_has_reset_edge(graph, signal: str, line: int) -> bool:
@@ -106,8 +125,8 @@ def _is_const_edge(graph, edge) -> bool:
     return kind == "CONST"
 
 
-def _edge_source_text(loc, expression: str) -> str:
-    text = _read_source_text(getattr(loc, "file", ""))
+def _edge_source_text(loc, expression: str, sources=None) -> str:
+    text = _read_source_text(getattr(loc, "file", ""), sources)
     if text:
         lines = text.splitlines()
         if 0 < getattr(loc, "line_start", 0) <= len(lines):
@@ -119,7 +138,7 @@ def _edge_line_ok(text: str, signal: str) -> bool:
     return bool(text) and _line_is_lhs(text, signal)
 
 
-def _snapshot_edge_evidence(graph, signal: str) -> dict | None:
+def _snapshot_edge_evidence(graph, signal: str, sources=None) -> dict | None:
     """Build assignment-level evidence from snapshot edges.
 
     A snapshot has no source text, but P119 edges carry source_location and
@@ -147,7 +166,7 @@ def _snapshot_edge_evidence(graph, signal: str) -> dict | None:
         item[0].src,
     ))
     edge, loc = candidates[0]
-    source_text = _edge_source_text(loc, getattr(edge, "expression", "") or "")
+    source_text = _edge_source_text(loc, getattr(edge, "expression", "") or "", sources)
     line_ok = _edge_line_ok(source_text, signal)
     return {
         "signal": signal,
@@ -174,48 +193,54 @@ def _evidence_source(d):
 
 def _evidence_is_reset(graph, signal, d):
     text, line = _evidence_source(d)
-    if any(tok in text.lower() for tok in ("rst", "reset")):
+    if _is_reset_condition(text):
         return True
     return _line_has_reset_edge(graph, signal, line)
 
 
-def _with_functional_line(ev_dict, signal: str):
-    if not isinstance(ev_dict, dict):
-        return ev_dict
+def _functional_line_for(ev_dict, signal: str, sources=None):
     loc = ev_dict.get("source_location") or {}
     file_name = loc.get("file", "")
     if not file_name:
-        return ev_dict
-    text = _read_source_text(file_name)
+        return None
+    text = _read_source_text(file_name, sources)
     if text is None:
-        return ev_dict
+        return None
     always = ev_dict.get("enclosing_always") or {}
     start = always.get("line_start") or max(1, loc.get("line_start", 0) - 12)
     end = always.get("line_end") or (loc.get("line_end", 0) + 12)
-    found = _find_functional_assignment(signal, text, start, end)
+    return _find_functional_assignment(signal, text, start, end)
+
+
+def _with_functional_line(ev_dict, signal: str, sources=None):
+    if not isinstance(ev_dict, dict):
+        return ev_dict
+    if ev_dict.get("enclosing_class") or ev_dict.get("enclosing_constraint"):
+        return ev_dict
+    found = _functional_line_for(ev_dict, signal, sources)
     if found is None:
         return ev_dict
     line, source = found
     ev_dict = dict(ev_dict)
-    ev_dict["source_location"] = {**loc, "line_start": line, "line_end": line}
+    ev_dict["source_location"] = {**ev_dict["source_location"],
+                                  "line_start": line, "line_end": line}
     ev_dict["source_text"] = source
     leaf = signal.rsplit(".", 1)[-1]
     ev_dict["is_verified"] = leaf in source
     ev_dict["credibility_score"] = 1.0 if leaf in source else 0.2
     return ev_dict
 
-
-def _resolve_evidence_dict(resolver, graph, signal: str) -> dict | None:
+def _resolve_evidence_dict(resolver, graph, signal: str, sources=None) -> dict | None:
     ev_dict = _evidence_to_dict(resolver.resolve(signal))
-    fallback = _snapshot_edge_evidence(graph, signal)
+    fallback = _snapshot_edge_evidence(graph, signal, sources)
     text, _ = _evidence_source(ev_dict)
     if not ev_dict or not text:
         return _with_functional_line(
-            fallback if fallback is not None else ev_dict, signal)
+            fallback if fallback is not None else ev_dict, signal, sources)
     if (fallback is not None and _evidence_is_reset(graph, signal, ev_dict)
             and not _evidence_is_reset(graph, signal, fallback)):
-        return _with_functional_line(fallback, signal)
-    return _with_functional_line(ev_dict, signal)
+        return _with_functional_line(fallback, signal, sources)
+    return _with_functional_line(ev_dict, signal, sources)
 
 def evidence(
     signal: str = typer.Argument(None, help="Signal to query (e.g., top.q). Optional when --batch or --batch-file is used."),
@@ -241,6 +266,7 @@ def evidence(
         signals = _collect_signals(signal, batch_file, batch)
         # [Stage 5] 用公共 helper build resolver (其他 4 个命令也共用)
         resolver, _graph, _sem = _build_evidence_resolver(file=file, filelist=filelist, preprocess_macros=preprocess_macros, from_snapshot=from_snapshot)
+        _sources = _compiler_sources(_sem)
 
         # [B1 2026-07-03] Batch mode
         # [A3 2026-07-04] Per-signal try/except: failed signals go to errors[], continue on others
@@ -262,7 +288,7 @@ def evidence(
                     evidences = resolver.resolve_chain(_query_sig)
                     ev_dicts = [_evidence_to_dict(e) for e in evidences]
                 else:
-                    ev_dicts = _resolve_evidence_dict(resolver, _graph, _query_sig)
+                    ev_dicts = _resolve_evidence_dict(resolver, _graph, _query_sig, _sources)
                 signals_result.append({
                     "signal": sig,
                     "index": i,

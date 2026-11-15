@@ -150,3 +150,38 @@ def test_reset_comment_does_not_defeat_functional_branch(tmp_path):
     ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
     assert ev["source_location"]["line_start"] == 3
     assert ev["source_text"] == "if (en) q <= d;"
+
+
+def test_filelist_evidence_uses_full_source_path(tmp_path):
+    fl = tmp_path / "sync.f"
+    fl.write_text(str(FIXTURE) + "\n")
+    for sig, line in (("sync_fifo.data_out", 33), ("sync_fifo.reg_stage1", 32)):
+        r = subprocess.run(
+            ["sv_query", "trace", "evidence", sig, "--filelist", str(fl),
+             "--json", "-q"], capture_output=True, text=True, timeout=60,
+            cwd=str(PROJECT_ROOT))
+        assert r.returncode == 0, r.stderr[-300:]
+        ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
+        assert ev["source_location"]["line_start"] == line
+        assert ev["is_verified"] is True
+
+
+def test_block_comment_is_not_assignment(tmp_path):
+    src = tmp_path / "block.sv"
+    src.write_text(
+        "module top(input clk, rst_n, en, d, output reg q);\n"
+        "  always_ff @(posedge clk or negedge rst_n) begin\n"
+        "    if (en) q <= d;\n"
+        "    /* reset path\n"
+        "       q <= 1'b0;\n"
+        "    */\n"
+        "  end\n"
+        "endmodule\n")
+    r = subprocess.run(
+        ["sv_query", "trace", "evidence", "top.q", "-f", str(src),
+         "--json", "-q"], capture_output=True, text=True, timeout=60,
+        cwd=str(PROJECT_ROOT))
+    assert r.returncode == 0, r.stderr[-300:]
+    ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
+    assert ev["source_location"]["line_start"] == 3
+    assert ev["source_text"] == "if (en) q <= d;"

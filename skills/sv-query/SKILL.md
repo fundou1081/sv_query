@@ -134,7 +134,7 @@ and can mix terminal/control sources into the answer.
 
 ```bash
 sv_query trace evidence <ID> --filelist rtl.f --json -q
-sv_query trace evidence <ID> --from-snapshot "$TAG" --json -q   # may be null
+sv_query trace evidence <ID> --from-snapshot "$TAG" --json -q   # keyed; source may be null
 sv_query trace profile  <ID> --filelist rtl.f --json -q
 ```
 

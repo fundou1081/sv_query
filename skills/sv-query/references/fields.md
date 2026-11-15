@@ -133,7 +133,7 @@ Reasons include `no_structural_edge`, `instance_boundary`, `cycle_or_all_seen`,
 | missing `-f`/`--filelist` | 1 | graph core often JSON; class/constraints now JSON error |
 | unknown flag | 2 | plain text |
 | `--json` audit invalid checks | 1 | plain text, **no JSON** |
-| `trace evidence --from-snapshot` bus/legacy | 0 | keyed evidence; source_location null, is_verified false |
+| `trace evidence --from-snapshot` bus/legacy | 0 | keyed evidence; source_location may be null or expression-only; is_verified false |
 
 Rules:
 

@@ -14,7 +14,7 @@
 |---|---|---|
 | 源码规模 | 139 文件 / 49,650 行 | `find src -name "*.py"`（2026-11-15 实测） |
 | 测试规模 | 392 测试文件 / 65013 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-15 实测） |
-| 全量 (canonical) | **2753 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-15 P173 全量复核**（本机；deferred 口径）；含 zombie tests 清理后的 canonical；**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
+| 全量 (canonical) | **2755 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-15 P173 全量复核**（本机；deferred 口径）；含 zombie tests 清理后的 canonical；**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 迭代记录 | `docs/task_tree/iterations/` (514 份, 只增不改) | 每次迭代一份（2026-11-15 实测） |
