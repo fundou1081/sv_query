@@ -166,6 +166,9 @@ sv_query 只保留：
 如果要做 RTL typo 产品：**以 sv_query 为基底（graph/query/evidence），单开项目**，
 独立测试、CI、claim 和发布；不要把 typo clustering/heuristic 重新塞回 core。
 
+**现状（2026-11-15）**：`rtl_typo_checker` 目前使用自己的 pyslang graph builder，
+**没有依赖 sv_query**；上面的“以 sv_query 为基底”是未来目标，不是已实现事实。
+
 ---
 
 ## 5. 现有能力优先级

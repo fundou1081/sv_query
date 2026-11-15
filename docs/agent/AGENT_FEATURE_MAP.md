@@ -400,7 +400,7 @@
 - **坑**: 这是**候选**审查，不是缺陷证明；`confidence` 低时需人工确认。
   `truncated:true` 表示还有 finding 未返回。当前 check 只有
   `symmetry.port_set`。RTL typo detection/ranking 是独立项目
-  `rtl_typo_checker`，不要从本命令推断笔误结论。
+  `rtl_typo_checker`（当前未依赖 sv_query），不要从本命令推断笔误结论。
 - **例**: `sv_query verify structural --filelist rtl.f --json`
 
 ---

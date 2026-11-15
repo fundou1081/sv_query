@@ -32,7 +32,7 @@ opensource: 112 passed / 11 skipped / 0 failed
 
 - 39 core + 6 exp（exp 是 hidden 直接命令，不是 `svq exp` 命名空间）；
 - coverage generation / `coverage.gen` 暂不推进；若重启，以 sv_query 为基底单开项目；
-- RTL typo detection / ranking 属于独立项目 `rtl_typo_checker`；sv_query 只保留客观 structural 检查；
+- RTL typo detection / ranking 属于独立项目 `rtl_typo_checker`（当前未依赖 sv_query）；sv_query 只保留客观 structural 检查；
 - interactive debug（P62.2）gate 评估为 no-go，不开发 UI/REPL。
 
 ## ✅ P173 清理结果
