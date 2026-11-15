@@ -78,9 +78,10 @@ def _edge_matches(edge: TraceEdge, kinds: set[str]) -> bool:
         # legacy "control" = conditional DRIVER; also include branch/ternary
         if edge.kind in _EDGE_NAMES["branch"]:
             return True
-        if edge.kind == EdgeKind.DRIVER:
-            return bool(getattr(edge, "condition", "") or
-                        getattr(edge, "condition_chain", None))
+        if edge.kind == EdgeKind.DRIVER and (
+                getattr(edge, "condition", "") or
+                getattr(edge, "condition_chain", None)):
+            return True
     return any(name in kinds and edge.kind in accepted
                for name, accepted in _EDGE_NAMES.items())
 

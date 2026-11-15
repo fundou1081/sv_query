@@ -122,7 +122,7 @@ def _find_functional_assignment(signal: str, file_text: str,
 
 def _is_reset_condition(cond: str) -> bool:
     c = (cond or "").strip().lower()
-    return bool(re.search(r"\b(?:rst|reset|arst|nrst)\w*\b", c)) and "&&" not in c and "||" not in c
+    return bool(re.search(r"(?:^|[^a-z0-9])(?:a?reset|s?rst|arst|nrst)\w*", c)) and "&&" not in c and "||" not in c
 
 
 def _line_has_reset_edge(graph, signal: str, line: int) -> bool:

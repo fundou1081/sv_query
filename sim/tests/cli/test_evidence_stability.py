@@ -227,7 +227,7 @@ def test_multiline_reset_condition_selects_functional_assignment(tmp_path):
 
 
 def test_reset_names_rstn_resetn_arst(tmp_path):
-    for reset in ("rstn", "resetn", "arst"):
+    for reset in ("rstn", "resetn", "arst", "ARESETn", "sys_rst_n", "srst_n", "soft_reset", "i_rst_n"):
         src = tmp_path / f"{reset}.sv"
         src.write_text(
             f"module top(input clk, {reset}, en, d, output reg q);\n"

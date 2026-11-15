@@ -103,3 +103,18 @@ def test_subgraph_control_includes_branch_edges(tmp_path):
     d = json.loads(r.stdout)
     ids = {n["id"] for n in d["result"]["nodes"]}
     assert "top.a" in ids and "top.b" in ids and "top.sel" in ids
+
+
+def test_subgraph_control_plus_driver_keeps_unconditional_driver(tmp_path):
+    sv = tmp_path / "mux2.sv"
+    sv.write_text(
+        "module top(input sel, a, b, output y);\n"
+        "  assign y = sel ? a : b;\n"
+        "endmodule\n")
+    r = subprocess.run(
+        ["sv_query", "graph", "subgraph", "top.y", "--depth", "2",
+         "--direction", "in", "--edge-kinds", "control,driver", "-f", str(sv),
+         "--json"], capture_output=True, text=True, timeout=60, cwd=str(ROOT))
+    assert r.returncode == 0, r.stderr[-400:]
+    d = json.loads(r.stdout)
+    assert {"top.a", "top.b", "top.sel", "top.y"} <= {n["id"] for n in d["result"]["nodes"]}

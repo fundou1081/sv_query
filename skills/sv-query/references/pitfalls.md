@@ -32,7 +32,7 @@ Each item was observed in the local task corpora or reproduced in 2026-11-15 rev
 
 7. **Evidence ≠ declaration**  
    `trace evidence` points to assignment/always line; `trace profile.source` points
-   to declaration. Snapshot evidence is keyed but its `source_location` may be null. Never dump `enclosing_chain`
+   to declaration. Snapshot evidence is keyed but its `source_location` may be null or expression-only. Never dump `enclosing_chain`
    wholesale; extract `source_location`/`source_text`.
 
 8. **Evidence trust is limited**  
