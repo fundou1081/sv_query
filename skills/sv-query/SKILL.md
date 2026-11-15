@@ -1,194 +1,229 @@
 ---
 name: sv-query
-description: SystemVerilog RTL 静态分析 CLI (sv_query)。当用户问 RTL 验证 / "这个信号谁驱动" / "找 CDC 路径" / "信号风险评分" / 给 .sv 文件让 agent 分析时使用。核心命令: drivers (别名 trace fanin), loads (别名 trace fanout), trace evidence, dataflow analyze, controlflow analyze, verify consistency/claim/structural, graph, snapshot；exp: trace impact / audit 等。evidence 返回源码位置 + credibility_score (0-1, <0.7 需人工确认)。LLM 友好 (--json -q + 15 种 stable error_code)。只支持 pyslang v10/v11。
+description: Read-only SystemVerilog query + objective verification for RTL debug. Use when a snapshot tag or filelist is available and the question is "who drives/loads X", "how does X reach Y", "why is X conditional", "find source evidence", or "verify a driver/path claim". Core: drivers, loads, paths, dataflow, controlflow, trace evidence/profile, verify consistency/claim/structural. Do NOT use for lint/simulation/physical design, coverage generation, typo ranking, or interactive UI.
 ---
 
-# sv-query
+# sv-query — agent query + verify protocol
 
-SystemVerilog RTL 信号追踪查询引擎 CLI 工具 (`sv_query` 项目)。
+`sv_query` is the installed CLI (fallback: `python3 run_cli.py` from the repo).
+It is **read-only**: it does not modify RTL or project files.
 
-> 项目位置: `~/my_dv_proj/sv_query` (USER_PROFILE.md 主目录, 本机唯一副本)
-> 主入口: `python3 run_cli.py <command> [subcommand] [options]`
-> 命令清单以 `python3 run_cli.py capabilities --json` 为准 (39 个 core 命令 + 6 个 exp 命令)
-> 测试: 全量基线见 [docs/INDEX.md](../../docs/INDEX.md)；pyslang v10/v11 支持以 CI/兼容测试实测为准
-> 依赖: `pyslang>=10.0.0,<12.0.0` (含 `_pyslang_compat.py` shim 桥接 v10/v11 差异)
+> The command surface is defined by `sv_query capabilities --json`.
+> Do not trust stale command lists in docs or memory.
 
-## ⚠️ 安装占位符配置 (重要)
+## 0. Scope
 
-使用此 skill 前, 请将本文档中的占位符替换为你的实际路径:
+Use it for:
 
-| 占位符 | 含义 | 示例 |
-|--------|------|------|
-| `<PROJ_DIR>` | sv_query 项目父目录 | **本机 = `~/my_dv_proj`** (通用示例: `~/projects` / `~/work`) |
-| `<REPO_URL>` | sv_query GitHub 仓库 URL | `https://github.com/YOUR_USER/sv_query.git` |
-| `<SKILL_DIR>` | 本 skill 安装路径 | `~/.claude/skills/sv-query/` |
-| `<PROJ>` | 你要分析的项目名 | `my_rtl_design`, `cva6`, `picorv32` 等 |
+- canonical signal id / aliases / hierarchy / ports / params
+- drivers / loads / structural paths / dataflow / conditions
+- source evidence and waveform-path alignment metadata
+- objective verification: `verified` / `contradicted` / `unknown`
 
-### `scripts/sv_analyze.py` 配置
+Do **not** use it for:
 
-脚本会自动按 `__file__` 向上回溯定位仓库根目录 (即含 `run_cli.py` 的目录), 所以**随 skill 一起安装时无需任何配置**。
+- lint, compile sign-off, simulation values, waveform dump
+- coverage generation, typo detection/ranking
+- full-design visualization or interactive debug UI
+- exp commands as a fact source
 
-如果 skill 被复制到别处 (脱离仓库), 用环境变量指定:
-
-```bash
-export SV_QUERY_DIR=/path/to/your/sv_query
-```
-
-## 何时使用
-
-当用户:
-
-- 问"这个信号谁驱动的 / 哪里被读" → `trace fanin` / `trace fanout` (或规范名 `drivers` / `loads`)
-- 给一个 `.sv` 文件, 想做静态分析 → 主入口 `run_cli.py`
-- 要做数据流追踪 → `dataflow analyze`
-- 要做控制流条件分析 → `controlflow analyze`
-- 要找 CDC / 风险 / 验证缺口 → `audit --checks cdc,risk,verification_gaps`
-- 要做客观一致性检查 → `verify consistency` / `verify structural` / `verify claim`
-- 要把分析结果跟源码位置对齐 → 加 `--evidence` 标志
-
-## 辅助脚本
-
-`scripts/sv_analyze.py` 是给 LLM agent 用的 Python helper (fanin / fanout / evidence / dataflow / audit / stats), 自动加 `--json -q`, 输出可直接 `json.loads()`:
-
-```python
-import sys
-sys.path.insert(0, "<SKILL_DIR>/scripts")
-from sv_analyze import trace_evidence
-result = trace_evidence("sim/test.sv", "top.data")
-# result 是 dict, 自动处理 error_code 分类
-```
-
-或 CLI:
-```bash
-python3 <SKILL_DIR>/scripts/sv_analyze.py sim/test.sv top.data --mode evidence
-```
-
-## 何时不使用
-
-- 用户要的是 lint / 编译 / 仿真: 用 Verilator / Icarus, 不是 sv_query
-- 用户要综合 / 物理设计: sv_query 只做静态分析
-- 用户已经在用别的 RTL 分析工具 (Verible, Surelog, etc.): 不切
-
----
-
-## 快速开始 (30 秒)
+## 1. Discover first
 
 ```bash
-cd <PROJ_DIR>/sv_query
-
-# 1. 看命令清单 (权威来源)
-python3 run_cli.py capabilities --json -q
-
-# 2. 跑一个 trace, 贴 evidence
-python3 run_cli.py trace evidence top.data -f sim/test_simple.sv
-
-# 输出:
-#   Signal: top.data
-#   Source: 'data = din;'
-
-# 3. 跑审计 (CDC / 风险 / 验证缺口), 拿 JSON
-python3 run_cli.py audit -f sim/test_simple.sv --checks cdc,risk --json -q
+sv_query capabilities --json --recommended -q
+sv_query capabilities --json -q
+sv_query snapshot list --json -q          # top-level JSON array, not an envelope
 ```
 
----
-
-## 工作流程 (4 步)
-
-### Step 1: 定位项目 + 验证环境
+Only use exp when the user explicitly asks:
 
 ```bash
-cd <PROJ_DIR>/sv_query
-
-# 确认项目在 USER_PROFILE.md 主目录 (本机唯一副本: ~/my_dv_proj/sv_query)
-test -f run_cli.py && test -f pyproject.toml && echo "OK" || echo "MISSING"
-
-# 确认 v10/v11
-python3 -c "import pyslang; print(f'pyslang {pyslang.__version__}')"
-# 期望: 10.0.0+ 或 11.0.0+
+sv_query capabilities --json --include-exp -q
+# audit / diagnose / trace impact / trace overview / review render / architecture graph
+# hidden, unstable, heuristic; no schema/claim contract
 ```
 
-如果项目位置不对, 立刻告知用户 (见 [references/locations.md](references/locations.md))。
+## 2. Prefer snapshot, fallback to source
 
-### Step 2: 选择命令 (top 5)
-
-参考 [references/commands.md](references/commands.md) 完整决策树。
-
-| 用户问题 | 命令 |
-|---------|------|
-| 谁驱动 X / 给我 X 的源码 | `trace evidence X` (95% 用例) |
-| 谁读了 X | `trace fanout X` |
-| X 怎么到 Y | `dataflow analyze X Y` |
-| 跨时钟域 / 风险 / 验证缺口 | `audit --checks cdc,risk,verification_gaps` |
-| 结论可反驳的客观检查 | `verify consistency` / `verify structural` |
-
-完整 39 个 core 命令 + 6 个 exp 命令见 references/commands.md；exp 默认不在 capabilities 列出，但可直接调用。
-
-### Step 3: 跑命令 + 读 evidence
-
-所有带 `--evidence` 的命令返回 2 种格式:
-
-1. **text 模式 (默认)**: 每条结果下方 1 行 `Source: '...';`
-2. **JSON 模式 (--json)**: 每条 result 包含 `evidence.source_text` (单行摘要) 和 `evidence.source_location` (file/line_start/line_end/column) 字段
-
-证据可信度 (`credibility_score`):
-- `1.0`: 直接 always/initial 块内赋值 → 最可信
-- `0.9`: 嵌套 block (always 里的 if) → 高可信
-- `0.7-0.8`: 跨函数/模块间接驱动 → 中可信
-- `<0.5`: 推测性来源 → 低可信, 需人工确认
-
-### Step 4: 解读 + 反馈
-
-- 高可信 (≥0.9): 可以直接作为结论
-- 中可信 (0.7-0.8): 报告用户, 让他判断
-- 低可信 (<0.7): **必须**告知用户"来源不确定, 需要人工检查" + 给 source_location 让人看具体行
-
----
-
-## 关键技术细节
-
-4 步工作流程 + credibility/evidence 机制 + constraint 速查见 [references/workflow.md](references/workflow.md)。
-
-## 实际项目分析 (工业案例)
-
-实战案例见 [references/cases/](references/cases/)。
-
-## 测试 / 验证 (修改项目时)
+If a snapshot tag exists, do **not** rebuild from RTL:
 
 ```bash
-# 全量
-cd <PROJ_DIR>/sv_query
-python3 -m pytest sim/tests/ -q
-# 期望: 计数以 [docs/INDEX.md](../../docs/INDEX.md) 为准；0 failed 不等于全绿
-
-# 双版本 smoke
-python3 -m pytest sim/tests/integration/test_pyslang_version_compat.py -v
+sv_query drivers top.u.data --from-snapshot "$TAG" --depth 1 --json -q
+sv_query loads   top.u.data --from-snapshot "$TAG" --depth 1 --json -q
+sv_query paths   top.a top.y --directed --canonical --from-snapshot "$TAG" --json -q
 ```
 
-详细命令参考 → [references/commands.md](references/commands.md)
-完整 evidence 字段说明 → [references/evidence.md](references/evidence.md)
-pyslang v10/v11 兼容详情 → [references/pyslang-compat.md](references/pyslang-compat.md)
+Source/filelist mode:
 
----
+```bash
+sv_query drivers top.u.data -f top.sv --depth 1 --json -q
+sv_query drivers top.u.data --filelist rtl.f --depth 1 --json -q
+```
 
-## 给 agent 的关键约束
+Build a snapshot when one does not exist (one-time cost):
 
-1. **永远** 在 `~/my_dv_proj/sv_query/` 工作 (本机唯一副本; 没有 `[agent-runtime-cache]/` 那种副本)
-2. **永远** 加 `--evidence` 在做信号分析时 (用户没指定时默认加, 哪怕只 text)
-3. **永远** 把 `credibility_score < 0.7` 的 evidence 标注为"需人工确认"
-4. **永远** 报告 evidence 失败的命令 (例如找不到信号, JSON `ok=false`)
-5. **不要** 改 sv_query 内部代码除非用户明确要求 (这是用户维护的项目, 改完要测试 + commit)
-6. 跑命令前先 `cd <PROJ_DIR>/sv_query`, 工作目录不对会报 "no such file"
+```bash
+sv_query filelist prune --filelist all.f --top top --output top.f --apply --json -q
+sv_query snapshot save top.sv --filelist top.f --tag "$TAG" --json -q
+```
 
-### LLM agent 额外约束
+Snapshot support is command-specific. It works for graph queries such as
+`drivers/loads/paths/dataflow/verify claim/verify consistency/instances/ports/connections/hierarchy`;
+semantic/source commands (`class`, `constraints`, `covergroups`, `controlflow`, `scope`,
+`params`, `graph`, `trace profile/evidence`) require `--filelist`.
 
-7. **永远** LLM 调用时加 `--json -q` (--quiet 抑制 stderr 警告污染 JSON)
-8. **永远** 用 `error_code` 字段分类错误, **不要** 解析 `error` 字符串
-9. **永远** 检查 `result.truncated` 字段 (--max-results) 决定是否需要扩大查询
-10. **永远** 验证 JSON 输出符合 `tools/llm_schema.json` (LLM 框架函数调用)
-11. 优先用 evidence + error_code 决策, **不要** 重复尝试命令 (会浪费 token)
-12. filelist 解析问题 (axi_pkg 排序, common_cells transitive dep) 不是 sv_query bug, 是 sv 输入工程问题
-13. **分析大项目 (84+ files)** 先从 2 module 开始验证 elaboration 干净, 再渐进扩大
-14. **不要** 把 .svh 加到 filelist (sv_query 不预处理 \`include, 反而引入新错误)
-15. **永远** 排除 `*_tb.sv` 从 filelist (testbench 拖慢且引入 include 错误)
-16. **永远** 把 flag 放在子命令**之后** (`run_cli.py trace fanin X -f F --json -q`), 放在中间会被 Typer 拒绝
-17. `--max-results/-N` 只有 `trace fanin` / `trace fanout` 支持; `dataflow analyze` 用的是 `--max-paths/-n`, 别混用
+See [references/snapshot.md](references/snapshot.md).
+
+## 3. Query protocol: D → S → Q → E → V
+
+### D. Discover scope
+
+```bash
+sv_query instances --from-snapshot "$TAG" --json -q
+sv_query hierarchy --from-snapshot "$TAG" --depth 3 --json -q
+sv_query ports <instance> --from-snapshot "$TAG" --json -q
+sv_query connections <instance> --from-snapshot "$TAG" --json -q
+```
+
+`connections` accepts **instance paths only**, not module names.
+
+### S. Scope / local graph (source mode)
+
+```bash
+sv_query scope <instance> --filelist rtl.f --json -q
+sv_query params <instance> --filelist rtl.f --json -q
+sv_query graph subgraph <seed> --depth 2 --direction in \
+  --edge-kinds driver,connection --max-nodes 80 --filelist rtl.f --json -q
+```
+
+### Q. Query facts
+
+Direct neighbors must use `--depth 1`:
+
+```bash
+sv_query drivers <ID> --from-snapshot "$TAG" --depth 1 --json -q
+sv_query loads   <ID> --from-snapshot "$TAG" --depth 1 --json -q
+
+sv_query paths <SRC> <DST> --directed --canonical --from-snapshot "$TAG" --json -q
+sv_query paths <SRC> <DST> --directed --all --max 20 --from-snapshot "$TAG" --json -q
+
+sv_query dataflow analyze <SRC> <DST> --max-paths 5 --from-snapshot "$TAG" --json -q
+sv_query controlflow analyze <ID> --filelist rtl.f --json -q
+sv_query trace frontier <ID> --direction fanin --from-snapshot "$TAG" --json -q
+```
+
+`--depth 1` is direct (distance=1). Without it, fanin/fanout recurse to the end
+and can mix terminal/control sources into the answer.
+
+### E. Evidence
+
+```bash
+sv_query trace evidence <ID> --filelist rtl.f --json -q
+sv_query trace profile  <ID> --filelist rtl.f --json -q
+```
+
+`trace evidence` points to the assignment/always line. `trace profile.source`
+points to the declaration/driver. Snapshot mode may return `evidence:null`.
+
+### V. Verify before concluding
+
+```bash
+sv_query verify claim --claim '{"type":"driver","signal":"S","driver":"D"}' \
+  --from-snapshot "$TAG" --json -q
+
+sv_query verify claim --claim '{"type":"path","from":"A","to":"B"}' \
+  --from-snapshot "$TAG" --json -q
+
+sv_query verify consistency --checks connection --from-snapshot "$TAG" --json -q
+```
+
+Read `result.status`: `verified` / `contradicted` / `unknown`.
+`unknown` is not false. For a claim with a missing endpoint, report the status,
+not a boolean.
+
+## 4. Field contract (the short list)
+
+| Query | Identity | Count / budget |
+|---|---|---|
+| `drivers` | `result.signals[0].drivers[].id`, `driver_count` | `pre_filter_count`, `truncated`, `truncated_by_depth` |
+| `loads` | `result.signals[0].loads[].id` | `count`, `pre_filter_count`, `truncated` |
+| `paths --canonical` | `found`, `hop_count`, `path`, `candidate_count`, `canonical_policy` | `truncated` |
+| `paths --all` | `count`, `all_paths` | `truncated`, `truncation_reason` |
+| `dataflow analyze` | `is_reachable`, `paths[]`, `search_status` | `truncated`, `truncation_reason` |
+| `trace evidence` | `result.signals[0].evidence.source_location`, `source_text` | `credibility_score`, `is_verified` |
+| `verify claim` | `result.status` | `result.machine.unknown_kind` |
+| `verify consistency` | `verified`, `checks[].status` | `coverage_complete`, `total_violations` |
+
+`count`/`driver_count` is the returned count after cap; `pre_filter_count` is the
+true neighbor count before cap. `truncated_by_depth=true` means more edges exist
+below the depth boundary.
+
+See [references/fields.md](references/fields.md).
+
+## 5. Failure semantics
+
+- `drivers`/`loads` unknown signal: **rc=0**, `ok:false`,
+  `resolution=not_found`; error code is in `errors[0].error_code`.
+- `paths` unknown endpoint: **rc=1**, `ok:false`; no path with valid endpoints:
+  **rc=0**, `ok:true`, `found:false`.
+- Empty neighbor list is a fact: `ok:true`, `count=0`.
+- `verify claim` insufficient evidence: `ok:true`, `status:"unknown"`.
+- `--json` is not guaranteed on usage/validation errors; always capture
+  stdout and stderr separately and check whether stdout parses.
+- `-q` suppresses most stderr, not all; do not merge stderr into JSON.
+
+## 6. Seven pitfalls
+
+1. **`paths` default is undirected.** Always use `--directed` for dataflow direction.
+2. **Ternary/mux is not a data path.** `paths` uses DRIVER/CONNECTION; `OP_TERNARY`
+   is control/branch. Do not claim a path passes through ternary unless edges show it.
+3. **`drivers --depth 1` can include CLOCK/RESET/constant/ternary sources.**
+   Check node `kind`/`trace profile` and filter; `loads` excludes CLOCK/RESET by default,
+   `--include-clock --include-reset` opts in.
+4. **Bare names are ambiguous.** Use canonical/hierarchical ids from `instances`/`drivers`.
+5. **`count` is post-cap.** Inspect `pre_filter_count` and `truncated`.
+6. **Evidence is a source pointer, not proof.** `credibility_score` is discrete
+   `{0.0,0.2,0.4,0.6,0.8,1.0}`; `is_verified` is snippet+expr/name cross-check.
+   Do not dump `enclosing_chain` into context.
+7. **Semantic domain is source-only.** `class`/`constraints`/`covergroups`/`controlflow`
+   need `--filelist`, not snapshot. Class members must be instance-qualified.
+
+Detailed pitfalls and real evidence: [references/pitfalls.md](references/pitfalls.md).
+
+## 7. Semantic domain (source mode only)
+
+```bash
+sv_query class <Class> --relations --filelist rtl.f --json -q
+sv_query trace constraints top.e.p.addr --filelist rtl.f --json -q
+sv_query trace constraint-chain top.e.p.addr top.e.p.len --filelist rtl.f --json -q
+sv_query trace covergroups --filelist rtl.f --json -q
+sv_query trace covergroup <cg> --instance <inst> --rand --filelist rtl.f --json -q
+```
+
+This is **query**, not solver proof: `co-membership` / declared constraints are facts;
+UNSAT/SAT/coverage closure are not implied.
+
+See [references/semantics.md](references/semantics.md).
+
+## 8. Output discipline for agents
+
+Return strict JSON. Include an explicit `queries[]` log with the exact command and
+key result fields. Never invent ids; use canonical ids from the tool.
+
+```json
+{
+  "answer": {"drivers": ["..."], "loads": ["..."]},
+  "status": "verified|contradicted|unknown|found|not_found",
+  "queries": [{"cmd": "drivers ... --depth 1", "ok": true}],
+  "notes": "truncated/unknown/runtime caveat"
+}
+```
+
+## 9. References
+
+- [commands.md](references/commands.md) — decision tree + exact command templates
+- [fields.md](references/fields.md) — fields, envelopes, failure matrix
+- [snapshot.md](references/snapshot.md) — build/prune/list + support matrix
+- [pitfalls.md](references/pitfalls.md) — verified failure modes
+- [semantics.md](references/semantics.md) — class/constraint/covergroup
+- [examples.md](references/examples.md) — worked short/long examples

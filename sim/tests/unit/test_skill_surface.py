@@ -48,12 +48,24 @@ def test_skill_and_schema_declare_current_version():
     assert "audit" in _text(COMMANDS)
 
 
-def test_skill_helper_evidence_mode_works():
-    proc = __import__("subprocess").run(
-        ["python3", "skills/sv-query/scripts/sv_analyze.py",
-         "sim/test_simple.sv", "top.data", "--mode", "evidence"],
-        cwd=ROOT, capture_output=True, text=True, check=False)
-    assert proc.returncode == 0, proc.stderr[-1000:]
-    data = json.loads(proc.stdout)
-    assert data["ok"] is True
-    assert data["command"] == "trace_evidence"
+def test_skill_teaches_current_protocol():
+    text = _text(SKILL)
+    assert "sv_query" in text
+    assert "--from-snapshot" in text
+    assert "--depth 1" in text
+    assert "credibility_score" in text
+    assert "pre_filter_count" in text
+    assert "audit" not in text.split("## 0.")[1].split("## 1.")[0]
+
+
+def test_skill_has_no_removed_compat_or_helper():
+    text = _text(SKILL) + "\n" + _text(COMMANDS)
+    for stale in ("_pyslang_compat", "pyslang>=10", "test_pyslang_version_compat",
+                  "sv_analyze.py", "visualize"):
+        assert stale not in text
+
+
+def test_skill_links_resolve():
+    for path in (SKILL, COMMANDS):
+        for target in re.findall(r"\]\(([^)]+\.md)\)", _text(path)):
+            assert (path.parent / target).resolve().is_file(), (path, target)
