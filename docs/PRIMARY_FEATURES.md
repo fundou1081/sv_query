@@ -18,7 +18,7 @@
 | `controlflow analyze` | if/case 条件树 |
 | `trace evidence` | 源码 + enclosing always/if |
 | `trace profile` / `manifest` | 波形 path → canonical + 类型/时序元数据 |
-| `verify consistency` / `claim` / `structural` | 结构一致性 + 可反驳 claim + 对称性 findings |
+| `verify consistency` / `claim` / `structural` | 结构一致性 + 可反驳 claim + 对称性 findings；typo 产品在独立项目 |
 | `scope` / `instances` / `hierarchy` / `ports` / `params` | 设计入口与上下文 |
 | `class` / `trace constraints` / `trace covergroup*` | class 关系、constraint 约束、covergroup 采样/rand |
 

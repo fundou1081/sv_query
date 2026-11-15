@@ -25,6 +25,7 @@
   **尚未跑 HWE-Bench/VeriBugBench**，不宣称对外准确率/成本收益。
 
 > 全设计图已退役；局部 finding review 仍为 `exp`（`review render`），不是核心能力。
+> RTL typo detection / ranking 属于独立项目 `rtl_typo_checker`，不在 sv_query core。
 > 语义纪律见 [DISCIPLINE §3.5](docs/dev/DISCIPLINE.md)。
 
 ---
@@ -103,7 +104,7 @@ sv_query trace fanin cdc_bug.dst_valid   -f examples/anti_hallucination_cdc/cdc_
 |---|---|
 | **Scope** | `scope` / `instances` / `hierarchy` / `ports` / `params` / `connections` / `class` |
 | **Trace** | `drivers` / `loads` / `paths` / `dataflow` / `controlflow` / `trace evidence/profile/lookup/manifest` |
-| **Verify** | `verify consistency` / `verify claim` / `verify structural` |
+| **Verify** | `verify consistency` / `verify claim` / `verify structural`（仅客观结构一致性；RTL typo 是独立项目） |
 | **Class/约束/覆盖** | `class --relations`（含 UVM 静态） / `trace constraints` / `trace covergroups` / `trace coverpoints` / `trace covergroup` |
 | **Locate** | `stats` / `search` / `graph nodes/edges` / `graph subgraph` / `capabilities` |
 | **State** | `snapshot save/list/compare/delete` |

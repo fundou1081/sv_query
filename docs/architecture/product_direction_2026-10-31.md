@@ -135,6 +135,7 @@ scope 定位候选与 canonical ID
 | 继续给 exp 扩契约 | 不稳定输出不应冻结 |
 | 纯启发式协议/风险评分作为主功能 | 违背“事实优先”，只保留 exp/标注 |
 | Coverage generation / `coverage.gen` 作为当前功能 | 当前产品以查询 + 校验为主；coverage 生成是独立验证工作流，若重启，以 sv_query 为基底单开项目 |
+| RTL typo detection / typo ranking 作为当前功能 | 独立项目 `rtl_typo_checker`；sv_query 的 `verify structural` 只做客观结构一致性，不做 typo 产品 |
 
 ### 4.1 Coverage generation 的项目边界（2026-11-14）
 
@@ -147,6 +148,22 @@ scope 定位候选与 canonical ID
 - **以 sv_query 为基底**（复用 query / graph / snapshot / verify 的只读事实层）；
 - **单开一个项目**，独立测试、CI、claim 和发布节奏；
 - 不把 covergroup 生成逻辑重新塞回本仓库的 core 或默认 CLI。
+
+---
+
+### 4.2 RTL typo 的项目边界（2026-11-15）
+
+`rtl_typo_checker` 是独立项目：名字归一化、编辑距离聚类、拓扑对称性检查是
+它的产品范围，不进入 sv_query core。
+
+sv_query 只保留：
+
+- `verify structural`：客观的 sibling/port-set 对称性 findings；
+- 结构事实（drivers/loads/paths/graph）；
+- 不输出 typo 候选排名，不把“名字相似 + 拓扑差异”包装成笔误结论。
+
+如果要做 RTL typo 产品：**以 sv_query 为基底（graph/query/evidence），单开项目**，
+独立测试、CI、claim 和发布；不要把 typo clustering/heuristic 重新塞回 core。
 
 ---
 
