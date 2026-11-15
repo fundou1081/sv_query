@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 from sv_query.trace.core.compiler import CompilationError
 from sv_query.trace.core.trace_evidence import TraceEvidenceResolver
+from cli.core.semantic.trace_evidence import _find_functional_assignment
 
 
 def _first_source(edge) -> tuple[str, int | None]:
@@ -345,6 +346,18 @@ def _profile_signal(tracer, graph, sig: str, evidence_resolver=None, type_lookup
             loc = getattr(ev, "source_location", None)
             if loc is not None and not loc.is_empty():
                 driver_file, driver_line = loc.file, loc.line_start
+                snippet = getattr(ev, "enclosing_always", None)
+                if snippet is not None and driver_file:
+                    try:
+                        text = Path(driver_file).read_text(errors="ignore")
+                        found = _find_functional_assignment(
+                            node_id, text,
+                            getattr(snippet, "line_start", 0),
+                            getattr(snippet, "line_end", 0))
+                        if found is not None:
+                            driver_line = found[0]
+                    except OSError as exc:
+                        logger.debug("profile source read failed for %s: %s", driver_file, exc)
             snippet = getattr(ev, "enclosing_always", None)
             if snippet is not None:
                 always_text = getattr(snippet, "text", "") or ""

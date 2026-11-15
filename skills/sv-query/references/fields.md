@@ -77,8 +77,8 @@ checks[] {check,status,checked,skipped,violations}
 ```
 
 There is no top-level `result.status` for consistency. A legacy snapshot without
-MIG can return `checks[].status=unknown, checked=0` while `coverage_complete=true`;
-read `unknown_checks`/`checked`, do not treat that as a pass.
+MIG can return `checks[].status=unknown, checked=0`; `coverage_complete` is now
+false in that case. Read `unknown_checks`/`checked`; do not treat it as a pass.
 
 ## 5. Evidence / profile
 
@@ -106,6 +106,11 @@ role {is_clock,is_reset,is_enable,is_port},
 clocks[], resets[], sequential, driver_count, load_count
 ```
 
+Note: `profile.driver_count` is `len(trace_fanin(depth=1))` and includes
+CLOCK/RESET/const neighbors; it is **not** the same as the `drivers` command's
+`driver_count` (DRIVER-edge sources only). Use the command-specific field, not a
+shared assumption.
+
 ## 5.1 Frontier
 
 ```text
@@ -125,7 +130,7 @@ Reasons include `no_structural_edge`, `instance_boundary`, `cycle_or_all_seen`,
 | paths unknown endpoint | 1 | `ok:false` |
 | paths valid, no route | 0 | `ok:true`, `found:false` |
 | verify claim unknown | 0 | `ok:true`, `status:"unknown"` |
-| missing `-f`/`--filelist` | 1 | command-dependent: graph core often JSON; class/constraints may traceback; controlflow plain text |
+| missing `-f`/`--filelist` | 1 | graph core often JSON; class/constraints now JSON error |
 | unknown flag | 2 | plain text |
 | `--json` audit invalid checks | 1 | plain text, **no JSON** |
 | `trace evidence --from-snapshot` bus/legacy | 0 | `evidence:null`; bit nodes may work |

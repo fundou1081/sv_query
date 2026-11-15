@@ -27,7 +27,17 @@ dout <= data;
 
 读不到文件（snapshot/legacy）时回退到 expression。
 
-## 3. 测试
+## 3. 后续修正
+
+- evidence fallback 的 `source_text` 现在读真实源码行；
+- 多语句 always 分支通过 LHS 扫描选择非 reset 赋值行：
+  - `sync_fifo.data_out` → line 33；
+  - `sync_fifo.reg_stage1` → line 32；
+  - `top.dout` → line 19；
+- `trace profile.source.driver` 同步改为 functional assignment；
+- 读取失败不再 `except: pass`，改为 logger.debug。
+
+## 4. 测试
 
 - `test_subgraph_control_includes_branch_edges`；
 - `test_reset_branch_falls_back_to_functional_assignment` 改为断言完整赋值行。

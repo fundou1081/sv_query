@@ -29,12 +29,18 @@ def _evidence(sig: str) -> dict:
 class TestEvidenceStability:
     def test_always_assignment_line(self):
         ev = _evidence("sync_fifo.data_out")
-        assert ev["source_text"] == "data_out  <= 8'd0;"
-        assert ev["source_location"]["line_start"] == 30
+        assert ev["source_text"] == "if (rd_en) data_out <= reg_stage1;"
+        assert ev["source_location"]["line_start"] == 33
         assert ev["enclosing_always"] is not None
         assert "always" in ev["enclosing_always"]["text"]
         assert ev["enclosing_if"] is not None
         assert ev["credibility_score"] == 1.0
+        assert ev["is_verified"] is True
+
+    def test_multi_statement_branch_assignment_line(self):
+        ev = _evidence("sync_fifo.reg_stage1")
+        assert ev["source_text"] == "if (wr_en) reg_stage1 <= push_data_i;"
+        assert ev["source_location"]["line_start"] == 32
         assert ev["is_verified"] is True
 
     def test_continuous_assign_line(self):
