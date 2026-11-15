@@ -51,6 +51,22 @@ def _line_has_reset_edge(graph, signal: str, line: int) -> bool:
     return False
 
 
+def _is_const_edge(graph, edge) -> bool:
+    node = graph.get_node(edge.src)
+    kind = getattr(getattr(node, "kind", None), "name", "")
+    return kind == "CONST"
+
+
+def _edge_source_text(loc, expression: str) -> str:
+    try:
+        lines = Path(loc.file).read_text(errors="ignore").splitlines()
+        if 0 < getattr(loc, "line_start", 0) <= len(lines):
+            return lines[loc.line_start - 1].strip()
+    except OSError as exc:
+        logger.debug("edge source read failed for %s: %s", loc.file, exc)
+    return expression
+
+
 def _snapshot_edge_evidence(graph, signal: str) -> dict | None:
     """Build assignment-level evidence from snapshot edges.
 
@@ -70,27 +86,20 @@ def _snapshot_edge_evidence(graph, signal: str) -> dict | None:
             candidates.append((edge, loc))
     if not candidates:
         return None
-    def is_const_edge(edge) -> bool:
-        node = graph.get_node(edge.src)
-        kind = getattr(getattr(node, "kind", None), "name", "")
-        return kind == "CONST"
-
-    def is_reset_edge(edge) -> bool:
-        return _is_reset_condition(getattr(edge, "condition", "") or "")
-
     # Prefer a functional data assignment over a reset/const edge.
     candidates.sort(key=lambda item: (
-        is_const_edge(item[0]),
-        is_reset_edge(item[0]),
+        _is_const_edge(graph, item[0]),
+        _is_reset_condition(getattr(item[0], "condition", "") or ""),
         not bool(getattr(item[0], "expression", "")),
         getattr(item[1], "line_start", 0),
         item[0].src,
     ))
     edge, loc = candidates[0]
+    source_text = _edge_source_text(loc, getattr(edge, "expression", "") or "")
     return {
         "signal": signal,
         "source_location": loc.to_dict(),
-        "source_text": getattr(edge, "expression", "") or "",
+        "source_text": source_text,
         "enclosing_always": None,
         "enclosing_always_comb": None,
         "enclosing_if": None,

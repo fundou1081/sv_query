@@ -214,7 +214,7 @@ def subgraph_cmd(
     depth: int = typer.Option(2, "--depth", help="k-hop depth (0 = seeds only)"),
     direction: str = typer.Option("both", "--direction", help="in / out / both (relative to seeds)"),
     edge_kinds: str = typer.Option("driver,connection", "--edge-kinds",
-                                   help="comma list: driver,connection,control,clock,reset,bit_select,member_select,branch"),
+                                   help="comma list: driver,connection,branch,clock,reset,bit_select,member_select; control = legacy conditional drivers + branch"),
     max_nodes: int = typer.Option(80, "--max-nodes", help="hard node budget (includes seeds)"),
     max_edges: int = typer.Option(160, "--max-edges", help="hard edge budget"),
     evidence: bool = typer.Option(False, "--evidence", help="include file:line evidence"),

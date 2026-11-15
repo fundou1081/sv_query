@@ -74,8 +74,13 @@ def _parse_kinds(raw: Iterable[str] | None) -> tuple[str, ...]:
 
 
 def _edge_matches(edge: TraceEdge, kinds: set[str]) -> bool:
-    if "control" in kinds and edge.kind == EdgeKind.DRIVER:
-        return bool(getattr(edge, "condition", "") or getattr(edge, "condition_chain", None))
+    if "control" in kinds:
+        # legacy "control" = conditional DRIVER; also include branch/ternary
+        if edge.kind in _EDGE_NAMES["branch"]:
+            return True
+        if edge.kind == EdgeKind.DRIVER:
+            return bool(getattr(edge, "condition", "") or
+                        getattr(edge, "condition_chain", None))
     return any(name in kinds and edge.kind in accepted
                for name, accepted in _EDGE_NAMES.items())
 

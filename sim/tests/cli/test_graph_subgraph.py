@@ -86,3 +86,20 @@ def test_subgraph_evidence(tmp_path):
     d = _data(tmp_path, "top.y", "--depth", "0", "--evidence")
     node = d["result"]["nodes"][0]
     assert node["file"].endswith("t.sv") and node["line"] > 0
+
+
+def test_subgraph_control_includes_branch_edges(tmp_path):
+    """P179: legacy 'control' includes branch/ternary edges, not only conditional drivers."""
+    sv = tmp_path / "mux.sv"
+    sv.write_text(
+        "module top(input sel, input a, b, output y);\n"
+        "  assign y = sel ? a : b;\n"
+        "endmodule\n")
+    r = subprocess.run(
+        ["sv_query", "graph", "subgraph", "top.y", "--depth", "2",
+         "--direction", "in", "--edge-kinds", "control", "-f", str(sv),
+         "--json"], capture_output=True, text=True, timeout=60, cwd=str(ROOT))
+    assert r.returncode == 0, r.stderr[-400:]
+    d = json.loads(r.stdout)
+    ids = {n["id"] for n in d["result"]["nodes"]}
+    assert "top.a" in ids and "top.b" in ids and "top.sel" in ids
