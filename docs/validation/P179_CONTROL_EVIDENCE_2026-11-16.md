@@ -39,6 +39,7 @@ dout <= data;
 - 支持 reset-in-else；不再取最后一个 reset 赋值；
 - assignment 扫描只接受真正 LHS（排除 `==`/`<`/行注释/块注释）；
 - filelist 模式按 basename 找真实源文件，不再只读 expression；
+- plain else / 多行 if 条件按分支头选择 functional assignment；
 - class/constraint evidence 不做模块 LHS 覆盖；
 - reset 条件用 word boundary，避免 `first` 误命中 `rst`；
 - 读取失败不再 `except: pass`，改为 logger.debug。
@@ -48,4 +49,4 @@ dout <= data;
 - `test_subgraph_control_includes_branch_edges`；
 - `test_reset_branch_falls_back_to_functional_assignment` 改为断言完整赋值行。
 
-canonical: 2755 passed / 0 failed / 123 deferred；full gate green。
+canonical: 2758 passed / 0 failed / 123 deferred；full gate green。

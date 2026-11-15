@@ -72,14 +72,35 @@ def _line_is_lhs(text: str, signal: str) -> bool:
     return bool(pat.search(code))
 
 
-def _nearest_if_is_reset(lines: list[str], lo: int, idx: int) -> bool:
+def _collect_if_condition(lines: list[str], idx: int) -> str | None:
+    text = "\n".join(lines[idx:idx + 8])
+    m = re.search(r"\bif\s*\(", text)
+    if not m:
+        return None
+    depth, start = 1, m.end()
+    for pos in range(start, len(text)):
+        if text[pos] == "(":
+            depth += 1
+        elif text[pos] == ")":
+            depth -= 1
+            if depth == 0:
+                return text[start:pos]
+    return text[start:]
+
+
+def _branch_condition(lines: list[str], lo: int, idx: int) -> str | None:
     for j in range(idx, lo - 1, -1):
         code = lines[j].split("//")[0]
-        m = re.search(r"\bif\s*\(([^)]*)\)", code)
-        if m:
-            return _is_reset_condition(m.group(1))
-    return False
+        if re.search(r"\bif\s*\(", code):
+            return _collect_if_condition(lines, j)
+        if re.search(r"\belse\b", code):
+            return ""  # plain else branch is functional
+    return None
 
+
+def _nearest_if_is_reset(lines: list[str], lo: int, idx: int) -> bool:
+    cond = _branch_condition(lines, lo, idx)
+    return bool(cond and _is_reset_condition(cond))
 
 def _find_functional_assignment(signal: str, file_text: str,
                                 start: int, end: int) -> tuple[int, str] | None:
