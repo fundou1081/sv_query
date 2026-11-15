@@ -13,7 +13,7 @@
 | 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | schema | 说明 |
 |---|---|---|---|---|---|---|
 | `core` | agent | stable | ✅ | ✅ | 1 | agent 一等公民: 只读 + JSON + 稳定 schema; readonly = 不改 RTL/项目文件, cache/output 由 write_scope 标记 |
-| `view` | human | stable | ✅ | — | — | 人眼面 (图/叙述); 默认含于 capabilities, 后续重点开发 |
+| `view` | human | stable | ✅ | — | — | 人眼面 (历史): 当前无注册命令; 全设计图已退役 |
 | `exp` | none | unstable | ✅ | — | — | 降级区: 直接命令 (hidden, 无统一 exp 命名空间入口); 无 schema 承诺, 只修 bug; --include-exp 才列出 |
 | `dev` | dev | none | ✅ | — | — | 开发者内部调试 (当前无命令; expression 已于 iter_252 归档) |
 | `out` | none | none | ✅ | — | — | 移出 CLI (会写 RTL/项目文件) → tools/; 不算产品命令 |

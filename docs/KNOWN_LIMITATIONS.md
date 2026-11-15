@@ -5,19 +5,12 @@
 >
 > **架构决策**: `docs/architecture/case27_signal_graph_completeness_decision.md` (D1-D5 锁定, 含 v11-only)
 
-### 5. pyslang 版本兼容代码 (~1.5h 清理, iter_034)
+### 5. pyslang 版本兼容代码（历史，已删除）
 
-D5 锁定: 以后仅支持 v11 API, 不再考虑 v9/v10 兼容.
+D5 锁定: 只支持 v11 API, 不再考虑 v9/v10 兼容。
 
-**当前 compat shim**: `src/sv_query/trace/core/_pyslang_compat.py` (8327 bytes)
-- `_detect_version()` — 版本探测 (v11 不需要)
-- `_KIND_ALIASES` — kind 名字 v10/v11 映射
-- `is_syntax_list` / `iter_syntax_list` — v11 已拆 plain list, 可能不需要
-- 5 个调用点 (uvm_testbench_extractor / expression_tree / semantic_adapter / subroutine_expander / base)
-- 4 个 hasattr probes (mig_validator / semantic_adapter x2 / graph_builder)
-- 6 处 `[Stage 6] v10/v11 兼容` 注释
-
-**iter_034 计划**: 全部清理, 直接用 `pyslang.ast.*` (v11 only API)
+`src/sv_query/trace/core/_pyslang_compat.py` **已删除**（commit 6199a03b）；
+当前直接使用 `pyslang.ast.*`。本节保留为历史记录，不是当前文件。
 
 ---
 
@@ -53,7 +46,7 @@ D5 锁定: 以后仅支持 v11 API, 不再考虑 v9/v10 兼容.
 **正确用法**: `-f` / `--file` 只接受 SystemVerilog **源码**; filelist 一律用 `--filelist`。
 
 ```bash
-全设计图命令已于 2026-11-03 退役；请使用 `graph nodes/edges` 或 `scope`/`hierarchy`。
+# 全设计图命令已于 2026-11-03 退役；请使用 graph nodes/edges 或 scope/hierarchy。
 sv_query stats -f design.sv                     # ✅ 单文件源码
 ```
 
@@ -120,8 +113,9 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 ② 逆流查询有向不可达、无向可达 (语义差异显式)
 ③ 任何返回路径的最后一项必须等于请求的 dst
 
-**遗留**: 影子节点仍留在图里 (占 30~38%)，只用于"按模块定义名查询"；
-`--from-snapshot` 无 MIG 与 `distance` 恒为 1 两条未动。
+**遗留**: 影子节点仍留在图里 (占 30~38%)，只用于"按模块定义名查询"。
+`--from-snapshot` 无 MIG 与 `distance` 恒为 1 已分别在 iter_278 修复；
+详见上文“已知不足”表中的 ✅。
 
 **已修 (iter_241)**: 原第 3 条 `LoadTracer` 无跨模块支持 —— 实测比登记更严重:
 `module=None` 时它自己拼 `f"{module}.{signal}"` 得到 `"None.sig"`, 连**单模块**查询都

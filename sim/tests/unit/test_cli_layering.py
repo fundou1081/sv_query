@@ -148,6 +148,13 @@ class TestCapabilities:
         assert "overview" not in trace_help
         assert "impact" not in trace_help
 
+    def test_help_does_not_advertise_false_connections_or_svq_alias(self):
+        conn = _run("connections", "--help").stdout
+        assert "模块名" not in conn
+        assert "实例路径" in conn
+        trace_help = _run("trace", "--help").stdout
+        assert "`svq " not in trace_help
+
     def test_capabilities_do_not_advertise_nonexistent_exp_entrypoint(self):
         d = _json("capabilities", "--json")
         assert "svq exp" not in d["layers"]["exp"]["note"]

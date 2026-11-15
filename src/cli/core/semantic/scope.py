@@ -110,8 +110,8 @@ def scope_cmd(
                         "error": "scope not found", "result": None,
                         "errors": [{"error": "scope not found", "path": path,
                                     "hint": ("RTL scope 只支持 module/instance；"
-                                             "class instance (如 top.e) 请用 `svq class <type>` "
-                                             "或 `svq trace covergroup <cg> --instance top.e`")}]}
+                                             "class instance (如 top.e) 请用 `sv_query class <type>` "
+                                             "或 `sv_query trace covergroup <cg> --instance top.e`")}]}
                 if json_output:
                     emit_json(data, pretty)
                 else:

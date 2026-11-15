@@ -5,10 +5,10 @@ core/semantic/instances.py — [iter_236 1a] 实例/层级查询 (agent 理解�
 早已就绪, 但 **CLI 零暴露** —— agent 只能靠 `arch show` / `visualize module` **看图**,
 没法**问**"这设计里有哪些实例、它们怎么连"。本模块补上这四个只读、JSON-first 的语义命令:
 
-    svq instances   [--module M] [--depth N]       实例列表 (可过滤/限深)
-    svq instance    <实例路径>                       单实例详情 (类型/父/子/端口/位宽)
-    svq connections <实例路径|模块名>                连接: 实例→端口↔内部信号 / 模块→四类边
-    svq hierarchy   [--module M] [--depth N]       层级树
+    sv_query instances   [--module M] [--depth N]       实例列表 (可过滤/限深)
+    sv_query instance    <实例路径>                       单实例详情 (类型/父/子/端口/位宽)
+    sv_query connections <实例路径|模块名>                连接: 实例→端口↔内部信号 / 模块→四类边
+    sv_query hierarchy   [--module M] [--depth N]       层级树
 
 契约 (与 core 层一致): 只读 + 每个命令都有 `--json` + 稳定字段; 不写任何文件。
 """
@@ -90,9 +90,9 @@ def instances_cmd(
 
     [iter_250 T2] 合并原 `instance` 命令 (2 → 1): 两者只是"有没有给实例路径"的差别。
 
-    例: svq instances --filelist project.f --json
-        svq instances -f top.sv --module top --depth 1 --json
-        svq instances top.u_dut --filelist project.f --json
+    例: sv_query instances --filelist project.f --json
+        sv_query instances -f top.sv --module top --depth 1 --json
+        sv_query instances top.u_dut --filelist project.f --json
     """
     try:
         tracer = _tracer(file, filelist, log_level, from_snapshot)
@@ -121,7 +121,7 @@ def _emit_instance_detail(tracer, all_inst: list[dict], path: str,
     me = next((i for i in all_inst if i["full_path"] == path), None)
     if me is None:
         typer.echo(json.dumps({"ok": False, "error": "instance not found", "path": path,
-                               "hint": "用 `svq instances --json` 看可用实例"},
+                               "hint": "用 `sv_query instances --json` 看可用实例"},
                               indent=2 if pretty else None, ensure_ascii=False))
         raise typer.Exit(code=1)
 
@@ -142,10 +142,10 @@ def _emit_instance_detail(tracer, all_inst: list[dict], path: str,
 
 
 # ----------------------------------------------------------------------------
-# 3. connections <实例路径 | 模块名>
+# 3. connections <实例路径>
 # ----------------------------------------------------------------------------
 def connections_cmd(
-    target: str = typer.Argument(..., help="实例路径 (top.u_dut) 或模块名 (dut)"),
+    target: str = typer.Argument(..., help="实例路径 (top.u_dut); 只接受实例, 不接受模块名"),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str = typer.Option(None, "--filelist", help="filelist (.f/.fl) for multi-file projects"),
     from_snapshot: str = typer.Option(None, "--from-snapshot", help="load graph/MIG from snapshot tag"),
@@ -153,12 +153,11 @@ def connections_cmd(
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     log_level: str = typer.Option("WARNING", "--log-level"),
 ) -> None:
-    """连接关系。
+    """连接关系（只接受实例路径）。
 
-    - 若 target 是**实例路径** → 端口 ↔ 内部信号映射 (来自 MIG)
-    - 若 target 是**模块名**  → 模块四类边 (inputs/outputs/internals/cross_module) + 置信度
-
-    输出里带 `resolved_as` 字段, 不让你猜是哪一种。
+    target 必须是**实例路径** → 端口 ↔ 内部信号映射 (来自 MIG)。
+    模块名会被显式拒绝并提示同类型的实例；不再提供模块定义命名空间的四类边。
+    输出里带 `resolved_as` 字段。
     """
     try:
         tracer = _tracer(file, filelist, log_level, from_snapshot)

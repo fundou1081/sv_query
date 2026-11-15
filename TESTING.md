@@ -9,7 +9,7 @@
 
 | 项 | 值（引自 INDEX） | 说明 |
 |---|---|---|
-| 全量 (canonical) | **2737 passed / 0 failed** | `sim/tests/`, `-m "not opensource"`；0 skipped / 0 unexecuted / 123 deferred；35 subtests（2026-11-15 实测，P173）。**0 skipped 不代表测试健康**，见 §语义测试 |
+| 全量 (canonical) | **2738 passed / 0 failed** | `sim/tests/`, `-m "not opensource"`；0 skipped / 0 unexecuted / 123 deferred；35 subtests（2026-11-15 实测，P173）。**0 skipped 不代表测试健康**，见 §语义测试 |
 | 回归基线 (unit + regression) | 见 INDEX | `-m "not opensource"` |
 | CLI / integration | 见 INDEX | `sim/tests/cli sim/tests/integration` |
 
@@ -138,7 +138,7 @@ external-not-run
 | ventus-gpgpu-verilog | `~/my_dv_proj/openrtl/ventus-gpgpu-verilog` | `test_ventus_*_validation.py` |
 | picorv32 | `~/my_dv_proj/openrtl/picorv32` | `test_picorv32_validation.py` |
 | darkriscv | `~/my_dv_proj/openrtl/darkriscv` | `test_dataflow_latency_open_source.py` |
-| OpenTitan | `~/my_dv_proj/openrtl/opentitan` | `test_coverage_gen_demo_golden.py` |
+| OpenTitan | `~/my_dv_proj/openrtl/opentitan` | `test_pyslang_type_extraction.py` |
 
 **设计原则**: 测试的核心代码模式从这些项目中抽取，存储为 `sim/tests/integration/dataflow_fixtures/` 下的独立 `.sv` 文件。完整的开源项目使用场景迁移到 `docs/usage/`，不作为回归测试。
 

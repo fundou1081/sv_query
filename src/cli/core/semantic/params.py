@@ -1,5 +1,5 @@
 """
-core/semantic/params.py — [iter_237] 实例参数生效值查询 (`svq params <实例路径>`)
+core/semantic/params.py — [iter_237] 实例参数生效值查询 (`sv_query params <实例路径>`)
 
 回答: "这个实例的 `#(.WIDTH(8))` 到底生效成什么?" ——
 pyslang 的 `InstanceSymbol.body.parameters` 给出**求值后**的参数 (ConstantValue),
@@ -24,7 +24,7 @@ def params_cmd(
 ) -> None:
     """实例的**生效参数值** (含是否被 override)。
 
-    例: svq params top.u_child --filelist project.f --json
+    例: sv_query params top.u_child --filelist project.f --json
     """
     tracer = build_tracer(file, filelist, log_level)
     if tracer is None:
@@ -38,7 +38,7 @@ def params_cmd(
             break
     if target is None:
         fail("instance not found", json_output, pretty, path=path,
-             hint="用 `svq instances --json` 列可用实例")
+             hint="用 `sv_query instances --json` 列可用实例")
 
     body = getattr(target._symbol, "body", None)
     rows = []

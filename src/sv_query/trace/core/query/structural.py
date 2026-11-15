@@ -142,7 +142,9 @@ def symmetry_findings(graph: SignalGraph, max_findings: int = 100) -> dict:
     if truncated:
         findings = findings[:max_findings]
     status = "unknown" if checked_groups == 0 else ("fail" if findings else "pass")
-    coverage_complete = not truncated
+    # Zero checked groups means coverage was not performed; "not truncated"
+    # alone would misleadingly report coverage_complete=true.
+    coverage_complete = bool((not truncated) * (checked_groups > 0))
     return {
         "verified": status == "pass" and coverage_complete,
         "coverage_complete": coverage_complete,

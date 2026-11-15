@@ -13,8 +13,8 @@
 | 项 | 值 | 说明 |
 |---|---|---|
 | 源码规模 | 139 文件 / 49,650 行 | `find src -name "*.py"`（2026-11-15 实测） |
-| 测试规模 | 392 测试文件 / 65,465 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-15 实测） |
-| 全量 (canonical) | **2737 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-15 P173 全量复核**（本机；deferred 口径）；含 zombie tests 清理后的 canonical；**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
+| 测试规模 | 392 测试文件 / 65013 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-15 实测） |
+| 全量 (canonical) | **2738 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-15 P173 全量复核**（本机；deferred 口径）；含 zombie tests 清理后的 canonical；**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 迭代记录 | `docs/task_tree/iterations/` (512 份, 只增不改) | 每次迭代一份（2026-11-15 实测） |
@@ -92,6 +92,7 @@
 | [validation/P171_4_2_FULL_MERGE_2026-11-14.md](validation/P171_4_2_FULL_MERGE_2026-11-14.md) | **P171.4.2**: merged facts/formatter; worker PASS WITH NITS |
 | [validation/P62_2_INTERACTIVE_DEBUG_GATE_2026-11-14.md](validation/P62_2_INTERACTIVE_DEBUG_GATE_2026-11-14.md) | **P62.2**: gate blocked; no review-time/session evidence |
 | [validation/P173_STATUS_CLEANUP_2026-11-15.md](validation/P173_STATUS_CLEANUP_2026-11-15.md) | **P173**: CLI/exp truth + status docs + zombie test cleanup |
+| [validation/P174_REVIEW_FIXES_2026-11-15.md](validation/P174_REVIEW_FIXES_2026-11-15.md) | **P174**: independent review follow-up |
 | [validation/P172_1_COVERAGE_GEN_RETIRE_2026-11-14.md](validation/P172_1_COVERAGE_GEN_RETIRE_2026-11-14.md) | **P172.1**: retire stale coverage-gen workflow |
 | [validation/P172_2_CHECK_CRAP_BASE_2026-11-14.md](validation/P172_2_CHECK_CRAP_BASE_2026-11-14.md) | **P172.2**: local gate defaults --base HEAD~1 |
 | [validation/P171_6_2_MUTATION_GATE_2026-11-14.md](validation/P171_6_2_MUTATION_GATE_2026-11-14.md) | **P171.6.2**: 20-task repo-only mutation gate |
@@ -117,7 +118,7 @@
 | 文档 | 作用 |
 |---|---|
 | [PRIMARY_FEATURES.md](PRIMARY_FEATURES.md) | 主推功能: 查询/追踪/校验（visualize 已退役） |
-| [EXPERIMENTAL_FEATURES.md](EXPERIMENTAL_FEATURES.md) | 实验功能说明（**正文为 2026-07-04 快照，命令名已失效**；当前 exp 6 个 hidden 命令以 `capabilities --include-exp` 为准） |
+| [EXPERIMENTAL_FEATURES.md](EXPERIMENTAL_FEATURES.md) | **当前 exp 层**: 6 个 hidden 直接命令，无 `svq exp` 统一入口 |
 | [EXP_IDEAS.md](EXP_IDEAS.md) | **exp 创意清单 (未落地)**: 10 条想法 + 各自要解决的问题场景 |
 | [EXP_NAMESPACE.md](EXP_NAMESPACE.md) | **当前 exp 层**: 6 个 hidden 直接命令；`svq exp` 统一入口已退役 |
 | [poc/2026-10-23_native_connectivity.md](poc/2026-10-23_native_connectivity.md) | **POC**: slang-native 连通性 vs 现有两套路径实现 (影子节点 30~38%、0 可达; PathResolver 终点错误 60%+) |
@@ -261,8 +262,8 @@
 |---|---|
 | [DATAFLOW.md](DATAFLOW.md) | dataflow 路径分析 |
 | [CONTROL_FLOW.md](CONTROL_FLOW.md) | controlflow 分析 |
-| [COVERAGE_GENERATOR.md](COVERAGE_GENERATOR.md) | coverage 生成 |
-| [RANDOMIZE_COVERGROUP.md](RANDOMIZE_COVERGROUP.md) | randomize / covergroup 分析 |
+| [COVERAGE_GENERATOR.md](COVERAGE_GENERATOR.md) | **历史 POC**: coverage 生成已退役，不是当前能力 |
+| [RANDOMIZE_COVERGROUP.md](RANDOMIZE_COVERGROUP.md) | **历史快照**: randomize 命令已退役 |
 | [PROTOCOL_DETECTION.md](PROTOCOL_DETECTION.md) | 协议识别 |
 | [bus_protocol_detector.md](bus_protocol_detector.md) | Bus 协议检测设计 |
 | [SVA_ANALYSIS.md](SVA_ANALYSIS.md) | SVA 分析 |

@@ -76,7 +76,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 app = typer.Typer(
-    name="svq",
+    name="sv_query",
     help="SystemVerilog signal tracer and graph diff tool",
     add_completion=False,
 )
@@ -88,7 +88,7 @@ app.add_typer(trace_app, name="trace")
 # 老名 `trace fanin` / `trace fanout` 保留为兼容别名 (同一实现)。
 # [iter_236 1a] 实例/层级查询 (agent 理解架构的第一步; 只读 + JSON)
 app.command("instances", help="[规范入口] 列出实例; 给实例路径 → 详情 (类型/父/子/端口)")(instances_cmd)
-app.command("connections", help="[规范入口] 连接: 实例端口↔内部信号 / 模块四类边")(connections_cmd)
+app.command("connections", help="[规范入口] 连接: 实例端口↔内部信号 (只接受实例路径)")(connections_cmd)
 app.command("hierarchy", help="[规范入口] 实例层级树 (机器可读版 arch show)")(hierarchy_cmd)
 # [iter_237] 语义查询补全 (参数 override / 端口总览 / 跨模块路径 / class)
 app.command("params", help="[规范入口] 实例的生效参数值 (含是否被 override)")(params_cmd)
@@ -107,7 +107,7 @@ app.add_typer(controlflow_app, name="controlflow")
 
 # ---- 兼容别名 (老路径) ----
 # [iter_259] 10 个历史顶层组已**删除** (iter_251 先隐藏, 本次彻底移除):
-# 规范入口只有 `svq exp <组> <子>`。测试调用点已同步改写 (~151 处)。
+# 规范入口只有 `sv_query exp <组> <子>`。测试调用点已同步改写 (~151 处)。
 # 如需恢复, 见 git 历史与 docs/EXP_NAMESPACE.md。
 # [iter_361 / PLAN P59.2] 全设计图可视化退役；旧 visualize/arch/design 已删除。
 # [iter_364 / P62] 局部 finding review artifact（不是全图）:

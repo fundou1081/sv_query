@@ -1,5 +1,5 @@
 """
-core/semantic/classes.py — [iter_237] class 查询 (`svq classes` / `svq class <name>`)
+core/semantic/classes.py — [iter_237] class 查询 (`sv_query classes` / `sv_query class <name>`)
 
 补上同类缺口: `list_classes()` / `trace_class_members()` / `trace_class_instances()` /
 `trace_member_instances()` 四个库 API 此前**零 CLI 暴露** (与 instance 查询同批)。
@@ -275,11 +275,11 @@ def class_cmd(
     if relations:
         if name is None:
             fail("--relations requires a class name", json_output, pretty,
-                 hint="例如 `svq class packet --relations`")
+                 hint="例如 `sv_query class packet --relations`")
             return
         if name not in tracer.list_classes():
             fail("class not found", json_output, pretty, name=name,
-                 hint="用 `svq class --json` (不带 class 名) 列可用 class")
+                 hint="用 `sv_query class --json` (不带 class 名) 列可用 class")
             return
         rel = _class_relations(tracer, tracer.get_graph(), name)
         emit({"ok": True, "class": name, "relations": rel}, json_output, pretty)
@@ -304,7 +304,7 @@ def class_cmd(
     instances = tracer.trace_class_instances(name)
     if not members and not instances:
         fail("class not found (no members/instances in graph)", json_output, pretty,
-             name=name, hint="用 `svq class --json` (不带 class 名) 列可用 class")
+             name=name, hint="用 `sv_query class --json` (不带 class 名) 列可用 class")
     emit({"ok": True, "class": name,
           "member_count": len(members), "members": [_member_dict(n) for n in members],
           "instance_count": len(instances), "instances": [node_dict(n) for n in instances]},

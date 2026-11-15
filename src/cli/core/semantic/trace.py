@@ -745,8 +745,8 @@ def fanin(
 ) -> None:
     """谁驱动这个信号 —— 上游 drivers (DRIVER 边反向遍历)
 
-    [iter_231 P1] 规范入口: `svq drivers` (顶层)。
-    `svq trace fanin` 是同一实现的兼容别名 (老名保留, 输出完全一致)。
+    [iter_231 P1] 规范入口: `sv_query drivers` (顶层)。
+    `sv_query trace fanin` 是同一实现的兼容别名 (老名保留, 输出完全一致)。
 
     [iter_240] 跨模块: **不给 --module 时**会跨实例端口继续追 (输入→端口→模块内→端口→输出);
     给了 --module 则限定在该模块内 (不越界)。
@@ -812,8 +812,8 @@ def fanout(
 ) -> None:
     """这个信号被谁使用 —— 下游 loads (DRIVER 边正向遍历)
 
-    [iter_231 P1] 规范入口: `svq loads` (顶层)。
-    `svq trace fanout` 是同一实现的兼容别名 (老名保留, 输出完全一致)。
+    [iter_231 P1] 规范入口: `sv_query loads` (顶层)。
+    `sv_query trace fanout` 是同一实现的兼容别名 (老名保留, 输出完全一致)。
 
     [iter_240] 跨模块: **不给 --module 时**会跨实例端口继续追 (输入→端口→模块内→端口→输出);
     给了 --module 则限定在该模块内 (不越界)。
@@ -1271,7 +1271,7 @@ def _extract_modules(paths: list) -> list:
 
 
 # ==============================================================================
-# [iter_231 P1] 命令注册: 规范入口在顶层 (`svq drivers` / `svq loads`, 方豆 2026-09-09 方案 a),
+# [iter_231 P1] 命令注册: 规范入口在顶层 (`sv_query drivers` / `sv_query loads`, 方豆 2026-09-09 方案 a),
 # 老名 `trace fanin` / `trace fanout` 作为**兼容别名**保留 —— 同一个函数对象, 无双份实现/双份签名。
 # 顶层注册见 src/cli/main.py (app.command("drivers")(fanin))。
 # ==============================================================================

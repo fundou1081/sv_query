@@ -9,14 +9,14 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **无（P173 全部完成；P62.2 gate no-go）** `<已完成>`
-  - P173 full status/evidence cleanup：review 后的文档/CLI/测试清理
-  - 下一项：P173.2 status docs → P173.3 examples/tests hygiene
+- **当前 item**: **无（P174 完成；P62.2 gate no-go）** `<已完成>`
+  - P173 full status/evidence cleanup：已完成；无 active item
+  - P62.2 gate assessment：no-go，不做交互式 debug UI/REPL
 
 ## 📌 当前真实基线
 
 ```text
-canonical:  2737 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  2738 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 
@@ -35,12 +35,12 @@ opensource: 112 passed / 11 skipped / 0 failed
 - RTL typo detection / ranking 属于独立项目 `rtl_typo_checker`；sv_query 只保留客观 structural 检查；
 - interactive debug（P62.2）gate 评估为 no-go，不开发 UI/REPL。
 
-## ⚠️ 已知清理项（P173 处理中）
+## ✅ P173 清理结果
 
-1. CLI/exp truth：`trace impact` 已隐藏；CLI_SURFACE/feature map/EXP_NAMESPACE 正在对齐；
-2. 状态文档：旧 HANDOFF/P158 下一步已过期；
-3. 证据：14 个 zombie tests（retired exp / coverage-suggest）需要退役或重写；
-4. coverage POC：`conftest` 仍 import `tools/coverage_gen_demo.py`；公开文档示例仍有旧命令。
+1. CLI/exp truth：`trace impact` 已隐藏；CLI_SURFACE/feature map/EXP_NAMESPACE 已对齐；
+2. 状态文档：CURRENT_TODO/HANDOFF/PLAN/契约已对齐；
+3. 证据：退役 zombie/coverage-suggest tests；canonical 2738；
+4. coverage POC：conftest 改为 lazy import；公开示例已改写/归档。
 
 ## 🚫 不要再做的事
 

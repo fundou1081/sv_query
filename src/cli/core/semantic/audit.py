@@ -1,4 +1,4 @@
-"""[iter_288 / PLAN P3.3] `svq audit` —— 设计审计（只读、JSON 友好）。
+"""[iter_288 / PLAN P3.3] `sv_query audit` —— 设计审计（只读、JSON 友好）。
 
 原 exp 10 条创意（`docs/EXP_IDEAS.md`）重新落地为 **一个命令的 8 个检查**：
 协议识别 / 握手配对 / 反压环路候选 / 断言覆盖 / 覆盖缺口 /

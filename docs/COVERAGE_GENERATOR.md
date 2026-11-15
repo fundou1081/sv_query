@@ -8,8 +8,8 @@
 > **项目边界（2026-11-14，方豆决定）**
 >
 > sv_query 目前以 **RTL 查询 + 客观校验**为主，不做 coverage 生成。
-> 本文的 `ControlCoverageGenerator` / `coverage_gen_demo.py` 保留为历史 POC：
-> 不恢复 CLI、不进入 core、不登记新 claim、不纳入当前 CI。
+> 本文的 `ControlCoverageGenerator` 源码已归档/删除；`coverage_gen_demo.py` 只是
+> 历史残留工具，且调用已退役命令。两者都不恢复 CLI、不进入 core、不登记新 claim。
 >
 > 如果未来重启 coverage 生成：**以 sv_query 为基底，单开一个项目**，
 > 复用 query / graph / snapshot / verify 的只读事实层，独立测试、CI、claim 和发布；
@@ -19,7 +19,9 @@
 
 ## 1. 概述
 
-`ControlCoverageGenerator` 是 sv_query 的一个子模块，**基于信号的条件驱动关系，递归展开到原子信号，生成控制覆盖度建议**。
+> **历史设计，不是当前实现**: 本节描述的是已归档的 `ControlCoverageGenerator`；
+> 当前 `src/sv_query/trace/core/coverage_generator.py` 不存在，`coverage suggest`
+> 命令也不存在。保留本文仅用于追溯设计。
 
 ### 1.1 解决的问题
 

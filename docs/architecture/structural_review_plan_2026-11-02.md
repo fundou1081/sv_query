@@ -1,3 +1,7 @@
+> **2026-11-15 边界更新**: `typo.candidate` / typo 产品已划归独立项目
+> `rtl_typo_checker`；sv_query 的 P61 只实现 `symmetry.port_set`。
+> 下文涉及 typo 候选的内容是历史设计，不是当前计划/契约。
+
 # 结构审查与动态子图 — 开发计划
 
 **日期**: 2026-11-02

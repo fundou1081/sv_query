@@ -1,3 +1,6 @@
+> **历史文档（2026-11-15 标注）**：其中 `visualize` 命令已于 2026-11-03 退役；
+> 当前命令面以 [CLI_SURFACE.md](CLI_SURFACE.md) / `sv_query capabilities --json` 为准。
+
 # 开源 RTL 验证问题库 (sv_query)
 
 > 基于多个开源项目 RTL 源码的系统化验证问题生成

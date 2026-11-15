@@ -6,7 +6,7 @@ diagnose/timescale.py — [iter_234 P2] `timescale` 只读诊断 (原 `fix times
   - 本命令: dry-run 列出缺 `timescale` 的文件 (供人/agent 决策)
   - 真正改文件: `python tools/fix_timescale.py <filelist> --apply` (带 .bak 备份)
 
-规范名 `svq diagnose timescale`; 老名 `svq fix timescale` 保留为兼容别名。
+规范名 `sv_query diagnose timescale`; 老名 `sv_query fix timescale` 保留为兼容别名。
 """
 
 from __future__ import annotations

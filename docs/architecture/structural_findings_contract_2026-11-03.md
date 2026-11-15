@@ -9,8 +9,8 @@
 ## 1. 命令
 
 ```bash
-svq verify structural -f top.sv --json
-svq verify structural -f top.sv --max-findings 100 --json
+sv_query verify structural -f top.sv --json
+sv_query verify structural -f top.sv --max-findings 100 --json
 ```
 
 当前只实现一个 check：
@@ -35,6 +35,12 @@ symmetry.port_set
   "command": "verify_structural",
   "params": {...},
   "result": {
+    "verified": false,
+    "coverage_complete": false,
+    "partial_checks": [],
+    "unknown_checks": ["symmetry"],
+    "coverage": {"groups_total": 0, "groups_checked": 0,
+                  "instances_checked": 0, "truncated": false},
     "findings": [],
     "total": 0,
     "truncated": false,
@@ -86,7 +92,11 @@ finding：
 - 不做 width/source/name 启发式（parameter 不同可能合法）；
 - 不做功能等价/时序等价；
 - 不覆盖 generate 之外的全局命名约定；
-- 后续可扩展：`symmetry.source_pattern`、`connection.width`、`typo.candidate`。
+- 后续可扩展：`symmetry.source_pattern`、`connection.width`。
+- `typo.candidate` **不在此契约**：RTL typo 产品是独立项目 `rtl_typo_checker`；
+  `verify structural` 只做客观 `symmetry.port_set`。
+- 语义：`coverage_complete=false` 当没有可比较组（`groups_checked=0`）或 findings 被截断；
+  不能把“没检查”读成“覆盖完成”。
 
 ---
 

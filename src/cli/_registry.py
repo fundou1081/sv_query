@@ -6,7 +6,7 @@ agent (主消费者) 无法从命令名判断该用哪个, 也不知道哪些是
 
 本模块只做一件事: **把"每个命令属于哪一层、什么承诺等级"变成代码里的数据**,
 供三处消费:
-  1. `svq capabilities --json`  — agent 的工具面真相源
+  1. `sv_query capabilities --json`  — agent 的工具面真相源
   2. `tools/gen_cli_surface.py` — 生成 docs/CLI_SURFACE.md (可重生成, 不手写)
   3. `tools/check_cli_layers.py` — 机械校验分层/只读/反向依赖
 
@@ -54,7 +54,7 @@ LAYERS: dict[str, LayerSpec] = {
     "view": LayerSpec(
         name="view", consumer="human", stability="stable", readonly=True,
         json_required=False, in_capabilities=True, schema_version=None,
-        note="人眼面 (图/叙述); 默认含于 capabilities, 后续重点开发",
+        note="人眼面 (历史): 当前无注册命令; 全设计图已退役",
     ),
     "exp": LayerSpec(
         name="exp", consumer="none", stability="unstable", readonly=True,
@@ -266,14 +266,14 @@ COMMANDS_BY_KEY: dict[str, CommandSpec] = {c.key: c for c in COMMANDS}
 # ---------------------------------------------------------------------------
 # 兼容别名 (老命令名 → 规范名)
 #   [iter_231 P1] 方豆决定方案 (a): 语义 core 的规范入口是**顶层关系名**
-#   (`svq drivers` / `svq loads`), 老名在 `trace` 组内保留为兼容别名。
+#   (`sv_query drivers` / `sv_query loads`), 老名在 `trace` 组内保留为兼容别名。
 #   别名与规范名是**同一个函数对象** (无第二份实现/签名) → 输出必然一致。
 # ---------------------------------------------------------------------------
 ALIASES: dict[str, str] = {
     "trace fanin": "drivers",
     "trace fanout": "loads",
     # [iter_248 T2] fix <x> 别名已删除: 诊断统一为 `diagnose <check>`, 只读
-    # [iter_235 P3] exp 降级区收进 `svq exp ...` 前缀; 老路径保留为兼容别名
+    # [iter_235 P3] exp 降级区收进 `sv_query exp ...` 前缀; 老路径保留为兼容别名
 }
 
 
@@ -387,7 +387,7 @@ JSON_CONTRACT = {
     },
     "write_scope_policy": {
         "none": "no disk writes",
-        "cache": "writes only the svq cache/snapshot directory",
+        "cache": "writes only the sv_query cache/snapshot directory",
         "output": "writes only a caller-specified output file, never source RTL",
         "contract": "core.readonly means no project/RTL mutation; write_scope labels "
                     "the explicit cache/output exceptions",

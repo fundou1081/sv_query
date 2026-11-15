@@ -57,8 +57,8 @@ def _relative_hint(property: str, graph) -> dict:
         "hint": (
             "class-relative property is not a graph id; use an instance-level "
             "canonical id (e.g. top.e.p.addr) or a type-level id (packet.addr). "
-            "Discover instances with `svq class <type> --relations` / "
-            "`svq class <type> --member <name>`."
+            "Discover instances with `sv_query class <type> --relations` / "
+            "`sv_query class <type> --member <name>`."
         ),
         "suggestions": [f"class <type> --member {property.rsplit('.', 1)[-1]}"],
     }

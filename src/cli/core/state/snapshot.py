@@ -196,7 +196,7 @@ def list_cmd(
         print(f"💡 当前目录 ({manager.base_dir}) 无快照, 但旧位置 {LEGACY_SNAPSHOT_DIR}/ 有 "
               f"{len(list(_legacy.glob('*.json')))} 个 (iter_239 起默认不再写项目目录)。",
               file=sys.stderr)
-        print(f"   要使用旧快照: SVQ_SNAPSHOT_DIR={LEGACY_SNAPSHOT_DIR} svq snapshot list",
+        print(f"   要使用旧快照: SVQ_SNAPSHOT_DIR={LEGACY_SNAPSHOT_DIR} sv_query snapshot list",
               file=sys.stderr)
     snapshots = manager.list_summary()
 
@@ -204,7 +204,7 @@ def list_cmd(
         print(json.dumps(snapshots, indent=2))
     else:
         if not snapshots:
-            print("No snapshots found. Run: svq snapshot save <file> -t <tag>")
+            print("No snapshots found. Run: sv_query snapshot save <file> -t <tag>")
             return
         print(f"Found {len(snapshots)} snapshots:\n")
         print(f"{'Tag':<20} {'Created':<25} {'Nodes':<8} {'Edges':<8} Files")

@@ -73,7 +73,7 @@ sv_query connections top.u0 --filelist rtl.f --json
 ```bash
 sv_query trace profile top.u0.data --filelist rtl.f --json
 sv_query trace lookup --path top.u0.data --filelist rtl.f --json
-sv_query trace manifest --path-file paths.txt --filelist rtl.f --json
+sv_query trace manifest --paths-file paths.txt --filelist rtl.f --json
 ```
 
 ## 6. Filelist

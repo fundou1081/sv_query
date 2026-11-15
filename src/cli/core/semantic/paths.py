@@ -1,5 +1,5 @@
 """
-core/semantic/paths.py — [iter_237] 跨模块路径查询 (`svq paths <src> <dst>`)
+core/semantic/paths.py — [iter_237] 跨模块路径查询 (`sv_query paths <src> <dst>`)
 
 与 `dataflow analyze` 的分工:
   - `dataflow analyze`: 工程语境下的源→目标路径分析 (边语义/条件/风险)
@@ -72,9 +72,9 @@ def paths_cmd(
     `--timeout` (wall-clock) 约束; 触顶时输出 `truncated:true` +
     `truncation_reason`, **不静默截断**, 也不把截断伪装成 `found:false`。
 
-    例: svq paths inst_demo.in_a inst_demo.add_out --filelist project.f --json
-        svq paths in_a add_out --directed --filelist project.f --json
-        svq paths top.din top.dout --directed --canonical --json
+    例: sv_query paths inst_demo.in_a inst_demo.add_out --filelist project.f --json
+        sv_query paths in_a add_out --directed --filelist project.f --json
+        sv_query paths top.din top.dout --directed --canonical --json
     """
     if from_snapshot and (file or filelist):
         fail("--from-snapshot is mutually exclusive with --file/--filelist",
@@ -115,7 +115,7 @@ def paths_cmd(
     unknown = [x for x in (src_id, dst_id) if x not in known]
     if unknown:
         fail("signal id not found in graph", json_output, pretty, unknown=unknown,
-             hint="用 `svq graph nodes --json` 列出可用 id")
+             hint="用 `sv_query graph nodes --json` 列出可用 id")
 
     def _edge_ev(path):
         out = []

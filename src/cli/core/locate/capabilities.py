@@ -13,10 +13,10 @@ capabilities.py — [iter_230 P0] 机器可读的能力清单 (agent 的工具�
 - 输出带 `schema_version`, 字段变更按版本管理
 
 用法:
-    svq capabilities --json
-    svq capabilities --json --recommended
-    svq capabilities --json --include-exp
-    svq capabilities            # 人类可读的层/组概览
+    sv_query capabilities --json
+    sv_query capabilities --json --recommended
+    sv_query capabilities --json --include-exp
+    sv_query capabilities            # 人类可读的层/组概览
 """
 from __future__ import annotations
 
@@ -77,5 +77,5 @@ def capabilities(
                f"precise={len(bp['precise_forms'])} forms  coarse={len(bp['coarse_forms'])} forms")
     typer.echo("   详见 `--json` 的 bit_precision 段; 位查询结果看 precision/coarse_fallback。")
     typer.echo("")
-    typer.echo("提示: agent 建议用 `svq capabilities --json --recommended` 取最小工具集;")
+    typer.echo("提示: agent 建议用 `sv_query capabilities --json --recommended` 取最小工具集;")
     typer.echo("      降级区需显式 `--include-exp`。")

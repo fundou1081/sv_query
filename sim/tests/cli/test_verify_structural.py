@@ -66,6 +66,7 @@ def test_structural_no_comparable_groups_is_unknown(tmp_path):
     assert d["result"]["verified"] is False
     assert d["result"]["unknown_checks"] == ["symmetry"]
     assert d["result"]["coverage"]["groups_checked"] == 0
+    assert d["result"]["coverage_complete"] is False
 
 
 def test_structural_max_findings_truncation(tmp_path):

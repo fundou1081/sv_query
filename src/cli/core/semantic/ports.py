@@ -1,5 +1,5 @@
 """
-core/semantic/ports.py — [iter_237] 模块端口总览 (`svq ports <模块名>`)
+core/semantic/ports.py — [iter_237] 模块端口总览 (`sv_query ports <模块名>`)
 
 回答: "这个模块有哪些端口、方向、位宽、各连了几条边?" ——
 数据来自信号图的 PORT_IN/PORT_OUT/PORT_INOUT 节点 (+ 出入边计数)。
@@ -27,7 +27,7 @@ def ports_cmd(
     """模块端口一览 (方向/位宽/入边数/出边数)。
 
 注意: in_edges/out_edges 是**信号图原始邻接计数**, 不是语义上的 driver/load 判定
-(要看语义用 `svq connections <模块>` / `svq drivers`)。
+(要看语义用 `sv_query connections <模块>` / `sv_query drivers`)。
 """
     tracer = (_load_tracer_from_snapshot(from_snapshot) if from_snapshot
               else build_tracer(file, filelist, log_level))
@@ -54,7 +54,7 @@ def ports_cmd(
         })
     if not rows:
         fail("module has no ports (or module not found)", json_output, pretty, module=module,
-             hint="用 `svq instances --json` / `svq hierarchy --json` 确认模块名")
+             hint="用 `sv_query instances --json` / `sv_query hierarchy --json` 确认模块名")
     rows.sort(key=lambda r: (r["direction"], r["port"] or ""))
     by_dir: dict[str, int] = {}
     for r in rows:

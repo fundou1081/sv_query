@@ -140,8 +140,9 @@ scope 定位候选与 canonical ID
 ### 4.1 Coverage generation 的项目边界（2026-11-14）
 
 目前 sv_query 的重心是 **RTL 查询 + 客观校验**，不是 coverage 生成。
-`ControlCoverageGenerator` / `coverage_gen_demo.py` 保留为历史 POC，不进入 core、
-不恢复 CLI、不登记为新 claim。
+`ControlCoverageGenerator` 源码已归档/删除；`tools/coverage_gen_demo.py` 仅作为
+历史 POC 残留，且调用已退役的 `exp risk analyze`，不可当作可用能力。
+不进入 core、不恢复 CLI、不登记为新 claim。
 
 如果未来要做 coverage 生成：
 
