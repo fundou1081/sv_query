@@ -411,7 +411,9 @@ def consistency_cmd(
         total = sum(len(c.get("violations", [])) for c in results)
         all_known = all(c.get("status") in ("pass", "fail") for c in results)
         partial_checks = [c["check"] for c in results if c.get("truncated") is True]
-        coverage_complete = not partial_checks
+        unknown_checks = [c["check"] for c in results
+                          if c.get("status") not in ("pass", "fail")]
+        coverage_complete = (not partial_checks) and (not unknown_checks)
         data = {
             "ok": True,
             "command": "verify_consistency",
@@ -424,8 +426,7 @@ def consistency_cmd(
                 "coverage_complete": coverage_complete,
                 "partial_checks": partial_checks,
                 "total_violations": total,
-                "unknown_checks": [c["check"] for c in results
-                                   if c.get("status") not in ("pass", "fail")],
+                "unknown_checks": unknown_checks,
                 "checks": results,
             },
             "errors": [],

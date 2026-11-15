@@ -85,6 +85,20 @@ def _print_constraints(resolved: str, items: list[dict]) -> None:
               f"conditions={item['conditions']} exprs={item['expr_count']}")
 
 
+def _require_source(file, filelist, json_output, pretty):
+    if file or filelist:
+        return
+    data = {"ok": False, "command": "trace_constraints",
+            "error": "--file or --filelist is required",
+            "errors": ["--file or --filelist is required"],
+            "hint": "例如 `sv_query trace constraints top.e.p.addr -f top.sv`"}
+    if json_output:
+        emit_json(data, pretty)
+    else:
+        print("Error: --file or --filelist is required", file=sys.stderr)
+    raise typer.Exit(code=1)
+
+
 def constraints_cmd(
     property: str = typer.Argument(..., help="packet.addr / top.e.p.addr"),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
@@ -94,7 +108,9 @@ def constraints_cmd(
     log_level: str = typer.Option("WARNING", "--log-level"),
 ) -> None:
     """属性受哪些 constraint 约束（类型级/实例级；不走数据流）。"""
+    tracer = None
     try:
+        _require_source(file, filelist, json_output, pretty)
         tracer = _build_tracer(file=file, filelist=filelist)
         graph = tracer.build_graph()
         resolved, items = _query(tracer, graph, property)
@@ -116,7 +132,7 @@ def constraints_cmd(
     except CompilationError as e:
         handle_compilation_error(e)
     except ValueError as e:
-        hint = _relative_hint(property, tracer.get_graph())
+        hint = _relative_hint(property, tracer.get_graph()) if tracer is not None else {"hint": ""}
         data = {"ok": False, "command": "trace_constraints", "error": str(e),
                 "errors": [str(e)], **hint}
         if json_output:

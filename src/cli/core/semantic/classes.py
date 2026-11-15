@@ -21,6 +21,13 @@ from sv_query.trace.core.query.uvm import uvm_class_info
 _CALL_KW = {"if", "for", "while", "case", "return", "sizeof", "new", "function", "task"}
 
 
+def _require_source(file, filelist, json_output, pretty):
+    if file or filelist:
+        return
+    fail("--file or --filelist is required", json_output, pretty,
+         hint="例如 `sv_query class packet --relations -f top.sv`")
+
+
 def _call_receiver(adapter, node):
     this_class = getattr(node, "thisClass", None)
     if this_class is None:
@@ -268,6 +275,7 @@ def class_cmd(
 
     注意: 只返回**图内已存在**的实例成员节点 (未使用的实例成员不臆造, 见 iter_152 C2)。
     """
+    _require_source(file, filelist, json_output, pretty)
     tracer = build_tracer(file, filelist, log_level)
     if tracer is None:
         return

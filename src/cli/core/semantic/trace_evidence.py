@@ -121,8 +121,11 @@ def evidence(
                     ev_dicts = [_evidence_to_dict(e) for e in evidences]
                 else:
                     ev = resolver.resolve(_query_sig)
-                    if from_snapshot and (not ev or not getattr(ev, "source_text", "")):
-                        ev_dicts = _snapshot_edge_evidence(_graph, _query_sig)
+                    if not ev or not getattr(ev, "source_text", ""):
+                        # Source and snapshot graphs both carry edge locations.
+                        # Fall back to the best functional edge (not a bus/null).
+                        fallback = _snapshot_edge_evidence(_graph, _query_sig)
+                        ev_dicts = fallback if fallback is not None else _evidence_to_dict(ev)
                     else:
                         ev_dicts = _evidence_to_dict(ev)
                 signals_result.append({
@@ -158,7 +161,9 @@ def evidence(
         data = {
             "ok": per_signal_errors == [],
             "command": "trace_evidence",
-            "params": {"signals": signals, "file": str(file), "chain": chain, "batch_file": batch_file, "batch": batch, "from_snapshot": from_snapshot, "no_cache": no_cache},
+            "params": {"signals": signals, "file": str(file) if file else None,
+                       "chain": chain, "batch_file": batch_file, "batch": batch,
+                       "from_snapshot": from_snapshot, "no_cache": no_cache},
             "result": {
                 "signals": signals_result,
                 "total_signals": len(signals),
