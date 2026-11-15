@@ -409,8 +409,8 @@ def _profile_signal(tracer, graph, sig: str, evidence_resolver=None, type_lookup
         "bit": _bit_meta(node, graph, res.get("resolved")),
         "source": {
             "file": getattr(node, "file", ""),
-            "line": getattr(node, "line", 0),
-            "declaration": (f"{node.file}:{node.line}"
+            "line": max(0, getattr(node, "line", 0) - 1),
+            "declaration": (f"{node.file}:{max(1, node.line - 1)}"
                             if getattr(node, "file", "") and getattr(node, "line", 0) else ""),
             "driver": ({"file": driver_file, "line": driver_line}
                        if driver_line is not None else None),

@@ -34,20 +34,25 @@ coverage_complete=false
 - `trace constraints` 无输入：JSON `{ok:false,error:...}` rc1；
 - 不再 traceback/空 stdout。
 
-## 4. 未修（记录）
+## 4. 追加修复
+
+- `trace evidence` 现在优先 functional assignment，避免 reset branch：
+  `top.dout` 从 reset 行 17 回到 functional 行 19；
+- `trace profile.source` 修正 off-by-one：`top.data` 从 10 → 9；
+- 新增 reset evidence 回归测试。
+
+## 5. 仍未修（记录）
 
 - `driver_count` 仍是 DRIVER-edge 源计数，不是 `len(drivers)`；skill 已教用
   `count/drivers[].id`；
-- `trace evidence` 可能指向 reset branch；skill 教用
-  `trace profile.source.driver`；
 - `graph subgraph --edge-kinds control` 命名问题保留；
-- `trace profile` 个别 bus 声明行可能 off-by-one；
-- 这些是已知限制，不是 skill 文案能修的。
+- `trace profile` 对个别复杂 bus/数组仍可能有解析差异；
+- 这些是已知限制。
 
 ## 5. 验证
 
 ```text
-canonical: 2746 passed / 0 failed / 123 deferred
+canonical: 2747 passed / 0 failed / 123 deferred
 full gate: green
 new tests: test_p178_contract.py (3) + verify unknown-check (1)
 ```

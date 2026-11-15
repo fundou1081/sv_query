@@ -31,6 +31,26 @@ logger = logging.getLogger(__name__)
 # Stage 3A: evidence 命令 - 召回 always/if 块完整源码
 # ==============================================================================
 
+def _is_reset_condition(cond: str) -> bool:
+    c = (cond or "").strip().lower()
+    return any(tok in c for tok in ("rst", "reset")) and "&&" not in c and "||" not in c
+
+
+def _line_has_reset_edge(graph, signal: str, line: int) -> bool:
+    if graph is None or not line:
+        return False
+    for src, dst in graph.edges():
+        if dst != signal:
+            continue
+        for edge in graph.get_edges(src, dst):
+            loc = getattr(edge, "source_location", None)
+            if loc is None or getattr(loc, "line_start", 0) != line:
+                continue
+            if _is_reset_condition(getattr(edge, "condition", "") or ""):
+                return True
+    return False
+
+
 def _snapshot_edge_evidence(graph, signal: str) -> dict | None:
     """Build assignment-level evidence from snapshot edges.
 
@@ -55,8 +75,13 @@ def _snapshot_edge_evidence(graph, signal: str) -> dict | None:
         kind = getattr(getattr(node, "kind", None), "name", "")
         return kind == "CONST"
 
+    def is_reset_edge(edge) -> bool:
+        return _is_reset_condition(getattr(edge, "condition", "") or "")
+
+    # Prefer a functional data assignment over a reset/const edge.
     candidates.sort(key=lambda item: (
         is_const_edge(item[0]),
+        is_reset_edge(item[0]),
         not bool(getattr(item[0], "expression", "")),
         getattr(item[1], "line_start", 0),
         item[0].src,
@@ -66,14 +91,42 @@ def _snapshot_edge_evidence(graph, signal: str) -> dict | None:
         "signal": signal,
         "source_location": loc.to_dict(),
         "source_text": getattr(edge, "expression", "") or "",
-        "kind": getattr(edge.kind, "name", str(edge.kind)),
-        "driver": edge.src,
-        "condition": edge.condition,
-        "expression": edge.expression,
+        "enclosing_always": None,
+        "enclosing_always_comb": None,
+        "enclosing_if": None,
+        "enclosing_assign": None,
+        "enclosing_class": None,
+        "enclosing_constraint": None,
+        "enclosing_chain": [],
         "is_verified": True,
         "credibility_score": 1.0,
     }
 
+
+def _evidence_source(d):
+    if not isinstance(d, dict):
+        return "", 0
+    loc = d.get("source_location") or {}
+    return d.get("source_text", "") or "", loc.get("line_start", 0)
+
+
+def _evidence_is_reset(graph, signal, d):
+    text, line = _evidence_source(d)
+    if any(tok in text.lower() for tok in ("rst", "reset")):
+        return True
+    return _line_has_reset_edge(graph, signal, line)
+
+
+def _resolve_evidence_dict(resolver, graph, signal: str) -> dict | None:
+    ev_dict = _evidence_to_dict(resolver.resolve(signal))
+    fallback = _snapshot_edge_evidence(graph, signal)
+    text, _ = _evidence_source(ev_dict)
+    if not ev_dict or not text:
+        return fallback if fallback is not None else ev_dict
+    if (fallback is not None and _evidence_is_reset(graph, signal, ev_dict)
+            and not _evidence_is_reset(graph, signal, fallback)):
+        return fallback
+    return ev_dict
 
 def evidence(
     signal: str = typer.Argument(None, help="Signal to query (e.g., top.q). Optional when --batch or --batch-file is used."),
@@ -120,14 +173,7 @@ def evidence(
                     evidences = resolver.resolve_chain(_query_sig)
                     ev_dicts = [_evidence_to_dict(e) for e in evidences]
                 else:
-                    ev = resolver.resolve(_query_sig)
-                    if not ev or not getattr(ev, "source_text", ""):
-                        # Source and snapshot graphs both carry edge locations.
-                        # Fall back to the best functional edge (not a bus/null).
-                        fallback = _snapshot_edge_evidence(_graph, _query_sig)
-                        ev_dicts = fallback if fallback is not None else _evidence_to_dict(ev)
-                    else:
-                        ev_dicts = _evidence_to_dict(ev)
+                    ev_dicts = _resolve_evidence_dict(resolver, _graph, _query_sig)
                 signals_result.append({
                     "signal": sig,
                     "index": i,

@@ -26,7 +26,7 @@ def test_sequential_signal_profile():
     assert i["resolved_signal"] == "sync_fifo.data_out"
     assert i["resolution"] == "exact"
     assert i["width"] == [7, 0]
-    assert i["source"]["line"] == 20
+    assert i["source"]["line"] == 19
     assert i["source"]["driver"]["line"] == 30
     assert i["clock_domains"] == ["clk"]
     assert any(r["signal"] == "sync_fifo.rst_n" for r in i["resets"])

@@ -51,3 +51,16 @@ class TestEvidenceStability:
         assert ev["enclosing_always"] is None
         assert ev["enclosing_assign"] is None
         assert ev["credibility_score"] == 0.0
+
+
+def test_reset_branch_falls_back_to_functional_assignment():
+    fixture = PROJECT_ROOT / "sim" / "test_simple.sv"
+    r = subprocess.run(
+        ["sv_query", "trace", "evidence", "top.dout", "-f", str(fixture),
+         "--json", "--no-cache"],
+        capture_output=True, text=True, timeout=60, cwd=str(PROJECT_ROOT),
+    )
+    assert r.returncode == 0, r.stderr[-300:]
+    ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
+    assert ev["source_location"]["line_start"] == 19
+    assert "data" in ev["source_text"]
