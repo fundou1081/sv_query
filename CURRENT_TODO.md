@@ -9,7 +9,8 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P183.1 failure-as-state quick fixes** `<待做>`
+- **当前 item**: **P183.1 failure-as-state quick fixes (blocked: dev quota)** `<进行中>`
+  - D1/D2 已完成；D3 未开始；dev 额度耗尽，见 [agents/STATE.md](agents/STATE.md)
   - 评审已归档；计划来源 PLAN P183 / [task](docs/task_tree/tasks/L3_p183_review_intake.md)
   - 先做 P183.1；P182.1 紧随，不跳过失败语义
   - P173 full status/evidence cleanup：已完成；无 active item
