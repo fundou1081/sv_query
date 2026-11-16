@@ -58,9 +58,25 @@ def _branch_condition(lines: list[str], lo: int, idx: int) -> str | None:
     return None
 
 
+def _active_reset_branch(cond: str) -> bool:
+    c = (cond or "").strip()
+    return is_reset_condition(c) and any(tok in c for tok in ("!", "== 0", "!= 1"))
+
+
 def _nearest_if_is_reset(lines: list[str], lo: int, idx: int) -> bool:
-    cond = _branch_condition(lines, lo, idx)
-    return bool(cond and is_reset_condition(cond))
+    for j in range(idx, lo - 1, -1):
+        code = lines[j].split("//")[0]
+        if re.search(r"\bif\s*\(", code):
+            cond = _collect_if_condition(lines, j) or ""
+            return _active_reset_branch(cond)
+        if re.search(r"\belse\b", code):
+            for k in range(j - 1, lo - 1, -1):
+                prev = lines[k].split("//")[0]
+                if re.search(r"\bif\s*\(", prev):
+                    cond = _collect_if_condition(lines, k) or ""
+                    return is_reset_condition(cond) and not _active_reset_branch(cond)
+            return False
+    return False
 
 
 def find_functional_assignment(signal: str, file_text: str,

@@ -1,5 +1,5 @@
 import logging
-from pathlib import Path
+import re
 
 # ==============================================================================
 # trace_evidence.py - Trace Evidence Resolver (Stage 2)
@@ -18,12 +18,24 @@ from pathlib import Path
 # - 借鉴 sv-trace 的 credibility scoring (0-1 量化)
 # ==============================================================================
 from dataclasses import dataclass, field
+from pathlib import Path
 
-from .source_assignment import find_assignment_near, find_functional_assignment
 from .coverage_models import SourceLocation, SourceSnippet
 from .graph.models import NodeKind, TraceEdge
+from .source_assignment import find_assignment_near, find_functional_assignment
 
 logger = logging.getLogger(__name__)
+
+
+def _compiled_line_shift(filename: str, full_text: str) -> int:
+    """Default preprocessing prepends a timescale line; adjust snippet lines."""
+    if not full_text or not full_text.lstrip().startswith("`timescale"):
+        return 0
+    try:
+        disk = Path(filename).read_text(errors="ignore")
+    except OSError:
+        return 0
+    return 0 if disk.lstrip().startswith("`timescale") else 1
 # ==============================================================================
 # Evidence 数据类
 # ==============================================================================
@@ -467,6 +479,9 @@ class TraceEvidenceResolver:
                 # code points, so slice bytes and decode back.
                 text = full_text.encode("utf-8")[start_off:end_off].decode(
                     "utf-8", errors="replace")
+                shift = _compiled_line_shift(filename, full_text)
+                start_line = max(1, start_line - shift)
+                end_line = max(1, end_line - shift)
             else:
                 text = ""
         except Exception:
@@ -658,6 +673,19 @@ class TraceEvidenceResolver:
         ev.enclosing_chain = class_items_chain
         if ev.enclosing_class is not None:
             ev.enclosing_chain.append(ev.enclosing_class)
+
+        if ev.enclosing_class is not None and ev.source_text.startswith("class "):
+            leaf = signal_id.rsplit(".", 1)[-1]
+            for off, line in enumerate(ev.enclosing_class.text.splitlines()):
+                if re.search(rf"\b{re.escape(leaf)}\b", line) and not line.strip().startswith("class"):
+                    ev.source_text = line.strip()
+                    ev.source_location = SourceLocation(
+                        file=ev.enclosing_class.location.file,
+                        line_start=ev.enclosing_class.location.line_start + off,
+                        line_end=ev.enclosing_class.location.line_start + off,
+                        column=ev.enclosing_class.location.column,
+                    )
+                    break
 
         return ev
 

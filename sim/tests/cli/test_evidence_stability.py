@@ -334,3 +334,36 @@ def test_case_multilabel_and_begin_forms(tmp_path):
         ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
         assert ev["source_location"]["line_start"] in lines, sig
         assert ev["is_verified"] is True, sig
+
+
+def test_active_high_reset_style_selects_functional_branch(tmp_path):
+    src = tmp_path / "active_high.sv"
+    src.write_text(
+        "module top(input clk, rst_n, en, d, output reg q);\n"
+        "  always_ff @(posedge clk or negedge rst_n) begin\n"
+        "    if (rst_n) q <= d;\n"
+        "    else q <= 1'b0;\n"
+        "  end\n"
+        "endmodule\n")
+    r = subprocess.run(
+        ["sv_query", "trace", "evidence", "top.q", "-f", str(src),
+         "--json", "-q"], capture_output=True, text=True, timeout=60,
+        cwd=str(PROJECT_ROOT))
+    assert r.returncode == 0, r.stderr[-300:]
+    ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
+    assert ev["source_location"]["line_start"] == 3
+    assert ev["source_text"] == "if (rst_n) q <= d;"
+
+
+def test_class_property_uses_member_declaration_line():
+    fixture = PROJECT_ROOT / "sim/tests/fixtures/golden_mini/golden_dataflow_35_class_oop.sv"
+    r = subprocess.run(
+        ["sv_query", "trace", "evidence", "packet.addr", "-f", str(fixture),
+         "--json", "-q"], capture_output=True, text=True, timeout=60,
+        cwd=str(PROJECT_ROOT))
+    assert r.returncode == 0, r.stderr[-300:]
+    ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
+    assert ev["source_text"] == "rand bit [7:0] addr;"
+    assert ev["source_location"]["line_start"] == 9
+    assert ev["enclosing_class"]["line_start"] == 8
+    assert ev["is_verified"] is True

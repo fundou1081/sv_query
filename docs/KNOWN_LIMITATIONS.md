@@ -370,9 +370,9 @@ pyslang snippet 的 `line_start/end` 来自编译后文本，因此 class/always
 enclosing snippet 行号可能比磁盘源文件大 1。assignment 的 `source_text` 由
 文件 LHS 扫描修正，通常不受影响；`--no-preprocess` 可消除偏移。
 
-**可观察后果**：`trace evidence packet.addr` 的 `enclosing_class` 可能报 9-16，
-实际 class 是 8-15。source 行以 `source_text`/`source_location` 的 assignment
-行为准；需要精确 enclosing 行号时用 `--no-preprocess` 或回读文件。
+**可观察后果**：P180 起 file-backed source 的 class/snippet 行号已按磁盘文件
+修正；手工构造的 in-memory source 或极端非 ASCII/预处理组合仍可能偏差。
+需要精确 enclosing 行号时用 `--no-preprocess` 或回读文件。
 
 ### 3.10 Path 语义：是 **canonical path**，没有"最短路径"这个意图
 

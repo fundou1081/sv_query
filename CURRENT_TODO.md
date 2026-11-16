@@ -16,7 +16,7 @@
 ## 📌 当前真实基线
 
 ```text
-canonical:  2763 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  2765 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 
@@ -39,7 +39,7 @@ opensource: 112 passed / 11 skipped / 0 failed
 
 1. CLI/exp truth：`trace impact` 已隐藏；CLI_SURFACE/feature map/EXP_NAMESPACE 已对齐；
 2. 状态文档：CURRENT_TODO/HANDOFF/PLAN/契约已对齐；
-3. 证据：退役 zombie/coverage-suggest tests；canonical 2763；
+3. 证据：退役 zombie/coverage-suggest tests；canonical 2765；
 4. coverage POC：conftest 改为 lazy import；公开示例已改写/归档。
 
 ## 🚫 不要再做的事
