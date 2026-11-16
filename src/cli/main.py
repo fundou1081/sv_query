@@ -12,7 +12,8 @@ from pathlib import Path
 
 # 设置 sys.path - 允许直接运行或作为模块运行
 # 找到 src/ 目录的父目录并添加到 path
-from cli._paths import ensure_on_path, PROJECT_ROOT, SRC_DIR  # noqa: E402
+from cli._paths import PROJECT_ROOT, SRC_DIR, ensure_on_path  # noqa: E402
+
 ensure_on_path(SRC_DIR, PROJECT_ROOT)
 
 # [A3 2026-06-28] Global --quiet support for LLM consumers.
@@ -37,6 +38,8 @@ import os  # noqa: E402  (needed for env var check above)
 
 _apply_quiet_flag()
 
+import logging
+
 import typer
 
 # [C-Flaky-3b 2026-06-27 disabled] 经验证 CLI 入口 reclaim 让 subprocess 更慢
@@ -46,32 +49,35 @@ import typer
 from cli._common import (
     _build_tracer,
     handle_compilation_error,
+    json_requested,
 )
-from cli.core.semantic.verify import verify_app
-from cli.core.semantic.controlflow import controlflow_app
-from cli.core.semantic.dataflow import dataflow_app
-from cli.core.state.diff import diff_app
+
 # [iter_248 T2] 诊断: 4 个子命令合并为 1 个 `diagnose <check>` (fix 老路径已删除)
 from cli.core.diagnose.dispatch import diagnose_cmd
-from cli.core.locate.graph import graph_app
-from cli.core.locate.filelist_cmd import filelist_app
 from cli.core.locate.capabilities import capabilities
+from cli.core.locate.filelist_cmd import filelist_app
+from cli.core.locate.graph import graph_app
 from cli.core.locate.search import search
-from cli.core.state.snapshot import snapshot_app
-from cli.core.semantic.trace import trace_app
-from cli.core.semantic.trace import fanin as _fanin_cmd, fanout as _fanout_cmd
-from cli.core.semantic.instances import (  # [iter_236 1a]
-    instances_cmd, connections_cmd, hierarchy_cmd,
-)
-from cli.core.semantic.params import params_cmd       # [iter_237]
-from cli.core.semantic.ports import ports_cmd         # [iter_237]
-from cli.core.semantic.paths import paths_cmd         # [iter_237]
-from cli.core.semantic.classes import class_cmd  # [iter_237, iter_247 合并 classes]
-from cli.core.semantic.scope import scope_cmd
 from cli.core.semantic.audit import audit_cmd  # [iter_288] 设计审计 (P3.3)
-from cli.view.review import review_app  # [iter_364 P62] 局部 review artifact
+from cli.core.semantic.classes import class_cmd  # [iter_237, iter_247 合并 classes]
+from cli.core.semantic.controlflow import controlflow_app
+from cli.core.semantic.dataflow import dataflow_app
+from cli.core.semantic.instances import (  # [iter_236 1a]
+    connections_cmd,
+    hierarchy_cmd,
+    instances_cmd,
+)
+from cli.core.semantic.params import params_cmd  # [iter_237]
+from cli.core.semantic.paths import paths_cmd  # [iter_237]
+from cli.core.semantic.ports import ports_cmd  # [iter_237]
+from cli.core.semantic.scope import scope_cmd
+from cli.core.semantic.trace import fanin as _fanin_cmd
+from cli.core.semantic.trace import fanout as _fanout_cmd
+from cli.core.semantic.trace import trace_app
+from cli.core.semantic.verify import verify_app
+from cli.core.state.snapshot import snapshot_app
 from cli.view.architecture import architecture_app  # [P133] module/instance architecture
-import logging
+from cli.view.review import review_app  # [iter_364 P62] 局部 review artifact
 
 logger = logging.getLogger(__name__)
 
@@ -158,7 +164,7 @@ def stats_callback(
         tracer = _build_tracer(
             file=Path(file) if file else None,
             filelist=filelist,
-            
+
             log_level=log_level,
         )
         graph = tracer.build_graph()
@@ -410,6 +416,22 @@ def main(ctx: typer.Context) -> None:
 #   - 只处理输入/环境类异常; 其他异常照旧抛 (真 bug 必须留 traceback);
 #   - stderr 一行 `sv_query: error: <原因>` + 退出码 1;
 #   - `SVQ_DEBUG=1` 时 re-raise, 保留完整 traceback 供开发定位。
+# [P183.1/D2 2026-11-17] 未预期异常:
+#   - `--json` 请求了机器可读输出 → 必须给结构化信封 (E_INTERNAL / 映射码), 不能空 stdout;
+#   - 未请求 `--json` → 保持原样上抛 (开发期 traceback);
+#   - `SVQ_DEBUG=1` → 先输出 JSON (如有) 再 re-raise, 与输入错误分支同规则。
+#   - 命令内 `fail()` / `handle_compilation_error()` 抛的 `typer.Exit` 是**受控退出**,
+#     已各自产出信封/消息, 必须原样穿透 (typer.Exit 是 RuntimeError 子类)。
+def _debug_enabled() -> bool:
+    return os.environ.get("SVQ_DEBUG", "").lower() in ("1", "true", "yes")
+
+
+def _command_label() -> str:
+    """从 argv 提取前两个非选项 token 作为信封里的命令名 (保持既有格式)。"""
+    tokens = [a for a in sys.argv[1:] if not a.startswith("-")]
+    return " ".join(tokens[:2]) or "sv_query"
+
+
 def run() -> None:
     """CLI 统一入口 (console script `sv_query` 与 `run_cli.py` 共用)。"""
     from sv_query.trace.core.compiler import CompilationError  # 延迟 import: 入口期不加载分析栈
@@ -419,11 +441,10 @@ def run() -> None:
     except (CompilationError, OSError, UnicodeDecodeError) as e:
         # [iter_201 F1] 请求了 --json 却逃到顶层的错误 (文件不存在/编码/编译失败)
         # 也必须给出**结构化错误信封** (过去 stdout 为空, 消费者拿不到 JSON)。
-        if any(a in ("--json", "-j") for a in sys.argv[1:]):
+        if json_requested():
             from cli._common import emit_json_error
-            tokens = [a for a in sys.argv[1:] if not a.startswith("-")]
-            emit_json_error(" ".join(tokens[:2]) or "sv_query", e)
-        if os.environ.get("SVQ_DEBUG", "").lower() in ("1", "true", "yes"):
+            emit_json_error(_command_label(), e)
+        if _debug_enabled():
             raise
         msg = str(e).strip() or type(e).__name__
         lines = msg.splitlines()          # elaboration 报告常是多行: 只留前 5 行
@@ -432,7 +453,19 @@ def run() -> None:
             head += f"\n  ... (共 {len(lines)} 行; 完整内容: SVQ_DEBUG=1)"
         print(f"sv_query: error: {head}", file=sys.stderr)
         raise SystemExit(1) from None
+    except typer.Exit:
+        # 受控退出 (fail()/handle_compilation_error()): 信封/消息已输出, 不重复包装。
+        raise
+    except Exception as e:
+        # 未分类/未预期异常。--json 下 stdout 不能为空; 非 --json 保留 traceback。
+        if json_requested():
+            from cli._common import emit_json_error
+            emit_json_error(_command_label(), e)
+            if _debug_enabled():
+                raise
+            raise SystemExit(1) from None
+        raise
 
 
 if __name__ == "__main__":
-    app()
+    run()

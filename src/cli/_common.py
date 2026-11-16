@@ -15,6 +15,7 @@ CLI 公共 helper
 
 from __future__ import annotations
 
+import logging
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -24,7 +25,6 @@ import typer
 from sv_query.trace.core.compiler import CompilationError
 from sv_query.trace.core.top_prune import prune_sources
 from sv_query.trace.unified_tracer import UnifiedTracer
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +91,7 @@ def _build_tracer(
             sources=sources,
             log_level=log_level,
             include_dirs=_merged,
-            
+
             preprocess_macros=preprocess_macros,  # [Req-20 2026-06-12]
         )
     elif _resolved_file is not None:
@@ -103,7 +103,7 @@ def _build_tracer(
             sources={str(Path(_resolved_file).resolve()): source},  # [iter_206] 与 filelist 路径同形态
             log_level=log_level,
             include_dirs=include_dirs or [],
-            
+
             preprocess_macros=preprocess_macros,  # [Req-20 2026-06-12]
         )
     else:
@@ -253,17 +253,28 @@ def json_requested(argv: list[str] | None = None) -> bool:
     return "--json" in args or "-j" in args
 
 
-def emit_json_error(command: str, e: BaseException) -> None:
+def emit_json_error(
+    command: str,
+    e: BaseException,
+    error_code: str | None = None,
+) -> None:
     """[iter_201 F1] 把错误也变成**结构化 JSON** 打到 stdout (与成功信封对称)。
 
-    形状: `{"ok": false, "command": ..., "error": {"type", "message"}}`
-    — stderr 仍保留原有的人读文本 (调用方照常输出), 不丢信息。
+    形状: `{"ok": false, "command": ..., "error": {"type", "message"},
+    "error_code": ...}` — stderr 仍保留原有的人读文本 (调用方照常输出), 不丢信息。
+
+    [P183.1/D2] `error_code` 复用 `cli.errors.code_for_exception` 的单一映射;
+    调用方仅在需要覆盖映射时显式传入。
     """
     import json as _json
+
+    from cli.errors import code_for_exception
+
     payload = {
         "ok": False,
         "command": command,
         "error": {"type": type(e).__name__, "message": str(e)},
+        "error_code": error_code or code_for_exception(e).value,
     }
     print(_json.dumps(payload, ensure_ascii=False, indent=2))
 
