@@ -149,6 +149,7 @@
 | [architecture/arch_eval_2026-11-11.md](architecture/arch_eval_2026-11-11.md) | **架构/产品评估（讨论底稿，2026-11-11）**: 只读评审；不构成已登记计划，采纳需先登记 PLAN |
 | [architecture/agent_interface_review_2026-11-16_revised.md](architecture/agent_interface_review_2026-11-16_revised.md) | **面向 agent 的交付层评审 v2（2026-11-16，HEAD `8da675b3`）**: 修正 v1 的 direct/缺参/计数错误；只读评审，建议已登记 P182 |
 | [architecture/code_architecture_review_2026-11-16.md](architecture/code_architecture_review_2026-11-16.md) | **代码实现架构审查建议 v1.0（2026-11-16，HEAD `2ddcfe92`）**: 鲁棒性 + 结构性；只读，不并入 P182；`Rb-*`/`St-*` 不是计划项 |
+| [architecture/abstraction_layer_review_2026-11-16.md](architecture/abstraction_layer_review_2026-11-16.md) | **抽象层设计评审建议 v1.0（2026-11-16，HEAD `2ddcfe92`）**: 抽象边界/扩展点 + 8 条未来变化轴适配力；只读，不并入 P182；`Ab-*` 不是计划项 |
 | [validation/INTERACTIVE_DEBUG_2026-11-06.md](validation/INTERACTIVE_DEBUG_2026-11-06.md) | **交互式 debug pilot**: 3 场景 × 3 模型；5–20 轮；发现路径粒度/mux/bin 名称/class relative 问题 |
 | [validation/INTERACTIVE_P0_2026-11-06.md](validation/INTERACTIVE_P0_2026-11-06.md) | **P0 post-P77**: 3 模型 × deep_chain；clarify 后 3/3 正确；12 节点/11 hops |
 | [validation/INTERACTIVE_P1_2026-11-06.md](validation/INTERACTIVE_P1_2026-11-06.md) | **P1**: 3 场景 × 3 模型 × 2 seed；17/18 完整；constraints 1 个字段歧义；429 重跑 |
