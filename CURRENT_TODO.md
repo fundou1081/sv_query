@@ -9,9 +9,9 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P182.1 envelope inventory + check_envelope_contract gate** `<待做>`
-  - 计划来源：[agent_interface_review_2026-11-16_revised.md](docs/architecture/agent_interface_review_2026-11-16_revised.md) / PLAN P182
-  - 先做 inventory，不改语义；采纳前按 AGENTS §2 建 task
+- **当前 item**: **P183.1 failure-as-state quick fixes** `<待做>`
+  - 评审已归档；计划来源 PLAN P183 / [task](docs/task_tree/tasks/L3_p183_review_intake.md)
+  - 先做 P183.1；P182.1 紧随，不跳过失败语义
   - P173 full status/evidence cleanup：已完成；无 active item
   - P62.2 gate assessment：no-go，不做交互式 debug UI/REPL
 
