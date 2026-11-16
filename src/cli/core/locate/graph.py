@@ -7,15 +7,19 @@ from pathlib import Path
 
 import typer
 
-from cli._paths import ensure_on_path, PROJECT_ROOT  # noqa: E402
+from cli._paths import PROJECT_ROOT, ensure_on_path  # noqa: E402
+
 ensure_on_path(PROJECT_ROOT)
 
-from cli._common import _build_tracer, handle_compilation_error  # [iter_236 1a]
-from cli.core.semantic.trace_common import resolve_signal  # [iter_362 P60]
-from sv_query.trace.core.query.subgraph import SubgraphError, SubgraphOptions, build_subgraph  # [iter_362 P60]
-from sv_query.trace.core.compiler import CompilationError
-from cli._output import emit_json
-
+from cli._common import _build_tracer, handle_compilation_error  # [iter_236 1a]  # noqa: E402
+from cli._output import emit_json  # noqa: E402
+from cli.core.semantic.trace_common import resolve_signal  # [iter_362 P60]  # noqa: E402
+from sv_query.trace.core.compiler import CompilationError  # noqa: E402
+from sv_query.trace.core.query.subgraph import (  # [iter_362 P60]  # noqa: E402
+    SubgraphError,
+    SubgraphOptions,
+    build_subgraph,
+)
 
 graph_app = typer.Typer(help="Inspect signal graph")
 

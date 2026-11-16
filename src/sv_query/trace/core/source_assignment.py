@@ -48,19 +48,28 @@ def _collect_if_condition(lines: list[str], idx: int) -> str | None:
     return text[start:]
 
 
-def _branch_condition(lines: list[str], lo: int, idx: int) -> str | None:
-    for j in range(idx, lo - 1, -1):
-        code = lines[j].split("//")[0]
-        if re.search(r"\bif\s*\(", code):
-            return _collect_if_condition(lines, j)
-        if re.search(r"\belse\b", code):
-            return ""  # plain else branch is functional
-    return None
+def _reset_token(cond: str) -> str:
+    m = re.search(r"(?:a?reset|s?rst|arst|nrst)\w*", cond or "", re.I)
+    return m.group(0).lower() if m else ""
+
+
+def _active_low_reset(cond: str) -> bool:
+    token = _reset_token(cond)
+    return token.endswith("n") or token.startswith("n")
 
 
 def _active_reset_branch(cond: str) -> bool:
     c = (cond or "").strip()
-    return is_reset_condition(c) and any(tok in c for tok in ("!", "== 0", "!= 1"))
+    if not is_reset_condition(c):
+        return False
+    assert_level = 0 if _active_low_reset(c) else 1
+    m = re.search(r"(==|!=)\s*(\d+)", c)
+    if m:
+        value = int(m.group(2))
+        return value == assert_level if m.group(1) == "==" else value != assert_level
+    if "!" in c:
+        return True
+    return not _active_low_reset(c)
 
 
 def _nearest_if_is_reset(lines: list[str], lo: int, idx: int) -> bool:

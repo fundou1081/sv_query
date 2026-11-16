@@ -19,7 +19,7 @@ import typer
 
 from cli._common import _build_tracer, handle_compilation_error
 from cli._output import emit_json
-from cli.core.semantic.trace_common import resolve_signal, _load_tracer_from_snapshot
+from cli.core.semantic.trace_common import _load_tracer_from_snapshot, resolve_signal
 from sv_query.trace.core.compiler import CompilationError
 from sv_query.trace.core.graph.contracts import STRUCTURAL_EDGE_KINDS, has_data_edge
 from sv_query.trace.core.query.structural import StructuralError, symmetry_findings
@@ -201,24 +201,24 @@ def _check_reciprocity(tracer, graph, signals: list[str] | None,
                 violations.append({"check": "reciprocity", "kind": "fanin_not_reciprocal",
                                    "node": n, "driver": d,
                                    "message": f"{d} in fanin({n}) but {n} not in fanout({d})"})
-        for l in sorted(fanout):
-            if l == n:
+        for load in sorted(fanout):
+            if load == n:
                 continue
-            l_node = graph.get_node(l)
-            if _is_literal_id(l):
+            load_node = graph.get_node(load)
+            if _is_literal_id(load):
                 excluded["constant"] += 1
                 continue
-            if (_is_bit_like(l_node) or getattr(node, "parent", None) == l
-                    or getattr(l_node, "parent", None) == n):
+            if (_is_bit_like(load_node) or getattr(node, "parent", None) == load
+                    or getattr(load_node, "parent", None) == n):
                 excluded["bit_like"] += 1
                 continue
-            if not _has_data_edge(graph, n, l):
+            if not _has_data_edge(graph, n, load):
                 continue  # BIT_SELECT/hierarchy edge, not a data-flow pair
-            l_in = _fanin(l)
-            if n not in l_in:
+            load_in = _fanin(load)
+            if n not in load_in:
                 violations.append({"check": "reciprocity", "kind": "fanout_not_reciprocal",
-                                   "node": n, "load": l,
-                                   "message": f"{l} in fanout({n}) but {n} not in fanin({l})"})
+                                   "node": n, "load": load,
+                                   "message": f"{load} in fanout({n}) but {n} not in fanin({load})"})
         checked += 1
     # 非信号/父位聚合节点被排除，是显式范围，不当作 checked
     skipped = max(0, len(nodes) - checked - len([
@@ -301,7 +301,8 @@ def _check_bit_mapping(graph, signals: list[str] | None) -> dict:
         if node.bit_range:
             m = re.match(r"^\[(\d+)(?::(\d+))?\]$", node.bit_range.strip())
             if m:
-                b_hi = int(m.group(1)); b_lo = int(m.group(2) or m.group(1))
+                b_hi = int(m.group(1))
+                b_lo = int(m.group(2) or m.group(1))
                 if (node.parent_bit_start is not None
                         and node.parent_bit_end is not None
                         and {b_hi, b_lo} != {node.parent_bit_start,
@@ -364,6 +365,11 @@ def _check_connections(tracer, graph) -> dict:
             "truncated": False}
 
 
+def _coverage_complete(results: list[dict]) -> bool:
+    return not any(c.get("truncated") is True for c in results) and not any(
+        c.get("status") not in ("pass", "fail") for c in results)
+
+
 def consistency_cmd(
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str = typer.Option(None, "--filelist", help="filelist (.f/.fl) for multi-file projects"),
@@ -413,7 +419,7 @@ def consistency_cmd(
         partial_checks = [c["check"] for c in results if c.get("truncated") is True]
         unknown_checks = [c["check"] for c in results
                           if c.get("status") not in ("pass", "fail")]
-        coverage_complete = (not partial_checks) and (not unknown_checks)
+        coverage_complete = _coverage_complete(results)
         data = {
             "ok": True,
             "command": "verify_consistency",
@@ -497,11 +503,11 @@ def _verify_path(tracer, graph, claim: dict) -> dict:
             return _claim_result(claim, "contradicted",
                                  reason="path endpoints do not match from/to")
         missing = []
-        for a, b in zip(resolved, resolved[1:]):
+        for a, b in zip(resolved, resolved[1:], strict=False):
             if not _has_data_edge(graph, a, b):
                 missing.append({"from": a, "to": b})
         if claim.get("bidirectional"):
-            for a, b in zip(reversed(resolved), list(reversed(resolved))[1:]):
+            for a, b in zip(reversed(resolved), list(reversed(resolved))[1:], strict=False):
                 if not _has_data_edge(graph, a, b):
                     missing.append({"from": a, "to": b, "direction": "reverse"})
         if missing:

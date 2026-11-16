@@ -2,7 +2,7 @@
 
 > **公开 claim 的唯一登记处。** 纪律依据: [SEMANTIC_CONTRACTS.md](SEMANTIC_CONTRACTS.md) §8。
 > 没有 gate 的 claim = `unverified`；已知反例 = `known-broken`；不得写成“已支持”。
-> **最后更新**: 2026-11-14 (P171 evidence-chain repair)
+> **最后更新**: 2026-11-16 (P181 discipline remediation)
 
 ---
 
@@ -27,7 +27,7 @@
 | C-04 | 同一输入重复构建得到同一张图 | fixture/snapshot | `test_determinism` + SPI 3× | `verified` |
 | C-05 | SPI corpus 是可执行的 real-project 回归 | real-corpus | `run_spi_corpus.py` 9/9 | `verified` |
 | C-06 | `filelist prune` 不会修改用户 RTL | fixture | `test_filelist_prune` | `verified` |
-| C-07 | `verify consistency` 的 verified 覆盖全部请求证据 | fixture/snapshot | `test_verify_truncated` | `verified` |
+| C-07 | `verify consistency` 的 verified 覆盖全部请求证据；unknown/truncated 时 coverage_complete=false | fixture/snapshot | `test_verify_truncated` / `test_verify_coverage` | `verified` |
 | C-08 | 新 snapshot 可从 MIG 离线执行 connection 检查 | fixture | `test_verify_consistency_snapshot` / `test_snapshot_robust` | `verified` |
 | C-09 | 旧 snapshot 缺 MIG 时显式 unknown，不静默 fallback | fixture | `test_verify_consistency_snapshot` legacy case | `verified` |
 | C-10 | canonical 0 skipped 代表测试健康 | CI | `run_gates.sh` + opensource 112/11/0；123 deferred | `scoped`（canonical 与 opensource 分开；deferred 不等于 unexecuted；0 skip 仍不是健康指标） |
@@ -37,6 +37,10 @@
 | C-14 | 20 个 repo-only mutation 能被查询事实检测，并有独立 Verilator oracle | mutation | `tools/run_mutation_gate.py` + `test_p171_mutation_gate` | `scoped`（注入故障，不是历史 bug benchmark） |
 | C-15 | `.core` → 可 elaborate filelist 对 UART/I2C/SPI 成立 | real-corpus | `filelist_closure` profiles + 0 elaboration errors | `unverified`（一次性外部 OpenTitan 证据；需重复 gate） |
 | C-16 | Tests 与 Benchmark workflow 在 `4d58d7fb` 为绿色；Coverage Gen 已退役 | CI | GitHub Actions runs 43576810042 / 43576809982 | `scoped`（时点证据；Coverage Gen 测试已归档，workflow 删除，不是 pass） |
+| C-17 | `trace evidence` 在 source/filelist/snapshot 中选择 functional LHS 赋值行；reset/comment/comparison 不冒充 assignment | fixture | `test_evidence_stability.py` | `scoped`（启发式分支扫描，不覆盖所有 SV 语法） |
+| C-18 | `trace profile.source.line` 对自带 timescale 和预处理注入 timescale 的 file-backed 源文件给出磁盘声明行 | fixture | `test_trace_profile.py::test_declaration_line_with_own_timescale` | `scoped`（in-memory source 不保证） |
+| C-19 | class property evidence 使用 `ClassPropertySymbol` 声明位置，不由 regex 扫 class 文本 | fixture | `test_class_property_uses_member_declaration_line` / `test_class_comment_is_not_property_evidence` | `scoped`（class/constraint 上下文 evidence 仍非赋值） |
+| C-20 | `graph subgraph --edge-kinds control` 包含 branch/ternary 和 conditional DRIVER；`control,driver` 保留无条件 DRIVER | fixture | `test_subgraph_control_includes_branch_edges` / `test_subgraph_control_plus_driver_keeps_unconditional_driver` | `scoped`（CLI 子图，不是全图语义） |
 
 ---
 

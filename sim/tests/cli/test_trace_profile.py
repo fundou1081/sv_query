@@ -150,3 +150,11 @@ def test_struct_member_type_metadata():
     assert t["member_offset"] == 4
     assert t["bit_width"] == 4
     assert t["name"].endswith(".a")
+
+
+def test_declaration_line_with_own_timescale():
+    fixture = ROOT / "sim/tests/fixtures/golden_mini/case_demo.sv"
+    r = _run("trace", "profile", "case_demo.y", "-f", str(fixture), "--json")
+    assert r.returncode == 0, r.stderr[-300:]
+    s = json.loads(r.stdout)["result"]["signals"][0]
+    assert s["source"]["line"] == 2

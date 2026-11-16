@@ -1,5 +1,4 @@
 import logging
-import re
 
 # ==============================================================================
 # trace_evidence.py - Trace Evidence Resolver (Stage 2)
@@ -676,16 +675,19 @@ class TraceEvidenceResolver:
 
         if ev.enclosing_class is not None and ev.source_text.startswith("class "):
             leaf = signal_id.rsplit(".", 1)[-1]
-            for off, line in enumerate(ev.enclosing_class.text.splitlines()):
-                if re.search(rf"\b{re.escape(leaf)}\b", line) and not line.strip().startswith("class"):
-                    ev.source_text = line.strip()
-                    ev.source_location = SourceLocation(
-                        file=ev.enclosing_class.location.file,
-                        line_start=ev.enclosing_class.location.line_start + off,
-                        line_end=ev.enclosing_class.location.line_start + off,
-                        column=ev.enclosing_class.location.column,
-                    )
-                    break
+            prop = next((p for p in getattr(class_symbol, "properties", ())
+                         if getattr(p, "name", "") == leaf), None)
+            if prop is not None and getattr(prop, "syntax", None) is not None:
+                snip = self._snippet_from_syntax(prop.syntax)
+                if snip is not None:
+                    ev.source_location = snip.location
+                    try:
+                        lines = Path(snip.location.file).read_text(
+                            errors="ignore").splitlines()
+                        if 0 < snip.location.line_start <= len(lines):
+                            ev.source_text = lines[snip.location.line_start - 1].strip()
+                    except OSError as exc:
+                        logger.debug("class property source read failed: %s", exc)
 
         return ev
 

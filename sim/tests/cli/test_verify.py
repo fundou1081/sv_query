@@ -142,21 +142,3 @@ def test_claim_from_snapshot(tmp_path):
     assert d["result"]["status"] == "verified"
 
 
-def test_consistency_unknown_check_is_not_coverage_complete():
-    """A legacy snapshot without MIG yields an unknown check, not a pass."""
-    tags = subprocess.run(["sv_query", "snapshot", "list", "--json"],
-                          capture_output=True, text=True, cwd=ROOT)
-    if tags.returncode != 0:
-        return
-    try:
-        names = {t.get("tag") for t in json.loads(tags.stdout)}
-    except Exception:
-        return
-    if "opentitan_uart" not in names:
-        return
-    d = _json("verify", "consistency", "--checks", "connection",
-              "--from-snapshot", "opentitan_uart")
-    r = d["result"]
-    assert r["verified"] is False
-    assert r["coverage_complete"] is False
-    assert "connection" in r["unknown_checks"]

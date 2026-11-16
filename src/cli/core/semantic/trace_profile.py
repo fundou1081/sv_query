@@ -1,15 +1,5 @@
-"""[iter_332 / PLAN P36.1] trace profile：波形关联元数据。
-
-给定信号，输出：
-- canonical id / aliases / 层级 / 位映射 / 声明位置
-- clock / reset / sequential 画像
-- driver/load 计数
-
-只读；不做仿真值。
-"""
 from __future__ import annotations
 
-import json
 import logging
 import re
 from pathlib import Path
@@ -19,14 +9,41 @@ import typer
 from cli._common import _build_tracer, handle_compilation_error
 from cli._output import emit_json
 from cli.core.semantic.trace_common import (
-    _collect_signals, resolve_signal, resolution_error_message,
     SignalResolutionError,
+    _collect_signals,
+    resolution_error_message,
+    resolve_signal,
 )
+from sv_query.trace.core.compiler import CompilationError
+from sv_query.trace.core.source_assignment import find_functional_assignment
+from sv_query.trace.core.trace_evidence import TraceEvidenceResolver
+
 logger = logging.getLogger(__name__)
 
-from sv_query.trace.core.compiler import CompilationError
-from sv_query.trace.core.trace_evidence import TraceEvidenceResolver
-from sv_query.trace.core.source_assignment import find_functional_assignment
+
+def _declaration_line(tracer, node) -> int:
+    line = max(0, getattr(node, "line", 0))
+    if not line:
+        return 0
+    try:
+        sources = tracer._get_compiler().sources
+    except Exception as exc:
+        logger.debug("profile compiler sources unavailable: %s", exc)
+        return max(1, line - 1)
+    text = sources.get(node.file, "")
+    if not text:
+        for key, value in sources.items():
+            if Path(key).name == Path(node.file).name:
+                text = value
+                break
+    if not text.lstrip().startswith("`timescale"):
+        return line
+    try:
+        disk = Path(node.file).read_text(errors="ignore")
+    except OSError as exc:
+        logger.debug("profile disk read failed for %s: %s", node.file, exc)
+        return max(1, line - 1)
+    return line if disk.lstrip().startswith("`timescale") else max(1, line - 1)
 
 
 def _first_source(edge) -> tuple[str, int | None]:
@@ -107,8 +124,8 @@ def _build_stage_index(graph) -> dict[str, int]:
     只给 detect_pipeline 识别出的 pipeline reg 映射；状态机/控制/组合不做猜测。
     """
     try:
-        from sv_query.trace.core.graph.analyzer.signal_classifier import classify_graph
         from sv_query.trace.core.graph.analyzer.pipeline_viz import detect_pipeline
+        from sv_query.trace.core.graph.analyzer.signal_classifier import classify_graph
         classification = classify_graph(graph)
         info = detect_pipeline(graph, classification)
         out = {}
@@ -422,8 +439,8 @@ def _profile_signal(tracer, graph, sig: str, evidence_resolver=None, type_lookup
         "bit": _bit_meta(node, graph, res.get("resolved")),
         "source": {
             "file": getattr(node, "file", ""),
-            "line": max(0, getattr(node, "line", 0) - 1),
-            "declaration": (f"{node.file}:{max(1, node.line - 1)}"
+            "line": _declaration_line(tracer, node),
+            "declaration": (f"{node.file}:{_declaration_line(tracer, node)}"
                             if getattr(node, "file", "") and getattr(node, "line", 0) else ""),
             "driver": ({"file": driver_file, "line": driver_line}
                        if driver_line is not None else None),

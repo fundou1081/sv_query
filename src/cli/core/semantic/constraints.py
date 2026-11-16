@@ -5,9 +5,8 @@ ConstraintTracer，不进入 fanin。
 """
 from __future__ import annotations
 
-from pathlib import Path
-
 import sys
+from pathlib import Path
 
 import typer
 

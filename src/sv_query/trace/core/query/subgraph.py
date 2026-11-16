@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
-from ..graph.contracts import DATA_EDGE_KINDS
+from ..graph.contracts import CONTROL_EDGE_KINDS, DATA_EDGE_KINDS
 from ..graph.models import EdgeKind, SignalGraph, TraceEdge, TraceNode
 
 
@@ -27,11 +27,7 @@ _EDGE_NAMES = {
     "reset": {EdgeKind.RESET},
     "bit_select": {EdgeKind.BIT_SELECT},
     "member_select": {EdgeKind.MEMBER_SELECT},
-    "branch": {
-        EdgeKind.BRANCH_CONDITION, EdgeKind.BRANCH_TRUE,
-        EdgeKind.BRANCH_FALSE, EdgeKind.BRANCH_RESULT,
-        EdgeKind.CASE_SELECT, EdgeKind.CASE_ITEM, EdgeKind.CASE_RESULT,
-    },
+    "branch": CONTROL_EDGE_KINDS - {EdgeKind.CLOCK, EdgeKind.RESET},
 }
 _ALLOWED = set(_EDGE_NAMES) | {"control"}
 #: 默认 = 数据边 (driver + connection) —— 派生自 contracts.DATA_EDGE_KINDS

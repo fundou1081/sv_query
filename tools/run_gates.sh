@@ -21,3 +21,11 @@ else
   python3 tools/check_crap.py
 fi
 python3 tools/check_plan.py
+# P181.6: lint the cumulative diff, not a clean-worktree no-op.
+if [[ -n "${SVQ_GATE_BASE:-}" ]]; then
+  SVQ_LINT_BASE="${SVQ_GATE_BASE}" bash tools/run_lint.sh
+elif git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+  SVQ_LINT_BASE=HEAD~1 bash tools/run_lint.sh
+else
+  bash tools/run_lint.sh
+fi

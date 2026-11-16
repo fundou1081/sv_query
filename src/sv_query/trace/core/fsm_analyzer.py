@@ -11,7 +11,11 @@
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
+
+from .source_assignment import is_reset_condition
+
 
 class StateTransition:
     """单个状态转换"""
@@ -170,19 +174,8 @@ class StateMachineAnalyzer:
         return None
 
     def _is_reset_condition(self, condition: str) -> bool:
-        """检查是否为复位条件
-
-        只有纯复位条件（不包含 && 或 ||）才被认为是复位转换。
-        例如：
-        - "!rst_n" -> True (复位)
-        - "!!rst_n" -> True (复位)
-        - "!rst_n && state == IDLE" -> False (条件转换)
-        """
-        stripped = condition.replace(" ", "")
-        # 包含 && 或 || 表示有额外条件，不是纯复位
-        if "&&" in stripped or "||" in stripped:
-            return False
-        return "rst" in stripped.lower() or "reset" in stripped.lower()
+        """Reset condition; shared semantics with evidence/profile."""
+        return is_reset_condition(condition)
 
     def _strip_state_condition(self, condition: str, state_signal: str) -> str:
         """移除条件中的 state == X 部分，只保留额外条件

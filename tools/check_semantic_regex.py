@@ -24,6 +24,7 @@ TARGETS = [
     "src/sv_query/trace/core/query/covergroup.py",
     "src/sv_query/trace/core/query/uvm.py",
     "src/sv_query/trace/core/semantic/classes.py",
+    "src/sv_query/trace/core/trace_evidence.py",
     "src/cli/core/semantic/classes.py",
     "src/cli/core/semantic/constraints.py",
     "src/cli/core/semantic/covergroups.py",
