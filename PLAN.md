@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P179.2 tests/gate <已完成>
+current item : P180.3 tests/gate + worker review <已完成>
 
 ## 计划树
 
@@ -539,6 +539,11 @@ P171 CI / evidence-chain repair (2026-11-13 worker review) <已完成>
 -- P171.7.2 clock/reset role source label <已完成>
 -- P171.8 docs/CLAIMS/plan cleanup <已完成>
 -- P171.9 worker review fixes <已完成>
+
+P180 nit cleanup with worker review (2026-11-16) <已完成>
+-- P180.1 shared assignment scanner + non-ASCII offsets <已完成>
+-- P180.2 class evidence / docs wording <已完成>
+-- P180.3 tests/gate + worker review <已完成>
 
 P179 control alias + evidence source text (2026-11-16) <已完成>
 -- P179.1 control/evidence fixes <已完成>

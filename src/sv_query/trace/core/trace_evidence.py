@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 # ==============================================================================
 # trace_evidence.py - Trace Evidence Resolver (Stage 2)
@@ -18,6 +19,7 @@ import logging
 # ==============================================================================
 from dataclasses import dataclass, field
 
+from .source_assignment import find_assignment_near, find_functional_assignment
 from .coverage_models import SourceLocation, SourceSnippet
 from .graph.models import NodeKind, TraceEdge
 
@@ -327,40 +329,29 @@ class TraceEvidenceResolver:
         return ev
 
     def _assignment_line_from_file(self, file: str, hint_line: int, lhs_name: str):
-        """[iter_327 / PLAN P32] 从源文件找 LHS 赋值行，取离 hint 最近的一条。
-
-        edge.source_location 存的是条件表达式位置（可能偏差 1 行）；直接用文件行
-        搜索赋值语句，能避免把 `if` 条件行当成 source_text。
-        """
-        if not file:
+        """Find the nearest functional LHS assignment line for a signal."""
+        if not file or not lhs_name:
             return "", None
-        import re as _re
-        from pathlib import Path as _Path
         try:
-            text = _Path(file).read_text(encoding="utf-8", errors="ignore")
+            text = Path(file).read_text(encoding="utf-8", errors="ignore")
         except OSError:
             return "", None
-        pattern = _re.compile(rf"\b{_re.escape(lhs_name)}\b\s*(<=|=)(?!=)")
-        candidates = []
-        for idx, line in enumerate(text.splitlines(), 1):
-            if pattern.search(line):
-                candidates.append((idx, line.strip()))
-        if not candidates:
+        found = find_assignment_near(lhs_name, text, int(hint_line or 1))
+        if found is None:
             return "", None
-        hint = int(hint_line or candidates[0][0])
-        line_no, line = min(candidates, key=lambda item: abs(item[0] - hint))
+        line_no, line = found
         return line, line_no
 
     def _assignment_line_in_snippet(self, snippet, lhs_name: str):
-        """[iter_327 / PLAN P32] 在 enclosing snippet 里找 LHS 赋值行（不是 if 条件行）。"""
+        """Find an LHS assignment inside an enclosing snippet."""
         if snippet is None or not getattr(snippet, "text", ""):
             return "", None
-        import re as _re
-        pattern = _re.compile(rf"\b{_re.escape(lhs_name)}\b\s*(<=|=)(?!=)")
-        for offset, line in enumerate(snippet.text.splitlines()):
-            if pattern.search(line):
-                return line.strip(), snippet.location.line_start + offset
-        return "", None
+        lines = snippet.text.splitlines()
+        found = find_functional_assignment(lhs_name, snippet.text, 1, len(lines))
+        if found is None:
+            return "", None
+        line_no, line = found
+        return line, snippet.location.line_start + line_no - 1
 
     def _line_text_from_syntax(self, syn, line_no: int) -> str:
         """[iter_327 / PLAN P32] 按 sourceLocation 从 sourceManager 取整行文本。"""
@@ -472,7 +463,10 @@ class TraceEvidenceResolver:
                     full_text = full_text[:-1]
                 start_off = sr.start.offset
                 end_off = sr.end.offset
-                text = full_text[start_off:end_off]
+                # pyslang offsets are UTF-8 byte offsets; Python str indexes
+                # code points, so slice bytes and decode back.
+                text = full_text.encode("utf-8")[start_off:end_off].decode(
+                    "utf-8", errors="replace")
             else:
                 text = ""
         except Exception:

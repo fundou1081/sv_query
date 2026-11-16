@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 from sv_query.trace.core.compiler import CompilationError
 from sv_query.trace.core.trace_evidence import TraceEvidenceResolver
-from cli.core.semantic.trace_evidence import _find_functional_assignment
+from sv_query.trace.core.source_assignment import find_functional_assignment
 
 
 def _first_source(edge) -> tuple[str, int | None]:
@@ -350,7 +350,7 @@ def _profile_signal(tracer, graph, sig: str, evidence_resolver=None, type_lookup
                 if snippet is not None and driver_file:
                     try:
                         text = Path(driver_file).read_text(errors="ignore")
-                        found = _find_functional_assignment(
+                        found = find_functional_assignment(
                             node_id, text,
                             getattr(snippet, "line_start", 0),
                             getattr(snippet, "line_end", 0))

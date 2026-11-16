@@ -14,7 +14,7 @@
 |---|---|---|
 | 源码规模 | 139 文件 / 49,650 行 | `find src -name "*.py"`（2026-11-15 实测） |
 | 测试规模 | 392 测试文件 / 65013 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-15 实测） |
-| 全量 (canonical) | **2759 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-15 P173 全量复核**（本机；deferred 口径）；含 zombie tests 清理后的 canonical；**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
+| 全量 (canonical) | **2761 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-15 P173 全量复核**（本机；deferred 口径）；含 zombie tests 清理后的 canonical；**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 迭代记录 | `docs/task_tree/iterations/` (514 份, 只增不改) | 每次迭代一份（2026-11-15 实测） |
@@ -98,6 +98,7 @@
 | [validation/P177_SKILL_CORPUS_FIDELITY_2026-11-15.md](validation/P177_SKILL_CORPUS_FIDELITY_2026-11-15.md) | **P177**: paths/driver_count/evidence/class corpus fidelity |
 | [validation/P178_PRODUCT_FIXES_2026-11-15.md](validation/P178_PRODUCT_FIXES_2026-11-15.md) | **P178**: consistency/evidence/error fixes |
 | [validation/P179_CONTROL_EVIDENCE_2026-11-16.md](validation/P179_CONTROL_EVIDENCE_2026-11-16.md) | **P179**: control alias + evidence source text |
+| [validation/P180_NIT_CLEANUP_2026-11-16.md](validation/P180_NIT_CLEANUP_2026-11-16.md) | **P180**: shared assignment scanner + nit cleanup |
 | [validation/P172_1_COVERAGE_GEN_RETIRE_2026-11-14.md](validation/P172_1_COVERAGE_GEN_RETIRE_2026-11-14.md) | **P172.1**: retire stale coverage-gen workflow |
 | [validation/P172_2_CHECK_CRAP_BASE_2026-11-14.md](validation/P172_2_CHECK_CRAP_BASE_2026-11-14.md) | **P172.2**: local gate defaults --base HEAD~1 |
 | [validation/P171_6_2_MUTATION_GATE_2026-11-14.md](validation/P171_6_2_MUTATION_GATE_2026-11-14.md) | **P171.6.2**: 20-task repo-only mutation gate |

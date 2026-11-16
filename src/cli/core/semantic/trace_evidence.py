@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from pathlib import Path
 
 import typer
@@ -22,6 +21,11 @@ from cli._output import emit_json
 from cli.core.semantic.trace_common import (
     _collect_signals, resolve_signal, resolution_fields,
     resolution_error_message, SignalResolutionError,
+)
+from sv_query.trace.core.source_assignment import (
+    find_functional_assignment as _find_functional_assignment,
+    is_reset_condition as _is_reset_condition,
+    line_is_lhs as _line_is_lhs,
 )
 from sv_query.trace.core.sva_extractor import SVAExtractor
 from sv_query.trace.unified_tracer import UnifiedTracer
@@ -55,74 +59,6 @@ def _read_source_text(file_name: str, sources: dict[str, str] | None = None) -> 
         except OSError:
             continue
     return None
-
-
-def _strip_block_comments(text: str) -> str:
-    def _blank(match):
-        return "".join("\n" if ch == "\n" else " " for ch in match.group(0))
-    return re.sub(r"/\*.*?\*/", _blank, text, flags=re.S)
-
-
-def _line_is_lhs(text: str, signal: str) -> bool:
-    leaf = signal.rsplit(".", 1)[-1]
-    code = _strip_block_comments(text or "").split("//")[0].strip()
-    pat = re.compile(
-        rf"^(?:else\s+)?(?:if\s*\([^)]*\)\s*)?(?:assign\s+)?"
-        rf"{re.escape(leaf)}\b\s*(?:\[[^\]]+\])?\s*(?:<=|=(?!=))")
-    return bool(pat.search(code))
-
-
-def _collect_if_condition(lines: list[str], idx: int) -> str | None:
-    text = "\n".join(lines[idx:idx + 8])
-    m = re.search(r"\bif\s*\(", text)
-    if not m:
-        return None
-    depth, start = 1, m.end()
-    for pos in range(start, len(text)):
-        if text[pos] == "(":
-            depth += 1
-        elif text[pos] == ")":
-            depth -= 1
-            if depth == 0:
-                return text[start:pos]
-    return text[start:]
-
-
-def _branch_condition(lines: list[str], lo: int, idx: int) -> str | None:
-    for j in range(idx, lo - 1, -1):
-        code = lines[j].split("//")[0]
-        if re.search(r"\bif\s*\(", code):
-            return _collect_if_condition(lines, j)
-        if re.search(r"\belse\b", code):
-            return ""  # plain else branch is functional
-    return None
-
-
-def _nearest_if_is_reset(lines: list[str], lo: int, idx: int) -> bool:
-    cond = _branch_condition(lines, lo, idx)
-    return bool(cond and _is_reset_condition(cond))
-
-def _find_functional_assignment(signal: str, file_text: str,
-                                start: int, end: int) -> tuple[int, str] | None:
-    """Find the non-reset LHS assignment line for a signal in a source range."""
-    lines = _strip_block_comments(file_text).splitlines()
-    lo = max(0, start - 1)
-    hi = min(len(lines), end if end else len(lines))
-    candidates = [i for i in range(lo, hi) if _line_is_lhs(lines[i], signal)]
-    for idx in reversed(candidates):
-        if _nearest_if_is_reset(lines, lo, idx):
-            continue
-        return idx + 1, lines[idx].strip()
-    return None
-
-
-# ==============================================================================
-# Stage 3A: evidence 命令 - 召回 always/if 块完整源码
-# ==============================================================================
-
-def _is_reset_condition(cond: str) -> bool:
-    c = (cond or "").strip().lower()
-    return bool(re.search(r"(?:^|[^a-z0-9])(?:a?reset|s?rst|arst|nrst)\w*", c)) and "&&" not in c and "||" not in c
 
 
 def _line_has_reset_edge(graph, signal: str, line: int) -> bool:
@@ -251,17 +187,31 @@ def _with_functional_line(ev_dict, signal: str, sources=None):
     ev_dict["credibility_score"] = 1.0 if leaf in source else 0.2
     return ev_dict
 
+def _demote_non_assignment(ev_dict, signal: str):
+    if not isinstance(ev_dict, dict):
+        return ev_dict
+    source = ev_dict.get("source_text", "") or ""
+    if _line_is_lhs(source, signal):
+        return ev_dict
+    ev_dict = dict(ev_dict)
+    ev_dict["is_verified"] = False
+    ev_dict["credibility_score"] = min(ev_dict.get("credibility_score", 0.2), 0.2)
+    return ev_dict
+
+
 def _resolve_evidence_dict(resolver, graph, signal: str, sources=None) -> dict | None:
     ev_dict = _evidence_to_dict(resolver.resolve(signal))
     fallback = _snapshot_edge_evidence(graph, signal, sources)
     text, _ = _evidence_source(ev_dict)
     if not ev_dict or not text:
-        return _with_functional_line(
-            fallback if fallback is not None else ev_dict, signal, sources)
+        return _demote_non_assignment(_with_functional_line(
+            fallback if fallback is not None else ev_dict, signal, sources), signal)
     if (fallback is not None and _evidence_is_reset(graph, signal, ev_dict)
             and not _evidence_is_reset(graph, signal, fallback)):
-        return _with_functional_line(fallback, signal, sources)
-    return _with_functional_line(ev_dict, signal, sources)
+        return _demote_non_assignment(
+            _with_functional_line(fallback, signal, sources), signal)
+    return _demote_non_assignment(
+        _with_functional_line(ev_dict, signal, sources), signal)
 
 def evidence(
     signal: str = typer.Argument(None, help="Signal to query (e.g., top.q). Optional when --batch or --batch-file is used."),

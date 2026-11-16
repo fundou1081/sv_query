@@ -244,3 +244,37 @@ def test_reset_names_rstn_resetn_arst(tmp_path):
         ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
         assert ev["source_location"]["line_start"] == 3, reset
         assert ev["source_text"] == "if (en) q <= d;", reset
+
+
+def test_non_ascii_comment_does_not_corrupt_snippet(tmp_path):
+    src = tmp_path / "utf.sv"
+    src.write_text(
+        "// 中文注释：寄存器\n"
+        "module top(input clk, rst_n, en, d, output reg q);\n"
+        "  // 另一个中文注释\n"
+        "  always_ff @(posedge clk or negedge rst_n) begin\n"
+        "    if (en) q <= d;\n"
+        "    else if (!rst_n) q <= 1'b0;\n"
+        "  end\n"
+        "endmodule\n")
+    r = subprocess.run(
+        ["sv_query", "trace", "evidence", "top.q", "-f", str(src),
+         "--json", "-q"], capture_output=True, text=True, timeout=60,
+        cwd=str(PROJECT_ROOT))
+    assert r.returncode == 0, r.stderr[-300:]
+    ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
+    assert ev["enclosing_always"]["text"].lstrip().startswith("always_ff")
+    assert ev["source_location"]["line_start"] == 5
+
+
+def test_class_declaration_evidence_is_not_verified():
+    fixture = PROJECT_ROOT / "sim/tests/fixtures/golden_mini/golden_dataflow_35_class_oop.sv"
+    r = subprocess.run(
+        ["sv_query", "trace", "evidence", "packet.addr", "-f", str(fixture),
+         "--json", "-q"], capture_output=True, text=True, timeout=60,
+        cwd=str(PROJECT_ROOT))
+    assert r.returncode == 0, r.stderr[-300:]
+    ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
+    assert ev["source_text"] == "class packet;"
+    assert ev["is_verified"] is False
+    assert ev["credibility_score"] <= 0.2
