@@ -27,7 +27,7 @@ worker 对 `cf0d8850` 判 FAIL，见主会话复现记录。P181 逐项修复。
 ## 3. 验证
 
 - targeted: 81 passed（evidence/profile/verify/subgraph/credibility/class）
-- canonical: 2773 passed / 0 failed / 123 deferred
+- canonical: 2774 passed / 0 failed / 123 deferred
 - full gate: green（含 lint）
 - lint base 5bbbcdf5: all checks passed
 - mutation gate: 20/20

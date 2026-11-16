@@ -15,7 +15,11 @@ from cli.core.semantic.trace_common import (
     resolve_signal,
 )
 from sv_query.trace.core.compiler import CompilationError
-from sv_query.trace.core.source_assignment import compiled_line_shift, find_functional_assignment
+from sv_query.trace.core.source_assignment import (
+    compiled_line_shift,
+    find_functional_assignment,
+    signal_is_active_low,
+)
 from sv_query.trace.core.trace_evidence import TraceEvidenceResolver
 
 logger = logging.getLogger(__name__)
@@ -62,10 +66,10 @@ def _active_low(cond: str, signal: str) -> bool | None:
     if re.search(rf"!\b{re.escape(leaf)}\b", c) or re.search(
             rf"\b{re.escape(leaf)}\b==0", c):
         return True
+    if signal_is_active_low(leaf):
+        return True
     if re.search(rf"\b{re.escape(leaf)}\b", c):
         return False
-    if leaf.lower().endswith("_n") or leaf.lower() in ("resetn", "rstn"):
-        return True
     return None
 
 

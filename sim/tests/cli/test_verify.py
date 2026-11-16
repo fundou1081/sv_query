@@ -140,5 +140,3 @@ def test_claim_from_snapshot(tmp_path):
     assert d["ok"] is True
     assert d["params"]["from_snapshot"] == "verify_snap"
     assert d["result"]["status"] == "verified"
-
-

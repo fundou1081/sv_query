@@ -66,16 +66,37 @@ def _active_low_reset(cond: str) -> bool:
     return token.endswith(("n", "ni", "no", "b", "l"))
 
 
+def _literal_value(token: str) -> int | None:
+    token = token.replace("_", "").strip()
+    if "'" not in token:
+        try:
+            return int(token)
+        except ValueError:
+            return None
+    width, rest = token.split("'", 1)
+    if not rest:
+        return None
+    base = rest[0].lower()
+    digits = rest[1:]
+    if not digits or re.search(r"[xz]", digits, re.I):
+        return None
+    try:
+        return int(digits, {"b": 2, "d": 10, "h": 16, "o": 8}.get(base, 10))
+    except ValueError:
+        return None
+
+
 def _active_reset_branch(cond: str) -> bool:
     c = (cond or "").strip()
     if not is_reset_condition(c):
         return False
     assert_level = 0 if _active_low_reset(c) else 1
-    m = re.search(r"(==|!=)\s*(?:\d+\s*'([bdho]))?([0-9a-fA-F]+)", c)
+    m = re.search(
+        r"(==|!=)\s*((?:\d+\s*)?'[bdhoBDHO][0-9a-fA-FxXzZ_]+|\d+)", c, re.I)
     if m:
-        base = {"b": 2, "d": 10, "h": 16, "o": 8}.get((m.group(2) or "d").lower(), 10)
-        value = int(m.group(3), base)
-        return value == assert_level if m.group(1) == "==" else value != assert_level
+        value = _literal_value(m.group(2))
+        if value is not None:
+            return value == assert_level if m.group(1) == "==" else value != assert_level
     if "!" in c:
         return True
     return not _active_low_reset(c)
@@ -141,3 +162,8 @@ def compiled_line_shift(filename: str, full_text: str) -> int:
         logger.debug("compiled_line_shift read failed for %s: %s", filename, exc)
         return 0
     return 0 if disk.lstrip().startswith("`timescale") else 1
+
+
+def signal_is_active_low(name: str) -> bool:
+    """Active-low reset signal name (rst_n, rst_ni, resetn, ...)."""
+    return _active_low_reset(name)

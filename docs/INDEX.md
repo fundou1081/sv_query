@@ -2,7 +2,7 @@
 
 > **唯一文档入口** — 所有文档从本文件进入;新增文档必须在本文件登记
 > (由 `tools/check_docs.py` 强制检查)。
-> **最后整理**: 2026-11-16 (P180 nit cleanup；历史 2026-09-08 iter_171 文档清理 — 63 份过期/重复文档归档至
+> **最后整理**: 2026-11-16 (P181 discipline remediation；历史 2026-09-08 iter_171 文档清理 — 63 份过期/重复文档归档至
 > `docs/archive/2026-09-08-cleanup/`,原 INDEX / DOC_INDEX / LLM_INDEX 三份
 > 索引合并为本文件)。
 
@@ -12,9 +12,9 @@
 
 | 项 | 值 | 说明 |
 |---|---|---|
-| 源码规模 | 140 文件 / 49,993 行 | `find src -name "*.py"`（2026-11-16 实测） |
-| 测试规模 | 394 测试文件 / 65,576 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **2773 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-16 P181 全量复核**（本机；deferred 口径）；含 zombie tests 清理后的 canonical；**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
+| 源码规模 | 140 文件 / 50,023 行 | `find src -name "*.py"`（2026-11-16 实测） |
+| 测试规模 | 394 测试文件 / 65,625 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
+| 全量 (canonical) | **2774 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-16 P181 全量复核**（本机；deferred 口径）；含 zombie tests 清理后的 canonical；**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 迭代记录 | `docs/task_tree/iterations/` (519 份, 只增不改) | 每次迭代一份（2026-11-16 实测） |
@@ -148,6 +148,7 @@
 | [validation/HARD_ISOLATION_2026-11-05.md](validation/HARD_ISOLATION_2026-11-05.md) | **硬隔离 PoC + 审计**: canonical path 泄漏已修；两模型单题正确；硬隔离方差未评估 |
 | [architecture/project_audit_2026-11-06.md](architecture/project_audit_2026-11-06.md) | **项目审计**: 原始目标/计划状态/未完成开发/测试缺口/下一步排序 |
 | [architecture/arch_eval_2026-11-11.md](architecture/arch_eval_2026-11-11.md) | **架构/产品评估（讨论底稿，2026-11-11）**: 只读评审；不构成已登记计划，采纳需先登记 PLAN |
+| [architecture/agent_interface_review_2026-11-16.md](architecture/agent_interface_review_2026-11-16.md) | **面向 agent 的设计/整体结构评审建议稿 v1.0（2026-11-16，HEAD `2a004f76`）**: 优劣清单 + 8 条候选建议；只读、未登记 PLAN、`R-*` 不是计划项 |
 | [validation/INTERACTIVE_DEBUG_2026-11-06.md](validation/INTERACTIVE_DEBUG_2026-11-06.md) | **交互式 debug pilot**: 3 场景 × 3 模型；5–20 轮；发现路径粒度/mux/bin 名称/class relative 问题 |
 | [validation/INTERACTIVE_P0_2026-11-06.md](validation/INTERACTIVE_P0_2026-11-06.md) | **P0 post-P77**: 3 模型 × deep_chain；clarify 后 3/3 正确；12 节点/11 hops |
 | [validation/INTERACTIVE_P1_2026-11-06.md](validation/INTERACTIVE_P1_2026-11-06.md) | **P1**: 3 场景 × 3 模型 × 2 seed；17/18 完整；constraints 1 个字段歧义；429 重跑 |

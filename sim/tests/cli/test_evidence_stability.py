@@ -441,3 +441,54 @@ def test_virtual_class_property_evidence(tmp_path):
     ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
     assert ev["source_text"] == "rand bit [7:0] addr;"
     assert ev["source_location"]["line_start"] == 3
+
+
+def test_sized_uppercase_and_identifier_reset_conditions(tmp_path):
+    src = tmp_path / "upper.sv"
+    src.write_text(
+        "module top(input clk, rst_n, d, enable, output reg q);\n"
+        "  always_ff @(posedge clk) begin\n"
+        "    if (rst_n == 1'B0) q <= 1'b0;\n"
+        "    else q <= d;\n"
+        "  end\n"
+        "endmodule\n")
+    r = subprocess.run(
+        ["sv_query", "trace", "evidence", "top.q", "-f", str(src),
+         "--json", "-q"], capture_output=True, text=True, timeout=60,
+        cwd=str(PROJECT_ROOT))
+    assert r.returncode == 0, r.stderr[-300:]
+    ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
+    assert ev["source_location"]["line_start"] == 4
+    assert ev["source_text"] == "else q <= d;"
+
+    src.write_text(
+        "module top(input clk, rst_n, d, enable, output reg q);\n"
+        "  always_ff @(posedge clk) begin\n"
+        "    if (rst_n == enable) q <= d;\n"
+        "    else q <= 1'b0;\n"
+        "  end\n"
+        "endmodule\n")
+    r = subprocess.run(
+        ["sv_query", "trace", "evidence", "top.q", "-f", str(src),
+         "--json", "-q"], capture_output=True, text=True, timeout=60,
+        cwd=str(PROJECT_ROOT))
+    assert r.returncode == 0, r.stderr[-300:]
+    ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
+    assert ev["source_location"]["line_start"] == 3
+    assert ev["source_text"] == "if (rst_n == enable) q <= d;"
+
+    src.write_text(
+        "module top(input clk, rst, rst_n, d, output reg q);\n"
+        "  always_ff @(posedge clk) begin\n"
+        "    if (rst == 2'b00) q <= d;\n"
+        "    else if (rst_n == 'b0) q <= 1'b0;\n"
+        "  end\n"
+        "endmodule\n")
+    r = subprocess.run(
+        ["sv_query", "trace", "evidence", "top.q", "-f", str(src),
+         "--json", "-q"], capture_output=True, text=True, timeout=60,
+        cwd=str(PROJECT_ROOT))
+    assert r.returncode == 0, r.stderr[-300:]
+    ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
+    assert ev["source_location"]["line_start"] == 3
+    assert ev["source_text"] == "if (rst == 2'b00) q <= d;"
