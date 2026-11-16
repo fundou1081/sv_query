@@ -3,13 +3,15 @@
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **交接状态**: [HANDOFF](docs/dev/HANDOFF.md) — 当前状态/主线/历史功能；旧会话快照 [2026-11-12](docs/dev/HANDOFF_2026-11-12.md)。
-> **最后更新**: 2026-11-16 (P181 discipline remediation)
+> **最后更新**: 2026-11-16 (P182 plan merged from corrected review)
 
 ---
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **无（P181 完成；P62.2 gate no-go）** `<已完成>`
+- **当前 item**: **P182.1 envelope inventory + check_envelope_contract gate** `<待做>`
+  - 计划来源：[agent_interface_review_2026-11-16_revised.md](docs/architecture/agent_interface_review_2026-11-16_revised.md) / PLAN P182
+  - 先做 inventory，不改语义；采纳前按 AGENTS §2 建 task
   - P173 full status/evidence cleanup：已完成；无 active item
   - P62.2 gate assessment：no-go，不做交互式 debug UI/REPL
 
