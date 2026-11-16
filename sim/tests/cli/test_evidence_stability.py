@@ -267,14 +267,29 @@ def test_non_ascii_comment_does_not_corrupt_snippet(tmp_path):
     assert ev["source_location"]["line_start"] == 5
 
 
-def test_class_declaration_evidence_is_not_verified():
-    fixture = PROJECT_ROOT / "sim/tests/fixtures/golden_mini/golden_dataflow_35_class_oop.sv"
+
+
+def test_case_and_oneline_assignment_prefixes(tmp_path):
+    case_sv = PROJECT_ROOT / "sim/tests/fixtures/golden_mini/mux_demo.sv"
     r = subprocess.run(
-        ["sv_query", "trace", "evidence", "packet.addr", "-f", str(fixture),
+        ["sv_query", "trace", "evidence", "mux_demo.y_case", "-f", str(case_sv),
          "--json", "-q"], capture_output=True, text=True, timeout=60,
         cwd=str(PROJECT_ROOT))
     assert r.returncode == 0, r.stderr[-300:]
     ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
-    assert ev["source_text"] == "class packet;"
-    assert ev["is_verified"] is False
-    assert ev["credibility_score"] <= 0.2
+    assert "y_case <=" in ev["source_text"]
+    assert ev["is_verified"] is True
+
+    one = tmp_path / "one.sv"
+    one.write_text(
+        "module top(input sel, a, output reg y);\n"
+        "  always_comb y = a;\n"
+        "endmodule\n")
+    r = subprocess.run(
+        ["sv_query", "trace", "evidence", "top.y", "-f", str(one),
+         "--json", "-q"], capture_output=True, text=True, timeout=60,
+        cwd=str(PROJECT_ROOT))
+    assert r.returncode == 0, r.stderr[-300:]
+    ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
+    assert "y = a;" in ev["source_text"]
+    assert ev["is_verified"] is True

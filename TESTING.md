@@ -1,6 +1,6 @@
 # TESTING.md — 测试指南
 
-> 最后更新: 2026-11-11 (P158 语义测试/反事实)
+> 最后更新: 2026-11-16 (P180 nit cleanup)
 
 ## 📌 当前基线（**引用** [docs/INDEX.md 当前基线](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里)）
 
@@ -9,7 +9,7 @@
 
 | 项 | 值（引自 INDEX） | 说明 |
 |---|---|---|
-| 全量 (canonical) | **2761 passed / 0 failed** | `sim/tests/`, `-m "not opensource"`；0 skipped / 0 unexecuted / 123 deferred；35 subtests（2026-11-15 实测，P173）。**0 skipped 不代表测试健康**，见 §语义测试 |
+| 全量 (canonical) | **2761 passed / 0 failed** | `sim/tests/`, `-m "not opensource"`；0 skipped / 0 unexecuted / 123 deferred；35 subtests（2026-11-16 实测，P180）。**0 skipped 不代表测试健康**，见 §语义测试 |
 | 回归基线 (unit + regression) | 见 INDEX | `-m "not opensource"` |
 | CLI / integration | 见 INDEX | `sim/tests/cli sim/tests/integration` |
 

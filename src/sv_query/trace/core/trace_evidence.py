@@ -19,7 +19,7 @@ from pathlib import Path
 # ==============================================================================
 from dataclasses import dataclass, field
 
-from .source_assignment import find_assignment_near, find_functional_assignment
+from .source_assignment import find_assignment_near, find_functional_assignment, line_is_lhs
 from .coverage_models import SourceLocation, SourceSnippet
 from .graph.models import NodeKind, TraceEdge
 

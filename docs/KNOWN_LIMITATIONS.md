@@ -363,6 +363,17 @@ signal 级 `precision` + `coarse_fallback`）；`capabilities.bit_precision` 契
 `source_line` 必须能访问源码树（`SVQ_SOURCE_ROOT`）。没有源码树时，
 snapshot 路径的 evidence 精度**低于** live 路径。
 
+### 3.11 默认预处理会插入 `timescale` 行，enclosing snippet 行号可能 +1
+
+**事实**：默认 `--preprocess` 会在 in-memory source 前插入 `` `timescale `` 行；
+pyslang snippet 的 `line_start/end` 来自编译后文本，因此 class/always 的
+enclosing snippet 行号可能比磁盘源文件大 1。assignment 的 `source_text` 由
+文件 LHS 扫描修正，通常不受影响；`--no-preprocess` 可消除偏移。
+
+**可观察后果**：`trace evidence packet.addr` 的 `enclosing_class` 可能报 9-16，
+实际 class 是 8-15。source 行以 `source_text`/`source_location` 的 assignment
+行为准；需要精确 enclosing 行号时用 `--no-preprocess` 或回读文件。
+
 ### 3.10 Path 语义：是 **canonical path**，没有"最短路径"这个意图
 
 **事实**（P122）：`intent=path` / `intent=deep_path` 都走 canonical：

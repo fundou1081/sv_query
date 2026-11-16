@@ -25,7 +25,9 @@ def line_is_lhs(text: str, signal: str) -> bool:
     leaf = signal.rsplit(".", 1)[-1]
     code = strip_block_comments(text or "").split("//")[0].strip()
     pat = re.compile(
-        rf"^(?:else\s+)?(?:if\s*\([^)]*\)\s*)?(?:assign\s+)?"
+        rf"^(?:else\s+)?(?:if\s*\([^)]*\)\s*)?"
+        rf"(?:always(?:_comb|_ff|_latch)?\s+)?(?:begin\s+)?"
+        rf"(?:(?:default|[A-Za-z0-9_'?]+)\s*:\s*)?(?:assign\s+)?"
         rf"{re.escape(leaf)}\b\s*(?:\[[^\]]+\])?\s*(?:<=|=(?!=))")
     return bool(pat.search(code))
 
@@ -80,13 +82,12 @@ def find_assignment_near(signal: str, file_text: str,
     """Find a functional assignment near a hint line, then any nearest LHS."""
     lines = strip_block_comments(file_text).splitlines()
     hint = int(hint or 1)
-    found = find_functional_assignment(
-        signal, file_text, max(1, hint - window), hint + window)
-    if found is not None:
-        return found
-    candidates = [i for i, line in enumerate(lines, 1)
-                  if line_is_lhs(line, signal)]
+    lo = max(0, hint - window - 1)
+    hi = min(len(lines), hint + window)
+    candidates = [i for i in range(lo, hi)
+                  if line_is_lhs(lines[i], signal)
+                  and not _nearest_if_is_reset(lines, lo, i)]
     if not candidates:
         return None
-    line = min(candidates, key=lambda n: abs(n - hint))
-    return line, lines[line - 1].strip()
+    idx = min(candidates, key=lambda i: abs((i + 1) - hint))
+    return idx + 1, lines[idx].strip()

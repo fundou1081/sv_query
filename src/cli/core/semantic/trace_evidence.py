@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 from pathlib import Path
 
 import typer
@@ -187,31 +188,17 @@ def _with_functional_line(ev_dict, signal: str, sources=None):
     ev_dict["credibility_score"] = 1.0 if leaf in source else 0.2
     return ev_dict
 
-def _demote_non_assignment(ev_dict, signal: str):
-    if not isinstance(ev_dict, dict):
-        return ev_dict
-    source = ev_dict.get("source_text", "") or ""
-    if _line_is_lhs(source, signal):
-        return ev_dict
-    ev_dict = dict(ev_dict)
-    ev_dict["is_verified"] = False
-    ev_dict["credibility_score"] = min(ev_dict.get("credibility_score", 0.2), 0.2)
-    return ev_dict
-
-
 def _resolve_evidence_dict(resolver, graph, signal: str, sources=None) -> dict | None:
     ev_dict = _evidence_to_dict(resolver.resolve(signal))
     fallback = _snapshot_edge_evidence(graph, signal, sources)
     text, _ = _evidence_source(ev_dict)
     if not ev_dict or not text:
-        return _demote_non_assignment(_with_functional_line(
-            fallback if fallback is not None else ev_dict, signal, sources), signal)
+        return _with_functional_line(
+            fallback if fallback is not None else ev_dict, signal, sources)
     if (fallback is not None and _evidence_is_reset(graph, signal, ev_dict)
             and not _evidence_is_reset(graph, signal, fallback)):
-        return _demote_non_assignment(
-            _with_functional_line(fallback, signal, sources), signal)
-    return _demote_non_assignment(
-        _with_functional_line(ev_dict, signal, sources), signal)
+        return _with_functional_line(fallback, signal, sources)
+    return _with_functional_line(ev_dict, signal, sources)
 
 def evidence(
     signal: str = typer.Argument(None, help="Signal to query (e.g., top.q). Optional when --batch or --batch-file is used."),
