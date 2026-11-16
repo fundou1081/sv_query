@@ -6,7 +6,11 @@ inside a branch, skipping reset branches, comments, and comparison operators.
 """
 from __future__ import annotations
 
+import logging
 import re
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 def is_reset_condition(cond: str) -> bool:
@@ -55,7 +59,11 @@ def _reset_token(cond: str) -> str:
 
 def _active_low_reset(cond: str) -> bool:
     token = _reset_token(cond)
-    return token.endswith("n") or token.startswith("n")
+    if not token:
+        return False
+    if token.startswith("n") or "_n" in token:
+        return True
+    return token.endswith(("n", "ni", "no", "b", "l"))
 
 
 def _active_reset_branch(cond: str) -> bool:
@@ -63,9 +71,10 @@ def _active_reset_branch(cond: str) -> bool:
     if not is_reset_condition(c):
         return False
     assert_level = 0 if _active_low_reset(c) else 1
-    m = re.search(r"(==|!=)\s*(\d+)", c)
+    m = re.search(r"(==|!=)\s*(?:\d+\s*'([bdho]))?([0-9a-fA-F]+)", c)
     if m:
-        value = int(m.group(2))
+        base = {"b": 2, "d": 10, "h": 16, "o": 8}.get((m.group(2) or "d").lower(), 10)
+        value = int(m.group(3), base)
         return value == assert_level if m.group(1) == "==" else value != assert_level
     if "!" in c:
         return True
@@ -120,3 +129,15 @@ def find_assignment_near(signal: str, file_text: str,
         return None
     idx = min(any_lhs, key=lambda i: abs((i + 1) - hint))
     return idx + 1, lines[idx].strip()
+
+
+def compiled_line_shift(filename: str, full_text: str) -> int:
+    """Return 1 when preprocessing prepended a timescale line."""
+    if not full_text or not full_text.lstrip().startswith("`timescale"):
+        return 0
+    try:
+        disk = Path(filename).read_text(errors="ignore")
+    except OSError as exc:
+        logger.debug("compiled_line_shift read failed for %s: %s", filename, exc)
+        return 0
+    return 0 if disk.lstrip().startswith("`timescale") else 1

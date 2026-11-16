@@ -38,8 +38,8 @@
 | C-15 | `.core` → 可 elaborate filelist 对 UART/I2C/SPI 成立 | real-corpus | `filelist_closure` profiles + 0 elaboration errors | `unverified`（一次性外部 OpenTitan 证据；需重复 gate） |
 | C-16 | Tests 与 Benchmark workflow 在 `4d58d7fb` 为绿色；Coverage Gen 已退役 | CI | GitHub Actions runs 43576810042 / 43576809982 | `scoped`（时点证据；Coverage Gen 测试已归档，workflow 删除，不是 pass） |
 | C-17 | `trace evidence` 在 source/filelist/snapshot 中选择 functional LHS 赋值行；reset/comment/comparison 不冒充 assignment | fixture | `test_evidence_stability.py` | `scoped`（启发式分支扫描，不覆盖所有 SV 语法） |
-| C-18 | `trace profile.source.line` 对自带 timescale 和预处理注入 timescale 的 file-backed 源文件给出磁盘声明行 | fixture | `test_trace_profile.py::test_declaration_line_with_own_timescale` | `scoped`（in-memory source 不保证） |
-| C-19 | class property evidence 使用 `ClassPropertySymbol` 声明位置，不由 regex 扫 class 文本 | fixture | `test_class_property_uses_member_declaration_line` / `test_class_comment_is_not_property_evidence` | `scoped`（class/constraint 上下文 evidence 仍非赋值） |
+| C-18 | `trace profile.source.line` 对自带 timescale 和预处理注入 timescale 的 file-backed 源文件给出磁盘声明行 | fixture | `test_declaration_line_with_own_timescale` / `test_sequential_signal_profile` | `scoped`（in-memory source 不保证） |
+| C-19 | class property evidence 使用 `ClassPropertySymbol` 声明位置，不由 regex 扫 class 文本 | fixture | `test_class_property_uses_member_declaration_line` / `test_class_comment_is_not_property_evidence` / `test_virtual_class_property_evidence` | `scoped`（class/constraint 上下文 evidence 仍非赋值） |
 | C-20 | `graph subgraph --edge-kinds control` 包含 branch/ternary 和 conditional DRIVER；`control,driver` 保留无条件 DRIVER | fixture | `test_subgraph_control_includes_branch_edges` / `test_subgraph_control_plus_driver_keeps_unconditional_driver` | `scoped`（CLI 子图，不是全图语义） |
 
 ---

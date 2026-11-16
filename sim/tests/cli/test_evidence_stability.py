@@ -227,7 +227,7 @@ def test_multiline_reset_condition_selects_functional_assignment(tmp_path):
 
 
 def test_reset_names_rstn_resetn_arst(tmp_path):
-    for reset in ("rstn", "resetn", "arst", "ARESETn", "sys_rst_n", "srst_n", "soft_reset", "i_rst_n"):
+    for reset in ("rstn", "resetn", "arst", "ARESETn", "sys_rst_n", "srst_n", "soft_reset", "i_rst_n", "rst_ni"):
         src = tmp_path / f"{reset}.sv"
         src.write_text(
             f"module top(input clk, {reset}, en, d, output reg q);\n"
@@ -395,6 +395,42 @@ def test_class_comment_is_not_property_evidence(tmp_path):
     src.write_text(
         "class packet;\n"
         "  // addr field comment\n"
+        "  rand bit [7:0] addr;\n"
+        "endclass\n")
+    r = subprocess.run(
+        ["sv_query", "trace", "evidence", "packet.addr", "-f", str(src),
+         "--json", "-q"], capture_output=True, text=True, timeout=60,
+        cwd=str(PROJECT_ROOT))
+    assert r.returncode == 0, r.stderr[-300:]
+    ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
+    assert ev["source_text"] == "rand bit [7:0] addr;"
+    assert ev["source_location"]["line_start"] == 3
+
+
+def test_sized_literal_reset_condition(tmp_path):
+    src = tmp_path / "sized.sv"
+    src.write_text(
+        "module top(input clk, rst, rst_n, d, output reg q);\n"
+        "  always_ff @(posedge clk) begin\n"
+        "    if (rst == 1'b0) q <= d;\n"
+        "    else if (rst_n == 1'b0) q <= 1'b0;\n"
+        "  end\n"
+        "endmodule\n")
+    r = subprocess.run(
+        ["sv_query", "trace", "evidence", "top.q", "-f", str(src),
+         "--json", "-q"], capture_output=True, text=True, timeout=60,
+        cwd=str(PROJECT_ROOT))
+    assert r.returncode == 0, r.stderr[-300:]
+    ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
+    assert ev["source_text"] == "if (rst == 1'b0) q <= d;"
+    assert ev["source_location"]["line_start"] == 3
+
+
+def test_virtual_class_property_evidence(tmp_path):
+    src = tmp_path / "virtual.sv"
+    src.write_text(
+        "virtual class packet;\n"
+        "  // addr\n"
         "  rand bit [7:0] addr;\n"
         "endclass\n")
     r = subprocess.run(

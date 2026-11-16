@@ -21,23 +21,18 @@ from pathlib import Path
 
 from .coverage_models import SourceLocation, SourceSnippet
 from .graph.models import NodeKind, TraceEdge
-from .source_assignment import find_assignment_near, find_functional_assignment
+from .source_assignment import (
+    compiled_line_shift as _compiled_line_shift,
+)
+from .source_assignment import (
+    find_assignment_near,
+    find_functional_assignment,
+)
 
 logger = logging.getLogger(__name__)
 
 
-def _compiled_line_shift(filename: str, full_text: str) -> int:
-    """Default preprocessing prepends a timescale line; adjust snippet lines."""
-    if not full_text or not full_text.lstrip().startswith("`timescale"):
-        return 0
-    try:
-        disk = Path(filename).read_text(errors="ignore")
-    except OSError:
-        return 0
-    return 0 if disk.lstrip().startswith("`timescale") else 1
-# ==============================================================================
-# Evidence 数据类
-# ==============================================================================
+
 
 @dataclass
 class Evidence:
@@ -673,7 +668,7 @@ class TraceEvidenceResolver:
         if ev.enclosing_class is not None:
             ev.enclosing_chain.append(ev.enclosing_class)
 
-        if ev.enclosing_class is not None and ev.source_text.startswith("class "):
+        if ev.enclosing_class is not None:
             leaf = signal_id.rsplit(".", 1)[-1]
             prop = next((p for p in getattr(class_symbol, "properties", ())
                          if getattr(p, "name", "") == leaf), None)

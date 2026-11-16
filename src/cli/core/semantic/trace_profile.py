@@ -15,7 +15,7 @@ from cli.core.semantic.trace_common import (
     resolve_signal,
 )
 from sv_query.trace.core.compiler import CompilationError
-from sv_query.trace.core.source_assignment import find_functional_assignment
+from sv_query.trace.core.source_assignment import compiled_line_shift, find_functional_assignment
 from sv_query.trace.core.trace_evidence import TraceEvidenceResolver
 
 logger = logging.getLogger(__name__)
@@ -36,14 +36,7 @@ def _declaration_line(tracer, node) -> int:
             if Path(key).name == Path(node.file).name:
                 text = value
                 break
-    if not text.lstrip().startswith("`timescale"):
-        return line
-    try:
-        disk = Path(node.file).read_text(errors="ignore")
-    except OSError as exc:
-        logger.debug("profile disk read failed for %s: %s", node.file, exc)
-        return max(1, line - 1)
-    return line if disk.lstrip().startswith("`timescale") else max(1, line - 1)
+    return max(1, line - compiled_line_shift(node.file, text))
 
 
 def _first_source(edge) -> tuple[str, int | None]:
