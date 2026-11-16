@@ -2,7 +2,8 @@
 # graph_models.py - 信号关系图模型
 # ==============================================================================
 
-from dataclasses import asdict, dataclass, field, fields as dc_fields
+from dataclasses import asdict, dataclass, field
+from dataclasses import fields as dc_fields
 from datetime import UTC
 from enum import Enum, auto
 from typing import Any
@@ -192,6 +193,29 @@ class EdgeKind(Enum):
 
 # SignalSource 的合法构造字段集合 (from_dict 反序列化时过滤未知键)
 _SIGNAL_SOURCE_FIELDS = frozenset(f.name for f in dc_fields(SignalSource))
+
+
+def _parse_edge_kind(edge_dict: dict) -> EdgeKind:
+    """[P183.1] 严格解析 edge.kind — 未知/缺失一律显式失败。
+
+    禁止静默回退 DRIVER: 新 schema 或损坏快照里的控制边/结构边若被当成
+    数据边, 会违反 SEMANTIC_CONTRACTS §2 (data = DRIVER + CONNECTION)。
+    """
+    src = edge_dict.get("src")
+    dst = edge_dict.get("dst")
+    if "kind" not in edge_dict:
+        raise ValueError(
+            f"SignalGraph.from_dict: edge {src!r} -> {dst!r} is missing 'kind'; "
+            "refusing to assume DRIVER"
+        )
+    kind_raw = edge_dict["kind"]
+    try:
+        return EdgeKind[kind_raw]
+    except (KeyError, TypeError):
+        raise ValueError(
+            f"SignalGraph.from_dict: unknown EdgeKind {kind_raw!r} for edge "
+            f"{src!r} -> {dst!r}; refusing to guess (snapshot may use a newer schema)"
+        ) from None
 
 
 @dataclass
@@ -744,12 +768,7 @@ class SignalGraph(nx.DiGraph):
 
         # 恢复边
         for edge_dict in data.get("edges", []):
-            kind_str = edge_dict.get("kind", "DRIVER")
-            # 尝试解析 EdgeKind 枚举
-            try:
-                kind = EdgeKind[kind_str]
-            except (KeyError, TypeError):
-                kind = EdgeKind.DRIVER
+            kind = _parse_edge_kind(edge_dict)
 
             loc_data = edge_dict.get("source_location")
             source_location = None

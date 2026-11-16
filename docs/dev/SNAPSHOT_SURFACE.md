@@ -27,6 +27,8 @@ source 11/11 丢、node.extra 16 条丢 —— 本迭代已全部补齐。
 
 **旧格式兼容**：from_dict 对 2026-11-11 前的快照（无新键）保持默认值语义
 （condition_chain=[]、function 标记 False），加载不炸。
+**EdgeKind 严格化（P183.1 / D1）**：未知、缺失或非字符串 `EdgeKind` 现在显式失败，
+不再回退 `DRIVER`；合法旧快照（均写 `kind`）不受影响。
 **体积影响**：字段补齐使快照增大约 1/3（fixture 实测 33%）；默认上限 64MB
 （`SVQ_SNAPSHOT_MAX_MB` 可调），超限 save 显式报错而非静默截断。
 

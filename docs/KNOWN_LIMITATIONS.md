@@ -363,6 +363,15 @@ signal 级 `precision` + `coarse_fallback`）；`capabilities.bit_precision` 契
 `source_line` 必须能访问源码树（`SVQ_SOURCE_ROOT`）。没有源码树时，
 snapshot 路径的 evidence 精度**低于** live 路径。
 
+### 3.9.2 Snapshot 中未知/缺失 `EdgeKind` 现在拒绝加载
+
+**事实（P183.1 / D1）**：`SignalGraph.from_dict` 对未知、缺失或非字符串
+`EdgeKind` 抛 `ValueError`，不再静默回退 `DRIVER`。
+
+**可观察后果**：手工编辑、第三方 schema 或未来版本写入的未知 edge kind 快照会
+`rc=1` + 明确错误；仓库内现有快照均含合法 `kind`。需要兼容时应显式提供 legacy opt-in，
+不要恢复静默回退。
+
 ### 3.9.1 默认预处理会插入 `timescale` 行，enclosing snippet 行号可能 +1
 
 **事实**：默认 `--preprocess` 会在 in-memory source 前插入 `` `timescale `` 行；
