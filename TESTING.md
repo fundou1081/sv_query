@@ -140,7 +140,7 @@ external-not-run
 | darkriscv | `~/my_dv_proj/openrtl/darkriscv` | `test_dataflow_latency_open_source.py` |
 | OpenTitan | `~/my_dv_proj/openrtl/opentitan` | `test_pyslang_type_extraction.py` |
 
-**设计原则**: 测试的核心代码模式从这些项目中抽取，存储为 `sim/tests/integration/dataflow_fixtures/` 下的独立 `.sv` 文件。完整的开源项目使用场景迁移到 `docs/usage/`，不作为回归测试。
+**设计原则**: 测试的核心代码模式从这些项目中抽取，存储为 `sim/tests/integration/dataflow_fixtures/` 下的独立 `.sv` 文件。完整的开源项目使用场景见 `docs/validation/` 与 `docs/agent/`，不作为回归测试。
 
 ## 环境依赖
 
@@ -154,7 +154,7 @@ external-not-run
 
 - macOS runner (macos-latest)
 - Python 3.11 / 3.12
-- pyslang via GitHub source install
+- pyslang via `requirements.txt` pin (`pyslang>=11.0.0,<12.0.0`)
 
 ## 落盘位置与测试隔离 (2026-09-09 iter_239 新增)
 

@@ -168,7 +168,7 @@
 - [PYSLANG_SEMANTIC_USAGE.md](PYSLANG_SEMANTIC_USAGE.md) — pyslang 11.0 API 在 sv_query 的用法 (16 KB)
 - [SIGNAL_GRAPH_SPEC.md](SIGNAL_GRAPH_SPEC.md) — SignalGraph 数据模型 spec (3.6 KB)
 - [ARCHITECTURE_REVIEW_2026-08-27.md](archive/2026-09-08-cleanup/ARCHITECTURE_REVIEW_2026-08-27.md) — 架构 review (8.8 KB)
-- [ARCHITECTURE_TODOLIST.md](ARCHITECTURE_TODOLIST.md) — 7 项改造任务追踪
+- [INDEX.md](INDEX.md) — 7 项改造任务追踪
 
 ## 🔄 状态变更日志
 

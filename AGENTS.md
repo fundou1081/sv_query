@@ -86,7 +86,7 @@ python3 -m pytest sim/tests/ -m "not opensource" -q -p no:randomly   # 或手动
 python3 tools/check_docs.py                                          # 死链/归档/未登记
 python3 tools/check_except_pass.py                                   # 禁 except:pass
 python3 tools/check_semantic_regex.py                                # 语义提取 regex 纪律 (仅 UVM 宏)
-python3 tools/check_cli_layers.py                                    # CLI 分层 R1~R8
+python3 tools/check_cli_layers.py                                    # CLI 分层 R1~R9
 python3 tools/gen_cli_surface.py --check                             # CLI 清单一致
 python3 tools/check_crap.py                                          # 复杂度棘轮 (CC>10)
 python3 tools/check_plan.py                                          # PLAN.md 计划树格式
@@ -95,7 +95,7 @@ git status --porcelain                                               # 只含预
 
 涉及查询 / 图 / CLI 语义的改动，**额外**跑真实多文件项目冒烟（[WORKFLOW §4](docs/dev/WORKFLOW.md)），
 并按 [SEMANTIC_CONTRACTS](docs/dev/SEMANTIC_CONTRACTS.md) 检查数据边/状态/确定性/有界性。
-P158 的语义 gate 未落地前，**不得**把“门禁全绿”当成语义正确。
+P158 的语义 gate 已收口；但**门禁全绿仍不等于语义正确**，涉及查询/图/verify 的改动必须手工执行 REVIEW_CHECKLIST §3.5。
 逐项自检见 [REVIEW_CHECKLIST](docs/dev/REVIEW_CHECKLIST.md)。
 
 ## 4. 汇报与协作

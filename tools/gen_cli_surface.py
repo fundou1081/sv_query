@@ -35,9 +35,9 @@ OUTPUT_OPTIONS = {"output", "out", "dot_output", "svg", "png", "html", "dot",
 def collect() -> dict:
     import click
     import typer
+
+    from cli._registry import ALIASES, COMMANDS, LAYERS, NEW_PLANNED, aliases_of, counts
     from cli.main import app
-    from cli._registry import (ALIASES, COMMANDS, LAYERS, NEW_PLANNED,
-                               aliases_of, counts)
 
     root = typer.main.get_command(app)
     leaves: dict[str, click.Command] = {}
@@ -79,10 +79,10 @@ def collect() -> dict:
     return {
         "generated_at": date.today().isoformat(),
         "counts": counts(),
-        "layers": {n: {"consumer": l.consumer, "stability": l.stability,
-                       "readonly": l.readonly, "json_required": l.json_required,
-                       "schema_version": l.schema_version, "note": l.note}
-                   for n, l in LAYERS.items()},
+        "layers": {n: {"consumer": layer.consumer, "stability": layer.stability,
+                       "readonly": layer.readonly, "json_required": layer.json_required,
+                       "schema_version": layer.schema_version, "note": layer.note}
+                   for n, layer in LAYERS.items()},
         "planned_new": NEW_PLANNED,
         "aliases": dict(ALIASES),
         "rows": rows,
@@ -94,11 +94,11 @@ def render(data: dict) -> str:
     c = data["counts"]
     L.append("# CLI 能力清单 (生成物 — 请勿手改)")
     L.append("")
-    L.append(f"> **生成方式**: `python3 tools/gen_cli_surface.py`  "
-             f"(数据源: `src/cli/_registry.py` + typer introspection)")
+    L.append("> **生成方式**: `python3 tools/gen_cli_surface.py`  "
+             "(数据源: `src/cli/_registry.py` + typer introspection)")
     L.append(f"> **生成日期**: {data['generated_at']}  |  "
              f"**漂移校验**: `python3 tools/gen_cli_surface.py --check`")
-    L.append("> **分层检查**: `python3 tools/check_cli_layers.py` (R1~R6)")
+    L.append("> **分层检查**: `python3 tools/check_cli_layers.py` (R1~R9)")
     L.append("")
     L.append("## 总览")
     L.append("")
@@ -108,11 +108,11 @@ def render(data: dict) -> str:
     L.append("")
     L.append("| 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | schema | 说明 |")
     L.append("|---|---|---|---|---|---|---|")
-    for n, l in data["layers"].items():
-        L.append(f"| `{n}` | {l['consumer']} | {l['stability']} | "
-                 f"{'✅' if l['readonly'] else '—'} | "
-                 f"{'✅' if l['json_required'] else '—'} | "
-                 f"{l['schema_version'] or '—'} | {l['note']} |")
+    for n, layer in data["layers"].items():
+        L.append(f"| `{n}` | {layer['consumer']} | {layer['stability']} | "
+                 f"{'✅' if layer['readonly'] else '—'} | "
+                 f"{'✅' if layer['json_required'] else '—'} | "
+                 f"{layer['schema_version'] or '—'} | {layer['note']} |")
     L.append("")
 
     for layer in ("core", "view", "exp", "dev", "out"):

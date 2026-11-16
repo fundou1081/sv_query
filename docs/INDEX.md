@@ -37,7 +37,6 @@
 | [TESTING.md](../TESTING.md) | 测试流程 / marker / 命令 (唯一测试入口) |
 | [CHANGELOG.md](../CHANGELOG.md) | 变更日志 (历史记录) |
 | [CONTRIBUTING.md](../CONTRIBUTING.md) | 贡献指南 |
-| [DEVELOPMENT.md](../DEVELOPMENT.md) | 开发环境与工作流 |
 | [memory/](../memory/) | 经验沉淀索引 (`memory/` 按日) |
 
 ## 🛠️ 开发纪律与流程 (`docs/dev/` — 细则层)
@@ -60,7 +59,7 @@
 | [dev/PROJECT_ADAPTATION.md](dev/PROJECT_ADAPTATION.md) | **项目适配理念**: core 不自动推断特定项目；外部 adapter 模板 |
 | [agent/GUIDED_TRACE.md](agent/GUIDED_TRACE.md) | **P139 guided trace**: frontier + next probes；不分类 FIFO |
 | [agent/AGENT_FEATURE_MAP.md](agent/AGENT_FEATURE_MAP.md) | **P143**: core 39 个 schema 命令的能力地图 |
-| [agent/AGENT_TASK_CORPUS.md](agent/AGENT_TASK_CORPUS.md) | **P145**: 13 个可执行 agent 任务 + false-confident/found 指标 |
+| [agent/AGENT_TASK_CORPUS.md](agent/AGENT_TASK_CORPUS.md) | **P145**: 15 个可执行 agent 任务 + false-confident/found 指标 |
 | [validation/P145_VALIDATION_BASELINE_2026-11-10.md](validation/P145_VALIDATION_BASELINE_2026-11-10.md) | **P145**: full gate 环境 skip + agent corpus |
 | [validation/P145_WORKER_REVIEW_2026-11-10.md](validation/P145_WORKER_REVIEW_2026-11-10.md) | **P145 worker replay**: APPROVE WITH NITS；nits 已修 |
 | [validation/P146_REAL_MATRIX_2026-11-10.md](validation/P146_REAL_MATRIX_2026-11-10.md) | **P146**: UART/I2C real matrix；问题清单与修复 |
@@ -83,7 +82,7 @@
 | [validation/P165_3_EXTERNAL_ORACLE_2026-11-12.md](validation/P165_3_EXTERNAL_ORACLE_2026-11-12.md) | **P165.3.1**: independent Verilator oracle; no OpenTitan git history |
 | [validation/P165_3_2_MUTATION_FAULTS_2026-11-12.md](validation/P165_3_2_MUTATION_FAULTS_2026-11-12.md) | **P165.3.2**: mutation pilot; 4/4 passed with Verilator oracle |
 | [validation/P165_2_PACKAGING_2026-11-13.md](validation/P165_2_PACKAGING_2026-11-13.md) | **P165.2**: trace→sv_query.trace; wheel/console verified |
-| [validation/P171_CI_EVIDENCE_2026-11-13.md](validation/P171_CI_EVIDENCE_2026-11-13.md) | **P171**: hermeticity + structural coverage; CI pending |
+| [validation/P171_CI_EVIDENCE_2026-11-13.md](validation/P171_CI_EVIDENCE_2026-11-13.md) | **P171**: hermeticity + structural coverage; CI green at 4d58d7fb (CLAIMS C-16) |
 | [validation/P171_4_DRIVERS_CONTROL_2026-11-14.md](validation/P171_4_DRIVERS_CONTROL_2026-11-14.md) | **P171.4.1**: drivers include-clock/reset |
 | [validation/P171_5_DESELECTED_METRIC_2026-11-14.md](validation/P171_5_DESELECTED_METRIC_2026-11-14.md) | **P171.5**: 123 deselected are opensource tests |
 | [validation/P171_6_BENCHMARK_FAIL_2026-11-14.md](validation/P171_6_BENCHMARK_FAIL_2026-11-14.md) | **P171.6**: benchmark rc -> fail; timeout skip |
@@ -149,6 +148,7 @@
 | [architecture/project_audit_2026-11-06.md](architecture/project_audit_2026-11-06.md) | **项目审计**: 原始目标/计划状态/未完成开发/测试缺口/下一步排序 |
 | [architecture/arch_eval_2026-11-11.md](architecture/arch_eval_2026-11-11.md) | **架构/产品评估（讨论底稿，2026-11-11）**: 只读评审；不构成已登记计划，采纳需先登记 PLAN |
 | [architecture/agent_interface_review_2026-11-16_revised.md](architecture/agent_interface_review_2026-11-16_revised.md) | **面向 agent 的交付层评审 v2（2026-11-16，HEAD `8da675b3`）**: 修正 v1 的 direct/缺参/计数错误；只读评审，建议已登记 P182 |
+| [architecture/code_architecture_review_2026-11-16.md](architecture/code_architecture_review_2026-11-16.md) | **代码实现架构审查建议 v1.0（2026-11-16，HEAD `2ddcfe92`）**: 鲁棒性 + 结构性；只读，不并入 P182；`Rb-*`/`St-*` 不是计划项 |
 | [validation/INTERACTIVE_DEBUG_2026-11-06.md](validation/INTERACTIVE_DEBUG_2026-11-06.md) | **交互式 debug pilot**: 3 场景 × 3 模型；5–20 轮；发现路径粒度/mux/bin 名称/class relative 问题 |
 | [validation/INTERACTIVE_P0_2026-11-06.md](validation/INTERACTIVE_P0_2026-11-06.md) | **P0 post-P77**: 3 模型 × deep_chain；clarify 后 3/3 正确；12 节点/11 hops |
 | [validation/INTERACTIVE_P1_2026-11-06.md](validation/INTERACTIVE_P1_2026-11-06.md) | **P1**: 3 场景 × 3 模型 × 2 seed；17/18 完整；constraints 1 个字段歧义；429 重跑 |
@@ -232,9 +232,7 @@
 |---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | 架构总览 (四层 L1-L4) ⚠️ **部分过期**, 见 `CLI_SURFACE.md`/iter_230 |
 | [CLI_SURFACE.md](CLI_SURFACE.md) | **CLI 能力清单 (生成物, 勿手改)** — 分层/契约/成本/`--json`/filelist; `tools/gen_cli_surface.py` 重新生成 |
-| [EXP_NAMESPACE.md](EXP_NAMESPACE.md) | **exp 降级区政策** — 五条硬约束 + 晋升门槛 (含 cdc/timing 专项) |
 | [ARCHITECTURE_EVOLUTION.md](ARCHITECTURE_EVOLUTION.md) | 架构演进历史 |
-| [ARCHITECTURE_TODOLIST.md](ARCHITECTURE_TODOLIST.md) | 架构改造 7 项长期追踪 |
 | [SIGNAL_GRAPH_SPEC.md](SIGNAL_GRAPH_SPEC.md) | SignalGraph 输入输出 Spec |
 | [SV_SYNTAX_MAPPING.md](SV_SYNTAX_MAPPING.md) | SV 语法 ↔ 图节点/边 对应 |
 | [PYSLANG_SEMANTIC_USAGE.md](PYSLANG_SEMANTIC_USAGE.md) | pyslang semantic API 使用模式 |
@@ -271,8 +269,6 @@
 |---|---|
 | [DATAFLOW.md](DATAFLOW.md) | dataflow 路径分析 |
 | [CONTROL_FLOW.md](CONTROL_FLOW.md) | controlflow 分析 |
-| [COVERAGE_GENERATOR.md](COVERAGE_GENERATOR.md) | **历史 POC**: coverage 生成已退役，不是当前能力 |
-| [RANDOMIZE_COVERGROUP.md](RANDOMIZE_COVERGROUP.md) | **历史快照**: randomize 命令已退役 |
 | [PROTOCOL_DETECTION.md](PROTOCOL_DETECTION.md) | 协议识别 |
 | [bus_protocol_detector.md](bus_protocol_detector.md) | Bus 协议检测设计 |
 | [SVA_ANALYSIS.md](SVA_ANALYSIS.md) | SVA 分析 |
@@ -282,21 +278,13 @@
 | [select_group_design.md](select_group_design.md) | select_group 数据结构 |
 | [spec_datapath.md](spec_datapath.md) | 定点数计算功能 Spec |
 | [DESIGN_expr_tree_builder.md](DESIGN_expr_tree_builder.md) | expression tree builder 设计 |
-| [VISUALIZATION.md](VISUALIZATION.md) | ⚠️ 历史: V5 可视化总览（全图命令已退役） |
-| [VIZ_COMMANDS.md](VIZ_COMMANDS.md) | ⚠️ 历史: 画图命令参考（命令已删除） |
-| [VIZ_DESIGN_SPEC.md](VIZ_DESIGN_SPEC.md) | ⚠️ 历史: 可视化设计规范 v2.0（旧渲染层） |
-| [VIZ_GOLDEN_PLAN.md](VIZ_GOLDEN_PLAN.md) | ⚠️ 历史: VIZ golden 计划（已停） |
 
 ## 📖 使用与参考
 
 | 文档 | 作用 |
 |---|---|
 | [USER_GUIDE.md](USER_GUIDE.md) | 用户指南 |
-| [CLI_COMMAND_CHEATSHEET.md](CLI_COMMAND_CHEATSHEET.md) | CLI 速查 |
-| [ARCH_EXAMPLES.md](ARCH_EXAMPLES.md) | arch 命令实战案例 |
-| [SIGNAL_TRACING_EXAMPLES.md](SIGNAL_TRACING_EXAMPLES.md) | 信号追踪实战案例 |
 | [FILELIST.md](FILELIST.md) | filelist 格式支持 |
-| [TEST_MAP.md](TEST_MAP.md) | 全量测试地图 |
 | [GLOSSARY.md](GLOSSARY.md) | **术语表** (领域术语的唯一命名处: 分层/查询/门禁/工具四组) |
 | [BENCH_BASELINE.md](BENCH_BASELINE.md) | bench 深结构基准 (pr5_wrap: 真实 Cfg wrapper + 指标表 + 已知限制) |
 | [OPENTITAN_HOWTO.md](OPENTITAN_HOWTO.md) | OpenTitan 跑通 HOWTO |
@@ -323,6 +311,15 @@
 | [archive/2026-09-08-cleanup/README.md](archive/2026-09-08-cleanup/README.md) | **归档区** (过期报告 / 重复稿 — 只归档不删除) |
 | [archive/2026-10-20-exp-attic/README.md](archive/2026-10-20-exp-attic/README.md) | **归档区**: exp 区整体退役 (24 命令 + applications 库 + 30 测试文件) |
 | [archive/2026-10-19-src-archived/README.md](archive/2026-10-19-src-archived/README.md) | **归档区**: `src/` 内 19 个死代码文件 (旧 DOT 渲染器 / 孤立模块 4,273 行 — iter_245) |
+| [archive/2026-11-16-retired-feature-docs/README.md](archive/2026-11-16-retired-feature-docs/README.md) | **归档**: visualize/coverage/cheatsheet/arch 示例等退役文档 |
+| [archive/2026-11-16-agent-interface-review/README.md](archive/2026-11-16-agent-interface-review/README.md) | **归档**: agent interface review v1（被 v2 取代） |
+| [archive/2026-11-15-status-cleanup/README.md](archive/2026-11-15-status-cleanup/README.md) | **归档**: 2026-11-15 状态清理 |
+| [archive/2026-07-29-cleanup/README.md](archive/2026-07-29-cleanup/README.md) | **归档**: 2026-07-29 架构/评估清理 |
+| [archive/scripts/README.md](archive/scripts/README.md) | **归档**: 历史脚本快照 |
+| [validation/opentitan_i2c/WORKER_REPORT.md](validation/opentitan_i2c/WORKER_REPORT.md) | **历史**: OpenTitan I2C worker 报告 |
+| [validation/opentitan_p127/WORKER_REPORT.md](validation/opentitan_p127/WORKER_REPORT.md) | **历史**: OpenTitan P127 worker 报告 |
+| [validation/p134_real_use/WORKER_REPORT.md](validation/p134_real_use/WORKER_REPORT.md) | **历史**: P134 real-use worker 报告 |
+| [archive/2026-11-16-historical-docs/README.md](archive/2026-11-16-historical-docs/README.md) | **归档**: 旧 DEVELOPMENT/EXAMPLES/TEST_MAP/架构待办/README |
 | [archive/README_legacy.md](archive/README_legacy.md) | 早期归档 (2026-07 前) |
 
 ---

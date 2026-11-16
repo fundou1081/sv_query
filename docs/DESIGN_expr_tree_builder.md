@@ -2,7 +2,7 @@
 
 > **状态**: 设计文档 (方案 C — 先设计, 后改代码)
 > **创建**: 2026-08-28 23:20
-> **关联**: [ARCHITECTURE_TODOLIST #6](ARCHITECTURE_TODOLIST.md)
+> **关联**: [ARCHITECTURE_TODOLIST #6](INDEX.md)
 
 ---
 

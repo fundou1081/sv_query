@@ -6,7 +6,7 @@ check_cli_layers.py — [iter_230 P0] CLI 分层的机械保障
       (项目已有两次教训: 声明没有机械保障就会长回来 —— iter_190 的 except:pass、
        iter_224 的 1-tuple 逗号。本检查器是同一手法的第三次应用。)
 
-规则 (R1~R6):
+规则 (R1~R9):
   R1 每个叶子命令必须登记在 cli/_registry.py (不允许"忘了分层")
   R2 层间依赖方向: core ⊥ view/exp/dev;  view ⊥ exp/dev;  exp ⊥ dev
   R3 src/cli/** 内禁止任何文件写操作 (只读硬约束)
@@ -209,7 +209,6 @@ def file_depth_math(path: Path) -> list[tuple[int, str]]:
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
-        f = node.func
         # Path(__file__)...parent 链 或 .resolve().parents[N]
         seg = ast.get_source_segment(src, node) or ""
         if "__file__" not in seg:
@@ -286,7 +285,7 @@ def main() -> int:
     ap.add_argument("--json", action="store_true", help="机器可读输出")
     args = ap.parse_args()
 
-    from cli._registry import (ALIASES, COMMANDS, LAYERS, canonical, spec_for)  # noqa: E402
+    from cli._registry import ALIASES, COMMANDS, LAYERS, canonical, spec_for  # noqa: E402
 
     errors: list[str] = []
     infos: list[str] = []
@@ -294,6 +293,7 @@ def main() -> int:
     # ---- 读 typer app (命令清单 + 每个命令的选项) ----
     import click  # noqa: E402
     import typer  # noqa: E402
+
     from cli.main import app  # noqa: E402
 
     root = typer.main.get_command(app)
