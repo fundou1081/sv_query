@@ -363,7 +363,7 @@ signal 级 `precision` + `coarse_fallback`）；`capabilities.bit_precision` 契
 `source_line` 必须能访问源码树（`SVQ_SOURCE_ROOT`）。没有源码树时，
 snapshot 路径的 evidence 精度**低于** live 路径。
 
-### 3.11 默认预处理会插入 `timescale` 行，enclosing snippet 行号可能 +1
+### 3.9.1 默认预处理会插入 `timescale` 行，enclosing snippet 行号可能 +1
 
 **事实**：默认 `--preprocess` 会在 in-memory source 前插入 `` `timescale `` 行；
 pyslang snippet 的 `line_start/end` 来自编译后文本，因此 class/always 的

@@ -9,7 +9,6 @@ impact/evidence/overview 五个命令 + DOT 生成 + 多种文本渲染。本模
 """
 from __future__ import annotations
 
-import json
 import logging
 import sys
 from pathlib import Path
@@ -20,16 +19,21 @@ from cli._evidence_helpers import build_resolver as _build_evidence_resolver  # 
 from cli._evidence_helpers import evidence_to_dict as _evidence_to_dict  # noqa: E402
 from cli._output import emit_json
 from cli.core.semantic.trace_common import (
-    _collect_signals, resolve_signal, resolution_fields,
-    resolution_error_message, SignalResolutionError,
+    SignalResolutionError,
+    _collect_signals,
+    resolution_error_message,
+    resolution_fields,
+    resolve_signal,
 )
 from sv_query.trace.core.source_assignment import (
     find_functional_assignment as _find_functional_assignment,
+)
+from sv_query.trace.core.source_assignment import (
     is_reset_condition as _is_reset_condition,
+)
+from sv_query.trace.core.source_assignment import (
     line_is_lhs as _line_is_lhs,
 )
-from sv_query.trace.core.sva_extractor import SVAExtractor
-from sv_query.trace.unified_tracer import UnifiedTracer
 
 logger = logging.getLogger(__name__)
 _REPO_ROOT = Path(__file__).resolve().parents[4]

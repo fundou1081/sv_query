@@ -27,7 +27,7 @@ def line_is_lhs(text: str, signal: str) -> bool:
     pat = re.compile(
         rf"^(?:else\s+)?(?:if\s*\([^)]*\)\s*)?"
         rf"(?:always(?:_comb|_ff|_latch)?\s+)?(?:begin\s+)?"
-        rf"(?:(?:default|[A-Za-z0-9_'?]+)\s*:\s*)?(?:assign\s+)?"
+        rf"(?:[^:;]+:\s*)?(?:begin\s+)?(?:assign\s+)?"
         rf"{re.escape(leaf)}\b\s*(?:\[[^\]]+\])?\s*(?:<=|=(?!=))")
     return bool(pat.search(code))
 
@@ -87,7 +87,11 @@ def find_assignment_near(signal: str, file_text: str,
     candidates = [i for i in range(lo, hi)
                   if line_is_lhs(lines[i], signal)
                   and not _nearest_if_is_reset(lines, lo, i)]
-    if not candidates:
+    if candidates:
+        idx = min(candidates, key=lambda i: abs((i + 1) - hint))
+        return idx + 1, lines[idx].strip()
+    any_lhs = [i for i in range(lo, hi) if line_is_lhs(lines[i], signal)]
+    if not any_lhs:
         return None
-    idx = min(candidates, key=lambda i: abs((i + 1) - hint))
+    idx = min(any_lhs, key=lambda i: abs((i + 1) - hint))
     return idx + 1, lines[idx].strip()

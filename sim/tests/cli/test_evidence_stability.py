@@ -293,3 +293,44 @@ def test_case_and_oneline_assignment_prefixes(tmp_path):
     ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
     assert "y = a;" in ev["source_text"]
     assert ev["is_verified"] is True
+
+
+def test_reset_only_assignment_line(tmp_path):
+    src = tmp_path / "reset_only.sv"
+    src.write_text(
+        "module top(input clk, rst_n, output reg q);\n"
+        "  always_ff @(posedge clk or negedge rst_n) begin\n"
+        "    if (!rst_n) q <= 1'b0;\n"
+        "  end\n"
+        "endmodule\n")
+    r = subprocess.run(
+        ["sv_query", "trace", "evidence", "top.q", "-f", str(src),
+         "--json", "-q"], capture_output=True, text=True, timeout=60,
+        cwd=str(PROJECT_ROOT))
+    assert r.returncode == 0, r.stderr[-300:]
+    ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
+    assert ev["source_location"]["line_start"] == 3
+    assert ev["source_text"] == "if (!rst_n) q <= 1'b0;"
+
+
+def test_case_multilabel_and_begin_forms(tmp_path):
+    src = tmp_path / "case_forms.sv"
+    src.write_text(
+        "module top(input clk, sel, a, output reg q1, q2);\n"
+        "  always_ff @(posedge clk) begin\n"
+        "    case (sel)\n"
+        "      2'd0, 2'd1: q1 <= a;\n"
+        "      2'd2: begin q2 <= a; end\n"
+        "      default: q2 <= 1'b0;\n"
+        "    endcase\n"
+        "  end\n"
+        "endmodule\n")
+    for sig, lines in (("top.q1", (4,)), ("top.q2", (5, 6))):
+        r = subprocess.run(
+            ["sv_query", "trace", "evidence", sig, "-f", str(src),
+             "--json", "-q"], capture_output=True, text=True, timeout=60,
+            cwd=str(PROJECT_ROOT))
+        assert r.returncode == 0, r.stderr[-300:]
+        ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
+        assert ev["source_location"]["line_start"] in lines, sig
+        assert ev["is_verified"] is True, sig
