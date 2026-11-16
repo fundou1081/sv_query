@@ -18,6 +18,7 @@ from sv_query.trace.core.compiler import CompilationError
 from sv_query.trace.core.source_assignment import (
     compiled_line_shift,
     find_functional_assignment,
+    reset_literal_value,
     signal_is_active_low,
 )
 from sv_query.trace.core.trace_evidence import TraceEvidenceResolver
@@ -33,7 +34,7 @@ def _declaration_line(tracer, node) -> int:
         sources = tracer._get_compiler().sources
     except Exception as exc:
         logger.debug("profile compiler sources unavailable: %s", exc)
-        return max(1, line - 1)
+        return max(1, line)
     text = sources.get(node.file, "")
     if not text:
         for key, value in sources.items():
@@ -63,15 +64,16 @@ def _active_low(cond: str, signal: str) -> bool | None:
         return None
     leaf = signal.split(".")[-1]
     c = (cond or "").replace(" ", "")
-    if re.search(rf"!\b{re.escape(leaf)}\b", c) or re.search(
-            rf"\b{re.escape(leaf)}\b==0", c):
+    if re.search(rf"!\b{re.escape(leaf)}\b", c):
         return True
+    value = reset_literal_value(c)
+    if value is not None:
+        return value == 0
     if signal_is_active_low(leaf):
         return True
     if re.search(rf"\b{re.escape(leaf)}\b", c):
         return False
     return None
-
 
 def _bit_meta(node, graph, requested: str | None = None) -> dict:
     parent = node.parent

@@ -158,3 +158,11 @@ def test_declaration_line_with_own_timescale():
     assert r.returncode == 0, r.stderr[-300:]
     s = json.loads(r.stdout)["result"]["signals"][0]
     assert s["source"]["line"] == 2
+
+
+def test_active_low_condition_sized_literal():
+    from cli.core.semantic.trace_profile import _active_low
+    assert _active_low("rst == 1'b0", "top.rst") is True
+    assert _active_low("rst == 1'B0", "top.rst") is True
+    assert _active_low("rst == 2'b00", "top.rst") is True
+    assert _active_low("rst == 1'b1", "top.rst") is False

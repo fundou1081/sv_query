@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P181.6 lint gate + tests/gate + worker review <进行中>
+current item : P181.6 lint gate + tests/gate + worker review <已完成>
 
 ## 计划树
 
@@ -540,13 +540,13 @@ P171 CI / evidence-chain repair (2026-11-13 worker review) <已完成>
 -- P171.8 docs/CLAIMS/plan cleanup <已完成>
 -- P171.9 worker review fixes <已完成>
 
-P181 discipline remediation after worker audit (2026-11-16) <进行中>
+P181 discipline remediation after worker audit (2026-11-16) <已完成>
 -- P181.1 active-high reset polarity + tests <已完成>
 -- P181.2 profile line source/disk offset <已完成>
 -- P181.3 class property semantic source <已完成>
 -- P181.4 hermetic verify test <已完成>
 -- P181.5 process/claims/iterations <已完成>
--- P181.6 lint gate + tests/gate + worker review <进行中>
+-- P181.6 lint gate + tests/gate + worker review <已完成>
 
 P180 nit cleanup with worker review (2026-11-16) <已完成>
 -- P180.1 shared assignment scanner + non-ASCII offsets <已完成>

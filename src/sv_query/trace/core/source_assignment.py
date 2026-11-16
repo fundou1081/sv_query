@@ -86,17 +86,24 @@ def _literal_value(token: str) -> int | None:
         return None
 
 
+def reset_literal_value(cond: str) -> int | None:
+    """Value of a reset comparison literal, or None for non-literals."""
+    m = re.search(
+        r"(?:==|!=)\s*((?:\d+\s*)?'[bdhoBDHO][0-9a-fA-FxXzZ_]+|\d+)",
+        cond or "", re.I)
+    if not m:
+        return None
+    return _literal_value(m.group(1))
+
+
 def _active_reset_branch(cond: str) -> bool:
     c = (cond or "").strip()
     if not is_reset_condition(c):
         return False
     assert_level = 0 if _active_low_reset(c) else 1
-    m = re.search(
-        r"(==|!=)\s*((?:\d+\s*)?'[bdhoBDHO][0-9a-fA-FxXzZ_]+|\d+)", c, re.I)
-    if m:
-        value = _literal_value(m.group(2))
-        if value is not None:
-            return value == assert_level if m.group(1) == "==" else value != assert_level
+    value = reset_literal_value(c)
+    if value is not None:
+        return value == assert_level if "==" in c else value != assert_level
     if "!" in c:
         return True
     return not _active_low_reset(c)

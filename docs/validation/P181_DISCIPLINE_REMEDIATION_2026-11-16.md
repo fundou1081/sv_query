@@ -1,7 +1,7 @@
 # P181 discipline remediation
 
 **日期**: 2026-11-16
-**状态**: 进行中（worker 复核待做）
+**状态**: ✅ 完成
 
 ## 1. 审计结论
 
@@ -27,11 +27,15 @@ worker 对 `cf0d8850` 判 FAIL，见主会话复现记录。P181 逐项修复。
 ## 3. 验证
 
 - targeted: 81 passed（evidence/profile/verify/subgraph/credibility/class）
-- canonical: 2774 passed / 0 failed / 123 deferred
+- canonical: 2775 passed / 0 failed / 123 deferred
 - full gate: green（含 lint）
 - lint base 5bbbcdf5: all checks passed
 - mutation gate: 20/20
 
-## 4. 未闭合
+## 4. worker 复核
 
-worker 对本 P181 HEAD 的最终复核尚未执行。
+- `ada6c5c2` 复核：PASS WITH NITS（无 HIGH/MEDIUM）。
+- 剩余 LOW：profile `active_low` 的 sized-literal 条件解析已共享 `reset_literal_value`，
+  `_declaration_line` 不再猜测 -1；新增 profile 单测。
+- 最终 canonical 2775 / gate + lint green；worker 最后只审到 `ada6c5c2`，
+  其后 LOW 修复由本地 gate 验证，不再声称新的 worker APPROVE。
