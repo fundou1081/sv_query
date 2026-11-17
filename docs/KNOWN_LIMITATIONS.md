@@ -527,6 +527,32 @@ sv_query **不绕过** Semantic AST 严格性，也不返回 partial coverage；
 详见：[PROJECT_ADAPTATION.md](dev/PROJECT_ADAPTATION.md) 与
 [P138](validation/P138_PROJECT_ADAPTATION_2026-11-09.md)。
 
+### 3.16 DTO 投影：`precision` / `width` 在 trace 与 subgraph 是两套规则（P183.3 / D9）
+
+**事实**：`TraceNode` 有两个 `precision` 判定实现：
+
+- CLI trace `trace_common.node_precision`：额外看 function/runtime/dynamic 标记、
+  字面量 regex、位后缀；
+- core subgraph `subgraph._precision`：只看 `kind == CONST` 与 `width`。
+
+`width` 公式也不同：trace `max(0, msb - lsb + 1)`；subgraph
+`max(0, abs(msb - lsb) + 1)`。
+
+**可观察后果**（按输入形态）：
+
+| 真实输入形态 | CLI trace（`trace fanin`） | `graph subgraph` |
+|---|---|---|
+| `0`（CONST，width=(0,0)） | `width=1`，`precision=bit` | `width=1`，`precision=constant` |
+| `Scheduler_minimal.s0_reg[0]`（位节点，width=(1,0)） | `precision=bit` | `precision=bus` |
+
+`trace lookup` 不输出 `precision`（`width` 也是 `[msb,lsb]`），不属于此表；真实图中不存在
+`msb < lsb` 节点，trace `width=0` 分支目前无真实输入形态。
+
+**为什么没统一**：D9 禁止改变现有 CLI/JSON 字段语义；两份投影服务不同上下文
+（查询结果 vs 有界结构子图）。统一需要 schema 版本 + contract 变更 + 方豆拍板。
+**现状**：字段集已审计并锁定（`sim/tests/unit/test_d9_dto_mapping_contract.py`），
+值差异保留。详见 [dto_mapping_audit_2026-11-17.md](architecture/dto_mapping_audit_2026-11-17.md) §4。
+
 
 | 限制 | 修复版本 |
 |------|---------|
