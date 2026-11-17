@@ -10,7 +10,7 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **当前 item**: **P183.4 Session.execute library seam** `<进行中>`
-  - D10 Session.execute contract/version op 进行中
+  - D10 Session.execute contract/version op 已完成；D11 adapter 待做
   - P183.3 D8/D9 已完成
   - P183.1 D1–D5 已完成；见 [agents/STATE.md](agents/STATE.md)
   - 评审已归档；计划来源 PLAN P183 / [task](docs/task_tree/tasks/L3_p183_review_intake.md)
@@ -21,7 +21,7 @@
 ## 📌 当前真实基线
 
 ```text
-canonical:  2887 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  2924 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 
@@ -44,7 +44,7 @@ opensource: 112 passed / 11 skipped / 0 failed
 
 1. CLI/exp truth：`trace impact` 已隐藏；CLI_SURFACE/feature map/EXP_NAMESPACE 已对齐；
 2. 状态文档：CURRENT_TODO/HANDOFF/PLAN/契约已对齐；
-3. 证据：退役 zombie/coverage-suggest tests；canonical 2887；
+3. 证据：退役 zombie/coverage-suggest tests；canonical 2924；
 4. coverage POC：conftest 改为 lazy import；公开示例已改写/归档。
 
 ## 🚫 不要再做的事
