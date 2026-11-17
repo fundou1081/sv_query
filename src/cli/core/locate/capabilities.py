@@ -12,6 +12,10 @@ capabilities.py — [iter_230 P0] 机器可读的能力清单 (agent 的工具�
   `--include-exp` 才列出降级区 (bus/verif/struct)
 - 输出带 `schema_version`, 字段变更按版本管理
 
+[P183.4 / D11] 本命令是第一个 `sv_query.Session.execute` adapter:
+命令只负责构造 request + 渲染 response; 能力数据仍由 `cli._registry.to_json`
+唯一提供, Session 通过注入 handler 调用它 (session 层不 import CLI)。
+
 用法:
     sv_query capabilities --json
     sv_query capabilities --json --recommended
@@ -21,10 +25,30 @@ capabilities.py — [iter_230 P0] 机器可读的能力清单 (agent 的工具�
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 
 import typer
 
-from cli._registry import LAYERS, counts, to_json
+from cli._output import fail
+from cli._registry import LAYERS, to_json
+from sv_query import Session
+
+
+def _option(request: Mapping[str, object], name: str) -> bool:
+    """读取一个 Session request 选项; 非 bool 是调用方错误（显式失败）。"""
+    value = request.get(name, False)
+    if not isinstance(value, bool):
+        raise TypeError(f"capabilities option {name!r} must be a bool")
+    return value
+
+
+def _capabilities_provider(request: Mapping[str, object]) -> dict:
+    """Session handler: 能力数据的唯一来源仍是 `cli._registry.to_json`。"""
+    return to_json(
+        include_exp=_option(request, "include_exp"),
+        recommended_only=_option(request, "recommended"),
+    )
+
 
 def capabilities(
     json_output: bool = typer.Option(False, "--json", "-j", help="输出 JSON (agent 用)"),
@@ -42,12 +66,33 @@ def capabilities(
 
     列出可用能力及其契约 (只读, 不修改任何文件)。
     """
-    data = to_json(include_exp=include_exp, recommended_only=recommended)
+    response = Session(handlers={"capabilities": _capabilities_provider}).execute({
+        "op": "capabilities",
+        "recommended": recommended,
+        "include_exp": include_exp,
+    })
+
+    if response.get("ok") is not True:
+        error = response.get("error")
+        message = error.get("message") if isinstance(error, dict) else None
+        fail(
+            f"capabilities 查询失败: {message or 'unknown error'}",
+            json_output,
+            pretty,
+            error_code=response.get("error_code"),
+        )
+
+    data = response["result"]
 
     if json_output:
         typer.echo(json.dumps(data, indent=2 if pretty else None, ensure_ascii=False))
         return
 
+    _render_human(data, include_exp=include_exp)
+
+
+def _render_human(data: dict, *, include_exp: bool) -> None:
+    """人类可读概览 (与 D11 之前的输出逐字节一致)。"""
     c = data["counts"]
     typer.echo("=== sv_query capabilities ===")
     typer.echo(f"总命令数: {c['total']}  |  按层: " +
@@ -62,10 +107,7 @@ def capabilities(
         typer.echo(f"[{name}] consumer={spec.consumer} stability={spec.stability} "
                    f"readonly={spec.readonly} schema={spec.schema_version}  ({len(cmds)} 个)")
         for x in cmds:
-            flag = "★" if x["recommended"] else " "
-            planned = f" → {x['planned_name']}" if x["planned_name"] else ""
-            typer.echo(f"   {flag} {x['name']:<28}{planned:<20} "
-                       f"cost={x['cost']:<9} json={str(x['json']):<5} {x['note']}")
+            _render_command(x)
         typer.echo("")
     if data["planned_new"]:
         typer.echo("[计划新增 —— 语义 core 缺口]")
@@ -79,3 +121,10 @@ def capabilities(
     typer.echo("")
     typer.echo("提示: agent 建议用 `sv_query capabilities --json --recommended` 取最小工具集;")
     typer.echo("      降级区需显式 `--include-exp`。")
+
+
+def _render_command(command: dict) -> None:
+    flag = "★" if command["recommended"] else " "
+    planned = f" → {command['planned_name']}" if command["planned_name"] else ""
+    typer.echo(f"   {flag} {command['name']:<28}{planned:<20} "
+               f"cost={command['cost']:<9} json={str(command['json']):<5} {command['note']}")

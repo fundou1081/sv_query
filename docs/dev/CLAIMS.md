@@ -2,7 +2,7 @@
 
 > **公开 claim 的唯一登记处。** 纪律依据: [SEMANTIC_CONTRACTS.md](SEMANTIC_CONTRACTS.md) §8。
 > 没有 gate 的 claim = `unverified`；已知反例 = `known-broken`；不得写成“已支持”。
-> **最后更新**: 2026-11-17 (C-23 D10 Session contract)
+> **最后更新**: 2026-11-17 (C-24 D11 Session handler + capabilities adapter)
 
 ---
 
@@ -44,6 +44,7 @@
 | C-21 | `build_graph` 失败时不暴露半成品图；phase=failed 且可重试 | fixture | `test_d6_build_transaction.py` | `verified`（库层；CLI 尚未暴露 phase） |
 | C-22 | cache/snapshot 写入原子化；graph cache key 使用 CACHE_VERSION；损坏 cache/snapshot 显式失败/miss | fixture | `test_d7_cache_snapshot_atomic.py` | `verified`（库层） |
 | C-23 | `sv_query.Session.execute` 是只读、无 CLI/环境依赖的请求接缝；`version` 返回结构化结果，非法 request/未知 op 返回结构化错误 | fixture | `test_d10_session_contract.py` | `verified`（库层；仅 version op） |
+| C-24 | `sv_query.Session(handlers=...)` 可把只读 op 委派给注入 handler（`version` 不可覆盖）；handler 异常/非 mapping result 返回结构化 `E_HANDLER_FAILED`；CLI `capabilities` 经 Session 调用 `cli._registry.to_json`，六个输出 case 与 D11 前逐字节一致 | fixture | `test_d11_capabilities_session.py` | `verified`（库层 + capabilities adapter；调用形式 `Session(...).execute(...)`；result 仅顶层拷贝；CLI 失败信封仍用 `cli._output.fail`，D12 统一） |
 
 ---
 
