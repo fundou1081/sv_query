@@ -71,9 +71,15 @@ class ClassHierarchy:
             祖先类列表，按从直接父类到根类的顺序
             例如: ["parent", "grandparent"]
         """
-        ancestors = []
+        ancestors: list[str] = []
+        seen: set[str] = set()
         current = self._parent_map.get(class_name)
         while current is not None:
+            if current in seen:
+                chain = " -> ".join([class_name, *ancestors, current])
+                raise ValueError(
+                    f"class hierarchy cycle (ancestors; name-based classes may collide across scopes): {chain}")
+            seen.add(current)
             ancestors.append(current)
             current = self._parent_map.get(current)
         return ancestors
@@ -98,12 +104,17 @@ class ClassHierarchy:
         Returns:
             所有后代类列表
         """
-        descendants = []
-        stack = list(self._subclass_map.get(class_name, []))
+        descendants: list[str] = []
+        stack = [(child, (class_name,)) for child in self._subclass_map.get(class_name, [])]
         while stack:
-            subclass = stack.pop()
+            subclass, path = stack.pop()
+            if subclass in path:
+                chain = " -> ".join([*path, subclass])
+                raise ValueError(
+                    f"class hierarchy cycle (descendants; name-based classes may collide across scopes): {chain}")
             descendants.append(subclass)
-            stack.extend(self._subclass_map.get(subclass, []))
+            for child in self._subclass_map.get(subclass, []):
+                stack.append((child, (*path, subclass)))
         return descendants
 
     def is_ancestor_of(self, ancestor: str, descendant: str) -> bool:
@@ -139,12 +150,7 @@ class ClassHierarchy:
         Returns:
             继承深度
         """
-        depth = 0
-        current = self._parent_map.get(class_name)
-        while current is not None:
-            depth += 1
-            current = self._parent_map.get(current)
-        return depth
+        return len(self.get_ancestors(class_name))
 
     def get_root(self, class_name: str) -> str | None:
         """获取类的根类（无父类的祖先）
