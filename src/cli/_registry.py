@@ -25,7 +25,7 @@ agent (主消费者) 无法从命令名判断该用哪个, 也不知道哪些是
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 # ---------------------------------------------------------------------------
@@ -99,6 +99,7 @@ class CommandSpec:
     planned_name: str | None = None   # 已定的改名 (P1 执行, 老名保留 alias)
     envelope: str = "standard"       # standard | direct
     write_scope: str = "none"        # none | cache | output
+    listed: bool = True              # False = registered but hidden from capabilities/counts
     note: str = ""
 
 
@@ -123,9 +124,9 @@ def _e(key, group, cost="medium", note="") -> CommandSpec:
                        cost=cost, json=False, note=note)
 
 
-def _d(key) -> CommandSpec:
+def _d(key, *, listed: bool = True) -> CommandSpec:
     return CommandSpec(key=key, layer="dev", group="internal", kind="debug",
-                       cost="cheap", json=True)
+                       cost="cheap", json=True, listed=listed)
 
 
 def _o(key, note="") -> CommandSpec:
@@ -228,6 +229,7 @@ COMMANDS: list[CommandSpec] = [
     _c("capabilities", "locate", kind="primitive", cost="cheap", recommended=True,
        envelope="direct",
        note="本清单自身 (agent 应先读它再决定调什么)"),
+    _d("session", listed=False),
 
     # ---- core / state (你已定: graph 比较算 core) ----
     _c("snapshot save", "state", kind="state", cost="medium", stateful=True,
@@ -338,10 +340,12 @@ def counts() -> dict:
     by_layer: dict[str, int] = {}
     by_group: dict[str, int] = {}
     for c in COMMANDS:
+        if not c.listed:
+            continue
         by_layer[c.layer] = by_layer.get(c.layer, 0) + 1
         if c.layer == "core":
             by_group[c.group] = by_group.get(c.group, 0) + 1
-    return {"total": len(COMMANDS), "by_layer": by_layer, "core_by_group": by_group}
+    return {"total": sum(by_layer.values()), "by_layer": by_layer, "core_by_group": by_group}
 
 
 # ---------------------------------------------------------------------------
@@ -1432,19 +1436,6 @@ JSON_CONTRACT = {
         "subgraph": {"type": "object", "desc": "seeds/depth/direction/edge_kinds"},
     },
 
-    "structural_finding": {
-        "id": {"type": "string", "desc": "stable finding id"},
-        "check": {"type": "string", "desc": "symmetry.port_set"},
-        "severity": {"type": "string", "desc": "warning|error"},
-        "confidence": {"type": "string", "desc": "high|medium|low"},
-        "message": {"type": "string", "desc": "human summary"},
-        "seeds": {"type": "array<string>", "desc": "instance seeds"},
-        "expected": {"type": "object", "desc": "expected structure"},
-        "actual": {"type": "object", "desc": "actual deviation"},
-        "evidence": {"type": "array<object>", "desc": "edge evidence"},
-        "subgraph": {"type": "object", "desc": "seeds/depth/direction/edge_kinds"},
-    },
-
     "verify_claim_result": {
         "claim": {"type": "object", "desc": "original claim object"},
         "status": {"type": "string", "enum": ["verified", "contradicted", "unknown"],
@@ -1515,6 +1506,8 @@ def to_json(*, include_exp: bool = False, recommended_only: bool = False) -> dic
     """capabilities / 生成器共用的结构 (agent 的工具面真相源)。"""
     cmds = []
     for c in COMMANDS:
+        if not c.listed:
+            continue
         lay = LAYERS[c.layer]
         if not lay.in_capabilities and not include_exp:
             continue
@@ -1542,10 +1535,10 @@ def to_json(*, include_exp: bool = False, recommended_only: bool = False) -> dic
     return {
         "schema_version": "1",
         "layers": {
-            n: {"consumer": l.consumer, "stability": l.stability,
-                "readonly": l.readonly, "json_required": l.json_required,
-                "schema_version": l.schema_version, "note": l.note}
-            for n, l in LAYERS.items()
+            n: {"consumer": lay.consumer, "stability": lay.stability,
+                "readonly": lay.readonly, "json_required": lay.json_required,
+                "schema_version": lay.schema_version, "note": lay.note}
+            for n, lay in LAYERS.items()
         },
         "core_groups": CORE_GROUPS,
         "counts": counts(),

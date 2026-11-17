@@ -56,6 +56,8 @@ def collect() -> dict:
 
     rows = []
     for spec in COMMANDS:
+        if not spec.listed:
+            continue
         cmd = leaves.get(spec.key)
         opts = opts_of(cmd) if cmd else []
         rows.append({

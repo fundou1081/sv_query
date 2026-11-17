@@ -58,6 +58,7 @@ from cli.core.locate.capabilities import capabilities
 from cli.core.locate.filelist_cmd import filelist_app
 from cli.core.locate.graph import graph_app
 from cli.core.locate.search import search
+from cli.core.locate.session_cmd import session_cmd
 from cli.core.semantic.audit import audit_cmd  # [iter_288] 设计审计 (P3.3)
 from cli.core.semantic.classes import class_cmd  # [iter_237, iter_247 合并 classes]
 from cli.core.semantic.controlflow import controlflow_app
@@ -131,6 +132,7 @@ app.add_typer(filelist_app, name="filelist")
 
 # [iter_230] 能力清单 (agent 的工具面真相源; 只读 + JSON)。普通顶层命令
 app.command("capabilities")(capabilities)
+app.command("session", hidden=True)(session_cmd)
 
 # [iter_248 T2] 诊断: 单一入口 `diagnose <check>` (imports|report|timescale|widths)
 # 不传 help= → 用 docstring (里面写清了 4 项检查与两个写入工具)
