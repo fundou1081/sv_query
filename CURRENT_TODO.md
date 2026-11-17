@@ -3,16 +3,14 @@
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **交接状态**: [HANDOFF](docs/dev/HANDOFF.md) — 当前状态/主线/历史功能；旧会话快照 [2026-11-12](docs/dev/HANDOFF_2026-11-12.md)。
-> **最后更新**: 2026-11-16 (P182 plan merged from corrected review)
+> **最后更新**: 2026-11-18 (P182 plan merged from corrected review)
 
 ---
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P183.5 DesignView/ASTFrontend candidate evaluation** `<待做>`
-  - P183.4 D10–D15 已完成；全量 dispatch 决策为不采纳
-  - P183.3 D8/D9 已完成
-  - P183.1 D1–D5 已完成；见 [agents/STATE.md](agents/STATE.md)
+- **当前 item**: **P182.1 envelope inventory + check_envelope_contract gate** `<待做>`
+  - P183 全部完成（D1–D15 + P183.5 ADR）；P184 Phase 0 待做
   - 评审已归档；计划来源 PLAN P183 / [task](docs/task_tree/tasks/L3_p183_review_intake.md)
   - 先做 P183.1；P182.1 紧随，不跳过失败语义
   - P173 full status/evidence cleanup：已完成；无 active item

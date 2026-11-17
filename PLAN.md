@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P183.5 DesignView/ASTFrontend candidate evaluation <待做>
+current item : P182.1 envelope inventory + check_envelope_contract gate <待做>
 
 ## 计划树
 
@@ -540,12 +540,15 @@ P171 CI / evidence-chain repair (2026-11-13 worker review) <已完成>
 -- P171.8 docs/CLAIMS/plan cleanup <已完成>
 -- P171.9 worker review fixes <已完成>
 
-P183 implementation/abstraction review intake (2026-11-16) <待做>
+P183 implementation/abstraction review intake (2026-11-16) <已完成>
 -- P183.1 failure-as-state quick fixes <已完成>
 -- P183.2 build/cache/snapshot robustness <已完成>
 -- P183.3 DTO/Stage context <已完成>
 -- P183.4 Session.execute library seam <已完成>
--- P183.5 DesignView/ASTFrontend candidate evaluation <待做>
+-- P183.5 DesignView/ASTFrontend candidate evaluation <已完成>
+P184 ASTFrontend Phase 0 (inventory + degraded observability) <待做>
+-- P184.1 classify scan_pyslang_attrs by receiver type and ratchet <待做>
+-- P184.2 safe_attr degraded signal without changing return/default <待做>
 
 P182 agent delivery-layer plan from corrected review (2026-11-16) <待做>
 -- P182.1 envelope inventory + check_envelope_contract gate <待做>

@@ -527,6 +527,21 @@ sv_query **不绕过** Semantic AST 严格性，也不返回 partial coverage；
 详见：[PROJECT_ADAPTATION.md](dev/PROJECT_ADAPTATION.md) 与
 [P138](validation/P138_PROJECT_ADAPTATION_2026-11-09.md)。
 
+### 3.18 pyslang 属性读取仍可静默降级（P183.5 / P184）
+
+**事实**：`safe_attr` 当前 `except (UnicodeDecodeError, TypeError, Exception)` 后返回
+caller 的 default；`scan_pyslang_attrs.py` 是启发式工具而非 gate。
+
+**可观察后果（按输入形态）**：
+
+| 输入形态 | 结果 |
+|---|---|
+| 非 UTF-8 identifier / pyslang getter 抛错 | `safe_attr` 返回 default → 节点/边缺失，但命令 rc=0 |
+| 直接 `.name` 读取（真实 pyslang getter 约 10 处） | 同上，且扫描器当前把约 40 个 Python dataclass 读取一起报出 |
+| 新增 dataclass `.name` 读取 | 若按当前 50 建棘轮会误报；Phase 0 必须先按接收者类型分类 |
+
+**决策**：P183.5 不修；登记为 P184 Phase 0（inventory 分类 + degraded 可观察）。
+
 ### 3.17 Session seam 的未覆盖范围（P183.4 / D15）
 
 **事实**：`Session.execute` 当前只覆盖 `version` / `capabilities`；完整 CLI 命令仍由
