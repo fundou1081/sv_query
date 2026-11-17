@@ -16,6 +16,9 @@ capabilities.py — [iter_230 P0] 机器可读的能力清单 (agent 的工具�
 命令只负责构造 request + 渲染 response; 能力数据仍由 `cli._registry.to_json`
 唯一提供, Session 通过注入 handler 调用它 (session 层不 import CLI)。
 
+[P183.4 / D12] 失败路径统一经 `cli._session_adapter.fail_from_session`:
+error_code 词表与 message 来源只有一处实现; 成功路径不经过该 adapter。
+
 用法:
     sv_query capabilities --json
     sv_query capabilities --json --recommended
@@ -29,8 +32,8 @@ from collections.abc import Mapping
 
 import typer
 
-from cli._output import fail
 from cli._registry import LAYERS, to_json
+from cli._session_adapter import fail_from_session
 from sv_query import Session
 
 
@@ -73,13 +76,11 @@ def capabilities(
     })
 
     if response.get("ok") is not True:
-        error = response.get("error")
-        message = error.get("message") if isinstance(error, dict) else None
-        fail(
-            f"capabilities 查询失败: {message or 'unknown error'}",
-            json_output,
-            pretty,
-            error_code=response.get("error_code"),
+        fail_from_session(
+            response,
+            json_output=json_output,
+            pretty=pretty,
+            context="capabilities 查询失败",
         )
 
     data = response["result"]

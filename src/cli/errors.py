@@ -21,6 +21,8 @@ LLM 调用 sv_query 时, 需要稳定的 error code 来分类错误 (而不是�
 from enum import StrEnum
 from typing import Any
 
+from sv_query import errors as session_errors
+
 
 class ErrorCode(StrEnum):
     """[Phase 2 B2 2026-06-28] Stable error codes for LLM consumption.
@@ -33,6 +35,13 @@ class ErrorCode(StrEnum):
     OK = "OK"  # 不算 error, 用于标记 success 状态
     E_INTERNAL = "E_INTERNAL"  # 内部意外错误 (bug)
     E_USAGE = "E_USAGE"  # CLI 用法错误 (缺 arg, 选项冲突)
+
+    # Session 层中立错误码 (P183.4 / D12)
+    # 唯一来源是 sv_query.errors; 这里**引用其值**而不是重写字面量,
+    # 避免同一语义两份定义。契约测试 test_d12_error_envelope 逐值锁定。
+    E_INVALID_REQUEST = session_errors.E_INVALID_REQUEST  # request 形状非法
+    E_UNSUPPORTED_OP = session_errors.E_UNSUPPORTED_OP  # Session 无该 op
+    E_HANDLER_FAILED = session_errors.E_HANDLER_FAILED  # 注入 handler 失败
 
     # 输入类
     E_FILE_NOT_FOUND = "E_FILE_NOT_FOUND"  # 源文件不存在

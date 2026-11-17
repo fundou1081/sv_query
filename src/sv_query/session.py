@@ -20,6 +20,9 @@ Response shape always a plain ``dict``::
 Invalid request **data** never raises for the caller; it maps to a
 structured ``E_INVALID_REQUEST`` / ``E_UNSUPPORTED_OP`` response.  A handler
 failure (exception or non-mapping result) maps to ``E_HANDLER_FAILED``.
+The three codes and their ``error.type`` names live in
+:mod:`sv_query.errors` (single source, no imports); this module only
+re-exports them.
 Invalid constructor arguments (non-mapping handlers, non-callable handler,
 or an attempt to override the built-in ``version`` op) raise ``TypeError`` /
 ``ValueError`` because those are programming errors, not requests.
@@ -28,6 +31,8 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 
+from . import errors as _errors
+
 SESSION_CONTRACT_VERSION = "1.0"
 
 # Explicit runtime constant, deliberately not read from installation metadata
@@ -35,15 +40,12 @@ SESSION_CONTRACT_VERSION = "1.0"
 # ``pyproject.toml [project].version`` by a contract test.
 PACKAGE_VERSION = "0.3.0"
 
-E_INVALID_REQUEST = "E_INVALID_REQUEST"
-E_UNSUPPORTED_OP = "E_UNSUPPORTED_OP"
-E_HANDLER_FAILED = "E_HANDLER_FAILED"
-
-_ERROR_TYPES = {
-    E_INVALID_REQUEST: "InvalidRequest",
-    E_UNSUPPORTED_OP: "UnsupportedOperation",
-    E_HANDLER_FAILED: "HandlerFailed",
-}
+# Re-exported for the D10/D11 import path (`from sv_query.session import E_*`);
+# the values themselves are single-sourced from :mod:`sv_query.errors`.
+E_INVALID_REQUEST = _errors.E_INVALID_REQUEST
+E_UNSUPPORTED_OP = _errors.E_UNSUPPORTED_OP
+E_HANDLER_FAILED = _errors.E_HANDLER_FAILED
+_ERROR_TYPES = _errors.ERROR_TYPES
 
 _BUILTIN_OPS = frozenset({"version"})
 
