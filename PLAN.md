@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P183.4 Session.execute library seam <待做>
+current item : P183.4 Session.execute library seam <进行中>
 
 ## 计划树
 
@@ -544,7 +544,7 @@ P183 implementation/abstraction review intake (2026-11-16) <待做>
 -- P183.1 failure-as-state quick fixes <已完成>
 -- P183.2 build/cache/snapshot robustness <已完成>
 -- P183.3 DTO/Stage context <已完成>
--- P183.4 Session.execute library seam <待做>
+-- P183.4 Session.execute library seam <进行中>
 -- P183.5 DesignView/ASTFrontend candidate evaluation <待做>
 
 P182 agent delivery-layer plan from corrected review (2026-11-16) <待做>
