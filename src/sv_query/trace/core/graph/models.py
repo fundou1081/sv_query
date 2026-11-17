@@ -438,7 +438,18 @@ class SignalGraph(nx.DiGraph):
                     module = parts[0] if len(parts) > 0 else ""
                     name = parts[1] if len(parts) > 1 else node_id
 
-                    placeholder = TraceNode(id=node_id, name=name, module=module, kind=NodeKind.SIGNAL, width=(0, 0))
+                    placeholder = TraceNode(
+                        id=node_id,
+                        name=name,
+                        module=module,
+                        kind=NodeKind.SIGNAL,
+                        width=(0, 0),
+                        extra={
+                            "placeholder": True,
+                            "placeholder_reason": "edge endpoint not declared",
+                            "kind_origin": "edge_placeholder",
+                        },
+                    )
                     self._node_data[node_id] = placeholder
                     super().add_node(node_id)
 

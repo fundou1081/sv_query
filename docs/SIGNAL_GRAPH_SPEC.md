@@ -223,7 +223,7 @@ if target_module: _filter_by_target()
 | 方法 | 语义 |
 |------|------|
 | `add_trace_node(node)` | 加节点 |
-| `add_trace_edge(edge)` | 加边（自动创建字面量/placeholder 节点, 孤儿节点防护） |
+| `add_trace_edge(edge)` | 加边（自动创建字面量/placeholder 节点, 孤儿节点防护；placeholder 带 `extra.placeholder=true` / `kind_origin=edge_placeholder`） |
 | `get_node(node_id)` | 查单个节点 (TraceNode \| None) |
 | `get_edge(src, dst)` | 查单边 |
 | `get_edges(src, dst)` | 查 (src,dst) 之间所有边 |

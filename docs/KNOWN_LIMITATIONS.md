@@ -368,6 +368,8 @@ snapshot 路径的 evidence 精度**低于** live 路径。
 **事实（P183.1 / D1+D4）**：`SignalGraph.from_dict` 对未知、缺失或非字符串
 `EdgeKind` 抛 `ValueError`，不再静默回退 `DRIVER`；对未知/缺失 `NodeKind`
 同样抛 `ValueError`，不再静默回退 `SIGNAL`。
+`add_trace_edge` 的隐式 placeholder 仍为 `SIGNAL`，但写 `extra.placeholder=true` /
+`kind_origin=edge_placeholder` / `placeholder_reason`；消费者需读 `extra` 才能过滤。
 
 **可观察后果**：手工编辑、第三方 schema 或未来版本写入的未知 edge kind 快照会
 `rc=1` + 明确错误；仓库内现有快照均含合法 `kind`。需要兼容时应显式提供 legacy opt-in，

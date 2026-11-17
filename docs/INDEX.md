@@ -13,8 +13,8 @@
 | 项 | 值 | 说明 |
 |---|---|---|
 | 源码规模 | 140 文件 / 50,032 行 | `find src -name "*.py"`（2026-11-16 实测） |
-| 测试规模 | 398 测试文件 / 66,143 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **2860 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-17 D4 全量复核**（本机；deferred 口径）；含 zombie tests 清理后的 canonical；**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
+| 测试规模 | 399 测试文件 / 66,198 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
+| 全量 (canonical) | **2864 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-17 D5 全量复核**（本机；deferred 口径）；含 zombie tests 清理后的 canonical；**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 迭代记录 | `docs/task_tree/iterations/` (519 份, 只增不改) | 每次迭代一份（2026-11-16 实测） |
@@ -119,6 +119,7 @@
 | [validation/P141_DEEP_PATHS_2026-11-09.md](validation/P141_DEEP_PATHS_2026-11-09.md) | **P141**: 三模块深层 from/to |
 | [validation/P142_CONSTRAINT_CHAIN_2026-11-09.md](validation/P142_CONSTRAINT_CHAIN_2026-11-09.md) | **P142**: random 变量 constraint 链 |
 | [dev/REVIEW_CHECKLIST.md](dev/REVIEW_CHECKLIST.md) | 提交前检查清单: 机械检查命令 + 纪律/设计/影响面/记录四组自检 + 反模式表 |
+| [dev/REVIEW_LENSES.md](dev/REVIEW_LENSES.md) | **架构可持续性评审视角 v1.0（2026-11-17，建议稿）**: 三次提问整理为 L1~L6 + 补充 L7 语义正确性 / L8 安全信任边界 / L9 可复现性·成本·可观测性；规定一次只评一个视角、报告模板、覆盖台账与完成判定；`L*` 不是 PLAN 项 |
 
 ## 📜 能力与边界 (对外声明)
 

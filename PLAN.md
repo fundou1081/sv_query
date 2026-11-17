@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P183.1 failure-as-state quick fixes <进行中>
+current item : P183.2 build/cache/snapshot robustness <待做>
 
 ## 计划树
 
@@ -541,7 +541,7 @@ P171 CI / evidence-chain repair (2026-11-13 worker review) <已完成>
 -- P171.9 worker review fixes <已完成>
 
 P183 implementation/abstraction review intake (2026-11-16) <待做>
--- P183.1 failure-as-state quick fixes <进行中>
+-- P183.1 failure-as-state quick fixes <已完成>
 -- P183.2 build/cache/snapshot robustness <待做>
 -- P183.3 DTO/Stage context <待做>
 -- P183.4 Session.execute library seam <待做>
