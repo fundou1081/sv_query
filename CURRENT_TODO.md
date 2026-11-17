@@ -9,8 +9,8 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P183.4 Session.execute library seam** `<进行中>`
-  - D10 Session.execute contract/version op 已完成；D11 adapter 待做
+- **当前 item**: **P183.5 DesignView/ASTFrontend candidate evaluation** `<待做>`
+  - P183.4 D10–D15 已完成；全量 dispatch 决策为不采纳
   - P183.3 D8/D9 已完成
   - P183.1 D1–D5 已完成；见 [agents/STATE.md](agents/STATE.md)
   - 评审已归档；计划来源 PLAN P183 / [task](docs/task_tree/tasks/L3_p183_review_intake.md)

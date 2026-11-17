@@ -527,6 +527,20 @@ sv_query **不绕过** Semantic AST 严格性，也不返回 partial coverage；
 详见：[PROJECT_ADAPTATION.md](dev/PROJECT_ADAPTATION.md) 与
 [P138](validation/P138_PROJECT_ADAPTATION_2026-11-09.md)。
 
+### 3.17 Session seam 的未覆盖范围（P183.4 / D15）
+
+**事实**：`Session.execute` 当前只覆盖 `version` / `capabilities`；完整 CLI 命令仍由
+Typer 分发，并受进程全局态 `_QUIET` / `_ACTIVE_CONFIG` 影响。`RequestContext` 未实现。
+
+**可观察后果**：
+
+- 库调用 `Session` 不读全局态，但不能替代 38 条 core 命令的查询面；
+- hidden `session` 成功响应丢弃 `request_id`，transport 无法关联请求；
+- 库失败 `error` 是 dict，CLI 失败 `error` 是字符串（按 transport 保留分叉）。
+
+**决策**：D15 ADR 不重写 Typer `run()`；触发条件见
+[architecture/p1834_session_seam_decision_2026-11-17.md](architecture/p1834_session_seam_decision_2026-11-17.md)。
+
 ### 3.16 DTO 投影：`precision` / `width` 在 trace 与 subgraph 是两套规则（P183.3 / D9）
 
 **事实**：`TraceNode` 有两个 `precision` 判定实现：
