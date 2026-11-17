@@ -36,6 +36,19 @@ source 11/11 丢、node.extra 16 条丢 —— 本迭代已全部补齐。
 **体积影响**：字段补齐使快照增大约 1/3（fixture 实测 33%）；默认上限 64MB
 （`SVQ_SNAPSHOT_MAX_MB` 可调），超限 save 显式报错而非静默截断。
 
+## 1.1 Build phase（P183.2 / D6）
+
+`UnifiedTracer.build_phase` 取值：
+
+```text
+empty -> building -> ready
+                    -> failed   # graph/tracers/MIG/path_resolver 清空
+                    -> hydrated # cache 或 snapshot 恢复，语义不完整
+```
+
+`failed` 不对外返回半图；重试 build 可恢复。`hydrated` 的 MIG/class 派生语义仍受限，
+依赖命令应显式 unknown，而不是 not_found。
+
 ## 2. 命令级矩阵（--from-snapshot 支持面）
 
 | 命令 | 快照依赖 | 快照下行为 |

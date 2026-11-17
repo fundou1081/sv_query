@@ -363,6 +363,16 @@ signal 级 `precision` + `coarse_fallback`）；`capabilities.bit_precision` 契
 `source_line` 必须能访问源码树（`SVQ_SOURCE_ROOT`）。没有源码树时，
 snapshot 路径的 evidence 精度**低于** live 路径。
 
+### 3.9.3 `build_phase=hydrated` 的 MIG/class 语义不完整
+
+**事实（P183.2/D6）**：cache 命中会把 phase 标为 `hydrated`；cache 只恢复 graph+tracers，
+不恢复 MIG/path_resolver/class hierarchy。依赖 MIG/class 的查询在 cache 路径可能缺少
+完整语义。
+
+**可观察后果**：cache 命中与 `--no-cache` 的某些查询可能不同；需要完整语义时用
+`--no-cache` / `--from-snapshot` 重建（snapshot 路径也标 hydrated，但包含 MIG 时更好）。
+D7 继续处理 cache 完整性/原子写。
+
 ### 3.9.2 Snapshot 中未知/缺失 `EdgeKind`/`NodeKind` 现在拒绝加载
 
 **事实（P183.1 / D1+D4）**：`SignalGraph.from_dict` 对未知、缺失或非字符串

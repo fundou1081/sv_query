@@ -6,8 +6,9 @@
 
 import logging
 import os
-import re
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 
 def reclaim_memory_for_pyslang() -> None:
@@ -56,6 +57,14 @@ def reclaim_memory_if_needed() -> None:
 # [C-Flaky-3b 2026-06-27] 向后兼容旧名
 _reclaim_memory_for_pyslang = reclaim_memory_for_pyslang
 
+# ==============================================================================
+# 状态机分析器
+# ==============================================================================
+from sv_query.trace.core.fsm_analyzer import (  # noqa: E402
+    StateMachineAnalyzer,
+    StateMachineInfo,
+)
+
 from .core.bit_select_handler import BitSelectHandler
 from .core.class_graph_builder import ClassGraphBuilder
 from .core.compiler import SVCompiler
@@ -74,15 +83,6 @@ from .core.query import (
 )
 from .core.query.signal import DriverChain
 from .core.semantic_adapter import SemanticAdapter
-
-
-# ==============================================================================
-# 状态机分析器
-# ==============================================================================
-from sv_query.trace.core.fsm_analyzer import (  # noqa: E402
-    StateMachineAnalyzer, StateMachineInfo, StateTransition,
-)
-
 
 # ==============================================================================
 # 日志级别配置
@@ -167,6 +167,8 @@ class UnifiedTracer:
         self._filelist = filelist
         self._adapter = None
         self._graph: SignalGraph | None = None
+        self._build_phase = "empty"  # empty|building|ready|failed|hydrated
+        self._build_error: BaseException | None = None
         self._covergroup_cgs = None  # [G3 iter_165] 惰性 covergroup 定义
         self._signal_tracer: SignalTracer | None = None
         self._module_tracer: ModuleTracer | None = None
@@ -297,22 +299,42 @@ class UnifiedTracer:
         """获取 Compilation 对象"""
         return self._get_compiler().get_compilation()
 
+    @property
+    def build_phase(self) -> str:
+        return self._build_phase
+
+    @property
+    def build_error(self) -> BaseException | None:
+        return self._build_error
+
+    def _reset_failed_build(self, exc: BaseException) -> None:
+        """Make a failed build non-queryable, and leave a retryable clean state."""
+        self._graph = None
+        self._adapter = None
+        self._signal_tracer = None
+        self._module_tracer = None
+        self._clock_tracer = None
+        self._load_tracer = None
+        self._module_graph = None
+        self._path_resolver = None
+        self._class_hierarchy = None
+        self._class_build_errors = []
+        self._covergroup_cgs = None
+        self._build_phase = "failed"
+        self._build_error = exc
+
     def build_graph(self, force: bool = False, use_cache: bool = False,
                     target_module: str | None = None,
                     auto_target_single_top: bool = False) -> SignalGraph:
-        """构建信号流图
-
-        Args:
-            force: 强制重新构建（忽略缓存）
-            use_cache: 使用缓存加速（基于内容 hash）
-            target_module: [Phase 3 2026-07-11] User-specified target. If set,
-                           SignalGraph nodes use this as root namespace (instead
-                           of auto-detected first top instance). This ensures
-                           pipeline/timing/dataflow show signals in user namespace.
-        """
-        # [C-Flaky-3b 2026-06-27] reclaim moved to CLI main + conftest (process start).
-        # build_graph() 不再调用, 避免 pytest test 内部多次调用累积 OOM.
-        if self._graph is None or force:
+        """构建信号流图；失败时不暴露半成品图。"""
+        if self._build_phase == "building":
+            raise RuntimeError("build_graph is already running")
+        if self._graph is not None and not force:
+            if self._build_phase in ("empty", "ready", "hydrated"):
+                return self._graph
+        self._build_phase = "building"
+        self._build_error = None
+        try:
             # 尝试从缓存加载
             cache_key = self._graph_cache_key(target_module) if use_cache else None
             project_key = self._graph_project_key() if use_cache else None
@@ -321,18 +343,14 @@ class UnifiedTracer:
 
                 cache = get_cache()
                 cached = cache.get_by_key(cache_key, force=force, project_key=project_key)
-                # [iter_270] ASTCache 把 payload 包在 "data" 里 (put_by_key 的契约,
-                # 测试锁定 get_by_key(...)["data"][...])。旧代码直接查 "graph_data"
-                # → **永远不命中**, 图缓存自诞生起就是死代码 (静默 miss, 无 warning)。
                 payload = (cached or {}).get("data") or {}
                 if payload.get("graph_data"):
                     _main_logger.info(f"Loading graph from cache (key={cache_key[:8]}...)")
                     self._graph = SignalGraph.from_dict(payload["graph_data"])
                     self._init_tracers()
+                    self._build_phase = "hydrated"
                     return self._graph
 
-            # [ARCHITECTURE_TODOLIST #5] 显式 DAG 管线 —— step 实现见下方
-            # `_step_*` 方法 (P3.1 从 153 行内联闭包拆出)。
             from .core.pipeline import Pipeline, PipelineStep
 
             pipeline = Pipeline([
@@ -355,16 +373,23 @@ class UnifiedTracer:
                 "target": target_module,
                 "auto_target_single_top": auto_target_single_top,
             })
+        except BaseException as exc:
+            # BaseException covers Ctrl-C/SystemExit too: never leave `building`
+            # with a partially populated graph.
+            self._reset_failed_build(exc)
+            raise
 
-            # 保存到缓存
-            if use_cache and cache_key:
+        # The graph is complete at this point. Cache is an optimization; a cache
+        # write failure must not destroy a successful build.
+        self._build_phase = "ready"
+        if use_cache and cache_key:
+            try:
                 from sv_query.trace.core.cache import get_cache
 
-                cache = get_cache()
-                cache_data = {
-                    "graph_data": self._graph.to_dict(),
-                }
-                cache.put_by_key(cache_key, cache_data, project_key=project_key)
+                get_cache().put_by_key(cache_key, {"graph_data": self._graph.to_dict()},
+                                       project_key=project_key)
+            except Exception as exc:
+                logger.warning("graph cache write failed (build remains ready): %s", exc)
         return self._graph
 
     # ------------------------------------------------------------------
@@ -446,6 +471,8 @@ class UnifiedTracer:
     def load_graph(self, graph: SignalGraph) -> None:
         self._graph = graph
         self._init_tracers()
+        self._build_phase = "ready"
+        self._build_error = None
 
     def load_snapshot(self, snapshot: dict) -> None:
         """Hydrate a tracer from a saved snapshot (P158.7).
@@ -473,6 +500,8 @@ class UnifiedTracer:
         self._covergroup_cgs = None
         self._init_tracers()
         self._path_resolver = PathResolver(graph, mig)
+        self._build_phase = "hydrated"
+        self._build_error = None
 
     def get_graph(self) -> SignalGraph | None:
         return self._graph
@@ -951,13 +980,13 @@ class UnifiedTracer:
         """
         self.build_graph()
         g = self._graph
-        from .core.graph.models import EdgeKind as _EK
+        from .core.graph.models import EdgeKind
         out = []
         for s, d in g.edges():
             if d != class_name:
                 continue
             for e in g.get_edges(s, d):
-                if e.kind == _EK.IS_INSTANCE_OF:
+                if e.kind == EdgeKind.IS_INSTANCE_OF:
                     nd = g.get_node(s)
                     if nd and nd.id not in [x.id for x in out]:
                         out.append(nd)
