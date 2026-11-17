@@ -195,6 +195,24 @@ class EdgeKind(Enum):
 _SIGNAL_SOURCE_FIELDS = frozenset(f.name for f in dc_fields(SignalSource))
 
 
+def _parse_node_kind(node_dict: dict) -> NodeKind:
+    """[P183.1/D4] 严格解析 node.kind — 未知/缺失/非字符串显式失败。"""
+    node_id = node_dict.get("id")
+    if "kind" not in node_dict:
+        raise ValueError(
+            f"SignalGraph.from_dict: node {node_id!r} is missing 'kind'; "
+            "refusing to assume SIGNAL"
+        )
+    kind_raw = node_dict["kind"]
+    try:
+        return NodeKind[kind_raw]
+    except (KeyError, TypeError):
+        raise ValueError(
+            f"SignalGraph.from_dict: unknown NodeKind {kind_raw!r} for node "
+            f"{node_id!r}; refusing to guess (snapshot may use a newer schema)"
+        ) from None
+
+
 def _parse_edge_kind(edge_dict: dict) -> EdgeKind:
     """[P183.1] 严格解析 edge.kind — 未知/缺失一律显式失败。
 
@@ -708,12 +726,7 @@ class SignalGraph(nx.DiGraph):
 
         # 恢复节点
         for node_dict in data.get("nodes", []):
-            kind_str = node_dict.get("kind", "SIGNAL")
-            # 尝试解析 NodeKind 枚举
-            try:
-                kind = NodeKind[kind_str]
-            except (KeyError, TypeError):
-                kind = NodeKind.SIGNAL
+            kind = _parse_node_kind(node_dict)
 
             # [iter_087] width 显式 null → 恢复 None (to_dict 现在会写 null);
             # 旧格式缺 width 键 → 保持原 (0,0) 回退, 不改变历史行为.
