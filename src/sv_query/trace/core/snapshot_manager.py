@@ -21,12 +21,14 @@
 import json
 import logging
 import os
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
 from .cache.ast_cache import resolve_cache_dir  # [iter_239] 缓存目录解析
 
 logger = logging.getLogger(__name__)
+SNAPSHOT_VERSION = "1.0"
 
 
 # ----------------------------------------------------------------------------
@@ -157,6 +159,7 @@ class SnapshotManager:
         path = self._snapshot_path(tag)
 
         data = dict(graph_data)  # 拷贝
+        data.setdefault("version", SNAPSHOT_VERSION)
         data["tag"] = tag
         data["git_commit"] = git_commit
         data["files"] = files or []
@@ -171,8 +174,23 @@ class SnapshotManager:
                 "not written (set a larger limit explicitly if intended)"
             )
 
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(payload)
+        tmp_path: str | None = None
+        try:
+            fd, tmp_path = tempfile.mkstemp(
+                dir=str(path.parent), prefix=f".{path.name}.", suffix=".tmp")
+            os.close(fd)
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                f.write(payload)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp_path, path)
+            tmp_path = None
+        finally:
+            if tmp_path:
+                try:
+                    Path(tmp_path).unlink()
+                except OSError as cleanup_err:
+                    logger.debug("snapshot temp cleanup failed: %s", cleanup_err)
 
         logger.info(f"Snapshot saved: {tag} -> {path}")
         return str(path)
@@ -244,7 +262,7 @@ class SnapshotManager:
         mig_instances = mig.get("instances") or {}
         info = {
             "tag": tag,
-            "version": data.get("version", "1.0"),
+            "version": data.get("version", SNAPSHOT_VERSION),
             "created_at": data.get("created_at", ""),
             "git_commit": data.get("git_commit", ""),
             "files": data.get("files", []),

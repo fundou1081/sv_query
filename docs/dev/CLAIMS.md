@@ -42,6 +42,7 @@
 | C-19 | class property evidence 使用 `ClassPropertySymbol` 声明位置，不由 regex 扫 class 文本 | fixture | `test_class_property_uses_member_declaration_line` / `test_class_comment_is_not_property_evidence` / `test_virtual_class_property_evidence` | `scoped`（class/constraint 上下文 evidence 仍非赋值） |
 | C-20 | `graph subgraph --edge-kinds control` 包含 branch/ternary 和 conditional DRIVER；`control,driver` 保留无条件 DRIVER | fixture | `test_subgraph_control_includes_branch_edges` / `test_subgraph_control_plus_driver_keeps_unconditional_driver` | `scoped`（CLI 子图，不是全图语义） |
 | C-21 | `build_graph` 失败时不暴露半成品图；phase=failed 且可重试 | fixture | `test_d6_build_transaction.py` | `verified`（库层；CLI 尚未暴露 phase） |
+| C-22 | cache/snapshot 写入原子化；graph cache key 使用 CACHE_VERSION；损坏 cache/snapshot 显式失败/miss | fixture | `test_d7_cache_snapshot_atomic.py` | `verified`（库层） |
 
 ---
 

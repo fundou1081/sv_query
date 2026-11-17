@@ -215,9 +215,11 @@ class UnifiedTracer:
             _main_logger.debug("缓存 key 计算失败, 跳过缓存: %s", e)
             return None
         # [iter_302 / PLAN P13.1] 位桥模式影响图内容；不编进 key 会串模式（静默错误）
-        # [iter_313] 图缓存 schema/语义版本：节点 metadata（dynamic/function_call）
-        # 随版本变化，旧图缺标记会静默复用 → v3 显式失效一次。
-        return (f"{base}-v17-t{target_module or 'all'}"
+        # [iter_313/P183.2] 图缓存 schema/语义版本与 AST cache 共用 CACHE_VERSION；
+        # 图格式变化时必须 bump CACHE_VERSION，避免旧图被静默复用。
+        from .core.cache.ast_cache import CACHE_VERSION
+
+        return (f"{base}-cv{CACHE_VERSION}-t{target_module or 'all'}"
                 f"-bb{self._bit_bridge_mode()}")
 
     def _graph_project_key(self) -> str | None:

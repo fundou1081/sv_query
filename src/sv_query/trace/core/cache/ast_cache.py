@@ -33,6 +33,7 @@ import hashlib
 import json
 import logging
 import os
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -60,7 +61,7 @@ def resolve_cache_dir(explicit: str | os.PathLike | None = None) -> Path:
 CACHE_DIR = resolve_cache_dir()
 
 # 缓存版本
-CACHE_VERSION = "2.0"  # [P77] port ternary expression subgraph
+CACHE_VERSION = "2.0"  # [P77] AST+graph cache schema; bump when either format changes
 
 # [iter_271] 缓存文件: gzip 压缩 + 总量上限 (LRU 淘汰)
 # 单工程图 JSON 可达 20MB, 压缩后通常 3~5MB。上限默认 1GB, 可用 SVQ_CACHE_MAX_MB 覆盖。
@@ -390,7 +391,7 @@ class ASTCache:
             self._memory_cache[cache_key] = data
             return data
 
-        except (OSError, json.JSONDecodeError) as e:
+        except (OSError, json.JSONDecodeError, EOFError, UnicodeDecodeError) as e:
             logger.warning(f"Failed to load cache: {e}")
             return None
 
@@ -416,11 +417,23 @@ class ASTCache:
 
         # 保存到磁盘 (失败 → 降级)
         cache_path = self._cache_path(cache_key, project_key)
+        tmp_path: str | None = None
         try:
-            # [iter_271] gzip 压缩: 单工程图 JSON 20MB → 通常 3~5MB
-            with gzip.open(cache_path, "wt", encoding="utf-8") as f:
+            # Atomic write: a crash/concurrent writer must never leave a
+            # half-written gzip at the final path.
+            fd, tmp_path = tempfile.mkstemp(
+                dir=str(cache_path.parent), prefix=f".{cache_path.name}.", suffix=".tmp")
+            os.close(fd)
+            with gzip.open(tmp_path, "wt", encoding="utf-8") as f:
                 json.dump(cache_data, f, ensure_ascii=False)
+            os.replace(tmp_path, cache_path)
+            tmp_path = None
         except OSError as e:
+            if tmp_path:
+                try:
+                    Path(tmp_path).unlink()
+                except OSError as cleanup_err:
+                    logger.debug("cache temp cleanup failed: %s", cleanup_err)
             self.enabled = False
             logger.warning(
                 "缓存写入失败 (%s: %s) — 本次运行降级为内存缓存 (分析结果不受影响); "
@@ -428,6 +441,13 @@ class ASTCache:
                 cache_path, e, ENV_CACHE_DIR,
             )
             return
+        except BaseException:
+            if tmp_path:
+                try:
+                    Path(tmp_path).unlink()
+                except OSError as cleanup_err:
+                    logger.debug("cache temp cleanup failed: %s", cleanup_err)
+            raise
 
         logger.info(f"Cache saved: {cache_key[:8]}... -> {cache_path}")
         # [iter_271] 写盘后检查总量上限, 按 mtime LRU 淘汰旧条目
