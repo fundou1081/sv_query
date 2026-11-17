@@ -27,13 +27,12 @@ error_code 词表与 message 来源只有一处实现; 成功路径不经过该 
 """
 from __future__ import annotations
 
-import json
 from collections.abc import Mapping
 
 import typer
 
 from cli._registry import LAYERS, to_json
-from cli._session_adapter import fail_from_session
+from cli._session_runner import SessionRenderOptions, emit_json_result, run_session
 from sv_query import Session
 
 
@@ -69,24 +68,19 @@ def capabilities(
 
     列出可用能力及其契约 (只读, 不修改任何文件)。
     """
-    response = Session(handlers={"capabilities": _capabilities_provider}).execute({
-        "op": "capabilities",
-        "recommended": recommended,
-        "include_exp": include_exp,
-    })
-
-    if response.get("ok") is not True:
-        fail_from_session(
-            response,
-            json_output=json_output,
-            pretty=pretty,
-            context="capabilities 查询失败",
-        )
-
-    data = response["result"]
+    options = SessionRenderOptions(
+        json_output=json_output,
+        pretty=pretty,
+        context="capabilities 查询失败",
+    )
+    data = run_session(
+        Session(handlers={"capabilities": _capabilities_provider}),
+        {"op": "capabilities", "recommended": recommended, "include_exp": include_exp},
+        options,
+    )
 
     if json_output:
-        typer.echo(json.dumps(data, indent=2 if pretty else None, ensure_ascii=False))
+        emit_json_result(data, options)
         return
 
     _render_human(data, include_exp=include_exp)

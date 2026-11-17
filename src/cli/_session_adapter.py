@@ -17,7 +17,7 @@ CLI 的 transport 信封是既有 `cli._output.fail`::
 - **message 来源**：取 `error.message`；缺失/非字符串/空串 → 显式 fallback
   文案（不输出空 message）。
 
-非目标：不实现命令派发 `run()` 通用 adapter（D13），不构造第二个 Session。
+非目标：不实现命令派发 `run()` 通用 adapter（D14），不构造第二个 Session。
 """
 from __future__ import annotations
 
