@@ -10,6 +10,8 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **当前 item**: **P182.1c core standard success matrix (27)** `<进行中>`
+  - phase 1 完成：`--matrix-core` 27-case manifest；真实树 25 PASS + 2 FAIL
+  - 阻塞：`paths`（direct 根，缺 command/params/result/errors）、`filelist prune`（缺 errors）；均为当前 src 行为，待 P182.1d/P182.1e 裁决
   - P189.1 文档自洽 gate 完成；先覆盖 27 个 core standard 成功路径
   - P185.1 审计完成：classes/diagnose/graph/instances 已合并；`controlflow list-conditioned` 按“输入不同 + 非严格子视图”保留
   - P185.2 放弃：当前 CLI 无 bus/verif 独立命令
@@ -21,7 +23,7 @@
 ## 📌 当前真实基线
 
 ```text
-canonical:  3027 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  3032 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 

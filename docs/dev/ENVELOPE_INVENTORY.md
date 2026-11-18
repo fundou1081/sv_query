@@ -1,7 +1,9 @@
-# Envelope Inventory — P182.1a (read-only) + P182.1b canary
+# Envelope Inventory — P182.1a (read-only) + P182.1b canary + P182.1c matrix
 
-> **状态**: P182.1a 只读盘点；P182.1b phase 1 在其上增加 7-case canary gate（不是全量 gate）。
-> 成功/失败/未知/截断全量矩阵仍未覆盖；`drivers` 未知信号暂不 gate。
+> **状态**: P182.1a 只读盘点；P182.1b phase 1 在其上增加 7-case canary gate；
+> P182.1c phase 1 增加 26 个 core standard 成功矩阵（`paths` 已归 direct）。
+> 当前树矩阵结果：**26 PASS + 0 FAIL**；`filelist prune` 成功路径已补 `errors`。
+> `paths` 已从 standard 归到 direct。失败/未知/截断（P182.1d）、direct（P182.1e）、exp 仍未覆盖。
 > **计数来源**: `python3 tools/check_envelope_contract.py --inventory --json`
 > **实际根来源**: A 阶段人工采样（§3 注明命令/fixture；不是工具输出）
 > **日期**: 2026-11-18
@@ -14,25 +16,25 @@
   exp:     6
   (另有 1 条 hidden dev `session`，不进入盘点)
 信封计数按 listed 45 条：
-  standard: 33 = core standard 27 + exp standard 6
-  direct:   12（全部 core）
+  standard: 32 = core standard 26 + exp standard 6
+  direct:   13（全部 core）
 别名:      2 (trace fanin → drivers, trace fanout → loads)
 ```
 
 ## 2. standard 信封
 
-33 个 standard 命令预期：
+32 个 standard 命令预期：
 
 ```json
 {"ok": true, "command": "...", "params": {}, "result": {}, "errors": []}
 ```
 
-失败路径应带 `ok:false` 和 `error_code`/`errors`；具体矩阵在 P182.1b 验证。
+失败路径应带 `ok:false` 和 `error_code`/`errors`；具体矩阵在 P182.1d 验证。
 部分命令按 contract 带 `optional_top_level`：`graph subgraph` 的 `seeds`、
 `trace evidence` 的 `evidence`、`controlflow list-conditioned` 的 `subcommand`；
-P182.1b 的严格键集断言必须放行这些合法键。
+P182.1c 的严格键集断言放行这些合法键（只要求必备键存在，不要求键集相等）。
 
-## 3. direct 信封（12 个）
+## 3. direct 信封（13 个）
 
 | 命令 | 静态契约 | 已知实际根 |
 |---|---|---|
@@ -44,7 +46,7 @@ P182.1b 的严格键集断言必须放行这些合法键。
 | `class` | `fields/instance_fields/member_fields` | 未在 A 阶段采样 |
 | `search` | `fields/file_fields/line_fields` | object（keyword/target/files） |
 | `capabilities` | `result_fields` | object（schema_version/layers/...） |
-| `paths` | `envelope=direct`（contract）vs registry `standard` | **非 standard：根含 ok/src/dst/...，无 command/params/result/errors**（实测 scheduler_minimal） |
+| `paths` | `envelope=direct`（registry + contract 一致） | direct：根含 ok/src/dst/...，无 command/params/result/errors |
 | `snapshot save` | `result_fields` | 未在 A 阶段采样 |
 | `snapshot list` | `result_fields` | **list**（契约与根类型不一致） |
 | `snapshot compare` | `result_fields` | 未在 A 阶段采样 |
@@ -52,15 +54,12 @@ P182.1b 的严格键集断言必须放行这些合法键。
 
 **已发现的不一致**：
 
-- `paths`：registry 写 `envelope=standard`，但 `JSON_CONTRACT` 写 `direct`，
-  实测根也不是 standard（无 `command/params/result/errors`）；工具用
-  `envelope_mismatches: ["paths"]` 暴露，不在 A 阶段改 registry；
 - `snapshot list --json` 实际根是 `list`，但静态契约写 `result_fields`；
 - direct 命令并非一种形状：有 object、有 list，也有带/不带 `ok` 的 object；
 - `capabilities` 没有 `ok`，但有 `schema_version`；
-- `drivers`/`loads` 未知 signal：`ok=false` + `E_SIGNAL_NOT_FOUND`，但 **rc=0**（P182.1b phase 1 未 gate）。
+- `drivers`/`loads` 未知 signal：`ok=false` + `E_SIGNAL_NOT_FOUND`，但 **rc=0**（P182.1c 未 gate）。
 
-这些必须在 P182.1b 决定：补 `ok`、改契约，还是显式 allowlist。
+这些必须在 P182.1d/P182.1e 决定：补 `ok`、改契约，还是显式 allowlist。
 
 ## 4. 使用边界
 
@@ -71,20 +70,39 @@ python3 tools/check_envelope_contract.py --inventory --json
 
 # P182.1b phase 1 canary：执行 7 条固定用例（scheduler_minimal），违规 exit 1
 python3 tools/check_envelope_contract.py --canary
+
+# P182.1c phase 1 矩阵：26 个 core standard 成功路径（显式 manifest），违规 exit 1
+python3 tools/check_envelope_contract.py --matrix-core
 ```
 
 canary 覆盖：`stats` / `drivers` / `loads` / `graph nodes` / `graph edges` /
 `controlflow analyze` 的成功信封，以及 `stats --file <nonexistent>` 的失败信封。
-它不是 27 个 core standard 的全量 gate，也不覆盖 direct / exp / 未知信号 / 截断。
+
+matrix-core 覆盖全部 26 个 core standard 命令的成功路径，每条 case 固定
+`command + argv + fixture`；fixture 均为仓库既有文件，argv 取自现有测试/文档。
+成功断言：rc=0、根 object、含 `ok/command/params/result/errors`、`ok=true`、
+`errors` 为 list。`trace tb-join` 需要快照，矩阵在临时目录内先执行
+`snapshot save`（setup），不复用用户快照。
+
+当前树真实结果（2026-11-18）：
+
+| 结果 | 数量 | 说明 |
+|---|---|---|
+| PASS | 26 | 全部 core standard |
+| FAIL | 0 | — |
+
+`filelist prune` 成功路径已补 `errors: []`；`paths` 的 registry 已改为
+`envelope=direct`，由 P182.1e 处理，不混入 standard 矩阵。
+
+它不是 failure/unknown/truncated 矩阵，也不覆盖 direct / exp。
 
 ## 5. 不能从这个盘点得出的结论
 
 - 不能据此声称“所有命令成功路径一致”；
 - 不能据此做 rc/ok 一致性 gate；
-- 不能把 7-case canary 当成 27 个 core standard 的全量 gate；
+- 不能把 7-case canary 当成 26 个 core standard 的全量 gate；
 - 不能把 direct 的 static contract 当成实际输出；
-- 不能用它替代真实 fixture 的 P182.1b 矩阵。
+- 不能用它替代真实 fixture 的 P182.1c 矩阵。
 
-下一步（P182.1b phase 2）：把 gate 扩到 **core 的 27 个 standard** 的成功/失败矩阵；
-exp 6 条按降级通道单独处理；12 个 direct 例外逐个裁决（含 `paths` 与
-`snapshot list` 双根）。
+下一步（P182.1d/P182.1e）：扩 core 失败的失败/未知/截断矩阵；exp 6 条按降级通道；
+13 个 direct 例外逐个裁决（含 `paths` 与 `snapshot list` 双根）。

@@ -198,6 +198,7 @@ COMMANDS: list[CommandSpec] = [
        envelope="direct",
        note="[规范入口] 模块端口总览 (方向/位宽/入边数/出边数)"),
     _c("paths", "semantic", cost="medium", recommended=True,
+       envelope="direct",
        note="[规范入口] 图上路径 (实例级 id; --all 枚举; "
             "--directed 只沿数据流方向, 与 dataflow analyze 结论一致)"),
     _c("class", "semantic", cost="medium", envelope="direct",

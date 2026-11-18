@@ -24,10 +24,10 @@ def test_inventory_counts_and_layers():
     assert data["counts"] == {
         "total": 45,
         "by_layer": {"core": 39, "exp": 6},
-        "by_envelope": {"direct": 12, "standard": 33},
+        "by_envelope": {"direct": 13, "standard": 32},
         "aliases": 2,
     }
-    assert data["envelope_mismatches"] == ["paths"]
+    assert data["envelope_mismatches"] == []
 
 
 def test_standard_and_direct_rows_are_explicit():
@@ -38,13 +38,13 @@ def test_standard_and_direct_rows_are_explicit():
     direct = {r["name"] for r in rows if r["envelope"] == "direct"}
     assert direct == {
         "instances", "connections", "hierarchy", "params", "ports", "class",
-        "search", "capabilities", "snapshot save", "snapshot list",
+        "search", "capabilities", "paths", "snapshot save", "snapshot list",
         "snapshot compare", "snapshot delete",
     }
     assert all(r["shape"] in {"standard", "direct-contract", "direct-no-contract"} for r in rows)
-    mismatch = next(r for r in rows if r["name"] == "paths")
-    assert mismatch["envelope_mismatch"] is True
-    assert mismatch["contract_envelope"] == "direct"
+    paths = next(r for r in rows if r["name"] == "paths")
+    assert paths["envelope"] == "direct"
+    assert paths["envelope_mismatch"] is False
 
 
 def test_inventory_text_output_shape_and_no_command_execution(tmp_path):

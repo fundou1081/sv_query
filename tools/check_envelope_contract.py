@@ -1,25 +1,30 @@
 #!/usr/bin/env python3
-"""check_envelope_contract.py — P182.1a inventory + P182.1b canary gate.
+"""check_envelope_contract.py — P182.1a inventory + P182.1b canary + P182.1c matrix.
 
-Two explicit modes:
+Three explicit modes:
 
 - ``--inventory`` (default): read-only, static; reads registry/JSON_CONTRACT and
   prints the envelope surface. It does not execute any command.
 - ``--canary``: executes exactly 6 success cases + 1 failure case on the
-  scheduler_minimal fixture and gates the standard envelope. The full
-  success/failure/unknown/truncated matrix is out of scope for P182.1b phase 1.
+  scheduler_minimal fixture and gates the standard envelope.
+- ``--matrix-core``: executes the 26 core standard success cases from an
+  explicit manifest (command + argv + real fixture). Failure/unknown/truncated,
+  direct and exp commands are out of scope for P182.1c phase 1.
 
 Usage:
     python3 tools/check_envelope_contract.py --inventory
     python3 tools/check_envelope_contract.py --inventory --json
     python3 tools/check_envelope_contract.py --canary
+    python3 tools/check_envelope_contract.py --matrix-core
 """
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
+import tempfile
 from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -116,6 +121,179 @@ CANARY_FAILURE_CASE = (
     ("stats", "--file", "does_not_exist_canary.sv", "--json"),
 )
 
+# P182.1c — every fixture below is an existing repository fixture; each argv was
+# taken from an existing test or docs invocation. No generated/one-off data.
+FIX_SCHEDULER = "sim/tests/fixtures/scheduler_minimal/filelist.f"
+FIX_SYNC_FIFO = "sim/tests/integration/dataflow_fixtures/sync_fifo.sv"
+FIX_MIXED = "sim/tests/fixtures/mixed_corpus/env_nested_constraint.sv"
+FIX_CONSTRAINT = "sim/tests/fixtures/constraint_neighborhood.sv"
+FIX_STRUCT = "sim/tests/fixtures/json_contract/struct.sv"
+FIX_BITSLICE = "sim/tests/fixtures/json_contract/bitslice.sv"
+FIX_M3 = "sim/tests/fixtures/minimal_3module/filelist.f"
+FIX_ARCH = "sim/tests/fixtures/arch_pair.sv"
+FIX_TB = "sim/tests/fixtures/tb_join_tb.sv"
+FIX_TB_RTL = "sim/tests/fixtures/tb_join_rtl.sv"
+MATRIX_TB_JOIN_TAG = "p182_1c_tb_join"
+VERIFY_CLAIM = (
+    '{"type": "connection", "instance": "top.u", "port": "a", '
+    '"internal": "top.u.a"}'
+)
+
+
+@dataclass(frozen=True)
+class MatrixCase:
+    """One explicit core-standard success case."""
+
+    command: str
+    argv: tuple[str, ...]
+    fixture: str
+    setup: tuple[tuple[str, ...], ...] = ()
+    support_fixtures: tuple[str, ...] = ()
+    uncovered_reason: str | None = None
+
+
+CORE_SUCCESS_MANIFEST: tuple[MatrixCase, ...] = (
+    MatrixCase(
+        "drivers",
+        ("drivers", "Scheduler_minimal.s0_reg", "--filelist", FIX_SCHEDULER, "--json"),
+        FIX_SCHEDULER,
+    ),
+    MatrixCase(
+        "loads",
+        ("loads", "Scheduler_minimal.s0_reg", "--filelist", FIX_SCHEDULER, "--json"),
+        FIX_SCHEDULER,
+    ),
+    MatrixCase(
+        "trace evidence",
+        ("trace", "evidence", "sync_fifo.reg_stage1", "-f", FIX_SYNC_FIFO, "--json"),
+        FIX_SYNC_FIFO,
+    ),
+    MatrixCase(
+        "trace profile",
+        ("trace", "profile", "sync_fifo.data_out", "-f", FIX_SYNC_FIFO, "--json"),
+        FIX_SYNC_FIFO,
+    ),
+    MatrixCase(
+        "trace lookup",
+        ("trace", "lookup", "--path", "sync_fifo.data_out", "-f", FIX_SYNC_FIFO, "--json"),
+        FIX_SYNC_FIFO,
+    ),
+    MatrixCase(
+        "trace manifest",
+        ("trace", "manifest", "--path", "sync_fifo.data_out", "-f", FIX_SYNC_FIFO, "--json"),
+        FIX_SYNC_FIFO,
+    ),
+    MatrixCase(
+        "trace constraints",
+        ("trace", "constraints", "packet.addr", "-f", FIX_MIXED, "--json"),
+        FIX_MIXED,
+    ),
+    MatrixCase(
+        "trace constraint-neighborhood",
+        ("trace", "constraint-neighborhood", "rnd_item.a", "-f", FIX_CONSTRAINT, "--json"),
+        FIX_CONSTRAINT,
+    ),
+    MatrixCase(
+        "trace tb-join",
+        ("trace", "tb-join", "tb_item.rcont", "-f", FIX_TB,
+         "--from-snapshot", MATRIX_TB_JOIN_TAG, "--json"),
+        FIX_TB,
+        setup=(
+            ("snapshot", "save", FIX_TB_RTL, "--tag", MATRIX_TB_JOIN_TAG, "--json"),
+        ),
+        support_fixtures=(FIX_TB_RTL,),
+    ),
+    MatrixCase(
+        "trace frontier",
+        ("trace", "frontier", "top.w", "--direction", "fanout", "-f", FIX_ARCH, "--json"),
+        FIX_ARCH,
+    ),
+    MatrixCase(
+        "trace constraint-chain",
+        ("trace", "constraint-chain", "rnd_item.a", "rnd_item.d",
+         "-f", FIX_CONSTRAINT, "--json"),
+        FIX_CONSTRAINT,
+    ),
+    MatrixCase(
+        "trace covergroups",
+        ("trace", "covergroups", "-f", FIX_MIXED, "--json"),
+        FIX_MIXED,
+    ),
+    MatrixCase(
+        "trace coverpoints",
+        ("trace", "coverpoints", "top.e.p.addr", "-f", FIX_MIXED, "--json"),
+        FIX_MIXED,
+    ),
+    MatrixCase(
+        "trace covergroup",
+        ("trace", "covergroup", "cg_env", "--instance", "top.e", "-f", FIX_MIXED, "--json"),
+        FIX_MIXED,
+    ),
+    MatrixCase(
+        "controlflow analyze",
+        ("controlflow", "analyze", "Scheduler_minimal.s0_reg",
+         "--filelist", FIX_SCHEDULER, "--json"),
+        FIX_SCHEDULER,
+    ),
+    MatrixCase(
+        "controlflow list-conditioned",
+        ("controlflow", "list-conditioned", "--filelist", FIX_SCHEDULER, "--json"),
+        FIX_SCHEDULER,
+    ),
+    MatrixCase(
+        "dataflow analyze",
+        ("dataflow", "analyze", "sync_fifo.reg_stage1", "sync_fifo.data_out",
+         "-f", FIX_SYNC_FIFO, "--json"),
+        FIX_SYNC_FIFO,
+    ),
+    MatrixCase(
+        "verify consistency",
+        ("verify", "consistency", "-f", FIX_STRUCT, "--json"),
+        FIX_STRUCT,
+    ),
+    MatrixCase(
+        "verify claim",
+        ("verify", "claim", "-f", FIX_STRUCT, "--claim", VERIFY_CLAIM, "--json"),
+        FIX_STRUCT,
+    ),
+    MatrixCase(
+        "verify structural",
+        ("verify", "structural", "-f", FIX_STRUCT, "--json"),
+        FIX_STRUCT,
+    ),
+    MatrixCase(
+        "scope",
+        ("scope", "top", "-f", FIX_STRUCT, "--json"),
+        FIX_STRUCT,
+    ),
+    MatrixCase(
+        "stats",
+        ("stats", "--filelist", FIX_SCHEDULER, "--json"),
+        FIX_SCHEDULER,
+    ),
+    MatrixCase(
+        "graph nodes",
+        ("graph", "nodes", "--filelist", FIX_SCHEDULER, "--json"),
+        FIX_SCHEDULER,
+    ),
+    MatrixCase(
+        "graph edges",
+        ("graph", "edges", "--filelist", FIX_SCHEDULER, "--json"),
+        FIX_SCHEDULER,
+    ),
+    MatrixCase(
+        "filelist prune",
+        ("filelist", "prune", "--filelist", FIX_M3, "--top", "top_minimal", "--json"),
+        FIX_M3,
+    ),
+    MatrixCase(
+        "graph subgraph",
+        ("graph", "subgraph", "sync_fifo.data_out", "-f", FIX_SYNC_FIFO,
+         "--depth", "1", "--json"),
+        FIX_SYNC_FIFO,
+    ),
+)
+
 
 @dataclass(frozen=True)
 class CaseRun:
@@ -125,6 +303,7 @@ class CaseRun:
 
 
 Runner = Callable[[tuple[str, ...]], CaseRun]
+MatrixRunner = Callable[[tuple[str, ...], dict[str, str] | None], CaseRun]
 Validator = Callable[[CaseRun], list[str]]
 
 
@@ -144,6 +323,16 @@ def run_cli_case(argv: tuple[str, ...]) -> CaseRun:
     proc = subprocess.run(
         [sys.executable, "run_cli.py", *argv],
         cwd=ROOT, capture_output=True, text=True, timeout=CANARY_TIMEOUT_SECONDS,
+    )
+    return CaseRun(proc.returncode, proc.stdout, proc.stderr)
+
+
+def run_cli_case_with_env(argv: tuple[str, ...],
+                          env: dict[str, str] | None = None) -> CaseRun:
+    proc = subprocess.run(
+        [sys.executable, "run_cli.py", *argv],
+        cwd=ROOT, capture_output=True, text=True, timeout=CANARY_TIMEOUT_SECONDS,
+        env=env,
     )
     return CaseRun(proc.returncode, proc.stdout, proc.stderr)
 
@@ -169,9 +358,9 @@ def success_violations(run: CaseRun) -> list[str]:
         problems.append(f"missing keys: {', '.join(missing)}")
     if root.get("ok") is not True:
         problems.append(f"ok={root.get('ok')!r}, expected true")
-    if not isinstance(root.get("errors"), list):
+    if root.get("errors") != []:
         problems.append(
-            f"errors is {type(root.get('errors')).__name__}, expected list"
+            f"errors={root.get('errors')!r}, expected empty list"
         )
     return problems
 
@@ -227,6 +416,124 @@ def render_canary(outcomes: list[CaseOutcome]) -> bool:
     return ok
 
 
+def core_standard_commands() -> list[str]:
+    """Registry truth for P182.1c: listed core commands with a standard envelope."""
+    return [c.key for c in COMMANDS
+            if c.listed and c.layer == "core" and c.envelope == "standard"]
+
+
+def matrix_manifest_problems() -> list[str]:
+    """Static manifest checks: count, registry coverage, and real fixture files."""
+    problems: list[str] = []
+    names = [case.command for case in CORE_SUCCESS_MANIFEST]
+    duplicates = sorted({name for name in names if names.count(name) > 1})
+    if duplicates:
+        problems.append(f"duplicate manifest commands: {', '.join(duplicates)}")
+    expected = set(core_standard_commands())
+    actual = set(names)
+    missing = sorted(expected - actual)
+    extra = sorted(actual - expected)
+    if missing:
+        problems.append(f"missing core standard commands: {', '.join(missing)}")
+    if extra:
+        problems.append(f"non-core-standard commands in manifest: {', '.join(extra)}")
+    if len(CORE_SUCCESS_MANIFEST) != 26:
+        problems.append(
+            f"manifest has {len(CORE_SUCCESS_MANIFEST)} cases, expected 26"
+        )
+    for case in CORE_SUCCESS_MANIFEST:
+        if case.uncovered_reason:
+            continue
+        for rel in (case.fixture, *case.support_fixtures):
+            if not (ROOT / rel).exists():
+                problems.append(f"{case.command}: fixture missing: {rel}")
+        if case.fixture not in case.argv:
+            problems.append(
+                f"{case.command}: manifest fixture {case.fixture} absent from argv"
+            )
+    return problems
+
+
+def _setup_problem(execute: MatrixRunner, argv: tuple[str, ...],
+                   env: dict[str, str]) -> str | None:
+    try:
+        run = execute(argv, env)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return f"setup {' '.join(argv)} failed: {type(exc).__name__}: {exc}"
+    if run.rc != 0:
+        return f"setup {' '.join(argv)}: rc={run.rc}, expected 0"
+    root, parse_problems = _parse_root(run)
+    if root is None:
+        return f"setup {' '.join(argv)}: {parse_problems[0]}"
+    if root.get("ok") is not True:
+        return f"setup {' '.join(argv)}: ok={root.get('ok')!r}, expected true"
+    return None
+
+
+def _run_matrix_case(case: MatrixCase, execute: MatrixRunner,
+                     env: dict[str, str]) -> CaseOutcome:
+    if case.uncovered_reason:
+        return CaseOutcome(case.command, "uncovered", None,
+                           (case.uncovered_reason,))
+    for setup_argv in case.setup:
+        problem = _setup_problem(execute, setup_argv, env)
+        if problem:
+            return CaseOutcome(case.command, "setup", None, (problem,))
+    try:
+        run = execute(case.argv, env)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        problem = f"execution failed: {type(exc).__name__}: {exc}"
+        return CaseOutcome(case.command, "success", None, (problem,))
+    return CaseOutcome(case.command, "success", run.rc,
+                       tuple(success_violations(run)))
+
+
+def run_matrix_core(
+    runner: MatrixRunner | None = None,
+    env: dict[str, str] | None = None,
+) -> list[CaseOutcome]:
+    execute = run_cli_case_with_env if runner is None else runner
+    if env is not None:
+        return [_run_matrix_case(case, execute, env)
+                for case in CORE_SUCCESS_MANIFEST]
+    with tempfile.TemporaryDirectory(prefix="svq_p182_1c_") as snapshot_dir:
+        run_env = dict(os.environ, SVQ_SNAPSHOT_DIR=snapshot_dir)
+        return [_run_matrix_case(case, execute, run_env)
+                for case in CORE_SUCCESS_MANIFEST]
+
+
+def render_matrix_core(
+    outcomes: list[CaseOutcome],
+    manifest_problems: list[str] | None = None,
+) -> bool:
+    print("P182.1c core standard success matrix (26 core standard commands)")
+    problems = [] if manifest_problems is None else manifest_problems
+    if problems:
+        print("manifest: FAIL")
+        for problem in problems:
+            print(f"  - {problem}")
+    for outcome in outcomes:
+        if outcome.kind == "uncovered":
+            print(f"UNCOVERED\t{outcome.label}")
+        elif outcome.kind == "setup":
+            print(f"SETUP_FAIL\t{outcome.label}")
+        else:
+            verdict = "PASS" if outcome.passed else "FAIL"
+            rc = "-" if outcome.rc is None else str(outcome.rc)
+            print(f"{verdict}\t{outcome.label}\trc={rc}")
+        for problem in outcome.problems:
+            print(f"  - {problem}")
+    passed = sum(1 for outcome in outcomes
+                 if outcome.kind == "success" and outcome.passed)
+    blocked = len(outcomes) - passed
+    ok = not problems and passed == len(outcomes) and len(outcomes) == 26
+    detail = f"{passed}/{len(outcomes)}"
+    if blocked:
+        detail += f", {blocked} blocked"
+    print(f"matrix-core: {'PASS' if ok else 'FAIL'} ({detail})")
+    return ok
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group()
@@ -234,6 +541,8 @@ def _parser() -> argparse.ArgumentParser:
                       help="read-only inventory (default)")
     mode.add_argument("--canary", action="store_true",
                       help="run the 6 success + 1 failure envelope canary")
+    mode.add_argument("--matrix-core", action="store_true",
+                      help="run the 26 core standard success matrix")
     parser.add_argument("--json", action="store_true",
                         help="machine-readable inventory output")
     return parser
@@ -246,6 +555,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.json:
             parser.error("--json is not supported with --canary")
         return 0 if render_canary(run_canary()) else 1
+    if args.matrix_core:
+        if args.json:
+            parser.error("--json is not supported with --matrix-core")
+        outcomes = run_matrix_core()
+        problems = matrix_manifest_problems()
+        return 0 if render_matrix_core(outcomes, problems) else 1
     data = inventory()
     if args.json:
         print(json.dumps(data, indent=2, ensure_ascii=False))

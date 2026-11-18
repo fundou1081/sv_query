@@ -342,8 +342,17 @@ def test_baseline_snapshot_really_differs_from_current_implementation(baseline_s
     assert not (baseline_src / "cli" / "_session_adapter.py").exists()
 
 
+def _normalise_intentional_paths_metadata(stdout: str) -> dict:
+    """P182.1c deliberately reclassifies paths as direct; compare the rest."""
+    data = json.loads(stdout)
+    for command in data["commands"]:
+        if command["name"] == "paths":
+            command["envelope"] = "<P182.1c: direct>"
+    return data
+
+
 @pytest.mark.parametrize("name,args", CASES, ids=[c[0] for c in CASES])
-def test_capabilities_success_output_is_byte_identical_to_baseline(
+def test_capabilities_success_output_matches_baseline_except_paths_metadata(
     baseline_src, name, args
 ):
     before = _run_with_src(baseline_src, args)
@@ -353,7 +362,14 @@ def test_capabilities_success_output_is_byte_identical_to_baseline(
         f"{name}: rc {before.returncode} -> {after.returncode}\n"
         f"stderr(before)={before.stderr[:500]}\nstderr(after)={after.stderr[:500]}"
     )
-    assert before.stdout == after.stdout, f"{name}: stdout changed"
+    if name.startswith("json"):
+        assert _normalise_intentional_paths_metadata(before.stdout) == \
+            _normalise_intentional_paths_metadata(after.stdout)
+        current = json.loads(after.stdout)
+        paths = next(c for c in current["commands"] if c["name"] == "paths")
+        assert paths["envelope"] == "direct"
+    else:
+        assert before.stdout == after.stdout, f"{name}: stdout changed"
     assert before.stderr == after.stderr, f"{name}: stderr changed"
     assert after.stdout, f"{name}: 输出不应为空（A/B 不能是同为空）"
 

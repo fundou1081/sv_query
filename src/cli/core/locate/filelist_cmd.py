@@ -67,6 +67,7 @@ def prune_cmd(
         "command": "filelist_prune",
         "params": {"filelist": str(fl), "top": top},
         "result": result.as_dict(),
+        "errors": [],
     }
     if output is not None:
         patch = _write_output(output, result.selected, apply, force)
