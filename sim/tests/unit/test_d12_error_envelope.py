@@ -357,6 +357,7 @@ def _normalise_intentional_paths_metadata(stdout: str) -> dict:
                 "trace covergroup", "filelist prune"):
         commands.pop(key, None)
     data.get("json_contract", {}).pop("dataflow_result", None)
+    data.get("json_contract", {}).pop("stats_result", None)
     return data
 
 
@@ -383,6 +384,8 @@ def test_capabilities_success_output_matches_baseline_except_paths_metadata(
         assert "output" in commands["filelist prune"]["optional_result_fields"]
         assert current["json_contract"]["dataflow_result"][
             "primary_latency_cycles"]["type"] == "integer|null"
+        assert current["json_contract"]["stats_result"][
+            "elaboration_errors"]["type"] == "array<object>"
         assert _normalise_intentional_paths_metadata(before.stdout) == \
             _normalise_intentional_paths_metadata(after.stdout)
     else:

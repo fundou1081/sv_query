@@ -218,7 +218,8 @@ def _read_filelist_full(filelist_path: str, base_dir: Path) -> tuple[dict[str, s
     if not sources:
         raise CompilationError(
             f"filelist {filelist_path} 没有解析到任何源文件 "
-            f"({len(spec.missing)} 个条目缺失/不可解析) — 请检查路径与基准目录"
+            f"({len(spec.missing)} 个条目缺失/不可解析) — 请检查路径与基准目录",
+            error_code="E_FILELIST_INCOMPLETE",
         )
     return sources, list(spec.include_dirs)
 

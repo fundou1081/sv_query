@@ -12,9 +12,9 @@
 
 | 项 | 值 | 说明 |
 |---|---|---|
-| 源码规模 | 145 文件 / 50,766 行 | `find src -name "*.py"`（2026-11-16 实测） |
-| 测试规模 | 418 测试文件 / 68,885 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **3068 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-18 P182.1d 全量复核**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
+| 源码规模 | 145 文件 / 50,780 行 | `find src -name "*.py"`（2026-11-16 实测） |
+| 测试规模 | 419 测试文件 / 68,920 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
+| 全量 (canonical) | **3072 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-18 P182.1d 全量复核**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 迭代记录 | `docs/task_tree/iterations/` (519 份, 只增不改) | 每次迭代一份（2026-11-16 实测） |
@@ -57,6 +57,7 @@
 | [dev/CODING_STYLE.md](dev/CODING_STYLE.md) | 编码风格与设计决策: 先探索后决策 / 单一实现 / 修根因 / 函数职责 / 结构化数据 / 影响面 / 协作规则 |
 | [dev/ENVELOPE_INVENTORY.md](dev/ENVELOPE_INVENTORY.md) | **P182.1a**: 45 命令 envelope 只读盘点；32 standard（26 core + 6 exp）/ 13 direct；snapshot list 根类型不一致；P182.1b 增加 7-case canary gate；P182.1c 增加 26-case core standard 成功矩阵（当前 26 PASS） |
 | [dev/ENVELOPE_FAILURE_INVENTORY.md](dev/ENVELOPE_FAILURE_INVENTORY.md) | **P182.1d**: 26 个 core standard 各一条最小失败输入；只读观测 rc/ok/error_code/errors/result；当前 22 operational rc1 + 4 business rc0/okfalse；不是 gate |
+| [dev/ENVELOPE_STATS_COMPLETENESS.md](dev/ENVELOPE_STATS_COMPLETENESS.md) | **P182.3**: stats 成功无 elaboration errors；malformed JSON 结构化失败；stats-completeness gate |
 | [dev/ENVELOPE_RESULT_TYPES.md](dev/ENVELOPE_RESULT_TYPES.md) | **P182.2c/2d**: 26 个 core standard 顶层值类型/enum + 2 变体；28/28 PASS |
 | [dev/ENVELOPE_RESULT_SCHEMA.md](dev/ENVELOPE_RESULT_SCHEMA.md) | **P182.2b**: 26 个 core standard 的 result 必需键 schema；optional fields 已登记 |
 | [dev/ENVELOPE_JSON_SCHEMA.md](dev/ENVELOPE_JSON_SCHEMA.md) | **P182.2**: 从 JSON_CONTRACT 生成 standard success 顶层 schema；26/26 matrix 可执行校验 |

@@ -198,9 +198,9 @@
           "elaboration_errors": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "object"
             },
-            "description": "pyslang elaboration errors (if any)"
+            "description": "structured pyslang elaboration errors (if any)"
           }
         }
       }

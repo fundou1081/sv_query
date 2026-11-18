@@ -643,3 +643,12 @@ Typer 分发，并受进程全局态 `_QUIET` / `_ACTIVE_CONFIG` 影响。`Reque
 | §3.11 依赖闭包手工 | [validation/OPENTITAN_PILOT_2026-11-09.md](validation/OPENTITAN_PILOT_2026-11-09.md) §P2、[validation/OPENTITAN_I2C_2026-11-09.md](validation/OPENTITAN_I2C_2026-11-09.md) §P4 |
 | §3.12 snapshot 无 MIG | [validation/SNAPSHOT_2026-11-07.md](validation/SNAPSHOT_2026-11-07.md) §3 |
 | §3.13 语料自撰 | [validation/TASK_DISTRIBUTION_2026-11-09.md](validation/TASK_DISTRIBUTION_2026-11-09.md)、[validation/OPENTITAN_INTAKE_RESULTS_2026-11-09.md](validation/OPENTITAN_INTAKE_RESULTS_2026-11-09.md) |
+
+
+### 3.20 stats 失败 JSON 仍有两种形状
+
+- `CompilationError` → `make_error`：`error` 是字符串，含 `errors[]`；
+- `FileNotFoundError` 等 → `emit_json_error`：`error` 是 `{type,message}` 对象，无 `errors[]`。
+
+两者 `command` 字段也不同（`stats` vs `stats <path>`）。P182.3 未统一，留给 P182.4；
+agent 解析失败信封时必须分支。

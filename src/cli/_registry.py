@@ -956,7 +956,7 @@ JSON_CONTRACT = {
         "nodes": {"type": "object", "desc": "node count by kind"},
         "edges": {"type": "object", "desc": "edge count by kind"},
         "modules": {"type": "array", "desc": "module list/info"},
-        "elaboration_errors": {"type": "array", "desc": "elaboration issues"},
+        "elaboration_errors": {"type": "array<object>", "desc": "structured elaboration issues"},
     },
     "evidence_payload": {
         "signal": {"type": "string", "desc": "signal id"},

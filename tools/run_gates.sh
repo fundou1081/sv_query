@@ -8,6 +8,7 @@ cd "$(dirname "$0")/.."
 python3 -m pytest sim/tests/ -m "not opensource" -q -p no:randomly
 python3 tools/check_docs.py --strict
 python3 tools/check_agent_docs.py
+python3 tools/check_stats_completeness.py
 python3 tools/check_except_pass.py
 python3 tools/check_semantic_regex.py
 python3 tools/check_cli_layers.py

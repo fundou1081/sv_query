@@ -261,6 +261,20 @@ def stats_callback(
                 for m in modules[:10]:
                     print(f"    - {m}")
     except CompilationError as e:
+        # [P182.3] JSON mode must not emit a bare human error: agents need a
+        # structured failure with no partial result.
+        if json_output:
+            import json as json_mod
+
+            from cli.errors import code_for_exception, make_error
+
+            payload = make_error(
+                code_for_exception(e), str(e), command="stats",
+                elaboration_errors=e.errors,
+            )
+            print(json_mod.dumps(payload, indent=2 if pretty else None,
+                                 ensure_ascii=False))
+            raise typer.Exit(code=1) from None
         # [ADD 2026-06-11 任务3] 统一 catch, 不暴露 Python traceback
         handle_compilation_error(e)
 

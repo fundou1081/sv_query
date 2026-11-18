@@ -146,7 +146,7 @@ TYPE_SCHEMAS: dict[str, dict[str, object]] = {
     "stats": {
         "total_nodes": "integer", "total_edges": "integer",
         "nodes": "object", "edges": "object",
-        "modules": "array", "elaboration_errors": "array",
+        "modules": "array", "elaboration_errors": "array<object>",
     },
     "drivers": {
         "signals": "array", "total_signals": "integer",

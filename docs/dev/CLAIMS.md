@@ -46,6 +46,7 @@
 | C-23 | `sv_query.Session.execute` 是只读、无 CLI/环境依赖的请求接缝；`version` 返回结构化结果，非法 request/未知 op 返回结构化错误 | fixture | `test_d10_session_contract.py` | `verified`（库层；仅 version op） |
 | C-24 | `sv_query.Session(handlers=...)` 可把只读 op 委派给注入 handler（`version` 不可覆盖）；handler 异常/非 mapping result 返回结构化 `E_HANDLER_FAILED`；CLI `capabilities` 经 Session 调用 `cli._registry.to_json`，六个输出 case 与 D11 前逐字节一致；P182.1c 仅改 paths registry envelope（standard→direct），其余不变 | fixture | `test_d11_capabilities_session.py` | `verified`（库层 + capabilities adapter；调用形式 `Session(...).execute(...)`；result 仅顶层拷贝；CLI 失败信封自 D12 起经 `cli._session_adapter` 映射，见 C-25） |
 | C-25 | Session 三个错误码与 `error.type` 单一来源 `sv_query.errors`；`cli.errors.ErrorCode` 逐值接纳同一组码；Session 失败响应经唯一 adapter（`cli._session_adapter.fail_from_session`）映射到 CLI `fail`，未知 code → `E_INTERNAL` 且原值保留在 `session_error_code`；`capabilities` 成功输出与 D12 前逐字节一致 | fixture | `test_d12_error_envelope.py` | `verified`（capabilities 失败路径；全量 run() dispatch 评估为不采纳（D15 ADR）） |
+| C-26 | `stats` 成功时 `elaboration_errors=[]`；malformed RTL 的 `--json` 返回 `E_ELABORATION_FAILED`、rc=1、无 result | fixture | `test_p182_3_stats_completeness.py` / `tools/check_stats_completeness.py` | `verified`（CLI 路径；不恢复 partial graph） |
 
 ---
 
