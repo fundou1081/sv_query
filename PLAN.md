@@ -579,7 +579,8 @@ P182 agent delivery-layer plan from corrected review (2026-11-16) <待做>
 -- P182.1a envelope inventory (read-only; no gate) <已完成>
 -- P182.1b canary standard envelope gate (phase 1) <已完成>
 -- P182.1c core standard success matrix (27) <进行中>
--- P182.1d core standard failure/unknown/truncated matrix <待做>
+-- P182.1d core standard failure inventory (read-only report) <进行中>
+-- P182.1d2 failure contract decision + fixes <待做>
 -- P182.1e direct envelope exceptions <待做>
 -- P182.2 executable JSON schema + validation gate <待做>
 -- P182.3 stats/elaboration completeness contract <待做>
