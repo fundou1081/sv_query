@@ -9,8 +9,8 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P182.1e direct envelope contract (read-only)** `<进行中>`
-  - 只读固化 13 个 direct 命令的例外形状；不改 CLI
+- **当前 item**: **P182.2 executable JSON schema + validation gate** `<待做>`
+  - P182.1 envelope 组完成；P182.2 开始 schema
   - 严格：operational failure => rc=1 + ok=false
   - 混合：仅 drivers/loads/trace evidence/trace profile 的 per-signal E_SIGNAL_NOT_FOUND => rc=0 + ok=false + errors[].error_code
   - phase 1：`--failure-inventory [--json]` 26/26 条；22 operational rc1 + 4 business rc0/ok=false（drivers/loads/evidence/profile 未知 signal）；NO_FAILURE_INPUT=0
@@ -28,7 +28,7 @@
 ## 📌 当前真实基线
 
 ```text
-canonical:  3048 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  3052 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 
@@ -37,7 +37,7 @@ opensource: 112 passed / 11 skipped / 0 failed
 - 1 pre-existing failed = `test_real_plan_file_passes`：PLAN.md baseline 的
 
 - P182.1d 新增 7 条测试后，当前全量 3038 通过 + 1 pre-existing 失败；绿色基线
-  仍按 P182.1c 的 3048 记，待 PLAN 修复后统一刷新；
+  仍按 P182.1c 的 3052 记，待 PLAN 修复后统一刷新；
 - 计数真相源：[docs/INDEX.md](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里)。
 
 ## 🧭 产品边界

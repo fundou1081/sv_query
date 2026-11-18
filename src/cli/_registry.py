@@ -371,8 +371,9 @@ JSON_CONTRACT = {
         "standard": "ok/command/params/result/errors",
         "direct": "command-specific top-level object or array; may omit result/errors",
         "exceptions": ["capabilities", "search", "instances", "hierarchy", "ports",
-                       "params", "connections", "class", "snapshot save",
-                       "snapshot list", "snapshot compare", "snapshot delete"],
+                       "params", "connections", "class", "paths",
+                       "snapshot save", "snapshot list", "snapshot compare",
+                       "snapshot delete"],
         "rule": "capabilities.commands[].envelope is the machine-readable source of truth",
     },
     "nullable_policy": {

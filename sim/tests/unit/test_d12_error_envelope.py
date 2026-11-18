@@ -348,6 +348,10 @@ def _normalise_intentional_paths_metadata(stdout: str) -> dict:
     for command in data["commands"]:
         if command["name"] == "paths":
             command["envelope"] = "<P182.1c: direct>"
+    policy = data.get("json_contract", {}).get("envelope_policy", {})
+    exceptions = policy.get("exceptions")
+    if isinstance(exceptions, list) and "paths" in exceptions:
+        policy["exceptions"] = [x for x in exceptions if x != "paths"]
     return data
 
 
@@ -363,11 +367,12 @@ def test_capabilities_success_output_matches_baseline_except_paths_metadata(
         f"stderr(before)={before.stderr[:500]}\nstderr(after)={after.stderr[:500]}"
     )
     if name.startswith("json"):
-        assert _normalise_intentional_paths_metadata(before.stdout) == \
-            _normalise_intentional_paths_metadata(after.stdout)
         current = json.loads(after.stdout)
         paths = next(c for c in current["commands"] if c["name"] == "paths")
         assert paths["envelope"] == "direct"
+        assert "paths" in current["json_contract"]["envelope_policy"]["exceptions"]
+        assert _normalise_intentional_paths_metadata(before.stdout) == \
+            _normalise_intentional_paths_metadata(after.stdout)
     else:
         assert before.stdout == after.stdout, f"{name}: stdout changed"
     assert before.stderr == after.stderr, f"{name}: stderr changed"

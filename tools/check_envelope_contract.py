@@ -1074,6 +1074,75 @@ def render_matrix_failure(
     return ok
 
 
+# ---------------------------------------------------------------------------
+# P182.1e — direct envelope contract (static, read-only, no CLI execution)
+# ---------------------------------------------------------------------------
+DIRECT_ROOT_EXPECTATIONS: dict[str, str] = {
+    "instances": "object",
+    "connections": "object",
+    "hierarchy": "object",
+    "params": "object",
+    "ports": "object",
+    "class": "object",
+    "paths": "object",
+    "search": "object",
+    "capabilities": "object",
+    "snapshot save": "object",
+    "snapshot list": "list_or_object",
+    "snapshot compare": "object",
+    "snapshot delete": "object",
+}
+
+
+def direct_contract_rows() -> list[dict]:
+    rows = []
+    for spec in COMMANDS:
+        if not spec.listed or spec.envelope != "direct":
+            continue
+        contract = _contract(spec.key)
+        rows.append({
+            "name": spec.key,
+            "root": DIRECT_ROOT_EXPECTATIONS.get(spec.key, "unknown"),
+            "contract": bool(contract),
+            "contract_keys": sorted(contract) if contract else [],
+        })
+    return rows
+
+
+def direct_contract_problems() -> list[str]:
+    rows = direct_contract_rows()
+    names = [row["name"] for row in rows]
+    problems = []
+    if len(rows) != 13:
+        problems.append(f"direct commands: {len(rows)}, expected 13")
+    if len(set(names)) != len(names):
+        problems.append("duplicate direct command")
+    expected = set(DIRECT_ROOT_EXPECTATIONS)
+    missing = sorted(expected - set(names))
+    extra = sorted(set(names) - expected)
+    if missing:
+        problems.append("missing direct contract rows: " + ", ".join(missing))
+    if extra:
+        problems.append("unexpected direct commands: " + ", ".join(extra))
+    for row in rows:
+        if not row["contract"]:
+            problems.append(f"{row['name']}: missing JSON_CONTRACT entry")
+        if row["root"] == "unknown":
+            problems.append(f"{row['name']}: no declared root kind")
+    return problems
+
+
+def render_direct_contract(rows: list[dict], problems: list[str]) -> bool:
+    print("P182.1e direct envelope contract (static; no command execution)")
+    for row in rows:
+        print(f"{row['name']}\troot={row['root']}\tcontract={row['contract']}")
+    for problem in problems:
+        print(f"  - {problem}")
+    ok = not problems
+    print(f"direct-contract: {'PASS' if ok else 'FAIL'} ({len(rows)}/13)")
+    return ok
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group()
@@ -1089,6 +1158,8 @@ def _parser() -> argparse.ArgumentParser:
     mode.add_argument("--matrix-failure", action="store_true",
                       help="gate rc/ok/error_code for the 26 failure inputs "
                            "(strict + 4-command hybrid allowlist)")
+    mode.add_argument("--direct-contract", action="store_true",
+                      help="static direct-envelope contract check (no CLI execution)")
     parser.add_argument("--json", action="store_true",
                         help="machine-readable inventory output")
     return parser
@@ -1120,6 +1191,12 @@ def main(argv: list[str] | None = None) -> int:
         outcomes = run_matrix_failure()
         problems = failure_contract_manifest_problems()
         return 0 if render_matrix_failure(outcomes, problems) else 1
+    if args.direct_contract:
+        if args.json:
+            parser.error("--json is not supported with --direct-contract")
+        rows = direct_contract_rows()
+        problems = direct_contract_problems()
+        return 0 if render_direct_contract(rows, problems) else 1
     data = inventory()
     if args.json:
         print(json.dumps(data, indent=2, ensure_ascii=False))
