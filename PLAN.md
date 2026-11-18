@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P182.1e direct envelope exceptions <待做>
+current item : P182.1e direct envelope contract (read-only) <进行中>
 
 ## 计划树
 
@@ -581,7 +581,7 @@ P182 agent delivery-layer plan from corrected review (2026-11-16) <待做>
 -- P182.1c core standard success matrix (26) <已完成>
 -- P182.1d core standard failure inventory (read-only report) <已完成>
 -- P182.1f strict failure contract + hybrid allowlist <已完成>
--- P182.1e direct envelope exceptions <待做>
+-- P182.1e direct envelope contract (read-only) <进行中>
 -- P182.2 executable JSON schema + validation gate <待做>
 -- P182.3 stats/elaboration completeness contract <待做>
 -- P182.4 agent entry convergence + capabilities-generated skill <待做>

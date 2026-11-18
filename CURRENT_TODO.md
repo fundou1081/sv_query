@@ -9,7 +9,8 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P182.1e direct envelope exceptions** `<待做>`
+- **当前 item**: **P182.1e direct envelope contract (read-only)** `<进行中>`
+  - 只读固化 13 个 direct 命令的例外形状；不改 CLI
   - 严格：operational failure => rc=1 + ok=false
   - 混合：仅 drivers/loads/trace evidence/trace profile 的 per-signal E_SIGNAL_NOT_FOUND => rc=0 + ok=false + errors[].error_code
   - phase 1：`--failure-inventory [--json]` 26/26 条；22 operational rc1 + 4 business rc0/ok=false（drivers/loads/evidence/profile 未知 signal）；NO_FAILURE_INPUT=0
