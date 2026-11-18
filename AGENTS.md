@@ -21,8 +21,8 @@ RTL/filelist/snapshot
 
 ## 1. 真理源层级 (Source of Truth Hierarchy)
 
-1. [PLAN.md](PLAN.md) — 唯一计划源；`current item` 是当前工作。
-2. [产品方向](docs/architecture/product_direction_2026-10-31.md) — 做什么/不做什么。
+1. [产品方向](docs/architecture/product_direction_2026-10-31.md) — 做什么/不做什么。
+2. [PLAN.md](PLAN.md) — 唯一计划源；`current item` 是当前工作。
 3. [SEMANTIC_CONTRACTS](docs/dev/SEMANTIC_CONTRACTS.md) — 数据边/路径/verified 语义。
 4. [CLAIMS](docs/dev/CLAIMS.md) — 对外声称与 gate 的对应关系。
 5. [docs/INDEX.md](docs/INDEX.md) — 文档登记与 canonical 计数真相源。
