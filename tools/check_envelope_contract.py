@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""check_envelope_contract.py — P182.1a inventory + P182.1b canary + P182.1c matrix.
+"""check_envelope_contract.py — P182.1a inventory + P182.1b canary + P182.1c matrix
++ P182.1d failure inventory.
 
-Three explicit modes:
+Four explicit modes:
 
 - ``--inventory`` (default): read-only, static; reads registry/JSON_CONTRACT and
   prints the envelope surface. It does not execute any command.
@@ -10,12 +11,19 @@ Three explicit modes:
 - ``--matrix-core``: executes the 26 core standard success cases from an
   explicit manifest (command + argv + real fixture). Failure/unknown/truncated,
   direct and exp commands are out of scope for P182.1c phase 1.
+- ``--failure-inventory``: executes one explicit failure input per core standard
+  command and records rc/ok/error_code/errors/result plus a descriptive
+  classification. Read-only and non-gating: observed inconsistencies never
+  change the exit code. Commands without a legitimate failure input are marked
+  ``NO_FAILURE_INPUT`` with a reason.
 
 Usage:
     python3 tools/check_envelope_contract.py --inventory
     python3 tools/check_envelope_contract.py --inventory --json
     python3 tools/check_envelope_contract.py --canary
     python3 tools/check_envelope_contract.py --matrix-core
+    python3 tools/check_envelope_contract.py --failure-inventory
+    python3 tools/check_envelope_contract.py --failure-inventory --json
 """
 from __future__ import annotations
 
@@ -295,6 +303,161 @@ CORE_SUCCESS_MANIFEST: tuple[MatrixCase, ...] = (
 )
 
 
+# P182.1d — one explicit minimal failure input per core standard command.
+# Fixtures are existing repository files where the failure is a semantic bad
+# argument; ``fixture`` is None when the failure itself is a missing source or
+# filelist and no existing fixture is consumed. Nothing is invented: every
+# failure below was observed on the current tree before being recorded.
+FAILURE_MISSING_FILE = "does_not_exist_p182_1d.sv"
+FAILURE_MISSING_FILELIST = "does_not_exist_p182_1d.f"
+FAILURE_SNAPSHOT_TAG = "no_such_snapshot_p182_1d"
+
+
+@dataclass(frozen=True)
+class FailureCase:
+    """One explicit core-standard failure input (observation, not a contract)."""
+
+    command: str
+    argv: tuple[str, ...]
+    fixture: str | None = None
+    no_failure_reason: str | None = None
+
+
+CORE_FAILURE_MANIFEST: tuple[FailureCase, ...] = (
+    FailureCase(
+        "drivers",
+        ("drivers", "NoSuchSignal", "--filelist", FIX_SCHEDULER, "--json"),
+        FIX_SCHEDULER,
+    ),
+    FailureCase(
+        "loads",
+        ("loads", "NoSuchSignal", "--filelist", FIX_SCHEDULER, "--json"),
+        FIX_SCHEDULER,
+    ),
+    FailureCase(
+        "trace evidence",
+        ("trace", "evidence", "NoSuchSignal", "-f", FIX_SYNC_FIFO, "--json"),
+        FIX_SYNC_FIFO,
+    ),
+    FailureCase(
+        "trace profile",
+        ("trace", "profile", "NoSuchSignal", "-f", FIX_SYNC_FIFO, "--json"),
+        FIX_SYNC_FIFO,
+    ),
+    FailureCase(
+        "trace lookup",
+        ("trace", "lookup", "--path", "sync_fifo.data_out",
+         "-f", FAILURE_MISSING_FILE, "--json"),
+    ),
+    FailureCase(
+        "trace manifest",
+        ("trace", "manifest", "--path", "sync_fifo.data_out",
+         "-f", FAILURE_MISSING_FILE, "--json"),
+    ),
+    FailureCase(
+        "trace constraints",
+        ("trace", "constraints", "NoSuchItem", "-f", FIX_MIXED, "--json"),
+        FIX_MIXED,
+    ),
+    FailureCase(
+        "trace constraint-neighborhood",
+        ("trace", "constraint-neighborhood", "NoSuchItem", "-f", FIX_CONSTRAINT, "--json"),
+        FIX_CONSTRAINT,
+    ),
+    FailureCase(
+        "trace tb-join",
+        ("trace", "tb-join", "tb_item.rcont", "-f", FIX_TB,
+         "--from-snapshot", FAILURE_SNAPSHOT_TAG, "--json"),
+        FIX_TB,
+    ),
+    FailureCase(
+        "trace frontier",
+        ("trace", "frontier", "top.nope", "--direction", "fanout",
+         "-f", FIX_ARCH, "--json"),
+        FIX_ARCH,
+    ),
+    FailureCase(
+        "trace constraint-chain",
+        ("trace", "constraint-chain", "rnd_item.nope", "rnd_item.d",
+         "-f", FIX_CONSTRAINT, "--json"),
+        FIX_CONSTRAINT,
+    ),
+    FailureCase(
+        "trace covergroups",
+        ("trace", "covergroups", "-f", FAILURE_MISSING_FILE, "--json"),
+    ),
+    FailureCase(
+        "trace coverpoints",
+        ("trace", "coverpoints", "top.e.nope", "-f", FIX_MIXED, "--json"),
+        FIX_MIXED,
+    ),
+    FailureCase(
+        "trace covergroup",
+        ("trace", "covergroup", "no_such_cg", "--instance", "top.e",
+         "-f", FIX_MIXED, "--json"),
+        FIX_MIXED,
+    ),
+    FailureCase(
+        "controlflow analyze",
+        ("controlflow", "analyze", "NoSuchSignal",
+         "--filelist", FIX_SCHEDULER, "--json"),
+        FIX_SCHEDULER,
+    ),
+    FailureCase(
+        "controlflow list-conditioned",
+        ("controlflow", "list-conditioned", "--filelist", FAILURE_MISSING_FILELIST, "--json"),
+    ),
+    FailureCase(
+        "dataflow analyze",
+        ("dataflow", "analyze", "NoSuchSignal", "sync_fifo.data_out",
+         "-f", FIX_SYNC_FIFO, "--json"),
+        FIX_SYNC_FIFO,
+    ),
+    FailureCase(
+        "verify consistency",
+        ("verify", "consistency", "-f", FAILURE_MISSING_FILE, "--json"),
+    ),
+    FailureCase(
+        "verify claim",
+        ("verify", "claim", "-f", FIX_STRUCT, "--claim", "{bad json", "--json"),
+        FIX_STRUCT,
+    ),
+    FailureCase(
+        "verify structural",
+        ("verify", "structural", "-f", FAILURE_MISSING_FILE, "--json"),
+    ),
+    FailureCase(
+        "scope",
+        ("scope", "top.nope", "-f", FIX_STRUCT, "--json"),
+        FIX_STRUCT,
+    ),
+    FailureCase(
+        "stats",
+        ("stats", "--file", FAILURE_MISSING_FILE, "--json"),
+    ),
+    FailureCase(
+        "graph nodes",
+        ("graph", "nodes", "--filelist", FAILURE_MISSING_FILELIST, "--json"),
+    ),
+    FailureCase(
+        "graph edges",
+        ("graph", "edges", "--filelist", FAILURE_MISSING_FILELIST, "--json"),
+    ),
+    FailureCase(
+        "filelist prune",
+        ("filelist", "prune", "--filelist", FIX_M3, "--top", "top_minimal",
+         "--output", "p182_1d_bad_output.txt", "--json"),
+        FIX_M3,
+    ),
+    FailureCase(
+        "graph subgraph",
+        ("graph", "subgraph", "sync_fifo.nope", "-f", FIX_SYNC_FIFO,
+         "--depth", "1", "--json"),
+        FIX_SYNC_FIFO,
+    ),
+)
+
+
 @dataclass(frozen=True)
 class CaseRun:
     rc: int
@@ -534,6 +697,254 @@ def render_matrix_core(
     return ok
 
 
+# ---------------------------------------------------------------------------
+# P182.1d — failure inventory (observation only, non-gating)
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class FailureObservation:
+    """What one real CLI failure invocation returned; descriptive, not a verdict."""
+
+    rc: int | None
+    stdout_json: bool
+    ok: bool | None
+    error_code: str | None
+    errors_present: bool
+    errors_count: int | None
+    result_present: bool
+    classification: str
+    execution_error: str | None = None
+
+    def as_dict(self) -> dict:
+        return {
+            "rc": self.rc,
+            "stdout_json": self.stdout_json,
+            "ok": self.ok,
+            "error_code": self.error_code,
+            "errors_present": self.errors_present,
+            "errors_count": self.errors_count,
+            "result_present": self.result_present,
+            "classification": self.classification,
+            "execution_error": self.execution_error,
+        }
+
+
+@dataclass(frozen=True)
+class FailureEntry:
+    command: str
+    argv: tuple[str, ...]
+    fixture: str | None
+    status: str
+    reason: str | None
+    observation: FailureObservation | None
+
+    def as_dict(self) -> dict:
+        return {
+            "command": self.command,
+            "argv": list(self.argv),
+            "fixture": self.fixture,
+            "status": self.status,
+            "reason": self.reason,
+            "observation": None if self.observation is None
+                           else self.observation.as_dict(),
+        }
+
+
+def _classify_failure(rc: int | None, ok: bool | None, stdout_json: bool) -> str:
+    """Describe rc/ok only. This is not a pass/fail contract."""
+    if not stdout_json:
+        return "usage_error_no_envelope" if rc == 2 else "no_json_output"
+    if rc == 2:
+        return "usage_error"
+    if rc not in (0, None):
+        return "operational_error"
+    if ok is False:
+        return "business_ok_false"
+    if ok is True:
+        return "success_not_failure"
+    return "rc0_ok_unknown"
+
+
+def observe_failure(run: CaseRun) -> FailureObservation:
+    """Extract rc/ok/error_code/errors/result from one failure invocation."""
+    try:
+        root = json.loads(run.stdout)
+    except json.JSONDecodeError:
+        return FailureObservation(
+            rc=run.rc, stdout_json=False, ok=None, error_code=None,
+            errors_present=False, errors_count=None, result_present=False,
+            classification=_classify_failure(run.rc, None, False),
+        )
+    if not isinstance(root, dict):
+        return FailureObservation(
+            rc=run.rc, stdout_json=False, ok=None, error_code=None,
+            errors_present=False, errors_count=None, result_present=False,
+            classification=_classify_failure(run.rc, None, False),
+        )
+    ok = root.get("ok")
+    if not isinstance(ok, bool):
+        ok = None
+    error_code = root.get("error_code")
+    if not isinstance(error_code, str) or not error_code:
+        error_code = None
+    errors = root.get("errors")
+    errors_present = "errors" in root
+    errors_count = len(errors) if isinstance(errors, list) else None
+    return FailureObservation(
+        rc=run.rc,
+        stdout_json=True,
+        ok=ok,
+        error_code=error_code,
+        errors_present=errors_present,
+        errors_count=errors_count,
+        result_present="result" in root,
+        classification=_classify_failure(run.rc, ok, True),
+    )
+
+
+def failure_manifest_problems() -> list[str]:
+    """Static manifest checks: count, registry coverage, fixtures, argv."""
+    problems: list[str] = []
+    names = [case.command for case in CORE_FAILURE_MANIFEST]
+    duplicates = sorted({name for name in names if names.count(name) > 1})
+    if duplicates:
+        problems.append(f"duplicate manifest commands: {', '.join(duplicates)}")
+    expected = set(core_standard_commands())
+    actual = set(names)
+    missing = sorted(expected - actual)
+    extra = sorted(actual - expected)
+    if missing:
+        problems.append(f"missing core standard commands: {', '.join(missing)}")
+    if extra:
+        problems.append(f"non-core-standard commands in manifest: {', '.join(extra)}")
+    if len(CORE_FAILURE_MANIFEST) != 26:
+        problems.append(
+            f"manifest has {len(CORE_FAILURE_MANIFEST)} cases, expected 26"
+        )
+    for case in CORE_FAILURE_MANIFEST:
+        if not case.argv:
+            problems.append(f"{case.command}: empty argv")
+        if case.no_failure_reason:
+            continue
+        if case.fixture is not None:
+            if not (ROOT / case.fixture).exists():
+                problems.append(f"{case.command}: fixture missing: {case.fixture}")
+            if case.fixture not in case.argv:
+                problems.append(
+                    f"{case.command}: manifest fixture {case.fixture} absent from argv"
+                )
+    return problems
+
+
+def _run_failure_case(case: FailureCase, execute: MatrixRunner,
+                      env: dict[str, str]) -> FailureEntry:
+    if case.no_failure_reason:
+        return FailureEntry(case.command, case.argv, case.fixture,
+                            "no_failure_input", case.no_failure_reason, None)
+    try:
+        run = execute(case.argv, env)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        observation = FailureObservation(
+            rc=None, stdout_json=False, ok=None, error_code=None,
+            errors_present=False, errors_count=None, result_present=False,
+            classification="execution_error",
+            execution_error=f"{type(exc).__name__}: {exc}",
+        )
+    else:
+        observation = observe_failure(run)
+    return FailureEntry(case.command, case.argv, case.fixture,
+                        "observed", None, observation)
+
+
+def run_failure_inventory(
+    runner: MatrixRunner | None = None,
+    env: dict[str, str] | None = None,
+) -> list[FailureEntry]:
+    execute = run_cli_case_with_env if runner is None else runner
+    if env is not None:
+        return [_run_failure_case(case, execute, env)
+                for case in CORE_FAILURE_MANIFEST]
+    with tempfile.TemporaryDirectory(prefix="svq_p182_1d_") as snapshot_dir:
+        run_env = dict(os.environ, SVQ_SNAPSHOT_DIR=snapshot_dir)
+        return [_run_failure_case(case, execute, run_env)
+                for case in CORE_FAILURE_MANIFEST]
+
+
+def failure_inventory(runner: MatrixRunner | None = None,
+                      env: dict[str, str] | None = None) -> dict:
+    entries = run_failure_inventory(runner, env)
+    observations = [e.observation for e in entries if e.observation is not None]
+    classes = Counter(o.classification for o in observations)
+    summary = {
+        "expected_commands": 26,
+        "entries": len(entries),
+        "observed": len(observations),
+        "no_failure_input": sum(1 for e in entries
+                                if e.status == "no_failure_input"),
+        "operational_error": classes.get("operational_error", 0),
+        "business_ok_false": classes.get("business_ok_false", 0),
+        "usage_error": (classes.get("usage_error", 0)
+                        + classes.get("usage_error_no_envelope", 0)),
+        "no_json_output": classes.get("no_json_output", 0),
+        "execution_error": classes.get("execution_error", 0),
+        "success_not_failure": classes.get("success_not_failure", 0),
+        "rc0_ok_unknown": classes.get("rc0_ok_unknown", 0),
+        "top_level_error_code_present": sum(1 for o in observations
+                                            if o.error_code),
+        "errors_key_present": sum(1 for o in observations
+                                  if o.errors_present),
+        "result_present": sum(1 for o in observations if o.result_present),
+    }
+    return {
+        "inventory": "P182.1d",
+        "mode": "read-only-failure-inventory",
+        "manifest_problems": failure_manifest_problems(),
+        "summary": summary,
+        "rows": [entry.as_dict() for entry in entries],
+    }
+
+
+def render_failure_inventory(data: dict) -> None:
+    print("P182.1d core standard failure inventory (read-only, non-gating)")
+    problems = data.get("manifest_problems") or []
+    if problems:
+        print("manifest: PROBLEMS (informational only, exit stays 0)")
+        for problem in problems:
+            print(f"  - {problem}")
+    print("command\trc\tok\terror_code\terrors\tresult\tclassification")
+    for row in data["rows"]:
+        observation = row["observation"]
+        if observation is None:
+            print(f"{row['command']}\t-\t-\t-\t-\t-\tNO_FAILURE_INPUT")
+            print(f"  reason: {row['reason']}")
+            continue
+        rc = "-" if observation["rc"] is None else str(observation["rc"])
+        ok = "-" if observation["ok"] is None else str(observation["ok"])
+        code = observation["error_code"] or "-"
+        if observation["errors_count"] is not None:
+            errors = str(observation["errors_count"])
+        else:
+            errors = "absent" if not observation["errors_present"] else "non-list"
+        result = "yes" if observation["result_present"] else "no"
+        print(f"{row['command']}\t{rc}\t{ok}\t{code}\t{errors}\t{result}\t"
+              f"{observation['classification']}")
+        if observation["execution_error"]:
+            print(f"  execution_error: {observation['execution_error']}")
+    s = data["summary"]
+    print(f"entries: {s['entries']}/{s['expected_commands']} "
+          f"observed={s['observed']} no_failure_input={s['no_failure_input']}")
+    print(f"classification: operational_error={s['operational_error']} "
+          f"business_ok_false={s['business_ok_false']} "
+          f"usage_error={s['usage_error']} "
+          f"no_json_output={s['no_json_output']} "
+          f"execution_error={s['execution_error']} "
+          f"success_not_failure={s['success_not_failure']} "
+          f"rc0_ok_unknown={s['rc0_ok_unknown']}")
+    print(f"presence: top_level_error_code={s['top_level_error_code_present']} "
+          f"errors_key={s['errors_key_present']} result={s['result_present']}")
+    print("note: observations only; no pass/fail verdict and no exit-code change")
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group()
@@ -543,6 +954,9 @@ def _parser() -> argparse.ArgumentParser:
                       help="run the 6 success + 1 failure envelope canary")
     mode.add_argument("--matrix-core", action="store_true",
                       help="run the 26 core standard success matrix")
+    mode.add_argument("--failure-inventory", action="store_true",
+                      help="record one failure input per core standard command "
+                           "(observation only, non-gating)")
     parser.add_argument("--json", action="store_true",
                         help="machine-readable inventory output")
     return parser
@@ -561,6 +975,13 @@ def main(argv: list[str] | None = None) -> int:
         outcomes = run_matrix_core()
         problems = matrix_manifest_problems()
         return 0 if render_matrix_core(outcomes, problems) else 1
+    if args.failure_inventory:
+        data = failure_inventory()
+        if args.json:
+            print(json.dumps(data, indent=2, ensure_ascii=False))
+        else:
+            render_failure_inventory(data)
+        return 0
     data = inventory()
     if args.json:
         print(json.dumps(data, indent=2, ensure_ascii=False))

@@ -9,7 +9,7 @@
 
 | 项 | 值（引自 INDEX） | 说明 |
 |---|---|---|
-| 全量 (canonical) | **3032 passed / 0 failed** | `sim/tests/`, `-m "not opensource"`；0 skipped / 0 unexecuted / 123 deferred；35 subtests（2026-11-18 实测，P182.1c）。**0 skipped 不代表测试健康**，见 §语义测试 |
+| 全量 (canonical) | **3039 passed / 0 failed** | `sim/tests/`, `-m "not opensource"`；0 skipped / 0 unexecuted / 123 deferred；35 subtests（P182.1c 最后绿色基线）。P182.1d 新增 7 条测试；当前全量 3038 通过 + 1 个 pre-existing PLAN 失败，绿色基线待 PLAN 修复后刷新。**0 skipped 不代表测试健康**，见 §语义测试 |
 | 回归基线 (unit + regression) | 见 INDEX | `-m "not opensource"` |
 | CLI / integration | 见 INDEX | `sim/tests/cli sim/tests/integration` |
 

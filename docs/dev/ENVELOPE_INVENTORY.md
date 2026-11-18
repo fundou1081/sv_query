@@ -3,7 +3,8 @@
 > **状态**: P182.1a 只读盘点；P182.1b phase 1 在其上增加 7-case canary gate；
 > P182.1c phase 1 增加 26 个 core standard 成功矩阵（`paths` 已归 direct）。
 > 当前树矩阵结果：**26 PASS + 0 FAIL**；`filelist prune` 成功路径已补 `errors`。
-> `paths` 已从 standard 归到 direct。失败/未知/截断（P182.1d）、direct（P182.1e）、exp 仍未覆盖。
+> `paths` 已从 standard 归到 direct。truncated（P182.1d）、direct（P182.1e）、exp 仍未覆盖；
+> 失败输入盘点见 [ENVELOPE_FAILURE_INVENTORY](ENVELOPE_FAILURE_INVENTORY.md)（只读、非 gate）。
 > **计数来源**: `python3 tools/check_envelope_contract.py --inventory --json`
 > **实际根来源**: A 阶段人工采样（§3 注明命令/fixture；不是工具输出）
 > **日期**: 2026-11-18
@@ -73,6 +74,10 @@ python3 tools/check_envelope_contract.py --canary
 
 # P182.1c phase 1 矩阵：26 个 core standard 成功路径（显式 manifest），违规 exit 1
 python3 tools/check_envelope_contract.py --matrix-core
+
+# P182.1d phase 1 失败盘点：26 个命令各一条失败输入；只读观测，恒 exit 0
+python3 tools/check_envelope_contract.py --failure-inventory
+python3 tools/check_envelope_contract.py --failure-inventory --json
 ```
 
 canary 覆盖：`stats` / `drivers` / `loads` / `graph nodes` / `graph edges` /
@@ -104,5 +109,7 @@ matrix-core 覆盖全部 26 个 core standard 命令的成功路径，每条 cas
 - 不能把 direct 的 static contract 当成实际输出；
 - 不能用它替代真实 fixture 的 P182.1c 矩阵。
 
-下一步（P182.1d/P182.1e）：扩 core 失败的失败/未知/截断矩阵；exp 6 条按降级通道；
-13 个 direct 例外逐个裁决（含 `paths` 与 `snapshot list` 双根）。
+下一步（P182.1d/P182.1e）：失败盘点已在
+[ENVELOPE_FAILURE_INVENTORY](ENVELOPE_FAILURE_INVENTORY.md) 输出（只读、非 gate）；
+P182.1f 再裁决失败信封契约；exp 6 条按降级通道；13 个 direct 例外逐个裁决
+（含 `paths` 与 `snapshot list` 双根）。

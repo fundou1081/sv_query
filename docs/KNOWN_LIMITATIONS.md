@@ -529,7 +529,7 @@ sv_query **不绕过** Semantic AST 严格性，也不返回 partial coverage；
 
 ### 3.19 `drivers`/`loads` 未知信号返回 rc=0 + ok=false（P182.1b）
 
-**事实**：`drivers` / `loads` 对不存在的 signal 返回：
+**事实**：`drivers` / `loads` / `trace evidence` / `trace profile` 对不存在的 target 返回：
 
 ```json
 {"ok": false, "...": "...", "errors": [{"error_code": "E_SIGNAL_NOT_FOUND", ...}]}
@@ -538,7 +538,8 @@ sv_query **不绕过** Semantic AST 严格性，也不返回 partial coverage；
 但进程退出码仍是 **0**。这违反 P182.1 的候选规则 `rc≠0 ⟺ ok:false`。
 
 **可观察后果**：agent 只看 rc 会把“信号不存在”当成功；只看 ok 又和 CLI 常规失败退出不一致。
-P182.1b phase 1 的 7-case canary **不覆盖**此形态，已列入 phase 2 的 first-class case。
+P182.1d 只读盘点已记录 4 条同形输入：`drivers`/`loads`/`trace evidence`/`trace profile`。
+P182.1d phase 1 的 7-case canary **不覆盖**此形态；P182.1f 负责裁决。
 
 ### 3.18 pyslang 属性读取仍可静默降级（P183.5 / P184）
 
