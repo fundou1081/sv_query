@@ -9,8 +9,8 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P182.1c full core standard envelope matrix** `<待做>`
-  - P182.1b 7-case canary 完成；全量 27 core standard 留 phase 2
+- **当前 item**: **P189.1 agent-doc self-consistency gate (paths/commands/version/counts)** `<进行中>`
+  - P182.1c 保留待做；先补 AGENTS/README/USER_GUIDE 自洽 gate
   - P185.1 审计完成：classes/diagnose/graph/instances 已合并；`controlflow list-conditioned` 按“输入不同 + 非严格子视图”保留
   - P185.2 放弃：当前 CLI 无 bus/verif 独立命令
   - P185.3 已重基线：45 canonical / 2 aliases / 39 default visible
