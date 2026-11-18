@@ -9,8 +9,8 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P182.1c full core standard envelope matrix** `<待做>`
-  - P189.1 文档自洽 gate 完成；P182.1c 继续
+- **当前 item**: **P182.1c core standard success matrix (27)** `<进行中>`
+  - P189.1 文档自洽 gate 完成；先覆盖 27 个 core standard 成功路径
   - P185.1 审计完成：classes/diagnose/graph/instances 已合并；`controlflow list-conditioned` 按“输入不同 + 非严格子视图”保留
   - P185.2 放弃：当前 CLI 无 bus/verif 独立命令
   - P185.3 已重基线：45 canonical / 2 aliases / 39 default visible
