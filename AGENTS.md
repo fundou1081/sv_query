@@ -1,130 +1,106 @@
-# AGENTS.md — sv_query 协作规则 (流程)
+# AGENTS.md — sv_query L1 全局入口
 
-> **产品方向**: [Agent RTL 查询 + 客观校验层](docs/architecture/product_direction_2026-10-31.md)
-> 恢复上下文时先读它，再读 PLAN；它定义“做什么/不做什么”。
+> **产品方向**: [Agent RTL 查询 + 客观校验层](docs/architecture/product_direction_2026-10-31.md)。
+> 本文件只做入口、路由和硬边界；细节用链接渐进披露，禁止把所有细节堆在这里。
+> 修改前必须先读 [强制路由表](.claude/rules/modify-component-must-read.md)。
 
-> **强制**。本文件只写"怎么做"，细则与背景全部外链。
-> 细则: [DISCIPLINE](docs/dev/DISCIPLINE.md) · [SEMANTIC_CONTRACTS](docs/dev/SEMANTIC_CONTRACTS.md) · [CLAIMS](docs/dev/CLAIMS.md) · [CODING_STYLE](docs/dev/CODING_STYLE.md) · [WORKFLOW](docs/dev/WORKFLOW.md) · [CHECKLIST](docs/dev/REVIEW_CHECKLIST.md)
-> 导航: [计划树](PLAN.md) · [文档索引](docs/INDEX.md) · [当前任务](CURRENT_TODO.md) · [测试](TESTING.md) · [已知限制](docs/KNOWN_LIMITATIONS.md)
+## 0. 架构鸟瞰
 
-## 0. 恢复上下文 (压缩 / 新 session 必做)
-
-1. 本文件 → 2. **[产品方向](docs/architecture/product_direction_2026-10-31.md)（做什么/不做什么）**
-→ 3. **[PLAN.md](PLAN.md) 计划树（唯一真相源）** → 4. [CURRENT_TODO.md](CURRENT_TODO.md)
-→ 5. [DISCIPLINE.md](docs/dev/DISCIPLINE.md) → 6. [SEMANTIC_CONTRACTS](docs/dev/SEMANTIC_CONTRACTS.md) + [CLAIMS](docs/dev/CLAIMS.md) → 7. 最近 10 个 commit + [overview](docs/task_tree/overview.md) 末尾 3 行
-
-**核对上一轮状态**：读 `PLAN.md` 的 `current item` 与"已完成"区，确认上一项是否真的完成
-（代码 + 测试 + 文档）；未完成或状态不符，先修正计划树再继续。
-
-禁止凭残留印象继续工作。
-
-## 1. 铁律 (违反任一条 = 停手、回滚、报告方豆)
-
-1. **禁 `--no-strict`** — 命令失败要诊断根因，不许开逃生口
-2. **禁 silent fallback** — 失败必须显式：报错 / sentinel / 抛异常
-3. **禁 `except ...: pass`** — 吞异常让"失败"与"正常"不可区分
-4. **禁 `-f` / `--file` 传 filelist** — filelist 一律 `--filelist`（误用触发原生 SIGTRAP）
-5. **失败按序归因** — fixture → 功能代码 → filelist → 环境 → (最后) 工具自身 bug
-6. **不改用户的 RTL / 工程文件** — 写能力只进 `tools/`，且默认关闭
-7. **`core` 层只读** + JSON + 稳定 schema（消费者是 agent）
-8. **同一语义只允许一份实现** — 发现两份就合并或删除，不要"分别对齐"
-9. **降级必须显式** — 实验能力进 `exp/` 并在 `capabilities` 降级，不伪装稳定
-10. **登记缺陷写可观察后果** — 什么输入 → 什么错误输出，按输入形态枚举
-11. **语义提取必须 slang** — class/constraint/covergroup/UVM 语义走 pyslang semantic AST；
-    仅 UVM 宏相关允许源码 regex（预处理会去掉宏），见 [DISCIPLINE §3.5](docs/dev/DISCIPLINE.md)
-12. **项目适配不进 core 自动推断** — 具体项目（OpenTitan 等）的 FIFO/接口/命名约定
-    不得在 `src/sv_query/trace` 里按名字建边；适配放 `examples/project_adaptations/` 或外部，
-    显式调用，输出 `src/dst/evidence/confidence` 的 boundary map，见
-    [PROJECT_ADAPTATION](docs/dev/PROJECT_ADAPTATION.md)
-13. **语义必须服从唯一契约** — 数据边、路径、verified/unknown、snapshot 支持范围、
-    完成判定以 [SEMANTIC_CONTRACTS](docs/dev/SEMANTIC_CONTRACTS.md) 为准；同一个语义
-    只允许一份实现；CLOCK/RESET 不是数据边；sample/truncated 不得写成 verified。
-
-## 1.1 复杂决策参考：ub-mode
-
-遇到架构/重构/“两个补丁都修不好”的问题，先把 [ub-mode](https://github.com/unclebob/ub-mode)
-当决策纪律，而不是当风格建议：
-
-- **先 Make it Work，再 Make it Right**：先交付可验证的最小行为，再做结构；
-- **Attack the Premise**：两个修法共享一个前提且都失败时，写下该前提，删除这个 assignment，
-  不要继续叠第三个补丁；
-- **Foundational Thinking**：先定数据形状，再写逻辑；边界处 parse 一次，内部信任它；
-- **Model the Domain**：让非法状态无法表示；mux 是表达式节点，不是边上随手加的字符串；
-- **Fix Root Causes**：guard 只止血，不算修复；先复现，再改根因；
-- **Subtract Before You Add**：先删重复/复杂度，再新增；一个决定只放一处；
-- **TDD + Test Behavior**：先看失败测试按预期失败，再写最小实现；测试调用用户路径，
-  不测私有实现；
-- **Sequence work**：一次一个可验证单元；每个单元代码/测试/文档一起收口；
-- **Crapper / Dryer / Mutator**：CC<10、消除重复、用变异测试检查“测试是否真的会失败”；
-- **Practice**：记录决策日志，小步提交，最后 push。
-
-> 复杂决策的默认检查：前提是什么？数据形状对吗？根因在哪？能不能复用已有领域模型？
-> 如果两个补丁都失败，先回到前提，不要继续加边/加字段。
-
-## 2. 任务流程
-
-- **开工**（缺一步不动手）：**先在 [PLAN.md](PLAN.md) 登记**（新工作挂到对应 `P*` 下，
-  必要时扩展新子计划）→ 置 `current item` 为该项并标 `进行中` → 建
-  `docs/task_tree/tasks/L<N>_<任务>.md` → 更新 [CURRENT_TODO.md](CURRENT_TODO.md)
-  → 挂到 [overview](docs/task_tree/overview.md) → 写可验证的 sub-task
-- **计划树纪律**：`PLAN.md` 是**全局唯一**的计划源，其它文档不得另立计划列表；
-  状态只允许 `待做/进行中/已完成/阻塞/放弃`；范围变化就**扩展子项**（不改旧项语义）
-- **迭代**：一个迭代 = 一个可观察动作，各自写 `docs/task_tree/iterations/iter_NNN_*.md`
-  （**边做边写**，失败也如实写；迭代号只增不减）
-- **收尾**：**更新 [PLAN.md](PLAN.md)**（该项标 `已完成`，`current item` 指向下一项）
-  + `CURRENT_TODO` 移入"最近完成" + `overview` 加汇总行 + 新文档登记 [INDEX](docs/INDEX.md)
-  + 计数只改 INDEX 的"当前基线"
-- **完成判定**：代码 ✅ + 测试 ✅ + 文档 ✅ **+ 语义契约影响说明 + 反事实测试/独立 oracle**。
-  只做完代码/只跑 happy-path 测试就说"完成" = 谎报进度。公开能力还必须更新
-  [CLAIMS](docs/dev/CLAIMS.md)。
-
-## 3. 提交前必跑 (全部 0 退出码)
-
-```bash
-bash tools/run_gates.sh                                              # 单一 canonical gate (CI 同款)
-python3 -m pytest sim/tests/ -m "not opensource" -q -p no:randomly   # 或手动全量
-python3 tools/check_docs.py                                          # 死链/归档/未登记
-python3 tools/check_except_pass.py                                   # 禁 except:pass
-python3 tools/check_semantic_regex.py                                # 语义提取 regex 纪律 (仅 UVM 宏)
-python3 tools/check_cli_layers.py                                    # CLI 分层 R1~R9
-python3 tools/gen_cli_surface.py --check                             # CLI 清单一致
-python3 tools/check_crap.py                                          # 复杂度棘轮 (CC>10)
-python3 tools/check_plan.py                                          # PLAN.md 计划树格式
-git status --porcelain                                               # 只含预期改动
+```text
+RTL/filelist/snapshot
+  -> pyslang v11 semantic AST          (src/sv_query/trace/core)
+  -> SignalGraph / ModuleInstanceGraph (graph, verification, queries)
+  -> CLI/JSON 或 Python Session        (src/cli, src/sv_query/session.py)
 ```
 
-涉及查询 / 图 / CLI 语义的改动，**额外**跑真实多文件项目冒烟（[WORKFLOW §4](docs/dev/WORKFLOW.md)），
-并按 [SEMANTIC_CONTRACTS](docs/dev/SEMANTIC_CONTRACTS.md) 检查数据边/状态/确定性/有界性。
-P158 的语义 gate 已收口；但**门禁全绿仍不等于语义正确**，涉及查询/图/verify 的改动必须手工执行 REVIEW_CHECKLIST §3.5。
-逐项自检见 [REVIEW_CHECKLIST](docs/dev/REVIEW_CHECKLIST.md)。
+- 技术栈: Python 3.11+ / pyslang v11 / NetworkX / Typer / Rich。
+- `src/sv_query/`: 查询引擎、图模型、编译、语义适配、cache/snapshot。
+- `src/cli/`: agent 查询面、JSON envelopes、分层 registry、capabilities。
+- `sim/tests/`: canonical 测试与真实 fixture；`docs/`: 契约、限制、计划证据。
+- `tools/`: 门禁、扫描器、生成器；`agents/`: worker 协作记录，不是产品代码。
 
-## 4. 汇报与协作
+## 1. 真理源层级 (Source of Truth Hierarchy)
 
-- **主动告知**：缺测试 / 更好的架构 / 更好的方案 / 登记过的局限实际更严重
-  → 按 **现状 → 问题 → 建议 → 代价** 说，然后等方豆拍板
-- 大改动（架构 / 重构 / 换算法）**先说后做**；小而安全的改动可直接做，但要在总结里列出
-- 公开 claim 必须对应 [CLAIMS](docs/dev/CLAIMS.md) 一行；没有 gate 的 claim 标 `unverified`，
-  已知反例标 `known-broken`，不得在总结中升格为“已验证”。
-- 决策冲突（用户指示 vs 代码事实、新决策 vs 旧决策）→ **停下确认**，不默默照做也不默默改
-  （[CODING_STYLE §11](docs/dev/CODING_STYLE.md)）
+1. [PLAN.md](PLAN.md) — 唯一计划源；`current item` 是当前工作。
+2. [产品方向](docs/architecture/product_direction_2026-10-31.md) — 做什么/不做什么。
+3. [SEMANTIC_CONTRACTS](docs/dev/SEMANTIC_CONTRACTS.md) — 数据边/路径/verified 语义。
+4. [CLAIMS](docs/dev/CLAIMS.md) — 对外声称与 gate 的对应关系。
+5. [docs/INDEX.md](docs/INDEX.md) — 文档登记与 canonical 计数真相源。
+6. [TESTING.md](TESTING.md) / [KNOWN_LIMITATIONS](docs/KNOWN_LIMITATIONS.md)。
+7. [CURRENT_TODO.md](CURRENT_TODO.md) — 只记录此刻上下文，不另立计划。
 
-## 5. 设施位置
+冲突时按此顺序裁决；代码不是规范，**Existing files are not the reference**。
 
-设施与"唯一位置"表见 [WORKFLOW §0](docs/dev/WORKFLOW.md)。
-**禁止**新建 `records/` `logs/` `notes/` 等与表内重复的平行目录。
+## 2. 强制路由 (修改前)
 
-## 6. 版本
+| 要改的东西 | 先读 |
+|---|---|
+| 任意 `src/` / `tools/` / `sim/tests/` | [modify-component-must-read](.claude/rules/modify-component-must-read.md) |
+| Python 实现 | [general-code-style](.claude/rules/general-code-style.md) |
+| 注释 / diff 清理 | [comment-style](.claude/rules/comment-style.md) |
+| 测试 | [unit-test-admission](.claude/rules/unit-test-admission.md) |
+| 新组件/新查询 | `.agents/skills/add-component/SKILL.md` |
+| 查询错误/空结果 | `.agents/skills/debug-fault/SKILL.md` |
+| 删代码/去重 | `.agents/skills/code-cleanup/SKILL.md` + `references/patterns.md` |
 
-- **v2.7 (2026-11-11)** — 新增铁律 13：语义契约唯一；完成判定增加反事实/独立 oracle；
-  恢复上下文加入 SEMANTIC_CONTRACTS / CLAIMS；`sample/truncated` 不得 verified。
-- **v2.6 (2026-11-09)** — 新增铁律 12：项目适配不进 core 自动推断；模板放 `examples/project_adaptations/`
-- **v2.5 (2026-11-06)** — 新增 §1.1 ub-mode 复杂决策参考（前提/数据形状/根因/减法/TDD）
-- **v2.4 (2026-11-04)** — 新增铁律 11：语义提取必须 slang，仅 UVM 宏允许 regex；提交前增加 `check_semantic_regex.py`
-- **v2.3 (2026-10-31)** — 新增 [产品方向](docs/architecture/product_direction_2026-10-31.md)：
-  agent RTL 查询 + 客观校验；恢复上下文先读产品方向再读 PLAN；低完成度能力降级 exp
-- **v2.2 (2026-10-25)** — 新增 [PLAN.md](PLAN.md) **全局唯一计划树**：所有代码修改计划先登记、
-  开工置 `current item`、收尾改状态；恢复上下文时核对上一轮状态；`tools/check_plan.py` 机械校验
-- v2.1 (2026-10-19) — 精简为纯流程规则（≤100 行），设施表移入 [WORKFLOW](docs/dev/WORKFLOW.md)；
-  方豆指示："只用规则，维持精简，其他都 link 出去"
-- v2.0 (2026-10-19) — 522 行拆为入口 + `docs/dev/` 四份细则；新增产品不变量 I1~I5
-- v1.0~v1.7 历史见 `git log -- AGENTS.md`
+## 3. 铁律 (违反任意一条 = 停手并报告)
+
+1. 禁 `--no-strict`；失败先诊断根因。
+2. 禁 silent fallback；失败必须显式：异常/sentinel/结构化错误。
+3. 禁 `except ...: pass`；禁止把失败伪装成正常。
+4. filelist 一律 `--filelist`，禁止 `-f/--file` 传 filelist。
+5. 失败归因顺序：fixture → 功能代码 → filelist → 环境 → 工具自身。
+6. 不改用户 RTL/工程文件；写能力只进 `tools/` 且默认关闭。
+7. `core` 只读 + JSON + 稳定 schema；agent 是消费者。
+8. 同一语义只允许一份实现；发现两份就合并/删除。
+9. 降级必须显式；实验能力进 `exp/`，不伪装稳定。
+10. 缺陷登记必须写“什么输入 → 什么错误输出”。
+11. 语义提取必须走 pyslang semantic AST；仅 UVM 宏允许源码 regex。
+12. 项目适配不进 core 自动推断；放 `examples/project_adaptations/`。
+13. 语义服从唯一契约；CLOCK/RESET 不是数据边；sample/truncated 不得写成 verified。
+
+## 4. 任务流程
+
+1. 在 `PLAN.md` 登记并置 `current item`；
+2. 建 `docs/task_tree/tasks/` 任务文件；
+3. 一次只做一个可观察迭代，写 `docs/task_tree/iterations/`；
+4. 同步 `CURRENT_TODO` + `overview`；
+5. 收尾更新 PLAN/INDEX/计数/CLAIMS（如有公开能力）。
+
+大改动先说后做；两个补丁都失败时先 attack the premise，不要叠第三个补丁。
+
+## 5. 核心命令
+
+```bash
+# 日常
+python3 -m pytest sim/tests/ -m "not opensource" -q -p no:randomly
+python3 run_cli.py capabilities --json
+python3 run_cli.py stats --filelist <filelist> --json
+
+# 提交前
+bash tools/run_gates.sh
+python3 tools/check_plan.py
+python3 tools/check_docs.py --strict
+git status --porcelain
+
+# 真实多文件冒烟
+python3 run_cli.py stats --filelist sim/tests/fixtures/scheduler_minimal/filelist.f --json
+```
+
+## 6. 汇报与停止
+
+- 汇报格式：**现状 → 问题 → 建议 → 代价**；不谎报完成。
+- 完成 = 代码 + 测试 + 文档 + 语义契约影响 + 反事实/独立 oracle。
+- 公开 claim 必须有 `CLAIMS.md` 一行；没有 gate 标 `unverified`。
+- 发现设计冲突/用户指令与代码事实冲突，先停下确认。
+
+## 7. 渐进式治理层
+
+| 层 | 位置 | 作用 |
+|---|---|---|
+| L1 | 本文件 | 入口、真理源、强制路由 |
+| L2 | `.claude/rules/` | 被动红线，`paths:` 自动挂载 |
+| L3 | `.agents/skills/`（`.claude/skills` 软链） | 7 段式任务技能 |
+| L4 | `.agents/skills/*/references/` | 判例库按需展开 |
+
+旧版流程细节仍以 [DISCIPLINE](docs/dev/DISCIPLINE.md)、[WORKFLOW](docs/dev/WORKFLOW.md)、[REVIEW_CHECKLIST](docs/dev/REVIEW_CHECKLIST.md) 为准。
