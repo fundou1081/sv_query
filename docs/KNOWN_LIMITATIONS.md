@@ -527,6 +527,19 @@ sv_query **不绕过** Semantic AST 严格性，也不返回 partial coverage；
 详见：[PROJECT_ADAPTATION.md](dev/PROJECT_ADAPTATION.md) 与
 [P138](validation/P138_PROJECT_ADAPTATION_2026-11-09.md)。
 
+### 3.19 `drivers`/`loads` 未知信号返回 rc=0 + ok=false（P182.1b）
+
+**事实**：`drivers` / `loads` 对不存在的 signal 返回：
+
+```json
+{"ok": false, "...": "...", "errors": [{"error_code": "E_SIGNAL_NOT_FOUND", ...}]}
+```
+
+但进程退出码仍是 **0**。这违反 P182.1 的候选规则 `rc≠0 ⟺ ok:false`。
+
+**可观察后果**：agent 只看 rc 会把“信号不存在”当成功；只看 ok 又和 CLI 常规失败退出不一致。
+P182.1b phase 1 的 7-case canary **不覆盖**此形态，已列入 phase 2 的 first-class case。
+
 ### 3.18 pyslang 属性读取仍可静默降级（P183.5 / P184）
 
 **事实**：`safe_attr` 当前 `except (UnicodeDecodeError, TypeError, Exception)` 后返回

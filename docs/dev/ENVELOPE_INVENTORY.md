@@ -1,6 +1,7 @@
-# Envelope Inventory — P182.1a (read-only)
+# Envelope Inventory — P182.1a (read-only) + P182.1b canary
 
-> **状态**: P182.1a 只读盘点；不是 gate。成功/失败/未知/截断矩阵留给 P182.1b。
+> **状态**: P182.1a 只读盘点；P182.1b phase 1 在其上增加 7-case canary gate（不是全量 gate）。
+> 成功/失败/未知/截断全量矩阵仍未覆盖；`drivers` 未知信号暂不 gate。
 > **计数来源**: `python3 tools/check_envelope_contract.py --inventory --json`
 > **实际根来源**: A 阶段人工采样（§3 注明命令/fixture；不是工具输出）
 > **日期**: 2026-11-18
@@ -56,7 +57,8 @@ P182.1b 的严格键集断言必须放行这些合法键。
   `envelope_mismatches: ["paths"]` 暴露，不在 A 阶段改 registry；
 - `snapshot list --json` 实际根是 `list`，但静态契约写 `result_fields`；
 - direct 命令并非一种形状：有 object、有 list，也有带/不带 `ok` 的 object；
-- `capabilities` 没有 `ok`，但有 `schema_version`。
+- `capabilities` 没有 `ok`，但有 `schema_version`；
+- `drivers`/`loads` 未知 signal：`ok=false` + `E_SIGNAL_NOT_FOUND`，但 **rc=0**（P182.1b phase 1 未 gate）。
 
 这些必须在 P182.1b 决定：补 `ok`、改契约，还是显式 allowlist。
 
@@ -66,14 +68,23 @@ P182.1b 的严格键集断言必须放行这些合法键。
 # 只读盘点；不执行命令、不改输出
 python3 tools/check_envelope_contract.py --inventory
 python3 tools/check_envelope_contract.py --inventory --json
+
+# P182.1b phase 1 canary：执行 7 条固定用例（scheduler_minimal），违规 exit 1
+python3 tools/check_envelope_contract.py --canary
 ```
+
+canary 覆盖：`stats` / `drivers` / `loads` / `graph nodes` / `graph edges` /
+`controlflow analyze` 的成功信封，以及 `stats --file <nonexistent>` 的失败信封。
+它不是 27 个 core standard 的全量 gate，也不覆盖 direct / exp / 未知信号 / 截断。
 
 ## 5. 不能从这个盘点得出的结论
 
 - 不能据此声称“所有命令成功路径一致”；
 - 不能据此做 rc/ok 一致性 gate；
+- 不能把 7-case canary 当成 27 个 core standard 的全量 gate；
 - 不能把 direct 的 static contract 当成实际输出；
 - 不能用它替代真实 fixture 的 P182.1b 矩阵。
 
-下一步：P182.1b 先对 **core 的 27 个 standard** 做成功/失败 gate；
-exp 6 条按降级通道单独处理；12 个 direct 例外逐个裁决（含 `paths` 与 `snapshot list` 双根）。
+下一步（P182.1b phase 2）：把 gate 扩到 **core 的 27 个 standard** 的成功/失败矩阵；
+exp 6 条按降级通道单独处理；12 个 direct 例外逐个裁决（含 `paths` 与
+`snapshot list` 双根）。
