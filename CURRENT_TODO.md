@@ -9,7 +9,8 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P182.1b standard core envelope gate + direct exceptions** `<待做>`
+- **当前 item**: **P182.1b canary standard envelope gate (phase 1)** `<进行中>`
+  - 只做 6 成功 + 1 失败 canary；全量 27/direct 留 phase 2
   - P185.1 审计完成：classes/diagnose/graph/instances 已合并；`controlflow list-conditioned` 按“输入不同 + 非严格子视图”保留
   - P185.2 放弃：当前 CLI 无 bus/verif 独立命令
   - P185.3 已重基线：45 canonical / 2 aliases / 39 default visible
