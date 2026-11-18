@@ -67,7 +67,8 @@ RTL/filelist/snapshot
 4. 同步 `CURRENT_TODO` + `overview`；
 5. 收尾更新 PLAN/INDEX/计数/CLAIMS（如有公开能力）。
 
-大改动先说后做；两个补丁都失败时先 attack the premise，不要叠第三个补丁。
+大改动先说后做；重构必须拆成 **Prepare → Move → Postpare**，机械搬移与语义修改不得混在同一 diff。
+两个补丁都失败时先 attack the premise，不要叠第三个补丁。
 
 ## 5. 核心命令
 
