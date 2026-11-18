@@ -13,8 +13,8 @@
 | 项 | 值 | 说明 |
 |---|---|---|
 | 源码规模 | 145 文件 / 50,760 行 | `find src -name "*.py"`（2026-11-16 实测） |
-| 测试规模 | 412 测试文件 / 68,458 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **3039 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-18 P182.1d 全量复核**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
+| 测试规模 | 413 测试文件 / 68,643 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
+| 全量 (canonical) | **3048 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-18 P182.1d 全量复核**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 迭代记录 | `docs/task_tree/iterations/` (519 份, 只增不改) | 每次迭代一份（2026-11-16 实测） |
@@ -57,6 +57,7 @@
 | [dev/CODING_STYLE.md](dev/CODING_STYLE.md) | 编码风格与设计决策: 先探索后决策 / 单一实现 / 修根因 / 函数职责 / 结构化数据 / 影响面 / 协作规则 |
 | [dev/ENVELOPE_INVENTORY.md](dev/ENVELOPE_INVENTORY.md) | **P182.1a**: 45 命令 envelope 只读盘点；32 standard（26 core + 6 exp）/ 13 direct；snapshot list 根类型不一致；P182.1b 增加 7-case canary gate；P182.1c 增加 26-case core standard 成功矩阵（当前 26 PASS） |
 | [dev/ENVELOPE_FAILURE_INVENTORY.md](dev/ENVELOPE_FAILURE_INVENTORY.md) | **P182.1d**: 26 个 core standard 各一条最小失败输入；只读观测 rc/ok/error_code/errors/result；当前 22 operational rc1 + 4 business rc0/okfalse；不是 gate |
+| [dev/ENVELOPE_FAILURE_CONTRACT.md](dev/ENVELOPE_FAILURE_CONTRACT.md) | **P182.1f**: 严格失败契约（非 allowlist 必须 rc1+okfalse）；恰好 4 条 hybrid 例外（drivers/loads/trace evidence/trace profile，rc0+okfalse+E_SIGNAL_NOT_FOUND）；`--matrix-failure` gate 当前 26/26 PASS |
 | [dev/WORKFLOW.md](dev/WORKFLOW.md) | 开发流程: 任务生命周期 / 迭代记录 / 文档卫生 / 测试与冒烟 / 机械检查 / ADR / 提交合并 |
 | [dev/PROJECT_ADAPTATION.md](dev/PROJECT_ADAPTATION.md) | **项目适配理念**: core 不自动推断特定项目；外部 adapter 模板 |
 | [agent/GUIDED_TRACE.md](agent/GUIDED_TRACE.md) | **P139 guided trace**: frontier + next probes；不分类 FIFO |

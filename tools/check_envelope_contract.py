@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """check_envelope_contract.py — P182.1a inventory + P182.1b canary + P182.1c matrix
-+ P182.1d failure inventory.
++ P182.1d failure inventory + P182.1f failure contract.
 
-Four explicit modes:
+Five explicit modes:
 
 - ``--inventory`` (default): read-only, static; reads registry/JSON_CONTRACT and
   prints the envelope surface. It does not execute any command.
@@ -16,6 +16,11 @@ Four explicit modes:
   classification. Read-only and non-gating: observed inconsistencies never
   change the exit code. Commands without a legitimate failure input are marked
   ``NO_FAILURE_INPUT`` with a reason.
+- ``--matrix-failure``: gating mode over the same 26-case failure manifest.
+  Non-allowlisted commands must exit rc=1 with ``ok=false``. The four hybrid
+  exceptions (``drivers`` / ``loads`` / ``trace evidence`` / ``trace profile``)
+  must exit rc=0 with ``ok=false``, a non-empty ``errors`` list, and
+  ``E_SIGNAL_NOT_FOUND`` on every entry. Any violation prints FAIL and exits 1.
 
 Usage:
     python3 tools/check_envelope_contract.py --inventory
@@ -24,6 +29,7 @@ Usage:
     python3 tools/check_envelope_contract.py --matrix-core
     python3 tools/check_envelope_contract.py --failure-inventory
     python3 tools/check_envelope_contract.py --failure-inventory --json
+    python3 tools/check_envelope_contract.py --matrix-failure
 """
 from __future__ import annotations
 
@@ -945,6 +951,129 @@ def render_failure_inventory(data: dict) -> None:
     print("note: observations only; no pass/fail verdict and no exit-code change")
 
 
+# ---------------------------------------------------------------------------
+# P182.1f — strict failure contract + hybrid allowlist (gating)
+# ---------------------------------------------------------------------------
+
+# Exactly four exceptions to the strict rc=1 rule. Each one is a per-signal
+# command whose not-found result is expressed per signal in ``errors[]``.
+# This is an allowlist, not a claim that rc=0 is acceptable in general.
+HYBRID_ALLOWLIST: tuple[str, ...] = (
+    "drivers",
+    "loads",
+    "trace evidence",
+    "trace profile",
+)
+HYBRID_ERROR_CODE = "E_SIGNAL_NOT_FOUND"
+
+
+def strict_failure_violations(run: CaseRun) -> list[str]:
+    """Strict rule: rc=1 + ok=false. Deliberately says nothing else."""
+    problems = [] if run.rc == 1 else [f"rc={run.rc}, expected 1"]
+    root, parse_problems = _parse_root(run)
+    problems.extend(parse_problems)
+    if root is None:
+        return problems
+    if root.get("ok") is not False:
+        problems.append(f"ok={root.get('ok')!r}, expected false")
+    return problems
+
+
+def hybrid_failure_violations(run: CaseRun) -> list[str]:
+    """Hybrid rule: rc=0 + ok=false + per-error E_SIGNAL_NOT_FOUND."""
+    problems = [] if run.rc == 0 else [f"rc={run.rc}, expected 0"]
+    root, parse_problems = _parse_root(run)
+    problems.extend(parse_problems)
+    if root is None:
+        return problems
+    if root.get("ok") is not False:
+        problems.append(f"ok={root.get('ok')!r}, expected false")
+    errors = root.get("errors")
+    if not isinstance(errors, list) or not errors:
+        problems.append(f"errors={errors!r}, expected non-empty list")
+        return problems
+    for index, error in enumerate(errors):
+        code = error.get("error_code") if isinstance(error, dict) else None
+        if code != HYBRID_ERROR_CODE:
+            problems.append(
+                f"errors[{index}].error_code={code!r}, expected "
+                f"{HYBRID_ERROR_CODE!r}"
+            )
+    return problems
+
+
+def failure_contract_manifest_problems() -> list[str]:
+    """Static checks for the gating mode; reuses the P182.1d manifest checks."""
+    problems = failure_manifest_problems()
+    names = [case.command for case in CORE_FAILURE_MANIFEST]
+    allowlist_missing = [name for name in HYBRID_ALLOWLIST if name not in names]
+    if allowlist_missing:
+        problems.append(
+            "hybrid allowlist commands absent from failure manifest: "
+            + ", ".join(allowlist_missing)
+        )
+    return problems
+
+
+def _run_failure_contract_case(case: FailureCase, execute: MatrixRunner,
+                               env: dict[str, str]) -> CaseOutcome:
+    if case.no_failure_reason:
+        return CaseOutcome(
+            case.command, "no_failure_input", None,
+            (f"no failure input recorded: {case.no_failure_reason}",),
+        )
+    hybrid = case.command in HYBRID_ALLOWLIST
+    kind = "hybrid" if hybrid else "strict"
+    validator = hybrid_failure_violations if hybrid else strict_failure_violations
+    try:
+        run = execute(case.argv, env)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        problem = f"execution failed: {type(exc).__name__}: {exc}"
+        return CaseOutcome(case.command, kind, None, (problem,))
+    return CaseOutcome(case.command, kind, run.rc, tuple(validator(run)))
+
+
+def run_matrix_failure(
+    runner: MatrixRunner | None = None,
+    env: dict[str, str] | None = None,
+) -> list[CaseOutcome]:
+    execute = run_cli_case_with_env if runner is None else runner
+    if env is not None:
+        return [_run_failure_contract_case(case, execute, env)
+                for case in CORE_FAILURE_MANIFEST]
+    with tempfile.TemporaryDirectory(prefix="svq_p182_1f_") as snapshot_dir:
+        run_env = dict(os.environ, SVQ_SNAPSHOT_DIR=snapshot_dir)
+        return [_run_failure_contract_case(case, execute, run_env)
+                for case in CORE_FAILURE_MANIFEST]
+
+
+def render_matrix_failure(
+    outcomes: list[CaseOutcome],
+    manifest_problems: list[str] | None = None,
+) -> bool:
+    print("P182.1f failure contract matrix (26 core standard commands)")
+    problems = [] if manifest_problems is None else manifest_problems
+    if problems:
+        print("manifest: FAIL")
+        for problem in problems:
+            print(f"  - {problem}")
+    for outcome in outcomes:
+        if outcome.kind == "no_failure_input":
+            print(f"NO_FAILURE_INPUT\t{outcome.label}")
+        else:
+            verdict = "PASS" if outcome.passed else "FAIL"
+            rc = "-" if outcome.rc is None else str(outcome.rc)
+            print(f"{verdict}\t{outcome.label}\t{outcome.kind}\trc={rc}")
+        for problem in outcome.problems:
+            print(f"  - {problem}")
+    passed = sum(1 for outcome in outcomes if outcome.passed)
+    ok = (not problems and passed == len(outcomes)
+          and len(outcomes) == 26)
+    print(f"matrix-failure: {'PASS' if ok else 'FAIL'} "
+          f"({passed}/{len(outcomes)})")
+    return ok
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group()
@@ -957,6 +1086,9 @@ def _parser() -> argparse.ArgumentParser:
     mode.add_argument("--failure-inventory", action="store_true",
                       help="record one failure input per core standard command "
                            "(observation only, non-gating)")
+    mode.add_argument("--matrix-failure", action="store_true",
+                      help="gate rc/ok/error_code for the 26 failure inputs "
+                           "(strict + 4-command hybrid allowlist)")
     parser.add_argument("--json", action="store_true",
                         help="machine-readable inventory output")
     return parser
@@ -982,6 +1114,12 @@ def main(argv: list[str] | None = None) -> int:
         else:
             render_failure_inventory(data)
         return 0
+    if args.matrix_failure:
+        if args.json:
+            parser.error("--json is not supported with --matrix-failure")
+        outcomes = run_matrix_failure()
+        problems = failure_contract_manifest_problems()
+        return 0 if render_matrix_failure(outcomes, problems) else 1
     data = inventory()
     if args.json:
         print(json.dumps(data, indent=2, ensure_ascii=False))

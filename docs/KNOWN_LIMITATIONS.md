@@ -539,7 +539,7 @@ sv_query **不绕过** Semantic AST 严格性，也不返回 partial coverage；
 
 **可观察后果**：agent 只看 rc 会把“信号不存在”当成功；只看 ok 又和 CLI 常规失败退出不一致。
 P182.1d 只读盘点已记录 4 条同形输入：`drivers`/`loads`/`trace evidence`/`trace profile`。
-P182.1d phase 1 的 7-case canary **不覆盖**此形态；P182.1f 负责裁决。
+P182.1d phase 1 的 7-case canary **不覆盖**此形态；P182.1f 已裁决：见 [ENVELOPE_FAILURE_CONTRACT](dev/ENVELOPE_FAILURE_CONTRACT.md)（4 条 hybrid 例外）。
 
 ### 3.18 pyslang 属性读取仍可静默降级（P183.5 / P184）
 

@@ -78,6 +78,9 @@ python3 tools/check_envelope_contract.py --matrix-core
 # P182.1d phase 1 失败盘点：26 个命令各一条失败输入；只读观测，恒 exit 0
 python3 tools/check_envelope_contract.py --failure-inventory
 python3 tools/check_envelope_contract.py --failure-inventory --json
+
+# P182.1f 失败契约 gate：严格 rc1+okfalse + 4 条 hybrid allowlist，违规 exit 1
+python3 tools/check_envelope_contract.py --matrix-failure
 ```
 
 canary 覆盖：`stats` / `drivers` / `loads` / `graph nodes` / `graph edges` /
@@ -109,7 +112,7 @@ matrix-core 覆盖全部 26 个 core standard 命令的成功路径，每条 cas
 - 不能把 direct 的 static contract 当成实际输出；
 - 不能用它替代真实 fixture 的 P182.1c 矩阵。
 
-下一步（P182.1d/P182.1e）：失败盘点已在
-[ENVELOPE_FAILURE_INVENTORY](ENVELOPE_FAILURE_INVENTORY.md) 输出（只读、非 gate）；
-P182.1f 再裁决失败信封契约；exp 6 条按降级通道；13 个 direct 例外逐个裁决
-（含 `paths` 与 `snapshot list` 双根）。
+下一步（P182.1e）：失败盘点在
+[ENVELOPE_FAILURE_INVENTORY](ENVELOPE_FAILURE_INVENTORY.md)（只读），严格失败契约与
+4 条 hybrid 例外在 [ENVELOPE_FAILURE_CONTRACT](ENVELOPE_FAILURE_CONTRACT.md)；
+exp 6 条按降级通道；13 个 direct 例外逐个裁决（含 `paths` 与 `snapshot list` 双根）。

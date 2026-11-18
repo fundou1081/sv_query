@@ -1,6 +1,7 @@
 # Envelope Failure Inventory — P182.1d phase 1 (read-only)
 
 > **状态**: phase 1 完成（只读盘点）；**不是 gate**，不裁决 rc/ok 对错，不接 `run_gates.sh`。
+> P182.1f 已在其上建立严格失败契约 gate：见 [ENVELOPE_FAILURE_CONTRACT](ENVELOPE_FAILURE_CONTRACT.md)。
 > **来源**: `python3 tools/check_envelope_contract.py --failure-inventory --json`
 > **Baseline**: 4e93f1af
 > **日期**: 2026-11-18

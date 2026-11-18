@@ -9,13 +9,13 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P182.1f strict failure contract + hybrid allowlist** `<进行中>`
+- **当前 item**: **P182.1e direct envelope exceptions** `<待做>`
   - 严格：operational failure => rc=1 + ok=false
   - 混合：仅 drivers/loads/trace evidence/trace profile 的 per-signal E_SIGNAL_NOT_FOUND => rc=0 + ok=false + errors[].error_code
   - phase 1：`--failure-inventory [--json]` 26/26 条；22 operational rc1 + 4 business rc0/ok=false（drivers/loads/evidence/profile 未知 signal）；NO_FAILURE_INPUT=0
   - 只读观测，不 gate、不 exit 1；输出 `docs/dev/ENVELOPE_FAILURE_INVENTORY.md`
   - P182.1c 成功矩阵已完成：26/26 PASS（`paths` 归 direct）
-  - 下一项 P182.1f：裁决失败信封的 rc/ok/error_code/errors 契约
+  - P182.1f 严格失败契约完成；下一项 P182.1e direct 例外
   - P189.1 文档自洽 gate 完成；先覆盖 core standard 成功 + 失败观测
   - P185.1 审计完成：classes/diagnose/graph/instances 已合并；`controlflow list-conditioned` 按“输入不同 + 非严格子视图”保留
   - P185.2 放弃：当前 CLI 无 bus/verif 独立命令
@@ -27,16 +27,16 @@
 ## 📌 当前真实基线
 
 ```text
-canonical:  3039 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  3048 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 
 - 123 deferred = opensource suite（112 passed + 11 skipped），不是 123 unexecuted；
 - 11 skip 中 2 个是 SPI snapshot 外部 fixture 缺失；
 - 1 pre-existing failed = `test_real_plan_file_passes`：PLAN.md baseline 的
-  `P182.1f` 行格式 + P182.1c/P182.1d 双进行中；非 P182.1d 代码问题；
+
 - P182.1d 新增 7 条测试后，当前全量 3038 通过 + 1 pre-existing 失败；绿色基线
-  仍按 P182.1c 的 3039 记，待 PLAN 修复后统一刷新；
+  仍按 P182.1c 的 3048 记，待 PLAN 修复后统一刷新；
 - 计数真相源：[docs/INDEX.md](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里)。
 
 ## 🧭 产品边界
