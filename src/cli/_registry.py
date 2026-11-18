@@ -809,7 +809,7 @@ JSON_CONTRACT = {
         "elapsed_s": {"type": "number", "desc": "search wall-clock seconds"},
         "paths_count": {"type": "integer", "desc": "returned path count"},
         "intermediate_signals": {"type": "array<string>", "desc": "sorted intermediate nodes"},
-        "primary_latency_cycles": {"type": "integer", "desc": "best path latency"},
+        "primary_latency_cycles": {"type": "integer|null", "desc": "best path latency; null if no path or async"},
         "primary_is_async": {"type": "boolean", "desc": "async crossing on best path"},
         "all_conditions": {"type": "array<string>", "desc": "distinct conditions across paths"},
         "clock_domain": {"type": "string|null", "desc": "detected clock domain"},

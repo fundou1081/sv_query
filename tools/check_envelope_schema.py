@@ -142,17 +142,166 @@ def run_schema_results(execute=None) -> tuple[list[str], int]:
     return problems, len(envelope.CORE_SUCCESS_MANIFEST)
 
 
+TYPE_SCHEMAS: dict[str, dict[str, object]] = {
+    "stats": {
+        "total_nodes": "integer", "total_edges": "integer",
+        "nodes": "object", "edges": "object",
+        "modules": "array", "elaboration_errors": "array",
+    },
+    "drivers": {
+        "signals": "array", "total_signals": "integer",
+        "total_count": "integer", "total_pre_filter": "integer",
+        "truncated": "boolean", "failed_signals": "integer",
+    },
+    "loads": {
+        "signals": "array", "total_signals": "integer",
+        "total_count": "integer", "total_pre_filter": "integer",
+        "truncated": "boolean", "failed_signals": "integer",
+    },
+    "graph nodes": {"nodes": "array", "total": "integer"},
+    "graph edges": {"edges": "array", "total": "integer"},
+    "controlflow analyze": {
+        "signal": "string", "conditioned_drivers": "array",
+        "condition_status": "string", "warnings": "array",
+    },
+    "dataflow analyze": {
+        "from_signal": "string", "to_signal": "string",
+        "from_resolved": "string", "to_resolved": "string",
+        "bits": "object", "is_reachable": ["boolean", "null"],
+        "search_status": "string", "truncated": "boolean",
+        "truncation_reason": "string", "expansions": "integer",
+        "elapsed_s": "number", "paths_count": "integer",
+        "intermediate_signals": "array",
+        "primary_latency_cycles": ["integer", "null"],
+        "primary_is_async": "boolean", "all_conditions": "array",
+        "clock_domain": ["string", "null"], "timing_risk": "string",
+        "risk_model": "string", "paths": "array",
+    },
+    "verify claim": {
+        "claim": "object",
+        "status": {"type": "string", "enum": ["verified", "contradicted", "unknown"]},
+        "reason": "string", "evidence": "array", "counterevidence": "array",
+    },
+    "trace covergroup": {
+        "mode": "string", "covergroup": "object",
+        "count": "integer", "complete": "boolean", "reason": "string",
+        "links": "array", "samples": "array",
+    },
+}
+TYPE_SOURCES = {
+    "stats": "stats_result",
+    "graph nodes": "graph_nodes_result",
+    "graph edges": "graph_edges_result",
+    "verify claim": "verify_claim_result",
+    "dataflow analyze": "dataflow_result",
+}
+TYPE_VARIANTS = (
+    ("trace covergroup --rand", "trace covergroup",
+     ("trace", "covergroup", "cg_env", "--instance", "top.e",
+      "--rand", "-f", envelope.FIX_MIXED, "--json")),
+    ("dataflow analyze no-path", "dataflow analyze",
+     ("dataflow", "analyze", "sync_fifo.clk", "sync_fifo.data_out",
+      "-f", envelope.FIX_SYNC_FIFO, "--json")),
+)
+
+
+def _schema_type(meta: object) -> object:
+    """Translate a JSON_CONTRACT field spec into a JSON Schema type."""
+    if isinstance(meta, str):
+        return "object" if meta == "bit_normalization" else meta
+    declared = meta.get("type") if isinstance(meta, dict) else None
+    if not isinstance(declared, str):
+        return "object"
+    if declared.startswith("array"):
+        return "array"
+    if "|" in declared:
+        return declared.split("|")
+    return declared
+
+
+def _type_specs(command: str) -> dict[str, object]:
+    specs = dict(TYPE_SCHEMAS[command])
+    source = TYPE_SOURCES.get(command)
+    if source:
+        for field, meta in JSON_CONTRACT[source].items():
+            if field in specs:
+                specs[field] = _schema_type(meta)
+    return specs
+
+
+def value_type_schema(command: str) -> dict:
+    base = result_key_schema(command)
+    properties = {}
+    for field, spec in _type_specs(command).items():
+        if isinstance(spec, str):
+            properties[field] = {"type": spec}
+        elif isinstance(spec, list):
+            properties[field] = {"type": spec}
+        else:
+            properties[field] = dict(spec)
+    base["properties"] = properties
+    return base
+
+
+def validate_value_payload(command: str, payload: object, validator=None) -> list[str]:
+    if not isinstance(payload, dict):
+        return [f"result is {type(payload).__name__}, expected object"]
+    validator = validator or jsonschema.Draft202012Validator(value_type_schema(command))
+    errors = sorted(validator.iter_errors(payload), key=lambda e: list(e.absolute_path))
+    return [f"{e.message} at {list(e.absolute_path)}" for e in errors[:5]]
+
+
+def run_schema_types(execute=None) -> tuple[list[str], int]:
+    problems: list[str] = []
+    execute = execute or envelope.run_cli_case_with_env
+    covered = 0
+    with tempfile.TemporaryDirectory(prefix="svq_p182_2c_") as snapshot_dir:
+        env = dict(os.environ, SVQ_SNAPSHOT_DIR=snapshot_dir)
+        for case in envelope.CORE_SUCCESS_MANIFEST:
+            if case.command not in TYPE_SCHEMAS:
+                continue
+            covered += 1
+            root, case_problems = _run_case(case, execute, env)
+            problems.extend(f"{case.command}: {p}" for p in case_problems)
+            if root is not None:
+                problems.extend(
+                    f"{case.command}: {p}" for p in
+                    validate_value_payload(case.command, root.get("result"))
+                )
+        for label, command, argv in TYPE_VARIANTS:
+            run = execute(argv, env)
+            if run.rc != 0:
+                problems.append(f"{label}: rc={run.rc}, expected 0")
+                continue
+            root, parse_problems = envelope._parse_root(run)
+            if root is not None and root.get("ok") is not True:
+                parse_problems.append(f"ok={root.get('ok')!r}, expected true")
+            problems.extend(f"{label}: {p}" for p in parse_problems)
+            if root is not None:
+                problems.extend(
+                    f"{label}: {p}" for p in
+                    validate_value_payload(command, root.get("result"))
+                )
+            covered += 1
+    return problems, covered
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--schema-core", action="store_true",
                         help="validate the 26 core standard success cases")
     parser.add_argument("--schema-results", action="store_true",
                         help="validate per-command result keys for 26 core standard cases")
+    parser.add_argument("--schema-types", action="store_true",
+                        help="validate high-value result value types")
     args = parser.parse_args(argv)
-    if not (args.schema_core or args.schema_results):
-        parser.error("use --schema-core or --schema-results")
+    if not (args.schema_core or args.schema_results or args.schema_types):
+        parser.error("use --schema-core, --schema-results or --schema-types")
     manifest_problems = envelope.matrix_manifest_problems()
-    if args.schema_results:
+    if args.schema_types:
+        problems, total = run_schema_types()
+        label = "schema-types"
+    elif args.schema_results:
         problems, total = run_schema_results()
         label = "schema-results"
     else:
