@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P182.2d remaining result value types <进行中>
+current item : P182.3 stats/elaboration completeness contract <待做>
 
 ## 计划树
 
@@ -585,7 +585,7 @@ P182 agent delivery-layer plan from corrected review (2026-11-16) <待做>
 -- P182.2 executable top-level envelope schema <已完成>
 -- P182.2b per-command result key schemas <已完成>
 -- P182.2c result value types (high-value slice) <已完成>
--- P182.2d remaining result value types <进行中>
+-- P182.2d remaining result value types <已完成>
 -- P182.3 stats/elaboration completeness contract <待做>
 -- P182.4 agent entry convergence + capabilities-generated skill <待做>
 -- P182.5 snapshot/cache/session evaluation <待做>

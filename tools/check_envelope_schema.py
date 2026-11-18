@@ -187,6 +187,83 @@ TYPE_SCHEMAS: dict[str, dict[str, object]] = {
         "count": "integer", "complete": "boolean", "reason": "string",
         "links": "array", "samples": "array",
     },
+    "trace evidence": {
+        "signals": "array", "total_signals": "integer",
+        "failed_signals": "integer",
+    },
+    "trace profile": {
+        "signals": "array", "total_signals": "integer",
+        "failed_signals": "integer",
+    },
+    "trace lookup": {
+        "paths": "array", "total": "integer",
+        "found": "integer", "failed": "integer",
+    },
+    "trace manifest": {
+        "entries": "array", "total": "integer",
+        "found": "integer", "failed": "integer",
+    },
+    "trace constraints": {
+        "property": "string", "resolved": "string",
+        "count": "integer", "constraints": "array",
+    },
+    "trace constraint-neighborhood": {
+        "root": "string", "nodes": "array", "relations": "array",
+        "paths": "object", "summary": "object",
+    },
+    "trace tb-join": {
+        "tb_field": "string", "leaf": "string", "constraints": "array",
+        "join_status": "string", "rtl_candidates": "array", "note": "string",
+    },
+    "trace frontier": {
+        "signal": "string", "frontier": "array",
+        "summary": "object", "note": "string",
+    },
+    "trace constraint-chain": {
+        "found": "boolean", "source": "string", "target": "string",
+        "rand": "object", "hop_count": "integer", "chain": "array",
+        "segments": "array", "blocks": "array", "summary": "object",
+        "note": "string",
+    },
+    "trace covergroups": {
+        "count": "integer", "covergroups": "array",
+        "complete": "boolean", "reason": "string",
+    },
+    "trace coverpoints": {
+        "signal": "string", "count": "integer", "matches": "array",
+        "complete": "boolean", "reason": "string",
+    },
+    "controlflow list-conditioned": {
+        "signals": "array", "count": "integer",
+    },
+    "verify consistency": {
+        "verified": "boolean", "coverage_complete": "boolean",
+        "partial_checks": "array", "total_violations": "integer",
+        "unknown_checks": "array", "checks": "array",
+    },
+    "verify structural": {
+        "verified": "boolean", "coverage_complete": "boolean",
+        "partial_checks": "array", "unknown_checks": "array",
+        "findings": "array", "total": "integer", "truncated": "boolean",
+        "coverage": "object", "checks": "array",
+    },
+    "scope": {
+        "scope": "string", "canonical_id": "string", "kind": "string",
+        "module_type": "string", "parent": ["string", "null"],
+        "children": "array", "ports": "array", "parameters": "array",
+        "signals": "array", "members": "array", "instances": "array",
+    },
+    "filelist prune": {
+        "top": "string", "total_files": "integer", "selected_files": "array",
+        "selected_count": "integer", "dropped": "integer", "reason": "string",
+        "declarations": "object", "output": "string", "written": "boolean",
+        "dry_run": "boolean", "backup": ["string", "null"],
+        "requires_apply": "boolean",
+    },
+    "graph subgraph": {
+        "nodes": "array", "edges": "array", "boundary": "array",
+        "truncated": "object", "stats": "object",
+    },
 }
 TYPE_SOURCES = {
     "stats": "stats_result",
@@ -194,6 +271,11 @@ TYPE_SOURCES = {
     "graph edges": "graph_edges_result",
     "verify claim": "verify_claim_result",
     "dataflow analyze": "dataflow_result",
+    "trace evidence": "evidence_result",
+    "trace profile": "profile_result",
+    "trace lookup": "lookup_result",
+    "trace manifest": "manifest_result",
+    "graph subgraph": "subgraph_result",
 }
 TYPE_VARIANTS = (
     ("trace covergroup --rand", "trace covergroup",
@@ -216,6 +298,9 @@ def _schema_type(meta: object) -> object:
         return "array"
     if "|" in declared:
         return declared.split("|")
+    enum = meta.get("enum") if isinstance(meta, dict) else None
+    if enum:
+        return {"type": declared, "enum": list(enum)}
     return declared
 
 
@@ -283,6 +368,9 @@ def run_schema_types(execute=None) -> tuple[list[str], int]:
                     validate_value_payload(command, root.get("result"))
                 )
             covered += 1
+    expected = len(envelope.CORE_SUCCESS_MANIFEST) + len(TYPE_VARIANTS)
+    if covered != expected:
+        problems.append(f"covered {covered} cases, expected {expected}")
     return problems, covered
 
 

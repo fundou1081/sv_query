@@ -1,6 +1,6 @@
 # Per-command result key schemas — P182.2b
 
-> **状态**: 26/26 core standard result 必需键可执行校验；值/类型留 P182.2c。
+> **状态**: 26/26 core standard result 必需键可执行校验；值/类型见 [ENVELOPE_RESULT_TYPES](ENVELOPE_RESULT_TYPES.md)。
 > **来源**: `python3 tools/check_envelope_schema.py --schema-results`
 > **上游**: [ENVELOPE_JSON_SCHEMA](ENVELOPE_JSON_SCHEMA.md)（顶层）/ [ENVELOPE_INVENTORY](ENVELOPE_INVENTORY.md)
 

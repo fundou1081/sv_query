@@ -39,7 +39,8 @@
 
 ## 3. 明确不覆盖
 
-- per-command result schema（P182.2b，见 [ENVELOPE_RESULT_SCHEMA](ENVELOPE_RESULT_SCHEMA.md)）；
+- per-command result key schema（P182.2b，见 [ENVELOPE_RESULT_SCHEMA](ENVELOPE_RESULT_SCHEMA.md)）；
+- per-command value/type schema（P182.2c/2d，见 [ENVELOPE_RESULT_TYPES](ENVELOPE_RESULT_TYPES.md)）；
 - direct 13 条（P182.1e 静态契约）；
 - exp 6 条；
 - failure schema（P182.1f 用 rc/ok/error_code 契约）；
