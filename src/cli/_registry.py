@@ -540,13 +540,15 @@ JSON_CONTRACT = {
     },
     "commands": {
         "trace fanin": {
-            "result_fields": ["drivers"],
+            "result_fields": ["signals", "total_signals", "total_count",
+                              "total_pre_filter", "truncated", "failed_signals"],
             "signal_fields": ["driver_count", "multi_driver", "conditional_drivers",
                               "driver_conflict", "driver_conflict_analysis"],
             "node_array": "drivers",
         },
         "trace fanout": {
-            "result_fields": ["loads"],
+            "result_fields": ["signals", "total_signals", "total_count",
+                              "total_pre_filter", "truncated", "failed_signals"],
             "signal_fields": [],
             "node_array": "loads",
         },
@@ -653,6 +655,7 @@ JSON_CONTRACT = {
         "trace covergroup": {
             "result_fields": ["mode", "covergroup", "count", "links", "samples",
                               "complete", "reason"],
+            "optional_result_fields": ["links", "samples"],
             "sample_fields": "covergroup_sampling",
             "link_fields": "covergroup_rand",
         },
@@ -726,6 +729,8 @@ JSON_CONTRACT = {
             "result_fields": ["top", "total_files", "selected_files",
                               "selected_count", "dropped", "reason",
                               "declarations", "output", "written", "dry_run",
+                              "backup", "requires_apply"],
+            "optional_result_fields": ["output", "written", "dry_run",
                               "backup", "requires_apply"],
         },
         "capabilities": {

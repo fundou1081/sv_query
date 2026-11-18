@@ -88,22 +88,83 @@ def run_schema_core(execute=None) -> tuple[list[str], int]:
     return problems, len(envelope.CORE_SUCCESS_MANIFEST)
 
 
+def result_key_schema(command: str) -> dict:
+    """Per-command result schema: required result_fields, no value types yet."""
+    contract = JSON_CONTRACT["commands"][command]
+    return {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": f"sv_query {command} result keys",
+        "type": "object",
+        "required": [
+            field for field in contract["result_fields"]
+            if field not in contract.get("optional_result_fields", [])
+        ],
+        "additionalProperties": True,
+    }
+
+
+def validate_result_payload(command: str, payload: object, validator=None) -> list[str]:
+    if not isinstance(payload, dict):
+        return [f"result is {type(payload).__name__}, expected object"]
+    validator = validator or jsonschema.Draft202012Validator(result_key_schema(command))
+    errors = sorted(validator.iter_errors(payload), key=lambda e: list(e.absolute_path))
+    return [f"{e.message} at {list(e.absolute_path)}" for e in errors[:5]]
+
+
+def _run_case(case, execute, env) -> tuple[dict | None, list[str]]:
+    for setup_argv in case.setup:
+        setup = execute(setup_argv, env)
+        if setup.rc != 0:
+            return None, [f"setup rc={setup.rc}"]
+    run = execute(case.argv, env)
+    if run.rc != 0:
+        return None, [f"rc={run.rc}, expected 0"]
+    root, parse_problems = envelope._parse_root(run)
+    if root is not None and root.get("ok") is not True:
+        parse_problems.append(f"ok={root.get('ok')!r}, expected true")
+    return root, parse_problems
+
+
+def run_schema_results(execute=None) -> tuple[list[str], int]:
+    problems: list[str] = []
+    execute = execute or envelope.run_cli_case_with_env
+    with tempfile.TemporaryDirectory(prefix="svq_p182_2b_") as snapshot_dir:
+        env = dict(os.environ, SVQ_SNAPSHOT_DIR=snapshot_dir)
+        for case in envelope.CORE_SUCCESS_MANIFEST:
+            root, case_problems = _run_case(case, execute, env)
+            problems.extend(f"{case.command}: {p}" for p in case_problems)
+            if root is None:
+                continue
+            problems.extend(
+                f"{case.command}: {p}" for p in
+                validate_result_payload(case.command, root.get("result"))
+            )
+    return problems, len(envelope.CORE_SUCCESS_MANIFEST)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--schema-core", action="store_true",
                         help="validate the 26 core standard success cases")
+    parser.add_argument("--schema-results", action="store_true",
+                        help="validate per-command result keys for 26 core standard cases")
     args = parser.parse_args(argv)
-    if not args.schema_core:
-        parser.error("use --schema-core")
+    if not (args.schema_core or args.schema_results):
+        parser.error("use --schema-core or --schema-results")
     manifest_problems = envelope.matrix_manifest_problems()
-    problems, total = run_schema_core()
+    if args.schema_results:
+        problems, total = run_schema_results()
+        label = "schema-results"
+    else:
+        problems, total = run_schema_core()
+        label = "schema-core"
     problems = [f"manifest: {p}" for p in manifest_problems] + problems
     if problems:
         for problem in problems:
             print(f"FAIL\t{problem}")
-        print(f"schema-core: FAIL ({len(problems)} problems / {total})")
+        print(f"{label}: FAIL ({len(problems)} problems / {total})")
         return 1
-    print(f"schema-core: PASS ({total}/{total})")
+    print(f"{label}: PASS ({total}/{total})")
     return 0
 
 

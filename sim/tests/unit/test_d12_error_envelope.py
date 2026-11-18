@@ -352,6 +352,10 @@ def _normalise_intentional_paths_metadata(stdout: str) -> dict:
     exceptions = policy.get("exceptions")
     if isinstance(exceptions, list) and "paths" in exceptions:
         policy["exceptions"] = [x for x in exceptions if x != "paths"]
+    commands = data.get("json_contract", {}).get("commands", {})
+    for key in ("drivers", "loads", "trace fanin", "trace fanout",
+                "trace covergroup", "filelist prune"):
+        commands.pop(key, None)
     return data
 
 
@@ -371,6 +375,11 @@ def test_capabilities_success_output_matches_baseline_except_paths_metadata(
         paths = next(c for c in current["commands"] if c["name"] == "paths")
         assert paths["envelope"] == "direct"
         assert "paths" in current["json_contract"]["envelope_policy"]["exceptions"]
+        commands = current["json_contract"]["commands"]
+        assert commands["drivers"]["result_fields"][:2] == ["signals", "total_signals"]
+        assert commands["trace covergroup"]["optional_result_fields"] == [
+            "links", "samples"]
+        assert "output" in commands["filelist prune"]["optional_result_fields"]
         assert _normalise_intentional_paths_metadata(before.stdout) == \
             _normalise_intentional_paths_metadata(after.stdout)
     else:
