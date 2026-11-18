@@ -9,8 +9,8 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P189.1 agent-doc self-consistency gate (paths/commands/version/counts)** `<进行中>`
-  - P182.1c 保留待做；先补 AGENTS/README/USER_GUIDE 自洽 gate
+- **当前 item**: **P182.1c full core standard envelope matrix** `<待做>`
+  - P189.1 文档自洽 gate 完成；P182.1c 继续
   - P185.1 审计完成：classes/diagnose/graph/instances 已合并；`controlflow list-conditioned` 按“输入不同 + 非严格子视图”保留
   - P185.2 放弃：当前 CLI 无 bus/verif 独立命令
   - P185.3 已重基线：45 canonical / 2 aliases / 39 default visible
@@ -21,7 +21,7 @@
 ## 📌 当前真实基线
 
 ```text
-canonical:  3019 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  3027 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 
@@ -44,7 +44,7 @@ opensource: 112 passed / 11 skipped / 0 failed
 
 1. CLI/exp truth：`trace impact` 已隐藏；CLI_SURFACE/feature map/EXP_NAMESPACE 已对齐；
 2. 状态文档：CURRENT_TODO/HANDOFF/PLAN/契约已对齐；
-3. 证据：退役 zombie/coverage-suggest tests；canonical 3019；
+3. 证据：退役 zombie/coverage-suggest tests；canonical 3027；
 4. coverage POC：conftest 改为 lazy import；公开示例已改写/归档。
 
 ## 🚫 不要再做的事

@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P189.1 agent-doc self-consistency gate <进行中>
+current item : P182.1c full core standard envelope matrix <待做>
 
 ## 计划树
 
@@ -569,7 +569,7 @@ P188 packaging/community (2026-11-18 review) <待做>
 -- P188.2 issue/PR templates + CI badge <待做>
 
 P189 docs surface consistency gate (2026-11-18 review) <待做>
--- P189.1 agent-doc self-consistency gate (paths/commands/version/counts) <进行中>
+-- P189.1 agent-doc self-consistency gate (paths/commands/version/counts) <已完成>
 
 P190 diagnose timescale trigger investigation (2026-11-18 review) <待做>
 -- P190.1 reproduce MissingTimeScale conditions + fix or retire claim <待做>

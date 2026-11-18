@@ -103,7 +103,7 @@ sv_query trace fanin cdc_bug.dst_valid   -f examples/anti_hallucination_cdc/cdc_
 | 层 | 命令 |
 |---|---|
 | **Scope** | `scope` / `instances` / `hierarchy` / `ports` / `params` / `connections` / `class` |
-| **Trace** | `drivers` / `loads` / `paths` / `dataflow` / `controlflow` / `trace evidence/profile/lookup/manifest` |
+| **Trace** | `drivers` / `loads` / `paths` / `dataflow analyze` / `controlflow analyze` / `trace evidence/profile/lookup/manifest` |
 | **Verify** | `verify consistency` / `verify claim` / `verify structural`（仅客观结构一致性；RTL typo 是独立项目） |
 | **Class/约束/覆盖** | `class --relations`（含 UVM 静态） / `trace constraints` / `trace covergroups` / `trace coverpoints` / `trace covergroup` |
 | **Locate** | `stats` / `search` / `graph nodes/edges` / `graph subgraph` / `capabilities` |
@@ -118,7 +118,7 @@ sv_query trace fanin cdc_bug.dst_valid   -f examples/anti_hallucination_cdc/cdc_
 
 | 项 | 状态 |
 |---|---|
-| 全量回归 | 见 [INDEX 当前基线](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里)：canonical 0 failed；opensource 112 passed / 11 显式 skip |
+| 全量回归 | 见 [INDEX 当前基线](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里)：canonical 0 failed；opensource/skip 计数不写死（口径见 INDEX） |
 | 开源 smoke | strict_uart / verilog-axi / picorv32 / SERV |
 | 性能基准 | picorv32 / verilog-axi / SERV；build、warm query、cold CLI、peak RSS |
 | 反幻觉 | 单级 CDC walkthrough：profile + fanin/fanout 反驳“两级同步器” |
