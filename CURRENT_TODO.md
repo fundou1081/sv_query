@@ -28,7 +28,7 @@
 ## 📌 当前真实基线
 
 ```text
-canonical:  3052 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  3055 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 
@@ -37,7 +37,7 @@ opensource: 112 passed / 11 skipped / 0 failed
 - 1 pre-existing failed = `test_real_plan_file_passes`：PLAN.md baseline 的
 
 - P182.1d 新增 7 条测试后，当前全量 3038 通过 + 1 pre-existing 失败；绿色基线
-  仍按 P182.1c 的 3052 记，待 PLAN 修复后统一刷新；
+  仍按 P182.1c 的 3055 记，待 PLAN 修复后统一刷新；
 - 计数真相源：[docs/INDEX.md](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里)。
 
 ## 🧭 产品边界
