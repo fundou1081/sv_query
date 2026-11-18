@@ -9,9 +9,10 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P185.1 finish T2 same-family merges (classes/diagnose/graph/instances etc.)** `<待做>`
-  - 2026-11-18 review intake 已分诊；见 [intake](docs/architecture/agent_review_2026-11-18_intake.md)
-  - 先收命令面，再做 P182.1 envelope gate；P184 Phase 0 保持待做
+- **当前 item**: **P182.1a envelope inventory (read-only)** `<进行中>`
+  - P185.1 审计完成：classes/diagnose/graph/instances 已合并；`controlflow list-conditioned` 按“输入不同 + 非严格子视图”保留
+  - P185.2 放弃：当前 CLI 无 bus/verif 独立命令
+  - P185.3 已重基线：45 canonical / 2 aliases / 39 default visible
   - P173 full status/evidence cleanup：已完成；无 active item
   - P62.2 gate assessment：no-go，不做交互式 debug UI/REPL
 

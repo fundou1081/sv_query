@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P185.1 finish T2 same-family merges (classes/diagnose/graph/instances etc.) <待做>
+current item : P182.1a envelope inventory (read-only; no gate) <进行中>
 
 ## 计划树
 
@@ -551,9 +551,9 @@ P184 ASTFrontend Phase 0 (inventory + degraded observability) <待做>
 -- P184.2 safe_attr degraded signal without changing return/default <待做>
 
 P185 CLI command-surface subtraction (2026-11-18 review) <待做>
--- P185.1 finish T2 same-family merges (classes/diagnose/graph/instances etc.) <待做>
--- P185.2 bus/verif domain merge from L1 P4 <待做>
--- P185.3 default-visible surface + alias target (not 10; preserve semantic core) <待做>
+-- P185.1 T2 merge audit (classes/diagnose/graph/instances already done; list-conditioned retained) <已完成>
+-- P185.2 bus/verif domain merge (no current CLI commands; abandoned) <放弃>
+-- P185.3 rebaseline default-visible surface (45 canonical / 2 aliases / 39 default) <已完成>
 -- P185.4 command-surface ratchet/check <待做>
 
 P186 shadow-node graph cleanup (2026-11-18 review) <待做>
@@ -576,6 +576,7 @@ P190 diagnose timescale trigger investigation (2026-11-18 review) <待做>
 
 P182 agent delivery-layer plan from corrected review (2026-11-16) <待做>
 -- P182.1 envelope inventory + check_envelope_contract gate <待做>
+-- P182.1a envelope inventory (read-only; no gate) <进行中>
 -- P182.2 executable JSON schema + validation gate <待做>
 -- P182.3 stats/elaboration completeness contract <待做>
 -- P182.4 agent entry convergence + capabilities-generated skill <待做>
