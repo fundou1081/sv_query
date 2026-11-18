@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P182.1 envelope inventory + check_envelope_contract gate <待做>
+current item : P185.1 finish T2 same-family merges (classes/diagnose/graph/instances etc.) <待做>
 
 ## 计划树
 
@@ -549,6 +549,30 @@ P183 implementation/abstraction review intake (2026-11-16) <已完成>
 P184 ASTFrontend Phase 0 (inventory + degraded observability) <待做>
 -- P184.1 classify scan_pyslang_attrs by receiver type and ratchet <待做>
 -- P184.2 safe_attr degraded signal without changing return/default <待做>
+
+P185 CLI command-surface subtraction (2026-11-18 review) <待做>
+-- P185.1 finish T2 same-family merges (classes/diagnose/graph/instances etc.) <待做>
+-- P185.2 bus/verif domain merge from L1 P4 <待做>
+-- P185.3 default-visible surface + alias target (not 10; preserve semantic core) <待做>
+-- P185.4 command-surface ratchet/check <待做>
+
+P186 shadow-node graph cleanup (2026-11-18 review) <待做>
+-- P186.1 measure shadow nodes by module/query path <待做>
+-- P186.2 decide definition namespace vs drop_shadows API <待做>
+
+P187 value case studies (2026-11-18 review) <待做>
+-- P187.1 select CVA6/OpenTitan historical signal bugs <待做>
+-- P187.2 compare manual grep vs sv_query with time/accuracy <待做>
+
+P188 packaging/community (2026-11-18 review) <待做>
+-- P188.1 PyPI packaging + install smoke <待做>
+-- P188.2 issue/PR templates + CI badge <待做>
+
+P189 docs surface consistency gate (2026-11-18 review) <待做>
+-- P189.1 compare README/USER_GUIDE command tables to capabilities <待做>
+
+P190 diagnose timescale trigger investigation (2026-11-18 review) <待做>
+-- P190.1 reproduce MissingTimeScale conditions + fix or retire claim <待做>
 
 P182 agent delivery-layer plan from corrected review (2026-11-16) <待做>
 -- P182.1 envelope inventory + check_envelope_contract gate <待做>
