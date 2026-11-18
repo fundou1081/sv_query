@@ -9,17 +9,18 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P182.1a envelope inventory (read-only)** `<进行中>`
+- **当前 item**: **P182.1b standard core envelope gate + direct exceptions** `<待做>`
   - P185.1 审计完成：classes/diagnose/graph/instances 已合并；`controlflow list-conditioned` 按“输入不同 + 非严格子视图”保留
   - P185.2 放弃：当前 CLI 无 bus/verif 独立命令
   - P185.3 已重基线：45 canonical / 2 aliases / 39 default visible
+  - P182.1a 只读盘点完成：33 standard / 12 direct；paths registry-vs-contract mismatch 已暴露
   - P173 full status/evidence cleanup：已完成；无 active item
   - P62.2 gate assessment：no-go，不做交互式 debug UI/REPL
 
 ## 📌 当前真实基线
 
 ```text
-canonical:  3012 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  3015 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 
@@ -42,7 +43,7 @@ opensource: 112 passed / 11 skipped / 0 failed
 
 1. CLI/exp truth：`trace impact` 已隐藏；CLI_SURFACE/feature map/EXP_NAMESPACE 已对齐；
 2. 状态文档：CURRENT_TODO/HANDOFF/PLAN/契约已对齐；
-3. 证据：退役 zombie/coverage-suggest tests；canonical 3012；
+3. 证据：退役 zombie/coverage-suggest tests；canonical 3015；
 4. coverage POC：conftest 改为 lazy import；公开示例已改写/归档。
 
 ## 🚫 不要再做的事

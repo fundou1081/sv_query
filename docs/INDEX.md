@@ -13,8 +13,8 @@
 | 项 | 值 | 说明 |
 |---|---|---|
 | 源码规模 | 145 文件 / 50,758 行 | `find src -name "*.py"`（2026-11-16 实测） |
-| 测试规模 | 407 测试文件 / 67,934 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **3012 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-17 D14 全量复核**（本机；deferred 口径）；含 zombie tests 清理后的 canonical；**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
+| 测试规模 | 408 测试文件 / 67,985 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
+| 全量 (canonical) | **3015 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-17 D14 全量复核**（本机；deferred 口径）；含 zombie tests 清理后的 canonical；**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 迭代记录 | `docs/task_tree/iterations/` (519 份, 只增不改) | 每次迭代一份（2026-11-16 实测） |
@@ -55,6 +55,7 @@
 | [dev/SNAPSHOT_SURFACE.md](dev/SNAPSHOT_SURFACE.md) | **快照能力面矩阵 (P158.9.2)**: 字段级保真 / 命令级支持面 / 显式不保证清单 |
 | [dev/CLAIMS.md](dev/CLAIMS.md) | **claim 台账**: 公开能力的证据与状态 |
 | [dev/CODING_STYLE.md](dev/CODING_STYLE.md) | 编码风格与设计决策: 先探索后决策 / 单一实现 / 修根因 / 函数职责 / 结构化数据 / 影响面 / 协作规则 |
+| [dev/ENVELOPE_INVENTORY.md](dev/ENVELOPE_INVENTORY.md) | **P182.1a**: 45 命令 envelope 只读盘点；33 standard / 12 direct；snapshot list 根类型不一致 |
 | [dev/WORKFLOW.md](dev/WORKFLOW.md) | 开发流程: 任务生命周期 / 迭代记录 / 文档卫生 / 测试与冒烟 / 机械检查 / ADR / 提交合并 |
 | [dev/PROJECT_ADAPTATION.md](dev/PROJECT_ADAPTATION.md) | **项目适配理念**: core 不自动推断特定项目；外部 adapter 模板 |
 | [agent/GUIDED_TRACE.md](agent/GUIDED_TRACE.md) | **P139 guided trace**: frontier + next probes；不分类 FIFO |

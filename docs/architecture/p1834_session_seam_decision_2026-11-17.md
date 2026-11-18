@@ -96,4 +96,4 @@ D10–D14 已交付的内容：
 - `docs/dev/CLAIMS.md` C-23/C-24/C-25；
 - `agents/review-minimax/reviews/R-D10.md` … `R-D14.md`；
 - `src/sv_query/session.py`、`src/cli/_session_runner.py`、`src/cli/core/locate/session_cmd.py`；
-- canonical 3012 passed（D14 收口）。
+- canonical 3015 (current) passed（D14 收口）。

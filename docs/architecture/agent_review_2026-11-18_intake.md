@@ -10,7 +10,7 @@
 
 | 锐评说法 | 当前事实 | 判定 |
 |---|---|---|
-| 2958 tests / 97.1% / ~86 failures | canonical **3012 passed / 0 failed**；123 是 opensource deferred，不是失败 | **过期** |
+| 2958 tests / 97.1% / ~86 failures | canonical **3015 (current) passed / 0 failed**；123 是 opensource deferred，不是失败 | **过期** |
 | README 仍宣传 visualize/cdc/timing/sva/risk | README 已标注 2026-11-03 退役；USER_GUIDE §8 明确不做 | **已修** |
 | 27 个 CLI 命令 | 当前 **45** 注册命令（39 core + 6 exp）；27 更接近 standard envelope 数 | **过期** |
 | 核心 ~39K 行 | 当前 src ~50.8K 行 / 145 文件 | **过期** |
