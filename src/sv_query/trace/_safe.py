@@ -16,14 +16,48 @@ Canonical functions (use these — others are deprecated):
                             whitespace, replace control chars, return "" on
                             empty)
   - safe_attr(obj, n)    — safe getattr that catches pyslang property errors
+
+Degraded observability (P184.2): ``safe_attr`` accepts an optional
+``on_degraded`` callable. It receives a :class:`DegradedAttr` event for every
+fallback (including missing attributes) and must not change the returned value.
+See the ``safe_attr`` docstring for the contract.
 """
 from __future__ import annotations
 
-from typing import Any
+import logging
+from dataclasses import dataclass
+from typing import Any, Callable
+
+logger = logging.getLogger(__name__)
 
 # Sentinel returned when a name has no usable printable content.
 _EMPTY = ""
 _BINARY_PLACEHOLDER = "<id:binary>"
+
+
+@dataclass(frozen=True)
+class DegradedAttr:
+    """One observed safe_attr fallback (P184.2 degraded signal).
+
+    Attributes:
+        obj: the object whose attribute was read.
+        name: attribute name passed to safe_attr.
+        exception: the exception instance raised by the getter.
+        exception_type: ``type(exception)`` (convenience for collectors).
+        message: ``str(exception)`` captured at fallback time.
+    """
+
+    obj: Any
+    name: str
+    exception: Exception
+    exception_type: type
+    message: str
+
+    @classmethod
+    def from_exception(cls, obj: Any, name: str, exc: Exception) -> DegradedAttr:
+        return cls(obj=obj, name=name, exception=exc,
+                   exception_type=type(exc), message=str(exc))
+
 
 
 def _hex_placeholder(obj) -> str:
@@ -84,7 +118,8 @@ def clean_name(name) -> str:
     return _normalize_identifier(s)
 
 
-def safe_attr(obj: Any, name: str, default: Any = None) -> Any:
+def safe_attr(obj: Any, name: str, default: Any = None, *,
+              on_degraded: Callable[[DegradedAttr], None] | None = None) -> Any:
     """Safe getattr that tolerates non-UTF-8 pyslang property access.
 
     Equivalent to ``getattr(obj, name, default)`` but catches UnicodeDecodeError
@@ -92,13 +127,47 @@ def safe_attr(obj: Any, name: str, default: Any = None) -> Any:
     catch is intentionally broad here because pyslang raises a variety of
     internal error types for bad identifiers, and getting None back is always
     a safer default than crashing the whole extraction.
+
+    Args:
+        obj: object to read from. ``None`` returns ``default`` without
+            invoking the callback (nothing was degraded).
+        name: attribute name.
+        default: value returned on failure / missing attribute.
+        on_degraded: optional observer called as
+            ``on_degraded(DegradedAttr(obj, name, exception, ...))`` for every
+            fallback (getter exception or missing attribute). It is purely
+            observational:
+              - its return value is ignored;
+              - an exception raised by the callback is logged and swallowed,
+                and the caller still receives ``default`` (the callback can
+                never change the result, nor mask the original fallback);
+              - no module-global counter is kept; callers own aggregation
+                (e.g. a per-request collector).
+
+    Returns:
+        The attribute value, or ``default`` when the read fails. Return
+        type/default semantics are unchanged from the callback-less form.
     """
     if obj is None:
         return default
     try:
         return getattr(obj, name)
-    except (UnicodeDecodeError, TypeError, Exception):
+    except Exception as exc:
+        if on_degraded is not None:
+            _emit_degraded(on_degraded, obj, name, exc)
         return default
+
+
+def _emit_degraded(on_degraded: Callable[[DegradedAttr], None], obj: Any,
+                   name: str, exc: Exception) -> None:
+    """Invoke the observer; callback failures are logged, never propagated."""
+    try:
+        on_degraded(DegradedAttr.from_exception(obj, name, exc))
+    except Exception as cb_exc:  # 回调是观察者: 失败必须可见, 但不得改变 safe_attr 返回
+        logger.warning(
+            "safe_attr on_degraded callback failed for attr %r (%s): %s",
+            name, type(cb_exc).__name__, cb_exc, exc_info=True,
+        )
 
 
 # ---- internals ----

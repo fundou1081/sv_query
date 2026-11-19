@@ -6,7 +6,6 @@ Verifies:
 - safe_attr returns default on pyslang-like attribute errors
 - canonical functions are used by semantic_adapter and base
 """
-import pytest
 
 from sv_query.trace._safe import clean_name, safe_attr, safe_str
 
@@ -104,6 +103,113 @@ def test_safe_attr_missing():
 def test_safe_attr_none():
     assert safe_attr(None, "name") is None
     assert safe_attr(None, "name", "default") == "default"
+
+
+# ---- safe_attr degraded signal (P184.2) ----
+
+class _RaisesOnAttr:
+    def __init__(self, exc):
+        self._exc = exc
+        self.calls = 0
+
+    @property
+    def name(self):
+        self.calls += 1
+        raise self._exc
+
+
+def _collector():
+    events = []
+    return events, events.append
+
+
+def test_safe_attr_unicode_decode_error_reports_structured_event():
+    exc = UnicodeDecodeError('utf-8', b'\xcc', 0, 1, 'invalid continuation byte')
+    obj = _RaisesOnAttr(exc)
+    events, cb = _collector()
+
+    assert safe_attr(obj, "name", "fallback", on_degraded=cb) == "fallback"
+
+    assert len(events) == 1
+    event = events[0]
+    assert event.obj is obj
+    assert event.name == "name"
+    assert event.exception is exc
+    assert event.exception_type is UnicodeDecodeError
+    assert "invalid continuation byte" in event.message
+    assert obj.calls == 1
+
+
+def test_safe_attr_type_error_reports_event():
+    obj = _RaisesOnAttr(TypeError("bad token"))
+    events, cb = _collector()
+
+    assert safe_attr(obj, "name", None, on_degraded=cb) is None
+    assert [e.exception_type for e in events] == [TypeError]
+    assert events[0].message == "bad token"
+
+
+def test_safe_attr_generic_exception_reports_event():
+    obj = _RaisesOnAttr(RuntimeError("pyslang internals"))
+    events, cb = _collector()
+
+    assert safe_attr(obj, "name", "d", on_degraded=cb) == "d"
+    assert events[0].exception_type is RuntimeError
+
+
+def test_safe_attr_without_callback_is_unchanged():
+    """旧行为: 无回调时仍只返回 default, 不产生观察副作用。"""
+    obj = _RaisesOnAttr(UnicodeDecodeError('utf-8', b'\xcc', 0, 1, 'x'))
+    assert safe_attr(obj, "name") is None
+    assert safe_attr(obj, "name", "d") == "d"
+
+
+def test_safe_attr_missing_attribute_also_reports_degraded():
+    class X:
+        name = "ok"
+
+    events, cb = _collector()
+    assert safe_attr(X(), "nonexistent", "d", on_degraded=cb) == "d"
+    assert len(events) == 1
+    assert events[0].exception_type is AttributeError
+
+
+def test_safe_attr_success_does_not_report():
+    class X:
+        name = "ok"
+
+    events, cb = _collector()
+    assert safe_attr(X(), "name", "d", on_degraded=cb) == "ok"
+    assert events == []
+
+
+def test_safe_attr_none_does_not_report():
+    events, cb = _collector()
+    assert safe_attr(None, "name", "d", on_degraded=cb) == "d"
+    assert events == []
+
+
+def test_safe_attr_callback_failure_does_not_change_return(caplog):
+    """回调是观察者: 它抛异常时返回值仍是 default, 且失败被记录。"""
+    obj = _RaisesOnAttr(TypeError("boom"))
+    seen = []
+
+    def bad_cb(event):
+        seen.append(event)
+        raise ValueError("collector down")
+
+    with caplog.at_level("WARNING", logger="sv_query.trace._safe"):
+        result = safe_attr(obj, "name", "fallback", on_degraded=bad_cb)
+
+    assert result == "fallback"
+    assert len(seen) == 1
+    assert any("on_degraded callback failed" in r.message for r in caplog.records)
+
+
+def test_safe_attr_legacy_shim_has_no_callback():
+    from sv_query.trace._safe import _safe_attr
+    obj = _RaisesOnAttr(TypeError("boom"))
+    assert _safe_attr(obj, "name", "d") == "d"
 
 
 # ---- integration: SemanticAdapter uses canonical ----

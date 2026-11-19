@@ -543,18 +543,20 @@ P182.1d phase 1 的 7-case canary **不覆盖**此形态；P182.1f 已裁决：�
 
 ### 3.18 pyslang 属性读取仍可静默降级（P183.5 / P184）
 
-**事实**：`safe_attr` 当前 `except (UnicodeDecodeError, TypeError, Exception)` 后返回
-caller 的 default；`scan_pyslang_attrs.py` 是启发式工具而非 gate。
+**事实（P184 Phase 0 后）**：`safe_attr` 仍返回 caller 的 default，但现在支持可选
+`on_degraded` 回调（默认 None，现有调用点不变）；`scan_pyslang_attrs.py` 已成为
+`run_gates.sh` 中的 gate，baseline 只登记 10 个真实 getter，50 处名字启发式不是基线。
 
 **可观察后果（按输入形态）**：
 
 | 输入形态 | 结果 |
 |---|---|
 | 非 UTF-8 identifier / pyslang getter 抛错 | `safe_attr` 返回 default → 节点/边缺失，但命令 rc=0 |
-| 直接 `.name` 读取（真实 pyslang getter 约 10 处） | 同上，且扫描器当前把约 40 个 Python dataclass 读取一起报出 |
-| 新增 dataclass `.name` 读取 | 若按当前 50 建棘轮会误报；Phase 0 必须先按接收者类型分类 |
+| 直接 `.name` 读取（真实 pyslang getter 10 处） | 同上；P184 只做可观察性，未改这 10 处调用点 |
+| 新增 dataclass `.name` 读取 | scanner 分类为 wrapper，不进 ratchet |
+| 新增无 annotation、名字不含 pyslang 词的 getter | 可能仍是 unknown/不可见；见 §3.25 |
 
-**决策**：P183.5 不修；登记为 P184 Phase 0（inventory 分类 + degraded 可观察）。
+**决策**：P184 Phase 0 已完成 inventory/ratchet + 可选 degraded 回调；调用点迁移不在 Phase 0。
 
 ### 3.17 Session seam 的未覆盖范围（P183.4 / D15）
 
@@ -686,3 +688,14 @@ connections ...                         -> ok=false, target is not an instance p
 
 `trace evidence` 暴露 `--no-cache`，但没有把该参数接到 resolver/build 路径；
 P182.5 评估记录、P182.6 未改行为。需要 cache 语义时应先接线并补对照测试。
+
+
+### 3.25 scanner 的静态覆盖边界（P184.1）
+
+`scan_pyslang_attrs.py` 是 AST 静态工具，以下位置不会进入当前 walker：
+
+- 嵌套 class 的方法体、class 体赋值、装饰器表达式、默认参数值；
+- 无 annotation 且 receiver 名不含 `PYSLANG_ISH` 的 pyslang 读取完全不可见。
+
+当前树穷举 277 处与 scanner 277 处差集为 0；这是潜在覆盖缺口，不是现有树漏报。
+新增这些位置的 pyslang 读取时，ratchet 可能不会红，必须靠 review。

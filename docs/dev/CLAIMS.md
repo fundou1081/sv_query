@@ -49,6 +49,7 @@
 | C-26 | `stats` 成功时 `elaboration_errors=[]`；malformed RTL 的 `--json` 返回 `E_ELABORATION_FAILED`、rc=1、无 result | fixture | `test_p182_3_stats_completeness.py` / `tools/check_stats_completeness.py` | `verified`（CLI 路径；不恢复 partial graph） |
 | C-27 | `capabilities --json` 是 agent 命令索引唯一真相源；`docs/agent/CAPABILITIES_GENERATED.md` 由其生成；旧 AGENT_FEATURE_MAP 自 P182.4 起为历史快照；exp 默认不入 capabilities | fixture | `test_p182_4_agent_entry.py` / `gen_agent_skill.py --check` | `verified` |
 | C-28 | 旧 snapshot 缺少 `module_graph` 时，instances/hierarchy/connections 返回 `E_SNAPSHOT_NO_MIG`，不返回 ok=true 空结果 | fixture | `test_p182_6_snapshot_mig.py` | `verified` |
+| C-29 | pyslang 属性扫描只拦新增真实 getter/unknown；baseline 不是 50 处名字启发式；safe_attr 可选 on_degraded 不改变返回/default | fixture | `test_p184_pyslang_attr_scan.py` / `test_safe.py` / `scan_pyslang_attrs.py --check` | `verified`（Phase 0） |
 
 ---
 

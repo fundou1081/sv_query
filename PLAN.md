@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P184.1 classify scan_pyslang_attrs by receiver type and ratchet <进行中>
+current item : P185.4 command-surface ratchet/check <待做>
 
 ## 计划树
 
@@ -546,9 +546,9 @@ P183 implementation/abstraction review intake (2026-11-16) <已完成>
 -- P183.3 DTO/Stage context <已完成>
 -- P183.4 Session.execute library seam <已完成>
 -- P183.5 DesignView/ASTFrontend candidate evaluation <已完成>
-P184 ASTFrontend Phase 0 (inventory + degraded observability) <待做>
--- P184.1 classify scan_pyslang_attrs by receiver type and ratchet <进行中>
--- P184.2 safe_attr degraded signal without changing return/default <待做>
+P184 ASTFrontend Phase 0 (inventory + degraded observability) <已完成>
+-- P184.1 classify scan_pyslang_attrs by receiver type and ratchet <已完成>
+-- P184.2 safe_attr degraded signal without changing return/default <已完成>
 
 P185 CLI command-surface subtraction (2026-11-18 review) <待做>
 -- P185.1 T2 merge audit (classes/diagnose/graph/instances already done; list-conditioned retained) <已完成>

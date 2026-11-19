@@ -1,0 +1,85 @@
+{
+  "schema": "sv_query.pyslang_attr_baseline.v1",
+  "note": "只登记已确认的真实 pyslang getter (known_pyslang) 与人工 review 的 wrapper 例外 (reviewed_wrappers); 不是 iter_182 的 50 处启发式命中。条目由 tools/scan_pyslang_attrs.py --write-baseline 维护; reason 字段为人工判据, 重写时保留。",
+  "known_pyslang": [
+    {
+      "file": "sv_query/trace/core/bit_select_handler.py",
+      "receiver": "decl",
+      "attr": "name",
+      "count": 1,
+      "evidence": "reviewed pyslang: DataDeclaration.declarators 返回 pyslang 语法节点; decl.name 是 pyslang Token, hasattr 不能防 getter 抛错",
+      "reason": "DataDeclaration.declarators 的元素是 pyslang 语法节点 (iter_353 语义 getter); decl.name 读取走 pyslang Token getter"
+    },
+    {
+      "file": "sv_query/trace/core/covergroup_extractor.py",
+      "receiver": "node",
+      "attr": "body",
+      "count": 1,
+      "evidence": "reviewed pyslang: _find_covergroups 递归遍历 pyslang 语义节点 (root/Instance/Class 等), 参数无 annotation",
+      "reason": "_find_covergroups 的 node 由 root 及 body 成员递归传入, 是 pyslang Symbol/Scope; 只有 pyslang CompilationUnit/Instance 有 body"
+    },
+    {
+      "file": "sv_query/trace/core/driver_extractor.py",
+      "receiver": "ref_expr",
+      "attr": "symbol",
+      "count": 2,
+      "evidence": "reviewed pyslang: ref_expr 是 pyslang 语义表达式 (调用方从 alias 表达式遍历传入), .symbol 是 pyslang getter",
+      "reason": "alias ref expr 的 .symbol 是 pyslang Expression.symbol getter; 同名实现与 extractors/alias_extractor.py 一致"
+    },
+    {
+      "file": "sv_query/trace/core/driver_extractor.py",
+      "receiver": "ref_expr.symbol",
+      "attr": "name",
+      "count": 1,
+      "evidence": "reviewed pyslang: ref_expr.symbol 是 pyslang Symbol, .name 是 pyslang getter",
+      "reason": "Symbol.name 是 pyslang getter; 非 UTF-8 identifier 会抛 UnicodeDecodeError"
+    },
+    {
+      "file": "sv_query/trace/core/extractors/alias_extractor.py",
+      "receiver": "ref_expr",
+      "attr": "symbol",
+      "count": 2,
+      "evidence": "reviewed pyslang: ref_expr 是 pyslang 语义表达式 (别名抽取入口), .symbol 是 pyslang getter",
+      "reason": "与 driver_extractor._extract_alias_ref_name 行为 1:1 一致的本地副本; 同一真实读取"
+    },
+    {
+      "file": "sv_query/trace/core/extractors/alias_extractor.py",
+      "receiver": "ref_expr.symbol",
+      "attr": "name",
+      "count": 1,
+      "evidence": "reviewed pyslang: ref_expr.symbol 是 pyslang Symbol, .name 是 pyslang getter",
+      "reason": "Symbol.name 是 pyslang getter; 非 UTF-8 identifier 会抛 UnicodeDecodeError"
+    },
+    {
+      "file": "sv_query/trace/core/semantic/ports_ifaces.py",
+      "receiver": "module",
+      "attr": "body",
+      "count": 2,
+      "evidence": "reviewed pyslang: get_port_declarations 的注释明确 module 是 pyslang DefinitionSymbol; .body 是 pyslang getter",
+      "reason": "DefinitionSymbol.body 是 pyslang getter; 参数无 annotation, 但语义/调用方均为 pyslang DefinitionSymbol"
+    }
+  ],
+  "reviewed_wrappers": [
+    {
+      "file": "sv_query/trace/core/module_instance_graph.py",
+      "receiver": "inst_wrapper",
+      "attr": "name",
+      "count": 2,
+      "reason": "inst_wrapper 生产路径是 native_adapter._NativeInstanceWrapper; name 是 @property, 内部 _safe_str(self._symbol.name), 不是构造时写入的 str"
+    },
+    {
+      "file": "sv_query/trace/core/module_instance_graph.py",
+      "receiver": "inst_wrapper",
+      "attr": "type",
+      "count": 1,
+      "reason": "inst_wrapper.type 是 _TypeToken 兼容对象 (native_adapter._NativeInstanceWrapper.__init__ 构造), 不是 pyslang 对象"
+    },
+    {
+      "file": "sv_query/trace/core/module_instance_graph.py",
+      "receiver": "port",
+      "attr": "name",
+      "count": 2,
+      "reason": "port 来自 self._module_ports / inst.ports, 两端都填 PortInfo (本文件 dataclass); _module_ports 为动态属性 (getattr), 静态推断不到 annotation"
+    }
+  ]
+}

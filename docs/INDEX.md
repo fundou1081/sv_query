@@ -12,12 +12,12 @@
 
 | 项 | 值 | 说明 |
 |---|---|---|
-| 源码规模 | 145 文件 / 50,803 行 | `find src -name "*.py"`（2026-11-16 实测） |
-| 测试规模 | 423 测试文件 / 69,141 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **3086 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-19 P182.5 全量复核（3086）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
+| 源码规模 | 145 文件 / 50,873 行 | `find src -name "*.py"`（2026-11-16 实测） |
+| 测试规模 | 424 测试文件 / 69,594 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
+| 全量 (canonical) | **3113 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-19 P182.5 全量复核（3113）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (526 份, 只增不改) | 每次迭代一份（2026-11-16 实测） |
+| 迭代记录 | `docs/task_tree/iterations/` (527 份, 只增不改) | 每次迭代一份（2026-11-16 实测） |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 | 语义 regex 纪律 | `python3 tools/check_semantic_regex.py` 必须 ✅ | 仅 UVM 宏例外；class/constraint/covergroup 语义走 slang (iter_368) |
@@ -250,6 +250,7 @@
 | [ARCHITECTURE_EVOLUTION.md](ARCHITECTURE_EVOLUTION.md) | 架构演进历史 |
 | [SIGNAL_GRAPH_SPEC.md](SIGNAL_GRAPH_SPEC.md) | SignalGraph 输入输出 Spec |
 | [SV_SYNTAX_MAPPING.md](SV_SYNTAX_MAPPING.md) | SV 语法 ↔ 图节点/边 对应 |
+| [PYSLANG_ATTR_INVENTORY.md](PYSLANG_ATTR_INVENTORY.md) | **P184**: pyslang 属性/kind 清单；10 个真实 getter baseline，50 不是基线 |
 | [PYSLANG_SEMANTIC_USAGE.md](PYSLANG_SEMANTIC_USAGE.md) | pyslang semantic API 使用模式 |
 | [architecture/filelist_loader_unification.md](architecture/filelist_loader_unification.md) | filelist 加载器合并决策 (iter_193, 单一解析实现) |
 | [architecture/ventus_viz_assertion_migration.md](architecture/ventus_viz_assertion_migration.md) | 🟡 待决: Ventus viz 断言迁移 (iter_195, 13 skip 逐条评估) |
