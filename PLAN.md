@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P182.6 governance/claims/structural cleanup <进行中>
+current item : P184.1 classify scan_pyslang_attrs by receiver type and ratchet <待做>
 
 ## 计划树
 
@@ -569,13 +569,13 @@ P188 packaging/community (2026-11-18 review) <已完成>
 -- P188.2 issue/PR templates + CI badge <已完成>
 -- P188.3 externalize legacy archive <已完成>
 
-P189 docs surface consistency gate (2026-11-18 review) <待做>
+P189 docs surface consistency gate (2026-11-18 review) <已完成>
 -- P189.1 agent-doc self-consistency gate (paths/commands/version/counts) <已完成>
 
 P190 diagnose timescale trigger investigation (2026-11-18 review) <待做>
 -- P190.1 reproduce MissingTimeScale conditions + fix or retire claim <待做>
 
-P182 agent delivery-layer plan from corrected review (2026-11-16) <待做>
+P182 agent delivery-layer plan from corrected review (2026-11-16) <已完成>
 -- P182.1 envelope inventory + check_envelope_contract gate <已完成>
 -- P182.1a envelope inventory (read-only; no gate) <已完成>
 -- P182.1b canary standard envelope gate (phase 1) <已完成>
@@ -590,7 +590,7 @@ P182 agent delivery-layer plan from corrected review (2026-11-16) <待做>
 -- P182.3 stats/elaboration completeness contract <已完成>
 -- P182.4 agent entry convergence + capabilities-generated skill <已完成>
 -- P182.5 snapshot/cache/session evaluation <已完成>
--- P182.6 governance/claims/structural cleanup <进行中>
+-- P182.6 governance/claims/structural cleanup <已完成>
 
 P181 discipline remediation after worker audit (2026-11-16) <已完成>
 -- P181.1 active-high reset polarity + tests <已完成>

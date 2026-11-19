@@ -62,6 +62,7 @@ class ErrorCode(StrEnum):
     # 数据类
     E_NO_DATA = "E_NO_DATA"  # 命令成功但无结果
     E_PARTIAL_RESULT = "E_PARTIAL_RESULT"  # 部分完成 (图不完整)
+    E_SNAPSHOT_NO_MIG = "E_SNAPSHOT_NO_MIG"  # snapshot 无 module_graph，MIG 命令不可用
 
 
 # 异常类型 → error code 映射 (供各 command 用)

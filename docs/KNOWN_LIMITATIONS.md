@@ -668,7 +668,7 @@ Wheel 同时安装 top-level `cli` 与 `sv_query`（P165.2 入口决策）。首
 namespace 迁移。
 
 
-### 3.23 旧 snapshot 缺 module_graph 时 instances/hierarchy 静默空结果
+### 3.23 旧 snapshot 缺 module_graph 时 instances/hierarchy 显式 E_SNAPSHOT_NO_MIG
 
 拿缺少 `module_graph` 的旧 snapshot：
 
@@ -678,6 +678,11 @@ hierarchy --from-snapshot old --json    -> ok=true, root_count=0, tree=[]
 connections ...                         -> ok=false, target is not an instance path
 ```
 
-`instances`/`hierarchy` 把 MIG 缺失伪装成“空结果”，与 §3.12 “旧 snapshot 显式
-unknown/失败”不一致。P182.5 只评估，未修；后续应返回显式 `E_SNAPSHOT_NO_MIG`
-或 `ok=false`。
+`instances`/`hierarchy`/`connections` 现在会显式返回 `ok=false` +
+`error_code=E_SNAPSHOT_NO_MIG`（P182.6 修复），不再伪装成空结果。
+
+
+### 3.24 `trace evidence --no-cache` 当前是 no-op
+
+`trace evidence` 暴露 `--no-cache`，但没有把该参数接到 resolver/build 路径；
+P182.5 评估记录、P182.6 未改行为。需要 cache 语义时应先接线并补对照测试。

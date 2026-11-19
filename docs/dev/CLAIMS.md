@@ -48,6 +48,7 @@
 | C-25 | Session 三个错误码与 `error.type` 单一来源 `sv_query.errors`；`cli.errors.ErrorCode` 逐值接纳同一组码；Session 失败响应经唯一 adapter（`cli._session_adapter.fail_from_session`）映射到 CLI `fail`，未知 code → `E_INTERNAL` 且原值保留在 `session_error_code`；`capabilities` 成功输出与 D12 前逐字节一致 | fixture | `test_d12_error_envelope.py` | `verified`（capabilities 失败路径；全量 run() dispatch 评估为不采纳（D15 ADR）） |
 | C-26 | `stats` 成功时 `elaboration_errors=[]`；malformed RTL 的 `--json` 返回 `E_ELABORATION_FAILED`、rc=1、无 result | fixture | `test_p182_3_stats_completeness.py` / `tools/check_stats_completeness.py` | `verified`（CLI 路径；不恢复 partial graph） |
 | C-27 | `capabilities --json` 是 agent 命令索引唯一真相源；`docs/agent/CAPABILITIES_GENERATED.md` 由其生成；旧 AGENT_FEATURE_MAP 自 P182.4 起为历史快照；exp 默认不入 capabilities | fixture | `test_p182_4_agent_entry.py` / `gen_agent_skill.py --check` | `verified` |
+| C-28 | 旧 snapshot 缺少 `module_graph` 时，instances/hierarchy/connections 返回 `E_SNAPSHOT_NO_MIG`，不返回 ok=true 空结果 | fixture | `test_p182_6_snapshot_mig.py` | `verified` |
 
 ---
 

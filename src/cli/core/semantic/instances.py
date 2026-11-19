@@ -20,8 +20,9 @@ from pathlib import Path
 import typer
 
 from cli._common import _build_tracer, handle_compilation_error
-from sv_query.trace.core.compiler import CompilationError
 from cli.core.semantic.trace_common import _load_tracer_from_snapshot
+from cli.errors import ErrorCode
+from sv_query.trace.core.compiler import CompilationError
 
 instance_app = typer.Typer(help="实例与层级查询 (只读, JSON-first)")
 
@@ -33,6 +34,24 @@ def _tracer(file, filelist, log_level: str = "WARNING", from_snapshot: str | Non
     if from_snapshot:
         return _load_tracer_from_snapshot(from_snapshot)
     return _build_tracer(file=file, filelist=filelist, log_level=log_level)
+
+
+def _require_snapshot_mig(tracer, from_snapshot, command, json_output, pretty):
+    """Old/new snapshot without MIG must fail explicitly, never as ok=true empty."""
+    if from_snapshot and tracer.get_module_graph() is None:
+        payload = {
+            "ok": False,
+            "command": command,
+            "error": "snapshot has no module_graph; instance/MIG queries are unavailable",
+            "error_code": ErrorCode.E_SNAPSHOT_NO_MIG.value,
+            "errors": [{
+                "error_code": ErrorCode.E_SNAPSHOT_NO_MIG.value,
+                "error": "snapshot has no module_graph",
+            }],
+            "hint": "re-save the snapshot with a newer sv_query or use --filelist",
+        }
+        _emit(payload, json_output, pretty)
+        raise typer.Exit(code=1)
 
 
 def _instances(tracer) -> list[dict]:
@@ -100,6 +119,7 @@ def instances_cmd(
     except CompilationError as e:
         handle_compilation_error(e)
         return
+    _require_snapshot_mig(tracer, from_snapshot, "instances", json_output, pretty)
     all_inst = _instances(tracer)
     if path is not None:
         _emit_instance_detail(tracer, all_inst, path, json_output, pretty)
@@ -165,6 +185,7 @@ def connections_cmd(
     except CompilationError as e:
         handle_compilation_error(e)
         return
+    _require_snapshot_mig(tracer, from_snapshot, "connections", json_output, pretty)
 
     mig = tracer.get_module_graph()
     node = mig.get_instance(target) if mig is not None else None
@@ -215,6 +236,7 @@ def hierarchy_cmd(
     except CompilationError as e:
         handle_compilation_error(e)
         return
+    _require_snapshot_mig(tracer, from_snapshot, "hierarchy", json_output, pretty)
 
     all_inst = _instances(tracer)
     by_parent: dict[str | None, list[dict]] = {}

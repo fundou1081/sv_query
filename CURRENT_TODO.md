@@ -3,32 +3,24 @@
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
 > **交接状态**: [HANDOFF](docs/dev/HANDOFF.md) — 当前状态/主线/历史功能；旧会话快照 [2026-11-12](docs/dev/HANDOFF_2026-11-12.md)。
-> **最后更新**: 2026-11-19 (P182.4 agent entry)
+> **最后更新**: 2026-11-19 (P182.6 governance cleanup)
 
 ---
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P182.6 governance/claims/structural cleanup** `<进行中>`
-  - P182.1 envelope 组完成；P182.2 开始 schema
-  - 严格：operational failure => rc=1 + ok=false
-  - 混合：仅 drivers/loads/trace evidence/trace profile 的 per-signal E_SIGNAL_NOT_FOUND => rc=0 + ok=false + errors[].error_code
-  - phase 1：`--failure-inventory [--json]` 26/26 条；22 operational rc1 + 4 business rc0/ok=false（drivers/loads/evidence/profile 未知 signal）；NO_FAILURE_INPUT=0
-  - 只读观测，不 gate、不 exit 1；输出 `docs/dev/ENVELOPE_FAILURE_INVENTORY.md`
-  - P182.1c 成功矩阵已完成：26/26 PASS（`paths` 归 direct）
-  - P182.1f 严格失败契约完成；下一项 P182.1e direct 例外
-  - P189.1 文档自洽 gate 完成；先覆盖 core standard 成功 + 失败观测
-  - P185.1 审计完成：classes/diagnose/graph/instances 已合并；`controlflow list-conditioned` 按“输入不同 + 非严格子视图”保留
-  - P185.2 放弃：当前 CLI 无 bus/verif 独立命令
-  - P185.3 已重基线：45 canonical / 2 aliases / 39 default visible
-  - P182.1a 只读盘点完成：32 standard / 13 direct；paths registry-vs-contract mismatch 已暴露
-  - P173 full status/evidence cleanup：已完成；无 active item
-  - P62.2 gate assessment：no-go，不做交互式 debug UI/REPL
+- **当前 item**: **P184.1 classify scan_pyslang_attrs by receiver type and ratchet** `<待做>`
+  - P182 组全部完成：envelope / schema / stats / agent entry / snapshot eval / governance
+  - P188 release readiness 完成；发布动作见 [RELEASE.md](RELEASE.md)
+  - P189.1 docs 自洽 gate 完成
+  - P182.5 结论：不扩 source-dependent snapshot、不做 serve、不改 cache 默认
+  - P182.6：旧 snapshot 缺 MIG 显式 `E_SNAPSHOT_NO_MIG`；`trace evidence --no-cache` no-op 已登记
+
 
 ## 📌 当前真实基线
 
 ```text
-canonical:  3085 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  3086 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 
