@@ -2,7 +2,7 @@
 
 > **公开 claim 的唯一登记处。** 纪律依据: [SEMANTIC_CONTRACTS.md](SEMANTIC_CONTRACTS.md) §8。
 > 没有 gate 的 claim = `unverified`；已知反例 = `known-broken`；不得写成“已支持”。
-> **最后更新**: 2026-11-17 (C-25 D12 Session 错误码单一来源 + CLI 失败 adapter)
+> **最后更新**: 2026-11-19 (C-27 D12 Session 错误码单一来源 + CLI 失败 adapter)
 
 ---
 
@@ -47,6 +47,7 @@
 | C-24 | `sv_query.Session(handlers=...)` 可把只读 op 委派给注入 handler（`version` 不可覆盖）；handler 异常/非 mapping result 返回结构化 `E_HANDLER_FAILED`；CLI `capabilities` 经 Session 调用 `cli._registry.to_json`，六个输出 case 与 D11 前逐字节一致；P182.1c 仅改 paths registry envelope（standard→direct），其余不变 | fixture | `test_d11_capabilities_session.py` | `verified`（库层 + capabilities adapter；调用形式 `Session(...).execute(...)`；result 仅顶层拷贝；CLI 失败信封自 D12 起经 `cli._session_adapter` 映射，见 C-25） |
 | C-25 | Session 三个错误码与 `error.type` 单一来源 `sv_query.errors`；`cli.errors.ErrorCode` 逐值接纳同一组码；Session 失败响应经唯一 adapter（`cli._session_adapter.fail_from_session`）映射到 CLI `fail`，未知 code → `E_INTERNAL` 且原值保留在 `session_error_code`；`capabilities` 成功输出与 D12 前逐字节一致 | fixture | `test_d12_error_envelope.py` | `verified`（capabilities 失败路径；全量 run() dispatch 评估为不采纳（D15 ADR）） |
 | C-26 | `stats` 成功时 `elaboration_errors=[]`；malformed RTL 的 `--json` 返回 `E_ELABORATION_FAILED`、rc=1、无 result | fixture | `test_p182_3_stats_completeness.py` / `tools/check_stats_completeness.py` | `verified`（CLI 路径；不恢复 partial graph） |
+| C-27 | `capabilities --json` 是 agent 命令索引唯一真相源；`docs/agent/CAPABILITIES_GENERATED.md` 由其生成；旧 AGENT_FEATURE_MAP 自 P182.4 起为历史快照；exp 默认不入 capabilities | fixture | `test_p182_4_agent_entry.py` / `gen_agent_skill.py --check` | `verified` |
 
 ---
 

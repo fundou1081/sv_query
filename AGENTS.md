@@ -4,6 +4,10 @@
 > 本文件只做入口、路由和硬边界；细节用链接渐进披露，禁止把所有细节堆在这里。
 > 修改前必须先读 [强制路由表](.claude/rules/modify-component-must-read.md)。
 
+> **Agent 查询入口**: CLI + [`capabilities --json`](docs/agent/CAPABILITIES_GENERATED.md) 是唯一稳定入口；
+> 查询协议见 [`.agents/skills/query-protocol/SKILL.md`](.agents/skills/query-protocol/SKILL.md)。
+> 旧 [AGENT_FEATURE_MAP](docs/agent/AGENT_FEATURE_MAP.md) 是历史快照，不是命令真相源。
+
 ## 0. 架构鸟瞰
 
 ```text

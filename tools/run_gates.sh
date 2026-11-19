@@ -13,6 +13,7 @@ python3 tools/check_except_pass.py
 python3 tools/check_semantic_regex.py
 python3 tools/check_cli_layers.py
 python3 tools/gen_cli_surface.py --check
+python3 tools/gen_agent_skill.py --check
 # P172.2: never run the ratchet as a silent no-op on a clean worktree.
 # CI sets SVQ_GATE_BASE; local default checks the last commit (HEAD~1).
 if [[ -n "${SVQ_GATE_BASE:-}" ]]; then

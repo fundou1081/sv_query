@@ -652,3 +652,10 @@ Typer 分发，并受进程全局态 `_QUIET` / `_ACTIVE_CONFIG` 影响。`Reque
 
 两者 `command` 字段也不同（`stats` vs `stats <path>`）。P182.3 未统一，留给 P182.4；
 agent 解析失败信封时必须分支。
+
+
+### 3.21 `.dsh/skills/svq-query-protocol` 是旁路手写 skill
+
+`.dsh/skills/svq-query-protocol/SKILL.md` 仍硬编码部分命令形态，供 benchmark harness 使用；
+它不受 `gen_agent_skill.py --check` 覆盖。P182.4 未改它，agent 入口以
+`.agents/skills/query-protocol/SKILL.md` + generated table 为准。

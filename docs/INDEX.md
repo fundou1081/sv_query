@@ -12,12 +12,12 @@
 
 | 项 | 值 | 说明 |
 |---|---|---|
-| 源码规模 | 145 文件 / 50,780 行 | `find src -name "*.py"`（2026-11-16 实测） |
-| 测试规模 | 419 测试文件 / 68,920 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **3072 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-18 P182.1d 全量复核**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
+| 源码规模 | 145 文件 / 50,781 行 | `find src -name "*.py"`（2026-11-16 实测） |
+| 测试规模 | 420 测试文件 / 68,976 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
+| 全量 (canonical) | **3078 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-19 P182.4 全量复核**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (519 份, 只增不改) | 每次迭代一份（2026-11-16 实测） |
+| 迭代记录 | `docs/task_tree/iterations/` (522 份, 只增不改) | 每次迭代一份（2026-11-16 实测） |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 | 语义 regex 纪律 | `python3 tools/check_semantic_regex.py` 必须 ✅ | 仅 UVM 宏例外；class/constraint/covergroup 语义走 slang (iter_368) |
@@ -66,7 +66,8 @@
 | [dev/WORKFLOW.md](dev/WORKFLOW.md) | 开发流程: 任务生命周期 / 迭代记录 / 文档卫生 / 测试与冒烟 / 机械检查 / ADR / 提交合并 |
 | [dev/PROJECT_ADAPTATION.md](dev/PROJECT_ADAPTATION.md) | **项目适配理念**: core 不自动推断特定项目；外部 adapter 模板 |
 | [agent/GUIDED_TRACE.md](agent/GUIDED_TRACE.md) | **P139 guided trace**: frontier + next probes；不分类 FIFO |
-| [agent/AGENT_FEATURE_MAP.md](agent/AGENT_FEATURE_MAP.md) | **P143**: core 39 个 schema 命令的能力地图 |
+| [agent/CAPABILITIES_GENERATED.md](agent/CAPABILITIES_GENERATED.md) | **P182.4**: 从 `capabilities --json` 生成的 39 core 命令索引；gate `gen_agent_skill.py --check` |
+| [agent/AGENT_FEATURE_MAP.md](agent/AGENT_FEATURE_MAP.md) | **P143 历史快照**（P182.4 起由 [CAPABILITIES_GENERATED](agent/CAPABILITIES_GENERATED.md) 取代） |
 | [agent/AGENT_TASK_CORPUS.md](agent/AGENT_TASK_CORPUS.md) | **P145**: 15 个可执行 agent 任务 + false-confident/found 指标 |
 | [validation/P145_VALIDATION_BASELINE_2026-11-10.md](validation/P145_VALIDATION_BASELINE_2026-11-10.md) | **P145**: full gate 环境 skip + agent corpus |
 | [validation/P145_WORKER_REVIEW_2026-11-10.md](validation/P145_WORKER_REVIEW_2026-11-10.md) | **P145 worker replay**: APPROVE WITH NITS；nits 已修 |

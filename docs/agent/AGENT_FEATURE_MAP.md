@@ -1,4 +1,8 @@
-# AGENT_FEATURE_MAP — core 层 JSON 能力地图
+# AGENT_FEATURE_MAP — core 层 JSON 能力地图（历史快照）
+
+> **P182.4 起**: 命令面的唯一生成物是
+> [CAPABILITIES_GENERATED](CAPABILITIES_GENERATED.md)（源 `capabilities --json`）；
+> 本文件保留为叙述性说明，不再作为命令清单真相源。
 
 > **读者**: 正在决定"下一步该调哪个稳定命令"的 agent 开发者。
 > **范围**: 只收 `core` 层、带 `--json`、声明稳定 schema 的命令。
