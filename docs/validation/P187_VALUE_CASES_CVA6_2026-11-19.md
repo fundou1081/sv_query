@@ -5,6 +5,8 @@
 > 数据源：只读 blobless 历史 clone `/tmp/p187-cva6-history`（8118 commits，`origin`
 > = openhwgroup/cva6，promisor `[blob:none]`）。未改 `~/my_dv_proj/openrtl/cva6`。
 
+> **后续建议**: [P187_FOLLOWUPS_2026-11-19.md](P187_FOLLOWUPS_2026-11-19.md)
+>
 > **完整本地存档**: [p187_cva6_2026-11-19/README.md](p187_cva6_2026-11-19/README.md)（源码 blob、portable filelist、脚本、结果、checksums）。
 
 ## 0. 结论摘要（现状 → 问题 → 建议 → 代价）
