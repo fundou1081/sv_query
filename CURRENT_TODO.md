@@ -9,7 +9,7 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P184.1 classify scan_pyslang_attrs by receiver type and ratchet** `<待做>`
+- **当前 item**: **P184.1 classify scan_pyslang_attrs by receiver type and ratchet** `<进行中>`
   - P182 组全部完成：envelope / schema / stats / agent entry / snapshot eval / governance
   - P188 release readiness 完成；发布动作见 [RELEASE.md](RELEASE.md)
   - P189.1 docs 自洽 gate 完成
