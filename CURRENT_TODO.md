@@ -9,7 +9,7 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P182.2 executable JSON schema + validation gate** `<待做>`
+- **当前 item**: **P182.6 governance/claims/structural cleanup** `<待做>`
   - P182.1 envelope 组完成；P182.2 开始 schema
   - 严格：operational failure => rc=1 + ok=false
   - 混合：仅 drivers/loads/trace evidence/trace profile 的 per-signal E_SIGNAL_NOT_FOUND => rc=0 + ok=false + errors[].error_code
@@ -28,7 +28,7 @@
 ## 📌 当前真实基线
 
 ```text
-canonical:  3082 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  3085 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 

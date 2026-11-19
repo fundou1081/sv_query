@@ -13,8 +13,8 @@
 | 项 | 值 | 说明 |
 |---|---|---|
 | 源码规模 | 145 文件 / 50,781 行 | `find src -name "*.py"`（2026-11-16 实测） |
-| 测试规模 | 421 测试文件 / 69,038 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **3082 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-19 P188.1 全量复核（3078 + 4 条 release 测试）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
+| 测试规模 | 422 测试文件 / 69,082 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
+| 全量 (canonical) | **3085 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-19 P182.5 全量复核（3085）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 迭代记录 | `docs/task_tree/iterations/` (522 份, 只增不改) | 每次迭代一份（2026-11-16 实测） |
@@ -161,6 +161,7 @@
 | [architecture/agent_interface_review_2026-11-16_revised.md](architecture/agent_interface_review_2026-11-16_revised.md) | **面向 agent 的交付层评审 v2（2026-11-16，HEAD `8da675b3`）**: 修正 v1 的 direct/缺参/计数错误；只读评审，建议已登记 P182 |
 | [architecture/dto_mapping_audit_2026-11-17.md](architecture/dto_mapping_audit_2026-11-17.md) | **DTO 映射审计（D9 / P183.3）**: snapshot/CLI/core 精确字段集；每上下文一份 canonical projection，不做全局合并 |
 | [architecture/p1834_session_seam_decision_2026-11-17.md](architecture/p1834_session_seam_decision_2026-11-17.md) | **P183.4 决策（D15）**: 保留 Session/runner/hidden session；不重写 Typer run() 全量 dispatch |
+| [architecture/p1825_snapshot_cache_session_eval.md](architecture/p1825_snapshot_cache_session_eval.md) | **P182.5**: 13 个命令暴露 --from-snapshot（12 可源替代；tb-join 仍需 TB 源）；不扩 source-dependent / 不做 serve / 不改 cache 默认 |
 | [architecture/p1835_candidate_decision_2026-11-18.md](architecture/p1835_candidate_decision_2026-11-18.md) | **P183.5 决策**: DesignView 拒绝全量；ASTFrontend 仅采纳 Phase 0（inventory + degraded） |
 | [architecture/agent_review_2026-11-18_intake.md](architecture/agent_review_2026-11-18_intake.md) | **2026-11-18 review intake**: 事实核对；采纳 P185–P190，拒绝旧快照数字与 CLI 压到 10 条 |
 | [validation/INTERACTIVE_DEBUG_2026-11-06.md](validation/INTERACTIVE_DEBUG_2026-11-06.md) | **交互式 debug pilot**: 3 场景 × 3 模型；5–20 轮；发现路径粒度/mux/bin 名称/class relative 问题 |

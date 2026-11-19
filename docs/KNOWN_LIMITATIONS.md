@@ -666,3 +666,18 @@ agent 解析失败信封时必须分支。
 Wheel 同时安装 top-level `cli` 与 `sv_query`（P165.2 入口决策）。首次公开 PyPI 发布时
 存在与第三方 `cli` 包撞名/覆盖风险；当前只保证本仓库安装顺序可用，后续发布前需评估
 namespace 迁移。
+
+
+### 3.23 旧 snapshot 缺 module_graph 时 instances/hierarchy 静默空结果
+
+拿缺少 `module_graph` 的旧 snapshot：
+
+```text
+instances --from-snapshot old --json    -> ok=true, count=0, instances=[]
+hierarchy --from-snapshot old --json    -> ok=true, root_count=0, tree=[]
+connections ...                         -> ok=false, target is not an instance path
+```
+
+`instances`/`hierarchy` 把 MIG 缺失伪装成“空结果”，与 §3.12 “旧 snapshot 显式
+unknown/失败”不一致。P182.5 只评估，未修；后续应返回显式 `E_SNAPSHOT_NO_MIG`
+或 `ok=false`。
