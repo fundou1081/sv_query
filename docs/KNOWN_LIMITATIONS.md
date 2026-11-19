@@ -699,3 +699,10 @@ P182.5 评估记录、P182.6 未改行为。需要 cache 语义时应先接线�
 
 当前树穷举 277 处与 scanner 277 处差集为 0；这是潜在覆盖缺口，不是现有树漏报。
 新增这些位置的 pyslang 读取时，ratchet 可能不会红，必须靠 review。
+
+
+### 3.26 P187 真实历史 bug 案例未完成
+
+本地 CVA6 / OpenTitan 仓库都是 depth-1 浅克隆（仅 1 个 commit，无 parent），
+无法取得 fix diff/oracle；用户决定跳过 P187。因此当前**没有**“真实 CVA6/OpenTitan
+历史 bug 上 grep vs sv_query”的对外价值证据，不能对外宣称该结果。

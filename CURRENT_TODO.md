@@ -9,12 +9,12 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P187.1 select CVA6/OpenTitan historical signal bugs** `<进行中>`
+- **当前 item**: **P190.1 reproduce MissingTimeScale conditions + fix or retire claim** `<待做>`
   - P182 组全部完成：envelope / schema / stats / agent entry / snapshot eval / governance
   - P188 release readiness 完成；发布动作见 [RELEASE.md](RELEASE.md)
   - P189.1 docs 自洽 gate 完成
   - P182.5 结论：不扩 source-dependent snapshot、不做 serve、不改 cache 默认
-  - P186.1 实测 5 fixture shadow=0；P186.2 决定保留当前图，下一步 P187
+  - P187 跳过：CVA6/OpenTitan 本地浅克隆无历史；下一步 P190.1
 
 
 ## 📌 当前真实基线

@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P187.1 select CVA6/OpenTitan historical signal bugs <进行中>
+current item : P190.1 reproduce MissingTimeScale conditions + fix or retire claim <待做>
 
 ## 计划树
 
@@ -560,9 +560,9 @@ P186 shadow-node graph cleanup (2026-11-18 review) <已完成>
 -- P186.1 measure shadow nodes by module/query path <已完成>
 -- P186.2 decide definition namespace vs drop_shadows API <已完成>
 
-P187 value case studies (2026-11-18 review) <待做>
--- P187.1 select CVA6/OpenTitan historical signal bugs <进行中>
--- P187.2 compare manual grep vs sv_query with time/accuracy <待做>
+P187 value case studies (2026-11-18 review)（本地 CVA6/OpenTitan 为 depth-1 浅克隆，无历史 diff；用户决定跳过） <放弃>
+-- P187.1 select CVA6/OpenTitan historical signal bugs（无历史数据） <放弃>
+-- P187.2 compare manual grep vs sv_query with time/accuracy（依赖 P187.1） <放弃>
 
 P188 packaging/community (2026-11-18 review) <已完成>
 -- P188.1 PyPI packaging + release readiness <已完成>
