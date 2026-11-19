@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P187.1 select CVA6/OpenTitan historical signal bugs <待做>
+current item : P187.1 select CVA6/OpenTitan historical signal bugs <进行中>
 
 ## 计划树
 
@@ -561,7 +561,7 @@ P186 shadow-node graph cleanup (2026-11-18 review) <已完成>
 -- P186.2 decide definition namespace vs drop_shadows API <已完成>
 
 P187 value case studies (2026-11-18 review) <待做>
--- P187.1 select CVA6/OpenTitan historical signal bugs <待做>
+-- P187.1 select CVA6/OpenTitan historical signal bugs <进行中>
 -- P187.2 compare manual grep vs sv_query with time/accuracy <待做>
 
 P188 packaging/community (2026-11-18 review) <已完成>
