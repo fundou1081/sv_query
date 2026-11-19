@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P182.5 snapshot/cache/session evaluation <待做>
+current item : P188.1 PyPI packaging + release readiness <进行中>
 
 ## 计划树
 
@@ -565,7 +565,7 @@ P187 value case studies (2026-11-18 review) <待做>
 -- P187.2 compare manual grep vs sv_query with time/accuracy <待做>
 
 P188 packaging/community (2026-11-18 review) <待做>
--- P188.1 PyPI packaging + install smoke <待做>
+-- P188.1 PyPI packaging + release readiness <进行中>
 -- P188.2 issue/PR templates + CI badge <待做>
 
 P189 docs surface consistency gate (2026-11-18 review) <待做>
