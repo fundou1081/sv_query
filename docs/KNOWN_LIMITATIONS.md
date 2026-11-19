@@ -659,3 +659,10 @@ agent 解析失败信封时必须分支。
 `.dsh/skills/svq-query-protocol/SKILL.md` 仍硬编码部分命令形态，供 benchmark harness 使用；
 它不受 `gen_agent_skill.py --check` 覆盖。P182.4 未改它，agent 入口以
 `.agents/skills/query-protocol/SKILL.md` + generated table 为准。
+
+
+### 3.22 PyPI wheel top-level `cli` package
+
+Wheel 同时安装 top-level `cli` 与 `sv_query`（P165.2 入口决策）。首次公开 PyPI 发布时
+存在与第三方 `cli` 包撞名/覆盖风险；当前只保证本仓库安装顺序可用，后续发布前需评估
+namespace 迁移。

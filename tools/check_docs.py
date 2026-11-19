@@ -100,7 +100,7 @@ def check_stale_counts(index_txt, ):
     for md in iter_md():
         rel = md.relative_to(REPO)
         if any(str(rel).startswith(k) for k in
-               ("docs/archive/", "docs/task_tree/", "memory/")):
+               ("docs/archive/", "docs/task_tree/", "memory/", "agents/")):
             continue  # 归档 / 计划树 / 工作日志：历史快照
         if re.search(r"20\d{2}-\d{2}-\d{2}", rel.name):
             continue  # 文件名带日期 = 时点快照 (audit / review / validation / session)

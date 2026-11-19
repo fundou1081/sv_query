@@ -1,0 +1,32 @@
+name: Feature request
+description: Suggest an agent-facing query or workflow
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What RTL question or workflow is currently hard?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed query/contract
+      description: Command shape, JSON fields, failure semantics, and evidence grade.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Scope
+      options:
+        - label: This is a read-only query/verification capability, not an RTL writer.
+          required: true
+        - label: I checked that capabilities does not already expose this.
+          required: true

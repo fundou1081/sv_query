@@ -1,0 +1,58 @@
+name: Bug report
+description: Report a reproducible sv_query bug
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please include a minimal reproducible case and the JSON output.
+        Check [KNOWN_LIMITATIONS](https://github.com/fundou1081/sv_query/blob/main/docs/KNOWN_LIMITATIONS.md) first.
+  - type: input
+    id: version
+    attributes:
+      label: sv_query version
+      placeholder: "0.3.0 / commit"
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: Command
+      placeholder: "sv_query drivers top.sig --filelist design.f --json"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+      description: Include rc, ok, error_code, and relevant JSON fields.
+    validations:
+      required: true
+  - type: textarea
+    id: fixture
+    attributes:
+      label: Minimal fixture / filelist
+      description: Do not paste proprietary RTL; reduce to a minimal case.
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: "OS / Python / pyslang version"
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I checked KNOWN_LIMITATIONS and this is not listed there.
+          required: true
+        - label: I can reproduce this with a minimal fixture.
+          required: false

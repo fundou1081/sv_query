@@ -1,15 +1,48 @@
 # sv_query — 面向 agent 的 SystemVerilog 语义查询 + 客观校验引擎
 
+[![Tests](https://github.com/fundou1081/sv_query/actions/workflows/tests.yml/badge.svg)](https://github.com/fundou1081/sv_query/actions/workflows/tests.yml)
+[![PyPI](https://img.shields.io/pypi/v/sv_query.svg)](https://pypi.org/project/sv_query/)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
+
 **让 agent 查询并验证 RTL 事实，而不是靠读源码猜。**
+
+> **Beta（0.3.0）**: 质量足以试用，但明确不宣称 1.0 的语义完整性/外部准确率。
+> 发布前已知限制见 [KNOWN_LIMITATIONS](docs/KNOWN_LIMITATIONS.md)；
+> 发布流程见 [RELEASE.md](RELEASE.md)。
 
 > agent 面向的 RTL **查询 + 客观校验层**：服务动态 debug（波形值由外部工具提供）与 design 理解；
 > 核心是 canonical identity、evidence、双向验证，而不是自然语言解释。
 
 > 回归基线见 [docs/INDEX.md 当前基线](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里) | Python 3.11+ | pyslang 语义 AST | NetworkX graph | 真实项目 + 性能基准 + agent 对照（内部）
 
-> 更新日期: 2026-11-15（基线计数不再写死，统一引用 INDEX）
+> 更新日期: 2026-11-19（0.3.0 beta 发布准备；基线计数统一引用 INDEX）
 
 ---
+
+## Install
+
+```bash
+pip install sv_query
+# or, in an isolated environment:
+uv pip install sv_query
+```
+
+For repository development:
+
+```bash
+git clone https://github.com/fundou1081/sv_query.git
+cd sv_query
+pip install -e ".[dev]"
+```
+
+## English summary
+
+`sv_query` is an agent-facing query and objective-verification layer for SystemVerilog.
+It builds a semantic graph from pyslang, exposes read-only JSON queries (drivers, loads,
+paths, dataflow, scope, constraints, covergroups, consistency/claim verification), and
+reports evidence strength explicitly (`verified` / `partial` / `unknown`). It is a beta:
+structural queries are useful today, but semantic completeness and external accuracy
+claims remain limited; see [KNOWN_LIMITATIONS](docs/KNOWN_LIMITATIONS.md).
 
 ## 为什么用 sv_query
 
@@ -46,10 +79,16 @@
 ## 5 分钟快速上手
 
 ```bash
+pip install sv_query
+sv_query capabilities --json
+```
+
+From a source checkout:
+
+```bash
 git clone https://github.com/fundou1081/sv_query.git
 cd sv_query
-pip install -e .
-sv_query capabilities --json
+pip install -e ".[dev]"
 ```
 
 ### 查询信号驱动

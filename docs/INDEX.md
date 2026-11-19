@@ -13,8 +13,8 @@
 | 项 | 值 | 说明 |
 |---|---|---|
 | 源码规模 | 145 文件 / 50,781 行 | `find src -name "*.py"`（2026-11-16 实测） |
-| 测试规模 | 420 测试文件 / 68,976 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **3078 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-19 P182.4 全量复核**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
+| 测试规模 | 421 测试文件 / 69,038 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
+| 全量 (canonical) | **3082 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-19 P188.1 全量复核（3078 + 4 条 release 测试）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 迭代记录 | `docs/task_tree/iterations/` (522 份, 只增不改) | 每次迭代一份（2026-11-16 实测） |
@@ -37,6 +37,7 @@
 | [TESTING.md](../TESTING.md) | 测试流程 / marker / 命令 (唯一测试入口) |
 | [CHANGELOG.md](../CHANGELOG.md) | 变更日志 (历史记录) |
 | [CONTRIBUTING.md](../CONTRIBUTING.md) | 贡献指南 |
+| [RELEASE.md](../RELEASE.md) | PyPI 发布清单 / 校验 / 回滚 |
 | [memory/](../memory/) | 经验沉淀索引 (`memory/` 按日) |
 
 ## 🛠️ 开发纪律与流程 (`docs/dev/` — 细则层)

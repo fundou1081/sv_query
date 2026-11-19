@@ -1,0 +1,82 @@
+# Release checklist — sv_query
+
+> Beta release process. Do not tag/publish until every blocking item is checked.
+
+## 1. Preconditions
+
+- [ ] `PLAN.md` current item and release scope agree.
+- [ ] `CHANGELOG.md` has the release entry.
+- [ ] Version in `pyproject.toml` is final (`0.3.0` for the current beta).
+- [ ] `docs/KNOWN_LIMITATIONS.md` is linked from README.
+- [ ] No `package.json` / `package-lock.json` at the repository root.
+- [ ] Dependency ranges are compatible ranges, not exact runtime pins.
+- [ ] CI matrix is green on Ubuntu and macOS for Python 3.11/3.12.
+
+## 2. Local verification
+
+```bash
+python3 -m pytest sim/tests/ -m "not opensource" -q -p no:randomly
+bash tools/run_gates.sh
+python3 -m build
+python3 -m twine check dist/*
+```
+
+Install the built wheel into a clean venv and smoke it:
+
+```bash
+python3 -m venv /tmp/svq-release-venv
+/tmp/svq-release-venv/bin/pip install dist/sv_query-*.whl
+/tmp/svq-release-venv/bin/sv_query --help
+/tmp/svq-release-venv/bin/sv_query capabilities --json >/dev/null
+/tmp/svq-release-venv/bin/sv_query stats \
+  --filelist sim/tests/fixtures/scheduler_minimal/filelist.f --json
+```
+
+## 3. PyPI setup (one-time)
+
+- [ ] PyPI project `sv_query` exists and is owned by the maintainer.
+- [ ] Trusted publisher configured for this GitHub repo and workflow:
+  - owner: `fundou1081`
+  - repo: `sv_query`
+  - workflow: `release.yml`
+  - environment: `pypi`
+- [ ] No long-lived PyPI token is stored in the repository.
+- [ ] GitHub environment `pypi` exists with required reviewers if desired.
+
+## 4. Tag and publish
+
+```bash
+git checkout main
+git pull
+git tag -a v0.3.0 -m "sv_query 0.3.0 beta"
+git push origin v0.3.0
+```
+
+Pushing a `v*` tag triggers `.github/workflows/release.yml`:
+
+1. build sdist + wheel;
+2. `twine check`;
+3. trusted-publish to PyPI.
+
+After publish:
+
+```bash
+pip index versions sv_query
+python3 -m venv /tmp/svq-pypi-smoke
+/tmp/svq-pypi-smoke/bin/pip install sv_query==0.3.0
+/tmp/svq-pypi-smoke/bin/sv_query capabilities --json
+```
+
+Tag a GitHub Release with the changelog and KNOWN_LIMITATIONS link.
+
+## 5. Rollback
+
+- PyPI releases are immutable: publish a patch version, do not overwrite.
+- If the artifact is broken, yank the release on PyPI and publish a fixed patch.
+- If the tag is wrong but nothing was published, delete the local/remote tag and retag.
+
+## 6. Post-release
+
+- [ ] Update `docs/INDEX.md` current baseline if needed.
+- [ ] Add release link to `README.md` / CHANGELOG.
+- [ ] Open follow-up issues for known limitations and external validation.

@@ -3,6 +3,14 @@
 > 完整历史 changelog. README 短版只展示"为什么用 sv_query" + 5 分钟上手.
 > 详细 release notes 看这里.
 
+## 2026-11-19 (0.3.0 beta release preparation)
+
+- Release engineering: remove root npm artifacts, move typer/click/rich to compatible ranges.
+- CI matrix now Ubuntu + macOS, Python 3.11/3.12.
+- Add trusted-publishing release workflow, RELEASE checklist, issue/PR templates.
+- README: pip install, CI/PyPI badges, English summary, Beta/known-limitations links.
+- Canonical 3082 passed / 0 failed (3078 + 4 release-readiness tests).
+
 ## 2026-11-09 (freeze v0.3.0-agent-query)
 
 - 冻结 constrained `svq_query` + snapshot edge evidence + verify claim + canonical path + unknown/abstain contract。
