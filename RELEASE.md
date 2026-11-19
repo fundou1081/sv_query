@@ -4,12 +4,12 @@
 
 ## 1. Preconditions
 
-- [ ] `PLAN.md` current item and release scope agree.
-- [ ] `CHANGELOG.md` has the release entry.
+- [x] `PLAN.md` current item and release scope agree.
+- [x] `CHANGELOG.md` has the release entry.
 - [x] Version in `pyproject.toml` is final (`0.3.1` for the current beta).
-- [ ] `docs/KNOWN_LIMITATIONS.md` is linked from README.
-- [ ] No `package.json` / `package-lock.json` at the repository root.
-- [ ] Dependency ranges are compatible ranges, not exact runtime pins.
+- [x] `docs/KNOWN_LIMITATIONS.md` is linked from README.
+- [x] No `package.json` / `package-lock.json` at the repository root.
+- [x] Dependency ranges are compatible ranges, not exact runtime pins.
 - [x] CI matrix is green on Ubuntu and macOS for Python 3.11/3.12.
 
 ## 2. Local verification
@@ -69,6 +69,13 @@ python3 -m venv /tmp/svq-pypi-smoke
 
 Tag a GitHub Release with the changelog and KNOWN_LIMITATIONS link.
 
+Published status (2026-11-20):
+
+```text
+sv_query 0.3.0  published (PyPI description stale README; superseded)
+sv_query 0.3.1  published (corrected PyPI README/install)
+```
+
 ## 5. Rollback
 
 - PyPI releases are immutable: publish a patch version, do not overwrite.
@@ -77,7 +84,7 @@ Tag a GitHub Release with the changelog and KNOWN_LIMITATIONS link.
 
 ## 6. Post-release
 
-- [ ] Update `docs/INDEX.md` current baseline if needed.
-- [ ] Add release link to `README.md` / CHANGELOG.
-- [ ] Restore the PyPI badge and `pip install sv_query` line in README after publish.
+- [x] Update `docs/INDEX.md` current baseline if needed.
+- [x] Add release link to `README.md` / CHANGELOG.
+- [x] Restore the PyPI badge and `pip install sv_query` line in README after publish.
 - [ ] Open follow-up issues for known limitations and external validation.
