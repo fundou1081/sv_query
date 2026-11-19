@@ -44,6 +44,28 @@
 - 不把 `sample` / `truncated` / `unknown` 写成 `verified`。
 - 不跨 FIFO/自定义语义边界自动推断；需要显式 boundary map。
 
+## 4b. Bit-select hints
+
+总线查询可能只回答 bus 节点；当 JSON 带以下字段时，**不要**把 false/empty 直接读成“无影响”：
+
+```json
+"has_bit_select_drivers": true,
+"bit_nodes": [{"id": "...[7:4]", "parent_bus": "...", "bit_range": {...}}]
+```
+
+```json
+"bit_node_paths_exist": true,
+"bit_node_paths": [{"from": "...[7:4]", "path_count": 1}]
+```
+
+协议：
+
+1. bus 级 false/empty 先看 hint；
+2. 有 `bit_nodes` 就查对应 slice 的 `drivers` / `controlflow analyze --evidence`；
+3. dataflow 的 `is_reachable=false` 仍是 false，不改成 unknown；
+4. 结论用 `verify claim` 钉死；
+5. 大项目用 snapshot 复用图。
+
 ## 5. Output interpretation
 
 | 现象 | 含义 |

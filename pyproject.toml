@@ -180,6 +180,12 @@ ignore = [
 "src/cli/main.py" = [
     "E402",  # module-import-not-at-top-of-file
 ]
+"src/cli/core/semantic/trace.py" = [
+    "E402",  # module-import-not-at-top-of-file (sys.path bootstrap)
+]
+"src/cli/core/semantic/dataflow.py" = [
+    "E402",  # module-import-not-at-top-of-file (sys.path bootstrap)
+]
 # BaseVisitor 是抽象基类，空方法是设计意图
 "src/sv_query/trace/core/visitors/base_visitor.py" = [
     "B027",  # empty-method-without-abstract-decorator

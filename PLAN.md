@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P191.1 dual bit-select hint contract（drivers/loads + dataflow） <进行中>
+current item : P192.1 issue #3404 symptom-only protocol（不给 fix diff） <待做>
 
 ## 计划树
 
@@ -572,12 +572,12 @@ P188 packaging/community (2026-11-18 review) <已完成>
 P189 docs surface consistency gate (2026-11-18 review) <已完成>
 -- P189.1 agent-doc self-consistency gate (paths/commands/version/counts) <已完成>
 
-P191 bit-select discoverability + dual hints (P187 P0) <待做>
--- P191.1 dual bit-select hint contract（drivers/loads + dataflow） <进行中>
--- P191.2 drivers/loads: has_bit_select_drivers + bit_nodes hints <待做>
--- P191.3 dataflow: bit_node_paths_exist + bit_node_paths hints（false 不变） <待做>
--- P191.4 C1/C2 regression：hint 必现、默认键不变、无 bit-select 不提示 <待做>
--- P191.5 query-protocol skill 五步协议 + docs（hint 之后） <待做>
+P191 bit-select discoverability + dual hints (P187 P0) <已完成>
+-- P191.1 dual bit-select hint contract（drivers/loads + dataflow） <已完成>
+-- P191.2 drivers/loads: has_bit_select_drivers + bit_nodes hints <已完成>
+-- P191.3 dataflow: bit_node_paths_exist + bit_node_paths hints（false 不变） <已完成>
+-- P191.4 C1/C2 regression：hint 必现、默认键不变、无 bit-select 不提示 <已完成>
+-- P191.5 query-protocol skill 五步协议 + docs（hint 之后） <已完成>
 
 P192 blind external value validation (P2) <待做>
 -- P192.1 issue #3404 symptom-only protocol（不给 fix diff） <待做>

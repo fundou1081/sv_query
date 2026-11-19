@@ -2,17 +2,17 @@
 # dataflow.py - dataflow path analysis subcommand
 # ==============================================================================
 
-import sys
 from pathlib import Path
 
 import typer
 
 from cli._common import _build_tracer, handle_compilation_error
-from cli.core.semantic.trace_common import _load_tracer_from_snapshot  # [ADD 2026-06-11 Req-9]
+from cli._paths import PROJECT_ROOT, ensure_on_path  # noqa: E402
 from cli.core.semantic._bit_args import normalize_endpoint, parse_bits  # [iter_309 P15]
+from cli.core.semantic._bit_hints import dataflow_bit_paths
+from cli.core.semantic.trace_common import _load_tracer_from_snapshot  # [ADD 2026-06-11 Req-9]
 from sv_query.trace.core.compiler import CompilationError  # [ADD 2026-06-11 任务3]
 
-from cli._paths import ensure_on_path, PROJECT_ROOT  # noqa: E402
 ensure_on_path(PROJECT_ROOT)
 
 from cli._evidence_helpers import (
@@ -27,8 +27,8 @@ from cli._evidence_helpers import (
 from cli._evidence_helpers import (  # noqa: E402
     make_resolver as _make_evidence_resolver,
 )
-from sv_query.trace.core.graph.dataflow import DataFlowGraph
 from cli._output import emit_json
+from sv_query.trace.core.graph.dataflow import DataFlowGraph
 
 
 def output_text(data: dict, human: bool = False, tree: bool = False) -> None:
@@ -277,6 +277,14 @@ def analyze(
         },
         "errors": [],
     }
+
+    if result.is_reachable is False and result.paths_count == 0:
+        graph = tracer.get_graph()
+        if graph is not None:
+            data["result"].update(
+                dataflow_bit_paths(dfg, graph, from_id, to_id,
+                                   max_expansions=max_expansions)
+            )
 
     if result.search_status == "unknown":
         # [P158.11.2b] 预算/超时耗尽 ≠ 不可达 (SEMANTIC_CONTRACTS §3.3):

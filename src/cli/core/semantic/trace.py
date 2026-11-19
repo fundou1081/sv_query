@@ -8,7 +8,6 @@ Usage:
   python run_cli.py trace impact top.changed_signal -f top.sv
 """
 
-import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,48 +15,54 @@ from pathlib import Path
 import typer
 
 # 添加 src 到 path 以便 import sv_query.trace
-from cli._paths import ensure_on_path, PROJECT_ROOT  # noqa: E402
+from cli._paths import PROJECT_ROOT, ensure_on_path  # noqa: E402
+
 ensure_on_path(PROJECT_ROOT)
 
 # [Stage 5] evidence helper (cdc/verify/risk/dataflow/controlflow 复用)
-from cli._evidence_helpers import (  # noqa: E402
-    build_resolver as _build_evidence_resolver,
-)
-from cli._evidence_helpers import (
-    evidence_to_dict as _evidence_to_dict,
-)
+import logging
+
+from cli._common import _build_pruned_tracer
 from cli._evidence_helpers import (
     format_fanin_human as _format_fanin_human,
 )
 from cli._evidence_helpers import (
     format_fanout_human as _format_fanout_human,
 )
+from cli._output import emit_json
 from sv_query.trace.core.covergroup_extractor import CovergroupExtractor
 from sv_query.trace.core.graph.models import EdgeKind
 from sv_query.trace.core.sva_extractor import SVAExtractor
 from sv_query.trace.unified_tracer import UnifiedTracer
-import logging
-from cli._common import _build_pruned_tracer
-from cli._output import emit_json
 
 logger = logging.getLogger(__name__)
 
 
 # JSON 输出格式化函数
 from cli.core.semantic._bit_args import normalize_endpoint, parse_bits  # [iter_309 P15]
+from cli.core.semantic._bit_hints import bit_hint_payload
 from cli.core.semantic.condition_analysis import driver_conflict_analysis  # [iter_349 P48]
 from cli.core.semantic.trace_common import (
+    SignalResolutionError,
+    _apply_filters,
+    _collect_signals,
+    _generate_trace_dot,
+    _load_tracer_from_snapshot,
+    _node_to_dict,
     attach_distances,  # noqa: E402
-    _sanitize_trace_dot_id, _format_trace_label, _generate_trace_dot,
-    _collect_signals, _node_to_dict, _apply_filters, _load_tracer_from_snapshot,
-    query_precision,  # [iter_303 P13.2]
-    resolve_node_id, driver_stats,  # [iter_307 P13.6]
-    has_dynamic_index, node_is_dynamic, node_is_function_call,  # [iter_308 P14.1 / iter_310 P16 / iter_313 P18.2]
     attach_edge_conditions,  # [iter_318 P22.1]
-    resolve_signal, resolution_fields, resolution_error_message, SignalResolutionError,  # [iter_329 P33.1]
     attach_edge_evidence,  # [iter_333 P37.1]
-    detect_cycles, truncated_by_depth,  # [iter_321 P26.1]
+    detect_cycles,  # [iter_321 P26.1]
+    driver_stats,
+    node_is_dynamic,
+    node_is_function_call,
     node_is_runtime_system_call,  # [iter_322 P26.2]
+    query_precision,  # [iter_303 P13.2]
+    resolution_error_message,
+    resolution_fields,
+    resolve_node_id,  # [iter_307 P13.6]
+    resolve_signal,  # [iter_329 P33.1]
+    truncated_by_depth,
 )
 
 
@@ -649,6 +654,16 @@ def _build_trace_data(direction, signal, batch_file, batch, file, depth,
     rows, errors, total_count, total_pre_filter, truncated_global = (
         _execute_trace_rows(direction, signals, tracer, tops,
                             top_ambiguous, args))
+    hint_direction = "drivers" if direction == "fanin" else "loads"
+    graph = tracer.get_graph()
+    if graph is not None:
+        for row in rows:
+            resolved = row.get("resolved_signal") or row.get("signal")
+            if not resolved:
+                continue
+            hint = bit_hint_payload(graph, resolved, hint_direction)
+            if "bit_nodes" in hint:
+                row.update(hint)
     data = {
         "ok": not errors,
         "command": f"trace_{direction}",
@@ -1279,20 +1294,23 @@ trace_app.command("fanin")(fanin)
 trace_app.command("fanout")(fanout)
 
 # [iter_253 T3-3] evidence / overview 拆到独立模块; 命令仍注册在 trace_app 上
-from cli.core.semantic.trace_evidence import evidence, _output_evidence_text  # noqa: E402
-from cli.core.semantic.trace_overview import overview, _output_overview_text  # noqa: E402
 from cli.core.semantic.constraints import (  # noqa: E402
-    constraint_neighborhood_cmd, constraints_cmd,
+    constraint_chain_cmd,  # noqa: E402
+    constraint_neighborhood_cmd,
+    constraints_cmd,
 )
-from cli.core.semantic.tb_join import tb_join_cmd  # noqa: E402
-from cli.core.semantic.frontier import frontier_cmd  # noqa: E402
-from cli.core.semantic.constraints import constraint_chain_cmd  # noqa: E402
 from cli.core.semantic.covergroups import (  # noqa: E402
-    covergroups_cmd, coverpoints_cmd, covergroup_cmd,
+    covergroup_cmd,
+    covergroups_cmd,
+    coverpoints_cmd,
 )
-from cli.core.semantic.trace_profile import profile  # noqa: E402
+from cli.core.semantic.frontier import frontier_cmd  # noqa: E402
+from cli.core.semantic.tb_join import tb_join_cmd  # noqa: E402
+from cli.core.semantic.trace_evidence import evidence  # noqa: E402
 from cli.core.semantic.trace_lookup import lookup  # noqa: E402
 from cli.core.semantic.trace_manifest import manifest  # noqa: E402
+from cli.core.semantic.trace_overview import overview  # noqa: E402
+from cli.core.semantic.trace_profile import profile  # noqa: E402
 
 trace_app.command("evidence")(evidence)
 trace_app.command("overview", hidden=True)(overview)

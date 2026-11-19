@@ -9,18 +9,18 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P191.1 dual bit-select hint contract（drivers/loads + dataflow）** `<进行中>`
+- **当前 item**: **P192.1 issue #3404 symptom-only protocol（不给 fix diff）** `<待做>`
   - P182 组全部完成：envelope / schema / stats / agent entry / snapshot eval / governance
   - P188 release readiness 完成；发布动作见 [RELEASE.md](RELEASE.md)
   - P189.1 docs 自洽 gate 完成
   - P182.5 结论：不扩 source-dependent snapshot、不做 serve、不改 cache 默认
-  - P187 CVA6 2 例完成；P191 先做双向 bit-select hint，P190.1 后移
+  - P191 双向 hint 完成；下一步 P192.1 非盲外部验证
 
 
 ## 📌 当前真实基线
 
 ```text
-canonical:  3123 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  3130 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 
