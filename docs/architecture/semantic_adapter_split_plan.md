@@ -185,10 +185,10 @@ CLI (`arch` / `visualize` / `trace`)。
 |---|---|---|
 | 0 | API 面冻结测试 (65 方法 + 签名 + property) | cdba3ca |
 | 1 | legacy 等价矩阵 (4 文件逐条核对 → 零覆盖损失) | cdba3ca |
-| 2 | `base.py` 2,341 行 → `legacy/base_pyslang_adapter.py` (移出非删除) | cdba3ca |
+| 2 | `base.py` 2,341 行 → `../svq-legacy-pyslang-adapter/base_pyslang_adapter.py` (移出非删除) | cdba3ca |
 | 3 | 474 行巨函数 → 70 行分派器 + 16 处理器 (+修 latent UnboundLocalError) | 70ed162 |
 | 4-9 | 六域 mixin: facade 3,036 → **123 行**; 62 方法进 `core/semantic/` | 3ccbfc2 |
-| 10 | 移出 5 个零调用方法 → `legacy/dead_semantic_adapter_methods.py`; 文档漂移修正 | (本迭代) |
+| 10 | 移出 5 个零调用方法 → `../svq-legacy-pyslang-adapter/dead_semantic_adapter_methods.py`; 文档漂移修正 | (本迭代) |
 
 **最终基线 (与拆分前一致, 无行为变化)**: unit+regression+truth **2,243 passed** /
 cli+integration **739 passed / 0 failed** / API 面冻结一致 (60 方法, 5 个零调用方法

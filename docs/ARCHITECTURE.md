@@ -331,6 +331,6 @@ MRO-wide 冻结):
 | `core/semantic/_wrappers.py` | instance 包装类 (modules 域使用) |
 
 历史 legacy 层 (`ASTWalker` + 旧 `PyslangAdapter` + 3 Collector, 2,341 行,
-运行时从未实例化) 已移出 → `legacy/base_pyslang_adapter.py`;
-零调用方法归档 → `legacy/dead_semantic_adapter_methods.py` (可恢复)。
+运行时从未实例化) 已移出 → `../svq-legacy-pyslang-adapter/base_pyslang_adapter.py`;
+零调用方法归档 → `../svq-legacy-pyslang-adapter/dead_semantic_adapter_methods.py` (可恢复)。
 方案与回归计划: [architecture/semantic_adapter_split_plan.md](architecture/semantic_adapter_split_plan.md)
