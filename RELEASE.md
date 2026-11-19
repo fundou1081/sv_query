@@ -79,4 +79,5 @@ Tag a GitHub Release with the changelog and KNOWN_LIMITATIONS link.
 
 - [ ] Update `docs/INDEX.md` current baseline if needed.
 - [ ] Add release link to `README.md` / CHANGELOG.
+- [ ] Restore the PyPI badge and `pip install sv_query` line in README after publish.
 - [ ] Open follow-up issues for known limitations and external validation.

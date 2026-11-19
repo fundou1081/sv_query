@@ -1,8 +1,10 @@
 # sv_query — 面向 agent 的 SystemVerilog 语义查询 + 客观校验引擎
 
 [![Tests](https://github.com/fundou1081/sv_query/actions/workflows/tests.yml/badge.svg)](https://github.com/fundou1081/sv_query/actions/workflows/tests.yml)
-[![PyPI](https://img.shields.io/pypi/v/sv_query.svg)](https://pypi.org/project/sv_query/)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
+
+> **PyPI 状态**: `0.3.0` 发布工程已就绪但尚未上传；下面先给出来源安装方式，
+> PyPI 发布后再恢复 `pip install sv_query`。
 
 **让 agent 查询并验证 RTL 事实，而不是靠读源码猜。**
 
@@ -22,9 +24,13 @@
 ## Install
 
 ```bash
-pip install sv_query
+# PyPI 0.3.0 尚未发布；从 Git 安装当前 beta：
+pip install "sv_query @ git+https://github.com/fundou1081/sv_query.git@main"
 # or, in an isolated environment:
-uv pip install sv_query
+uv pip install "sv_query @ git+https://github.com/fundou1081/sv_query.git@main"
+
+# PyPI 发布后：
+# pip install sv_query
 ```
 
 For repository development:
@@ -34,6 +40,25 @@ git clone https://github.com/fundou1081/sv_query.git
 cd sv_query
 pip install -e ".[dev]"
 ```
+
+## CVA6 真实历史案例（non-blind）
+
+已用两个 CVA6 历史 fix 做 grep vs `sv_query` 对照：
+
+- canonical address check 的 `_i → _q` 周期错位（CVA6 #3410）；
+- DTLB PPN 位选 + `dtlb_is_page_q → _n` 门控（CVA6 #3347）。
+
+结论不是“自动发现 bug”，而是：
+
+- `drivers --evidence` 能直接绑定驱动表达式；
+- 总线级查询会漏掉位选缺陷，需要 `graph nodes --match` 下钻；
+- 案例按 fix diff 选取，不是盲测；动态 oracle 未本地重跑。
+
+完整报告与可复现归档：
+
+- [P187_VALUE_CASES_CVA6_2026-11-19.md](docs/validation/P187_VALUE_CASES_CVA6_2026-11-19.md)
+- [p187_cva6_2026-11-19/README.md](docs/validation/p187_cva6_2026-11-19/README.md)
+- [P187_FOLLOWUPS_2026-11-19.md](docs/validation/P187_FOLLOWUPS_2026-11-19.md)
 
 ## English summary
 

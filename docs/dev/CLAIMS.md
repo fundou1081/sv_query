@@ -52,6 +52,7 @@
 | C-29 | pyslang 属性扫描只拦新增真实 getter/unknown；baseline 不是 50 处名字启发式；safe_attr 可选 on_degraded 不改变返回/default | fixture | `test_p184_pyslang_attr_scan.py` / `test_safe.py` / `scan_pyslang_attrs.py --check` | `verified`（Phase 0） |
 | C-30 | CLI command surface 以 baseline 锁定 45 canonical / 39 default-visible / 2 aliases / 32 standard / 13 direct；增删/别名/默认可见性/逐命令元数据/隐藏命令漂移必须显式更新 | fixture | `test_p185_4_command_surface.py` / `check_command_surface.py --check` | `verified` |
 | C-31 | 5 个 canonical fixture 当前 shadow=0，保留默认定名空间；不新增 drop_shadows API | fixture | `test_p186_1_shadow_measure.py` / `measure_shadow_nodes.py` | `verified`（fixture 范围） |
+| C-32 | CVA6 2 个历史 fix 的 non-blind 对照：drivers --evidence 命中驱动表达式；bit-select 需下钻；非自动发现率、无本地动态 oracle | doc | `P187_VALUE_CASES_CVA6_2026-11-19.md` / `P187_FOLLOWUPS_2026-11-19.md` | `scoped`（non-blind，C2 总线级漏报已记录） |
 
 ---
 

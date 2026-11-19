@@ -701,8 +701,16 @@ P182.5 评估记录、P182.6 未改行为。需要 cache 语义时应先接线�
 新增这些位置的 pyslang 读取时，ratchet 可能不会红，必须靠 review。
 
 
-### 3.26 P187 真实历史 bug 案例未完成
+### 3.26 P187 CVA6 案例已完成，但属于 non-blind 验证
 
-本地 CVA6 / OpenTitan 仓库都是 depth-1 浅克隆（仅 1 个 commit，无 parent），
-无法取得 fix diff/oracle；用户决定跳过 P187。因此当前**没有**“真实 CVA6/OpenTitan
-历史 bug 上 grep vs sv_query”的对外价值证据，不能对外宣称该结果。
+通过临时 blobless 历史 clone 完成 2 个 CVA6 历史 fix 的 grep vs `sv_query` 对照：
+
+- 47b72e31（canonical address check，fixes #3404）
+- 378ed3bc（DTLB PPN/index，fixes #3347）
+
+完整证据保存在 `docs/validation/p187_cva6_2026-11-19/`。限制：
+
+- 案例按 fix diff 选取，不是盲测；不能声称自动发现率；
+- 动态 Verilator/Spike oracle 未本地重跑；
+- C2 总线级查询漏报，位选节点下钻后才命中；
+- 不对外宣称“真实历史 bug 上普遍优于 grep”。
