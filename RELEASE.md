@@ -6,11 +6,11 @@
 
 - [ ] `PLAN.md` current item and release scope agree.
 - [ ] `CHANGELOG.md` has the release entry.
-- [ ] Version in `pyproject.toml` is final (`0.3.0` for the current beta).
+- [x] Version in `pyproject.toml` is final (`0.3.1` for the current beta).
 - [ ] `docs/KNOWN_LIMITATIONS.md` is linked from README.
 - [ ] No `package.json` / `package-lock.json` at the repository root.
 - [ ] Dependency ranges are compatible ranges, not exact runtime pins.
-- [ ] CI matrix is green on Ubuntu and macOS for Python 3.11/3.12.
+- [x] CI matrix is green on Ubuntu and macOS for Python 3.11/3.12.
 
 ## 2. Local verification
 
@@ -34,22 +34,22 @@ python3 -m venv /tmp/svq-release-venv
 
 ## 3. PyPI setup (one-time)
 
-- [ ] PyPI project `sv_query` exists and is owned by the maintainer.
-- [ ] Trusted publisher configured for this GitHub repo and workflow:
+- [x] PyPI project `sv_query` exists and is owned by the maintainer.
+- [x] Trusted publisher configured for this GitHub repo and workflow:
   - owner: `fundou1081`
   - repo: `sv_query`
   - workflow: `release.yml`
   - environment: `pypi`
 - [ ] No long-lived PyPI token is stored in the repository.
-- [ ] GitHub environment `pypi` exists with required reviewers if desired.
+- [x] GitHub environment `pypi` exists.
 
 ## 4. Tag and publish
 
 ```bash
 git checkout main
 git pull
-git tag -a v0.3.0 -m "sv_query 0.3.0 beta"
-git push origin v0.3.0
+git tag -a v0.3.1 -m "sv_query 0.3.1 beta"
+git push origin v0.3.1
 ```
 
 Pushing a `v*` tag triggers `.github/workflows/release.yml`:
@@ -63,7 +63,7 @@ After publish:
 ```bash
 pip index versions sv_query
 python3 -m venv /tmp/svq-pypi-smoke
-/tmp/svq-pypi-smoke/bin/pip install sv_query==0.3.0
+/tmp/svq-pypi-smoke/bin/pip install sv_query==0.3.1
 /tmp/svq-pypi-smoke/bin/sv_query capabilities --json
 ```
 

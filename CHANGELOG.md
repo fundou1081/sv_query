@@ -3,13 +3,19 @@
 > 完整历史 changelog. README 短版只展示"为什么用 sv_query" + 5 分钟上手.
 > 详细 release notes 看这里.
 
+## 2026-11-20 (0.3.1 beta — PyPI metadata fix)
+
+- 修复 0.3.0 PyPI 页面仍显示“尚未上传/从 Git 安装”的构建时 README；
+- README 恢复 PyPI badge 与 `pip install sv_query`；
+- 版本同步到 0.3.1；代码与 canonical 不变（3130 passed / 0 failed）。
+
 ## 2026-11-19 (0.3.0 beta release preparation)
 
 - Release engineering: remove root npm artifacts, move typer/click/rich to compatible ranges.
 - CI matrix now Ubuntu + macOS, Python 3.11/3.12.
 - Add trusted-publishing release workflow, RELEASE checklist, issue/PR templates.
 - README: pip install, CI/PyPI badges, English summary, Beta/known-limitations links.
-- Canonical 3082 passed / 0 failed (3078 + 4 release-readiness tests).
+- Canonical 3130 passed / 0 failed（发布准备后基线；含 P191 bit-select hints）。
 
 ## 2026-11-09 (freeze v0.3.0-agent-query)
 

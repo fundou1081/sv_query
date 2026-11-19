@@ -1,14 +1,12 @@
 # sv_query — 面向 agent 的 SystemVerilog 语义查询 + 客观校验引擎
 
 [![Tests](https://github.com/fundou1081/sv_query/actions/workflows/tests.yml/badge.svg)](https://github.com/fundou1081/sv_query/actions/workflows/tests.yml)
+[![PyPI](https://img.shields.io/pypi/v/sv-query.svg)](https://pypi.org/project/sv-query/)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
-
-> **PyPI 状态**: `0.3.0` 发布工程已就绪但尚未上传；下面先给出来源安装方式，
-> PyPI 发布后再恢复 `pip install sv_query`。
 
 **让 agent 查询并验证 RTL 事实，而不是靠读源码猜。**
 
-> **Beta（0.3.0）**: 质量足以试用，但明确不宣称 1.0 的语义完整性/外部准确率。
+> **Beta（0.3.1）**: 质量足以试用，但明确不宣称 1.0 的语义完整性/外部准确率。
 > 发布前已知限制见 [KNOWN_LIMITATIONS](docs/KNOWN_LIMITATIONS.md)；
 > 发布流程见 [RELEASE.md](RELEASE.md)。
 
@@ -17,20 +15,16 @@
 
 > 回归基线见 [docs/INDEX.md 当前基线](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里) | Python 3.11+ | pyslang 语义 AST | NetworkX graph | 真实项目 + 性能基准 + agent 对照（内部）
 
-> 更新日期: 2026-11-19（0.3.0 beta 发布准备；基线计数统一引用 INDEX）
+> 更新日期: 2026-11-20（0.3.1 beta 修正发布；基线计数统一引用 INDEX）
 
 ---
 
 ## Install
 
 ```bash
-# PyPI 0.3.0 尚未发布；从 Git 安装当前 beta：
-pip install "sv_query @ git+https://github.com/fundou1081/sv_query.git@main"
+pip install sv_query
 # or, in an isolated environment:
-uv pip install "sv_query @ git+https://github.com/fundou1081/sv_query.git@main"
-
-# PyPI 发布后：
-# pip install sv_query
+uv pip install sv_query
 ```
 
 For repository development:
