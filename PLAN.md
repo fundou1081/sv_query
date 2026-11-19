@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P185.4 command-surface ratchet/check <待做>
+current item : P185.4 command-surface ratchet/check <进行中>
 
 ## 计划树
 
@@ -554,7 +554,7 @@ P185 CLI command-surface subtraction (2026-11-18 review) <待做>
 -- P185.1 T2 merge audit (classes/diagnose/graph/instances already done; list-conditioned retained) <已完成>
 -- P185.2 bus/verif domain merge (no current CLI commands; abandoned) <放弃>
 -- P185.3 rebaseline default-visible surface (45 canonical / 2 aliases / 39 default) <已完成>
--- P185.4 command-surface ratchet/check <待做>
+-- P185.4 command-surface ratchet/check <进行中>
 
 P186 shadow-node graph cleanup (2026-11-18 review) <待做>
 -- P186.1 measure shadow nodes by module/query path <待做>
