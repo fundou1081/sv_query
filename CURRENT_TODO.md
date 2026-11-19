@@ -9,18 +9,18 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P186.1 measure shadow nodes by module/query path** `<进行中>`
+- **当前 item**: **P187.1 select CVA6/OpenTitan historical signal bugs** `<待做>`
   - P182 组全部完成：envelope / schema / stats / agent entry / snapshot eval / governance
   - P188 release readiness 完成；发布动作见 [RELEASE.md](RELEASE.md)
   - P189.1 docs 自洽 gate 完成
   - P182.5 结论：不扩 source-dependent snapshot、不做 serve、不改 cache 默认
-  - P185.4 命令面 ratchet 完成；下一步 P186 shadow-node 测量
+  - P186.1 实测 5 fixture shadow=0；P186.2 决定保留当前图，下一步 P187
 
 
 ## 📌 当前真实基线
 
 ```text
-canonical:  3118 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  3123 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 

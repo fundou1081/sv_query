@@ -13,11 +13,11 @@
 | 项 | 值 | 说明 |
 |---|---|---|
 | 源码规模 | 145 文件 / 50,873 行 | `find src -name "*.py"`（2026-11-16 实测） |
-| 测试规模 | 425 测试文件 / 69,646 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **3118 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-19 P182.5 全量复核（3118）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
+| 测试规模 | 426 测试文件 / 69,711 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
+| 全量 (canonical) | **3123 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-19 P182.5 全量复核（3123）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (528 份, 只增不改) | 每次迭代一份（2026-11-16 实测） |
+| 迭代记录 | `docs/task_tree/iterations/` (529 份, 只增不改) | 每次迭代一份（2026-11-16 实测） |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 | 语义 regex 纪律 | `python3 tools/check_semantic_regex.py` 必须 ✅ | 仅 UVM 宏例外；class/constraint/covergroup 语义走 slang (iter_368) |
@@ -162,6 +162,7 @@
 | [architecture/agent_interface_review_2026-11-16_revised.md](architecture/agent_interface_review_2026-11-16_revised.md) | **面向 agent 的交付层评审 v2（2026-11-16，HEAD `8da675b3`）**: 修正 v1 的 direct/缺参/计数错误；只读评审，建议已登记 P182 |
 | [architecture/dto_mapping_audit_2026-11-17.md](architecture/dto_mapping_audit_2026-11-17.md) | **DTO 映射审计（D9 / P183.3）**: snapshot/CLI/core 精确字段集；每上下文一份 canonical projection，不做全局合并 |
 | [architecture/p1834_session_seam_decision_2026-11-17.md](architecture/p1834_session_seam_decision_2026-11-17.md) | **P183.4 决策（D15）**: 保留 Session/runner/hidden session；不重写 Typer run() 全量 dispatch |
+| [architecture/p1861_shadow_measure_2026-11-19.md](architecture/p1861_shadow_measure_2026-11-19.md) | **P186.1**: 5 fixture 实测 shadow=0；不新增 drop_shadows，保留测量工具 |
 | [architecture/p1825_snapshot_cache_session_eval.md](architecture/p1825_snapshot_cache_session_eval.md) | **P182.5**: 13 个命令暴露 --from-snapshot（12 可源替代；tb-join 仍需 TB 源）；不扩 source-dependent / 不做 serve / 不改 cache 默认 |
 | [architecture/p1835_candidate_decision_2026-11-18.md](architecture/p1835_candidate_decision_2026-11-18.md) | **P183.5 决策**: DesignView 拒绝全量；ASTFrontend 仅采纳 Phase 0（inventory + degraded） |
 | [architecture/agent_review_2026-11-18_intake.md](architecture/agent_review_2026-11-18_intake.md) | **2026-11-18 review intake**: 事实核对；采纳 P185–P190，拒绝旧快照数字与 CLI 压到 10 条 |

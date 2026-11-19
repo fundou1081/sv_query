@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P186.1 measure shadow nodes by module/query path <进行中>
+current item : P187.1 select CVA6/OpenTitan historical signal bugs <待做>
 
 ## 计划树
 
@@ -556,9 +556,9 @@ P185 CLI command-surface subtraction (2026-11-18 review) <已完成>
 -- P185.3 rebaseline default-visible surface (45 canonical / 2 aliases / 39 default) <已完成>
 -- P185.4 command-surface ratchet/check <已完成>
 
-P186 shadow-node graph cleanup (2026-11-18 review) <待做>
--- P186.1 measure shadow nodes by module/query path <进行中>
--- P186.2 decide definition namespace vs drop_shadows API <待做>
+P186 shadow-node graph cleanup (2026-11-18 review) <已完成>
+-- P186.1 measure shadow nodes by module/query path <已完成>
+-- P186.2 decide definition namespace vs drop_shadows API <已完成>
 
 P187 value case studies (2026-11-18 review) <待做>
 -- P187.1 select CVA6/OpenTitan historical signal bugs <待做>
