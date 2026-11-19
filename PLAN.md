@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P182.6 governance/claims/structural cleanup <待做>
+current item : P182.6 governance/claims/structural cleanup <进行中>
 
 ## 计划树
 
@@ -590,7 +590,7 @@ P182 agent delivery-layer plan from corrected review (2026-11-16) <待做>
 -- P182.3 stats/elaboration completeness contract <已完成>
 -- P182.4 agent entry convergence + capabilities-generated skill <已完成>
 -- P182.5 snapshot/cache/session evaluation <已完成>
--- P182.6 governance/claims/structural cleanup <待做>
+-- P182.6 governance/claims/structural cleanup <进行中>
 
 P181 discipline remediation after worker audit (2026-11-16) <已完成>
 -- P181.1 active-high reset polarity + tests <已完成>
