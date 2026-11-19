@@ -1,0 +1,272 @@
+[auto-import] cva6_config_pkg: injected imports for ['config_pkg']
+[auto-import] riscv: injected imports for ['cva6_config_pkg']
+[auto-import] ariane_pkg: injected imports for ['config_pkg', 'cva6_config_pkg', 'riscv']
+[auto-import] build_config_pkg: injected imports for ['config_pkg']
+[WARNING] 182 warning(s)/note(s) found
+[WARNING] ../../../../private/tmp/p187-case2/include/config_pkg.sv:452:38: [SignCompare]
+[WARNING] ../../../../private/tmp/p187-case2/include/config_pkg.sv:453:38: [SignCompare]
+[WARNING] ../../../../private/tmp/p187-case2/include/config_pkg.sv:454:37: [SignCompare]
+[WARNING] ../../../../private/tmp/p187-case2/include/config_pkg.sv:469:65: [ArithOpMismatch]
+[WARNING] ../../../../private/tmp/p187-case2/include/cv64a6_imafdc_sv39_config_pkg.sv:134:21: [PackedArrayConv]
+[WARNING] ../../../../private/tmp/p187-case2/include/cv64a6_imafdc_sv39_config_pkg.sv:135:22: [PackedArrayConv]
+[WARNING] ../../../../private/tmp/p187-case2/include/cv64a6_imafdc_sv39_config_pkg.sv:140:30: [PackedArrayConv]
+[WARNING] ../../../../private/tmp/p187-case2/include/cv64a6_imafdc_sv39_config_pkg.sv:141:28: [PackedArrayConv]
+[WARNING] ../../../../private/tmp/p187-case2/include/cv64a6_imafdc_sv39_config_pkg.sv:143:30: [PackedArrayConv]
+[WARNING] ../../../../private/tmp/p187-case2/include/cv64a6_imafdc_sv39_config_pkg.sv:144:28: [PackedArrayConv]
+[WARNING] ../../../../private/tmp/p187-case2/include/cv64a6_imafdc_sv39_config_pkg.sv:146:29: [PackedArrayConv]
+[WARNING] ../../../../private/tmp/p187-case2/include/cv64a6_imafdc_sv39_config_pkg.sv:147:27: [PackedArrayConv]
+[WARNING] ../../../../private/tmp/p187-case2/include/cv64a6_imafdc_sv39_config_pkg.sv:170:27: [UselessCast]
+[WARNING] ../../../../private/tmp/p187-case2/include/cv64a6_imafdc_sv39_config_pkg.sv:171:26: [UselessCast]
+[WARNING] ../../../../private/tmp/p187-case2/include/cv64a6_imafdc_sv39_config_pkg.sv:174:26: [UselessCast]
+[WARNING] ../../../../private/tmp/p187-case2/include/riscv_pkg.sv:977:12: [CaseRedundantDefault]
+[WARNING] ../../../../private/tmp/p187-case2/include/ariane_pkg.sv:554:12: [CaseRedundantDefault]
+[WARNING] ../../../../private/tmp/p187-case2/include/ariane_pkg.sv:566:12: [CaseRedundantDefault]
+[WARNING] ../../../../private/tmp/p187-case2/include/ariane_pkg.sv:584:12: [CaseRedundantDefault]
+[WARNING] ../../../../private/tmp/p187-case2/include/ariane_pkg.sv:601:12: [CaseRedundantDefault]
+[WARNING] ../../../../private/tmp/p187-case2/include/ariane_pkg.sv:613:12: [CaseRedundantDefault]
+[WARNING] ../../../../private/tmp/p187-case2/include/ariane_pkg.sv:629:12: [CaseRedundantDefault]
+[WARNING] ../../../../private/tmp/p187-case2/include/ariane_pkg.sv:724:5: [CaseDefault]
+[WARNING] ../../../../private/tmp/p187-case2/include/ariane_pkg.sv:751:9: [CaseDefault]
+[WARNING] ../../../../private/tmp/p187-case2/include/ariane_pkg.sv:780:9: [CaseDefault]
+[WARNING] ../../../../private/tmp/p187-case2/include/ariane_pkg.sv:878:12: [SignConversion]
+[WARNING] ../../../../private/tmp/p187-case2/include/build_config_pkg.sv:27:39: [SignConversion]
+[WARNING] ../../../../private/tmp/p187-case2/include/build_config_pkg.sv:28:39: [SignConversion]
+[WARNING] ../../../../private/tmp/p187-case2/include/build_config_pkg.sv:29:40: [SignConversion]
+[WARNING] ../../../../private/tmp/p187-case2/include/build_config_pkg.sv:43:28: [SignConversion]
+[WARNING] ../../../../private/tmp/p187-case2/include/build_config_pkg.sv:57:48: [UselessCast]
+[WARNING] ../../../../private/tmp/p187-case2/include/build_config_pkg.sv:89:25: [SignConversion]
+[WARNING] ../../../../private/tmp/p187-case2/include/build_config_pkg.sv:91:24: [UselessCast]
+[WARNING] ../../../../private/tmp/p187-case2/include/build_config_pkg.sv:92:18: [UselessCast]
+[WARNING] ../../../../private/tmp/p187-case2/include/build_config_pkg.sv:94:21: [UselessCast]
+[WARNING] ../../../../private/tmp/p187-case2/include/build_config_pkg.sv:95:22: [UselessCast]
+[WARNING] ../../../../private/tmp/p187-case2/include/build_config_pkg.sv:96:25: [UselessCast]
+[WARNING] ../../../../private/tmp/p187-case2/include/build_config_pkg.sv:97:21: [UselessCast]
+[WARNING] ../../../../private/tmp/p187-case2/include/build_config_pkg.sv:102:32: [UselessCast]
+[WARNING] ../../../../private/tmp/p187-case2/include/build_config_pkg.sv:145:63: [SignConversion]
+[WARNING] ../../../../private/tmp/p187-case2/include/build_config_pkg.sv:154:63: [SignConversion]
+[WARNING] ../../../../private/tmp/p187-case2/include/build_config_pkg.sv:174:23: [WidthTruncate]
+[WARNING] ../../../../private/tmp/p187-case2/include/build_config_pkg.sv:177:28: [SignConversion]
+[WARNING] ../../../../private/tmp/p187-case2/include/build_config_pkg.sv:179:32: [SignConversion]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_mmu_parent.sv:376:45: [UselessCast]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_mmu_parent.sv:402:60: [UselessCast]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_mmu_parent.sv:419:42: [ArithOpMismatch]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_mmu_parent.sv:419:132: [ArithOpMismatch]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_mmu_parent.sv:438:62: [UselessCast]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_mmu_parent.sv:451:62: [UselessCast]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_mmu_parent.sv:468:82: [UselessCast]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_mmu_parent.sv:477:82: [UselessCast]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_mmu_parent.sv:488:62: [UselessCast]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_mmu_parent.sv:555:33: [UselessCast]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_mmu_parent.sv:571:28: [ArithOpMismatch]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_mmu_parent.sv:571:104: [ArithOpMismatch]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_mmu_parent.sv:572:31: [ArithOpMismatch]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_mmu_parent.sv:572:107: [ArithOpMismatch]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_mmu_parent.sv:604:52: [UselessCast]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_mmu_parent.sv:631:52: [UselessCast]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_tlb.sv:101:20: [ConstantConversion]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_tlb.sv:108:51: [UnnamedGenerate]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_tlb.sv:109:58: [UnnamedGenerate]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_tlb.sv:118:25: [UnnamedGenerate]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_tlb.sv:120:18: [UnnamedGenerate]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_tlb.sv:121:64: [UnnamedGenerate]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_tlb.sv:126:20: [UnnamedGenerate]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_tlb.sv:140:61: [UnnamedGenerate]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_tlb.sv:147:18: [UnnamedGenerate]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_tlb.sv:149:92: [ArithOpMismatch]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_tlb.sv:157:55: [UnnamedGenerate]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_tlb.sv:163:110: [ArithOpMismatch]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_tlb.sv:170:24: [UnnamedGenerate]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_tlb.sv:179:62: [UnnamedGenerate]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_tlb.sv:237:40: [UselessCast]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_tlb.sv:391:79: [UselessCast]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_tlb.sv:440:40: [SignCompare]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_tlb.sv:443:39: [ArithOpMismatch]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_tlb.sv:468:38: [SignCompare]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_tlb.sv:471:37: [ArithOpMismatch]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_tlb.sv:520:13: [ArithOpMismatch]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:210:19: [WidthTruncate]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:228:13: [WidthExpand]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:230:32: [WidthExpand]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:232:33: [WidthExpand]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:232:91: [LogicalOpParentheses]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:232:183: [LogicalOpParentheses]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:251:56: [UnnamedGenerate]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:253:61: [ArithOpMismatch]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:255:61: [ArithOpMismatch]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:260:5: [UnnamedGenerate]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:368:34: [SignCompare]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:439:21: [WidthExpand]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:440:21: [WidthExpand]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:461:20: [UnnamedGenerate]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:502:12: [CaseRedundantDefault]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:555:32: [SignCompare]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:604:32: [SignCompare]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:654:32: [SignCompare]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:673:54: [UselessCast]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:708:34: [SignCompare]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:716:34: [SignCompare]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:736:88: [ArithOpMismatch]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:792:21: [IntBoolConv]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:796:21: [IntBoolConv]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:799:31: [UnnamedGenerate]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_shared_tlb.sv:838:14: [UnnamedGenerate]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_ptw.sv:170:28: [ConstantConversion]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_ptw.sv:181:48: [UnnamedGenerate]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_ptw.sv:189:45: [UnnamedGenerate]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_ptw.sv:195:24: [UnnamedGenerate]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_ptw.sv:227:47: [BitwiseOpMismatch]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_ptw.sv:230:44: [BitwiseOpMismatch]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_ptw.sv:358:26: [WidthExpand]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_ptw.sv:365:24: [WidthExpand]
+[WARNING] ../../../../private/tmp/p187-case2/cva6_ptw.sv:366:26: [WidthExpand]
+[WARNING] ../../../../private/tmp/p187-case2/lfsr.sv:243:24: [UselessCast]
+[WARNING] ../../../../private/tmp/p187-case2/lfsr.sv:301:21: [SignCompare]
+[WARNING] ../../../../private/tmp/p187-case2/lfsr.sv:301:51: [SignCompare]
+[WARNING] ../../../../private/tmp/p187-case2/lfsr.sv:305:29: [LogicalOpParentheses]
+[WARNING] ../../../../private/tmp/p187-case2/lfsr.sv:311:53: [IntBoolConv]
+[WARNING] ../../../../private/tmp/p187-case2/pmp.sv:35:55: [UnnamedGenerate]
+[WARNING] ../../../../private/tmp/p187-case2/pmp.sv:55:21: [SignCompare]
+[WARNING] ../../../../private/tmp/p187-case2/pmp.sv:60:32: [BitwiseOpMismatch]
+[WARNING] ../../../../private/tmp/p187-case2/pmp.sv:60:57: [ComparisonMismatch]
+[WARNING] ../../../../private/tmp/p187-case2/pmp.sv:66:13: [SignCompare]
+[WARNING] ../../../../private/tmp/p187-case2/pmp.sv:74:12: [UnnamedGenerate]
+[WARNING] ../../../../private/tmp/p187-case2/pmp_entry.sv:44:8: [EmptyOutputPortConn]
+[WARNING] ../../../../private/tmp/p187-case2/pmp_entry.sv:83:29: [SignCompare]
+[WARNING] ../../../../private/tmp/p187-case2/pmp_entry.sv:84:31: [SignCompare]
+[WARNING] ../../../../private/tmp/p187-case2/pmp_entry.sv:91:20: [ArithOpMismatch]
+[WARNING] ../../../../private/tmp/p187-case2/pmp_entry.sv:93:38: [ArithOpMismatch]
+[WARNING] ../../../../private/tmp/p187-case2/pmp_entry.sv:95:37: [ArithOpMismatch]
+[WARNING] ../../../../private/tmp/p187-case2/pmp_entry.sv:99:30: [ArithOpMismatch]
+[WARNING] ../../../../private/tmp/p187-case2/pmp_entry.sv:101:30: [ArithOpMismatch]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedInputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedOutputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedOutputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedOutputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedOutputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedOutputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedOutputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedOutputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedOutputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedOutputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedOutputPort]
+[WARNING] ../../../../private/tmp/p187-case2/p187_mmu_top.sv:72:5: [UnconnectedOutputPort]
+[Phase 4] target=None: configured 25 instance paths for DriverExtractor
+[connection_extractor] port 'cnt_o' width (0,0) for lzc; falling back to (1,0) (likely parameterized port or missing width)
+[connection_extractor] port 'out_o' width (0,0) for lfsr; falling back to (1,0) (likely parameterized port or missing width)
+[connection_extractor] port 'addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_prev_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'match_o' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'cnt_o' width (0,0) for lzc; falling back to (1,0) (likely parameterized port or missing width)
+[connection_extractor] port 'addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_prev_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'match_o' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'cnt_o' width (0,0) for lzc; falling back to (1,0) (likely parameterized port or missing width)
+[connection_extractor] port 'addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_prev_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'match_o' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'cnt_o' width (0,0) for lzc; falling back to (1,0) (likely parameterized port or missing width)
+[connection_extractor] port 'addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_prev_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'match_o' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'cnt_o' width (0,0) for lzc; falling back to (1,0) (likely parameterized port or missing width)
+[connection_extractor] port 'addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_prev_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'match_o' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'cnt_o' width (0,0) for lzc; falling back to (1,0) (likely parameterized port or missing width)
+[connection_extractor] port 'addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_prev_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'match_o' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'cnt_o' width (0,0) for lzc; falling back to (1,0) (likely parameterized port or missing width)
+[connection_extractor] port 'addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_prev_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'match_o' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'cnt_o' width (0,0) for lzc; falling back to (1,0) (likely parameterized port or missing width)
+[connection_extractor] port 'addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_prev_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'match_o' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'cnt_o' width (0,0) for lzc; falling back to (1,0) (likely parameterized port or missing width)
+[connection_extractor] port 'cnt_o' width (0,0) for lzc; falling back to (1,0) (likely parameterized port or missing width)
+[connection_extractor] port 'out_o' width (0,0) for lfsr; falling back to (1,0) (likely parameterized port or missing width)
+[connection_extractor] port 'addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_prev_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'match_o' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'cnt_o' width (0,0) for lzc; falling back to (1,0) (likely parameterized port or missing width)
+[connection_extractor] port 'addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_prev_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'match_o' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'cnt_o' width (0,0) for lzc; falling back to (1,0) (likely parameterized port or missing width)
+[connection_extractor] port 'addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_prev_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'match_o' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'cnt_o' width (0,0) for lzc; falling back to (1,0) (likely parameterized port or missing width)
+[connection_extractor] port 'addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_prev_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'match_o' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'cnt_o' width (0,0) for lzc; falling back to (1,0) (likely parameterized port or missing width)
+[connection_extractor] port 'addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_prev_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'match_o' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'cnt_o' width (0,0) for lzc; falling back to (1,0) (likely parameterized port or missing width)
+[connection_extractor] port 'addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_prev_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'match_o' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'cnt_o' width (0,0) for lzc; falling back to (1,0) (likely parameterized port or missing width)
+[connection_extractor] port 'addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_prev_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'match_o' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'cnt_o' width (0,0) for lzc; falling back to (1,0) (likely parameterized port or missing width)
+[connection_extractor] port 'addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'conf_addr_prev_i' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'match_o' not in module_ports for pmp_entry; falling back to PORT_IN (likely ref port or missing module def)
+[connection_extractor] port 'cnt_o' width (0,0) for lzc; falling back to (1,0) (likely parameterized port or missing width)

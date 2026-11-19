@@ -1,0 +1,30 @@
+{
+  "c1_parent": {
+    "elapsed_s": 20.982,
+    "rc": 0,
+    "ok": true,
+    "nodes": 10715,
+    "edges": 15408
+  },
+  "c1_fix": {
+    "elapsed_s": 20.786,
+    "rc": 0,
+    "ok": true,
+    "nodes": 10715,
+    "edges": 15408
+  },
+  "c2_parent": {
+    "elapsed_s": 20.646,
+    "rc": 0,
+    "ok": true,
+    "nodes": 10673,
+    "edges": 15335
+  },
+  "c2_fix": {
+    "elapsed_s": 20.731,
+    "rc": 0,
+    "ok": true,
+    "nodes": 10676,
+    "edges": 15338
+  }
+}

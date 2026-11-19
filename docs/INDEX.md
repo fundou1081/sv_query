@@ -238,6 +238,7 @@
 | [validation/opentitan_uart/WORKER_REPORT.md](validation/opentitan_uart/WORKER_REPORT.md) | **P118 worker onboarding**: filelist/snapshot/tasks/11 issues |
 | [validation/COMPARISON_RECORD_2026-11-05.md](validation/COMPARISON_RECORD_2026-11-05.md) | **对比结果冻结记录**: 哈希、模型、指标、单独复验脚本与已知缺陷 |
 | [validation/long_range_12_usage_2026-11-05.json](validation/long_range_12_usage_2026-11-05.json) | **token/tool-call 汇总**: 四臂 token、tool calls、tokens/correct |
+| [validation/p187_cva6_2026-11-19/README.md](validation/p187_cva6_2026-11-19/README.md) | **P187 local archive**: CVA6 parent/fix blobs, portable filelists, scripts, results, checksums |
 | [validation/P187_VALUE_CASES_CVA6_2026-11-19.md](validation/P187_VALUE_CASES_CVA6_2026-11-19.md) | **P187 CVA6 value cases**: 2 个历史 fix 的 grep vs sv_query 对照；位选下钻命中 / 总线级漏报 |
 | [architecture/long_range_structural_benchmark_2026-11-05.md](architecture/long_range_structural_benchmark_2026-11-05.md) | **长程结构查询对照基准**: B0/B1/T1/T2 对照、任务族、ground truth 冻结与准确度/成本指标 |
 | [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) | 已知限制 (含 pyslang 侧限制) |

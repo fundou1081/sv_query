@@ -1,0 +1,17 @@
++incdir+case2/include
+case2/cf_math_pkg.sv
+case2/include/config_pkg.sv
+case2/include/cv64a6_imafdc_sv39_config_pkg.sv
+case2/include/riscv_pkg.sv
+case2/include/ariane_pkg.sv
+case2/include/dummy_l15_pkg.sv
+case2/include/build_config_pkg.sv
+case2/cva6_mmu_parent.sv
+case2/cva6_tlb.sv
+case2/cva6_shared_tlb.sv
+case2/cva6_ptw.sv
+case2/lzc.sv
+case2/lfsr.sv
+case2/pmp.sv
+case2/pmp_entry.sv
+case2/p187_mmu_top.sv

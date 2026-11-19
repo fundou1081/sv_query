@@ -1,0 +1,233 @@
+{
+  "c1_parent": {
+    "drv_canonical": {
+      "cmd": "python3 run_cli.py drivers p187_mmu_top.u_mmu.canonical_addr_check --evidence --filelist /tmp/p187-min/fl_parent.f --json",
+      "rc": 0,
+      "elapsed_s": 0.92,
+      "stdout_bytes": 6182,
+      "stderr_bytes": 0,
+      "ok": true,
+      "error_code": null,
+      "driver_count": 4,
+      "driver_exprs": [
+        "(lsu_req_i && en_ld_st_translation_i &&\n           !((&lsu_vaddr_i[CVA6Cfg.VLEN-1:CVA6Cfg.SV-1]) == 1'b1 || (|lsu_vaddr_i[CVA6Cfg.VLEN-1:CVA6Cfg.SV-1]) == 1'b0))",
+        "(lsu_req_i && en_ld_st_translation_i &&\n           !((&lsu_vaddr_i[CVA6Cfg.VLEN-1:CVA6Cfg.SV-1]) == 1'b1 || (|lsu_vaddr_i[CVA6Cfg.VLEN-1:CVA6Cfg.SV-1]) == 1'b0))",
+        "(lsu_req_i && en_ld_st_translation_i &&\n           !((&lsu_vaddr_i[CVA6Cfg.VLEN-1:CVA6Cfg.SV-1]) == 1'b1 || (|lsu_vaddr_i[CVA6Cfg.VLEN-1:CVA6Cfg.SV-1]) == 1'b0))"
+      ],
+      "driver_ids": [
+        "p187_mmu_top.u_mmu.en_ld_st_translation_i",
+        "p187_mmu_top.u_mmu.lsu_req_i",
+        "p187_mmu_top.lsu_req_i",
+        "p187_mmu_top.u_mmu.lsu_vaddr_i[32'd63:32'd38]"
+      ]
+    },
+    "df_vaddr_to_canonical": {
+      "cmd": "python3 run_cli.py dataflow analyze p187_mmu_top.u_mmu.lsu_vaddr_i p187_mmu_top.u_mmu.canonical_addr_check --filelist /tmp/p187-min/fl_parent.f --json",
+      "rc": 0,
+      "elapsed_s": 23.092,
+      "stdout_bytes": 1303,
+      "stderr_bytes": 28176,
+      "ok": true,
+      "error_code": null,
+      "is_reachable": false,
+      "search_status": "complete",
+      "latency": null,
+      "paths_count": 0,
+      "conditions": [],
+      "segments": []
+    },
+    "prof_canonical": {
+      "cmd": "python3 run_cli.py trace profile p187_mmu_top.u_mmu.canonical_addr_check --filelist /tmp/p187-min/fl_parent.f --json",
+      "rc": 0,
+      "elapsed_s": 23.507,
+      "stdout_bytes": 1768,
+      "stderr_bytes": 28176,
+      "ok": true,
+      "error_code": null,
+      "resolution": "exact",
+      "driver_count": 3,
+      "load_count": 0,
+      "sequential": {
+        "is_sequential": true,
+        "assign_types": [
+          "nonblocking"
+        ],
+        "stage": null,
+        "stage_known": false,
+        "stage_source": null,
+        "stage_unknown_reason": "combinational",
+        "sample": null,
+        "sample_unknown_reason": "no_clock",
+        "always": null
+      }
+    }
+  },
+  "c1_fix": {
+    "drv_canonical": {
+      "cmd": "python3 run_cli.py drivers p187_mmu_top.u_mmu.canonical_addr_check --evidence --filelist /tmp/p187-min/fl_fix.f --json",
+      "rc": 0,
+      "elapsed_s": 23.294,
+      "stdout_bytes": 9561,
+      "stderr_bytes": 72,
+      "ok": true,
+      "error_code": null,
+      "driver_count": 7,
+      "driver_exprs": [
+        "(lsu_req_q && en_ld_st_translation_i &&\n           !((&lsu_vaddr_q[CVA6Cfg.VLEN-1:CVA6Cfg.SV-1]) == 1'b1 || (|lsu_vaddr_q[CVA6Cfg.VLEN-1:CVA6Cfg.SV-1]) == 1'b0))",
+        "(lsu_req_q && en_ld_st_translation_i &&\n           !((&lsu_vaddr_q[CVA6Cfg.VLEN-1:CVA6Cfg.SV-1]) == 1'b1 || (|lsu_vaddr_q[CVA6Cfg.VLEN-1:CVA6Cfg.SV-1]) == 1'b0))",
+        "(lsu_req_q && en_ld_st_translation_i &&\n           !((&lsu_vaddr_q[CVA6Cfg.VLEN-1:CVA6Cfg.SV-1]) == 1'b1 || (|lsu_vaddr_q[CVA6Cfg.VLEN-1:CVA6Cfg.SV-1]) == 1'b0))"
+      ],
+      "driver_ids": [
+        "p187_mmu_top.u_mmu.lsu_req_q",
+        "1'b0",
+        "p187_mmu_top.u_mmu.lsu_req_n",
+        "p187_mmu_top.u_mmu.lsu_req_i",
+        "p187_mmu_top.lsu_req_i",
+        "p187_mmu_top.u_mmu.en_ld_st_translation_i",
+        "p187_mmu_top.u_mmu.lsu_vaddr_q[32'd63:32'd38]"
+      ]
+    },
+    "df_vaddr_to_canonical": {
+      "cmd": "python3 run_cli.py dataflow analyze p187_mmu_top.u_mmu.lsu_vaddr_i p187_mmu_top.u_mmu.canonical_addr_check --filelist /tmp/p187-min/fl_fix.f --json",
+      "rc": 0,
+      "elapsed_s": 22.833,
+      "stdout_bytes": 1300,
+      "stderr_bytes": 28146,
+      "ok": true,
+      "error_code": null,
+      "is_reachable": false,
+      "search_status": "complete",
+      "latency": null,
+      "paths_count": 0,
+      "conditions": [],
+      "segments": []
+    },
+    "prof_canonical": {
+      "cmd": "python3 run_cli.py trace profile p187_mmu_top.u_mmu.canonical_addr_check --filelist /tmp/p187-min/fl_fix.f --json",
+      "rc": 0,
+      "elapsed_s": 23.491,
+      "stdout_bytes": 1761,
+      "stderr_bytes": 28146,
+      "ok": true,
+      "error_code": null,
+      "resolution": "exact",
+      "driver_count": 3,
+      "load_count": 0,
+      "sequential": {
+        "is_sequential": true,
+        "assign_types": [
+          "nonblocking"
+        ],
+        "stage": null,
+        "stage_known": false,
+        "stage_source": null,
+        "stage_unknown_reason": "combinational",
+        "sample": null,
+        "sample_unknown_reason": "no_clock",
+        "always": null
+      }
+    }
+  },
+  "c2_parent": {
+    "drv_dtlb_ppn": {
+      "cmd": "python3 run_cli.py drivers p187_mmu_top.u_mmu.lsu_dtlb_ppn_o --evidence --filelist /tmp/p187-case2/fl_parent.f --json",
+      "rc": 0,
+      "elapsed_s": 22.519,
+      "stdout_bytes": 6667,
+      "stderr_bytes": 72,
+      "ok": true,
+      "error_code": null,
+      "driver_count": 3,
+      "driver_exprs": [
+        "(CVA6Cfg.PPNW)'(lsu_vaddr_n[((CVA6Cfg.PLEN > CVA6Cfg.VLEN) ? CVA6Cfg.VLEN -1: CVA6Cfg.PLEN -1 ):12])",
+        "(en_ld_st_g_translation_i && CVA6Cfg.RVH) ? dtlb_g_content.ppn : dtlb_content.ppn",
+        "(en_ld_st_g_translation_i && CVA6Cfg.RVH) ? dtlb_g_content.ppn : dtlb_content.ppn"
+      ],
+      "driver_ids": [
+        "p187_mmu_top.u_mmu.lsu_vaddr_n[32'd55:12]",
+        "p187_mmu_top.u_mmu.dtlb_g_content.ppn",
+        "p187_mmu_top.u_mmu.dtlb_content.ppn"
+      ]
+    },
+    "cf_dtlb_ppn": {
+      "cmd": "python3 run_cli.py controlflow analyze p187_mmu_top.u_mmu.lsu_dtlb_ppn_o --evidence --filelist /tmp/p187-case2/fl_parent.f --json",
+      "rc": 0,
+      "elapsed_s": 21.695,
+      "stdout_bytes": 188170,
+      "stderr_bytes": 44409,
+      "ok": true,
+      "error_code": null,
+      "conditioned_count": 2,
+      "conditions": [
+        "en_ld_st_translation_i || en_ld_st_g_translation_i && !misaligned_ex_q.valid",
+        "en_ld_st_translation_i || en_ld_st_g_translation_i && !misaligned_ex_q.valid"
+      ]
+    },
+    "df_vaddrn_to_ppn": {
+      "cmd": "python3 run_cli.py dataflow analyze p187_mmu_top.u_mmu.lsu_vaddr_n p187_mmu_top.u_mmu.lsu_dtlb_ppn_o --filelist /tmp/p187-case2/fl_parent.f --json",
+      "rc": 0,
+      "elapsed_s": 20.871,
+      "stdout_bytes": 1281,
+      "stderr_bytes": 28105,
+      "ok": true,
+      "error_code": null,
+      "is_reachable": false,
+      "search_status": "complete",
+      "latency": null,
+      "paths_count": 0,
+      "conditions": [],
+      "segments": []
+    }
+  },
+  "c2_fix": {
+    "drv_dtlb_ppn": {
+      "cmd": "python3 run_cli.py drivers p187_mmu_top.u_mmu.lsu_dtlb_ppn_o --evidence --filelist /tmp/p187-case2/fl_fix.f --json",
+      "rc": 0,
+      "elapsed_s": 22.298,
+      "stdout_bytes": 6661,
+      "stderr_bytes": 72,
+      "ok": true,
+      "error_code": null,
+      "driver_count": 3,
+      "driver_exprs": [
+        "(CVA6Cfg.PPNW)'(lsu_vaddr_n[((CVA6Cfg.PLEN > CVA6Cfg.VLEN) ? CVA6Cfg.VLEN -1: CVA6Cfg.PLEN -1 ):12])",
+        "(en_ld_st_g_translation_i && CVA6Cfg.RVH) ? dtlb_g_content.ppn : dtlb_content.ppn",
+        "(en_ld_st_g_translation_i && CVA6Cfg.RVH) ? dtlb_g_content.ppn : dtlb_content.ppn"
+      ],
+      "driver_ids": [
+        "p187_mmu_top.u_mmu.lsu_vaddr_n[32'd55:12]",
+        "p187_mmu_top.u_mmu.dtlb_g_content.ppn",
+        "p187_mmu_top.u_mmu.dtlb_content.ppn"
+      ]
+    },
+    "cf_dtlb_ppn": {
+      "cmd": "python3 run_cli.py controlflow analyze p187_mmu_top.u_mmu.lsu_dtlb_ppn_o --evidence --filelist /tmp/p187-case2/fl_fix.f --json",
+      "rc": 0,
+      "elapsed_s": 21.499,
+      "stdout_bytes": 189788,
+      "stderr_bytes": 44137,
+      "ok": true,
+      "error_code": null,
+      "conditioned_count": 2,
+      "conditions": [
+        "en_ld_st_translation_i || en_ld_st_g_translation_i && !misaligned_ex_q.valid",
+        "en_ld_st_translation_i || en_ld_st_g_translation_i && !misaligned_ex_q.valid"
+      ]
+    },
+    "df_vaddrn_to_ppn": {
+      "cmd": "python3 run_cli.py dataflow analyze p187_mmu_top.u_mmu.lsu_vaddr_n p187_mmu_top.u_mmu.lsu_dtlb_ppn_o --filelist /tmp/p187-case2/fl_fix.f --json",
+      "rc": 0,
+      "elapsed_s": 21.398,
+      "stdout_bytes": 1278,
+      "stderr_bytes": 27969,
+      "ok": true,
+      "error_code": null,
+      "is_reachable": false,
+      "search_status": "complete",
+      "latency": null,
+      "paths_count": 0,
+      "conditions": [],
+      "segments": []
+    }
+  }
+}

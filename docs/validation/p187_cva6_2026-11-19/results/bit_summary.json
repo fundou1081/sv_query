@@ -1,0 +1,102 @@
+{
+  "c2_parent": {
+    "bit0_drv": {
+      "node": "p187_mmu_top.u_mmu.lsu_dtlb_ppn_o[PPNWMin - CVA6Cfg.VpnLen / CVA6Cfg.PtLevels:9 + CVA6Cfg.PtLevels]",
+      "cmd": "python3 run_cli.py drivers p187_mmu_top.u_mmu.lsu_dtlb_ppn_o[PPNWMin - CVA6Cfg.VpnLen / CVA6Cfg.PtLevels:9 + CVA6Cfg.PtLevels] --evidence --filelist /tmp/p187-case2/fl_parent.f --json",
+      "rc": 0,
+      "elapsed_s": 0.76,
+      "ok": true,
+      "error_code": null,
+      "resolution": "exact",
+      "error": "",
+      "driver_exprs": [
+        "lsu_vaddr_n[PPNWMin-(CVA6Cfg.VpnLen/CVA6Cfg.PtLevels):9+CVA6Cfg.PtLevels]"
+      ],
+      "driver_ids": [
+        "p187_mmu_top.u_mmu.lsu_vaddr_n[32'd20:32'd12]"
+      ]
+    },
+    "bit0_cf": {
+      "node": "p187_mmu_top.u_mmu.lsu_dtlb_ppn_o[PPNWMin - CVA6Cfg.VpnLen / CVA6Cfg.PtLevels:9 + CVA6Cfg.PtLevels]",
+      "cmd": "python3 run_cli.py controlflow analyze p187_mmu_top.u_mmu.lsu_dtlb_ppn_o[PPNWMin - CVA6Cfg.VpnLen / CVA6Cfg.PtLevels:9 + CVA6Cfg.PtLevels] --evidence --filelist /tmp/p187-case2/fl_parent.f --json",
+      "rc": 0,
+      "elapsed_s": 20.238,
+      "ok": true,
+      "error_code": null
+    },
+    "bit1_drv": {
+      "node": "p187_mmu_top.u_mmu.lsu_dtlb_ppn_o[PPNWMin:12]",
+      "cmd": "python3 run_cli.py drivers p187_mmu_top.u_mmu.lsu_dtlb_ppn_o[PPNWMin:12] --evidence --filelist /tmp/p187-case2/fl_parent.f --json",
+      "rc": 0,
+      "elapsed_s": 0.605,
+      "ok": true,
+      "error_code": null,
+      "resolution": "exact",
+      "error": "",
+      "driver_exprs": [
+        "lsu_vaddr_n[PPNWMin:12]"
+      ],
+      "driver_ids": [
+        "p187_mmu_top.u_mmu.lsu_vaddr_n[29:12]"
+      ]
+    },
+    "bit1_cf": {
+      "node": "p187_mmu_top.u_mmu.lsu_dtlb_ppn_o[PPNWMin:12]",
+      "cmd": "python3 run_cli.py controlflow analyze p187_mmu_top.u_mmu.lsu_dtlb_ppn_o[PPNWMin:12] --evidence --filelist /tmp/p187-case2/fl_parent.f --json",
+      "rc": 0,
+      "elapsed_s": 20.146,
+      "ok": true,
+      "error_code": null
+    }
+  },
+  "c2_fix": {
+    "bit0_drv": {
+      "node": "p187_mmu_top.u_mmu.lsu_dtlb_ppn_o[0:MegaPageSubstWidth]",
+      "cmd": "python3 run_cli.py drivers p187_mmu_top.u_mmu.lsu_dtlb_ppn_o[0:MegaPageSubstWidth] --evidence --filelist /tmp/p187-case2/fl_fix.f --json",
+      "rc": 0,
+      "elapsed_s": 0.592,
+      "ok": true,
+      "error_code": null,
+      "resolution": "exact",
+      "error": "",
+      "driver_exprs": [
+        "lsu_vaddr_n[(9+CVA6Cfg.PtLevels)+:MegaPageSubstWidth]"
+      ],
+      "driver_ids": [
+        "p187_mmu_top.u_mmu.lsu_vaddr_n[?:?]"
+      ]
+    },
+    "bit0_cf": {
+      "node": "p187_mmu_top.u_mmu.lsu_dtlb_ppn_o[0:MegaPageSubstWidth]",
+      "cmd": "python3 run_cli.py controlflow analyze p187_mmu_top.u_mmu.lsu_dtlb_ppn_o[0:MegaPageSubstWidth] --evidence --filelist /tmp/p187-case2/fl_fix.f --json",
+      "rc": 0,
+      "elapsed_s": 20.322,
+      "ok": true,
+      "error_code": null
+    },
+    "bit1_drv": {
+      "node": "p187_mmu_top.u_mmu.lsu_dtlb_ppn_o[PPNWMin - 12:0]",
+      "cmd": "python3 run_cli.py drivers p187_mmu_top.u_mmu.lsu_dtlb_ppn_o[PPNWMin - 12:0] --evidence --filelist /tmp/p187-case2/fl_fix.f --json",
+      "rc": 0,
+      "elapsed_s": 0.595,
+      "ok": true,
+      "error_code": null,
+      "resolution": "exact",
+      "error": "",
+      "driver_exprs": [
+        "lsu_vaddr_n[PPNWMin:12]"
+      ],
+      "driver_ids": [
+        "p187_mmu_top.u_mmu.lsu_vaddr_n[29:12]"
+      ]
+    },
+    "bit1_cf": {
+      "node": "p187_mmu_top.u_mmu.lsu_dtlb_ppn_o[PPNWMin - 12:0]",
+      "cmd": "python3 run_cli.py controlflow analyze p187_mmu_top.u_mmu.lsu_dtlb_ppn_o[PPNWMin - 12:0] --evidence --filelist /tmp/p187-case2/fl_fix.f --json",
+      "rc": 0,
+      "elapsed_s": 20.371,
+      "ok": true,
+      "error_code": null
+    }
+  }
+}

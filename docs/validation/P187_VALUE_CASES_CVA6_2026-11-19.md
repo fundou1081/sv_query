@@ -5,6 +5,8 @@
 > 数据源：只读 blobless 历史 clone `/tmp/p187-cva6-history`（8118 commits，`origin`
 > = openhwgroup/cva6，promisor `[blob:none]`）。未改 `~/my_dv_proj/openrtl/cva6`。
 
+> **完整本地存档**: [p187_cva6_2026-11-19/README.md](p187_cva6_2026-11-19/README.md)（源码 blob、portable filelist、脚本、结果、checksums）。
+
 ## 0. 结论摘要（现状 → 问题 → 建议 → 代价）
 
 - **现状**：选定 2 个真实 CVA6 fix，均只改 `core/cva6_mmu/cva6_mmu.sv`，parent/fix
@@ -101,10 +103,10 @@ endmodule
 
 | 变体 | filelist | ok | nodes | edges | 耗时 |
 |---|---|---|---|---|---|
-| C1 parent | `/tmp/p187-min/fl_parent.f` | true | 10715 | 15408 | 20.98 s |
-| C1 fix | `/tmp/p187-min/fl_fix.f` | true | 10715 | 15408 | 20.79 s |
-| C2 parent | `/tmp/p187-case2/fl_parent.f` | true | 10673 | 15335 | 20.65 s |
-| C2 fix | `/tmp/p187-case2/fl_fix.f` | true | 10676 | 15338 | 20.73 s |
+| C1 parent | `docs/validation/p187_cva6_2026-11-19/case1/fl_parent.f` | true | 10715 | 15408 | 20.98 s |
+| C1 fix | `docs/validation/p187_cva6_2026-11-19/case1/fl_fix.f` | true | 10715 | 15408 | 20.79 s |
+| C2 parent | `docs/validation/p187_cva6_2026-11-19/case2/fl_parent.f` | true | 10673 | 15335 | 20.65 s |
+| C2 fix | `docs/validation/p187_cva6_2026-11-19/case2/fl_fix.f` | true | 10676 | 15338 | 20.73 s |
 
 C1 的 diff 只改表达式文本 → 图规模不变；C2 新增 `MegaPageSubstWidth` 位选节点 → +3 nodes/edges。
 
@@ -122,8 +124,8 @@ C1 的 diff 只改表达式文本 → 图规模不变；C2 新增 `MegaPageSubst
 **手工 grep（buggy parent，0.024 s）**
 
 ```bash
-grep -n 'canonical_addr_check' /tmp/p187-min/cva6_mmu_parent.sv
-grep -nE 'lsu_req_[qi]|lsu_vaddr_[qi]' /tmp/p187-min/cva6_mmu_parent.sv | head -30
+grep -n 'canonical_addr_check' docs/validation/p187_cva6_2026-11-19/case1/cva6_mmu_parent.sv
+grep -nE 'lsu_req_[qi]|lsu_vaddr_[qi]' docs/validation/p187_cva6_2026-11-19/case1/cva6_mmu_parent.sv | head -30
 ```
 
 输出要点：`canonical_addr_check` 在 542 行由 `lsu_req_i`/`lsu_vaddr_i` 产生；527-528 行
@@ -138,9 +140,9 @@ grep -nE 'lsu_req_[qi]|lsu_vaddr_[qi]' /tmp/p187-min/cva6_mmu_parent.sv | head -
 
 ```bash
 python3 run_cli.py drivers p187_mmu_top.u_mmu.canonical_addr_check \
-  --filelist /tmp/p187-min/fl_parent.f --json --evidence    # 0.92 s (cache hit)
+  --filelist docs/validation/p187_cva6_2026-11-19/case1/fl_parent.f --json --evidence    # 0.92 s (cache hit)
 python3 run_cli.py drivers p187_mmu_top.u_mmu.canonical_addr_check \
-  --filelist /tmp/p187-min/fl_fix.f    --json --evidence    # 23.29 s
+  --filelist docs/validation/p187_cva6_2026-11-19/case1/fl_fix.f    --json --evidence    # 23.29 s
 ```
 
 | 查询 | buggy parent | fix | 对照 fix diff |
@@ -176,7 +178,7 @@ python3 run_cli.py drivers p187_mmu_top.u_mmu.canonical_addr_check \
 **手工 grep（buggy parent，0.022 s）**
 
 ```bash
-grep -nE 'lsu_dtlb_ppn_o|dtlb_is_page_[qn]' /tmp/p187-case2/cva6_mmu_parent.sv | head -50
+grep -nE 'lsu_dtlb_ppn_o|dtlb_is_page_[qn]' docs/validation/p187_cva6_2026-11-19/case2/cva6_mmu_parent.sv | head -50
 ```
 
 输出含 555/561 的两个基础赋值、567/571 的 q 门控高位 PPN 拷贝、574/575 的 q
@@ -198,9 +200,9 @@ parent 与 fix 都只返回 3 个基础 driver（`lsu_vaddr_n[55:12]`、两个 c
 
 ```bash
 # 1) 发现位选节点（先对 parent 与 fix 各跑一次）
-python3 run_cli.py graph nodes --filelist /tmp/p187-case2/fl_parent.f \
+python3 run_cli.py graph nodes --filelist docs/validation/p187_cva6_2026-11-19/case2/fl_parent.f \
   --match lsu_dtlb_ppn_o --json
-python3 run_cli.py graph nodes --filelist /tmp/p187-case2/fl_fix.f \
+python3 run_cli.py graph nodes --filelist docs/validation/p187_cva6_2026-11-19/case2/fl_fix.f \
   --match lsu_dtlb_ppn_o --json
 # parent: [PPNWMin - CVA6Cfg.VpnLen / CVA6Cfg.PtLevels:9 + CVA6Cfg.PtLevels], [PPNWMin:12]
 # fix   : [0:MegaPageSubstWidth], [PPNWMin - 12:0]
@@ -258,29 +260,29 @@ python3 run_cli.py controlflow analyze '<bit-node>' --filelist <fl> --json --evi
 ```bash
 H=/tmp/p187-cva6-history
 # C1 parent/fix
-git -C $H show 6fe7b959:core/cva6_mmu/cva6_mmu.sv > /tmp/p187-min/cva6_mmu_parent.sv
-git -C $H show 47b72e31:core/cva6_mmu/cva6_mmu.sv > /tmp/p187-min/cva6_mmu_fix1.sv
+git -C $H show 6fe7b959:core/cva6_mmu/cva6_mmu.sv > docs/validation/p187_cva6_2026-11-19/case1/cva6_mmu_parent.sv
+git -C $H show 47b72e31:core/cva6_mmu/cva6_mmu.sv > docs/validation/p187_cva6_2026-11-19/case1/cva6_mmu_fix1.sv
 # C2 parent/fix (其依赖 pin 在 ed2efa51)
-git -C $H show ed2efa51:core/cva6_mmu/cva6_mmu.sv > /tmp/p187-case2/cva6_mmu_parent.sv
-git -C $H show 378ed3bc:core/cva6_mmu/cva6_mmu.sv > /tmp/p187-case2/cva6_mmu_fix.sv
+git -C $H show ed2efa51:core/cva6_mmu/cva6_mmu.sv > docs/validation/p187_cva6_2026-11-19/case2/cva6_mmu_parent.sv
+git -C $H show 378ed3bc:core/cva6_mmu/cva6_mmu.sv > docs/validation/p187_cva6_2026-11-19/case2/cva6_mmu_fix.sv
 # 其余依赖文件见 §2.2（每个文件用 git show <parent>:<path> 抽取）
 cd .
-python3 run_cli.py stats --filelist /tmp/p187-min/fl_parent.f --json
+python3 run_cli.py stats --filelist docs/validation/p187_cva6_2026-11-19/case1/fl_parent.f --json
 python3 run_cli.py drivers p187_mmu_top.u_mmu.canonical_addr_check \
-  --filelist /tmp/p187-min/fl_parent.f --json --evidence
+  --filelist docs/validation/p187_cva6_2026-11-19/case1/fl_parent.f --json --evidence
 python3 run_cli.py drivers p187_mmu_top.u_mmu.canonical_addr_check \
-  --filelist /tmp/p187-min/fl_fix.f --json --evidence
-python3 run_cli.py graph nodes --filelist /tmp/p187-case2/fl_parent.f \
+  --filelist docs/validation/p187_cva6_2026-11-19/case1/fl_fix.f --json --evidence
+python3 run_cli.py graph nodes --filelist docs/validation/p187_cva6_2026-11-19/case2/fl_parent.f \
   --match lsu_dtlb_ppn_o --json
 python3 run_cli.py controlflow analyze \
   'p187_mmu_top.u_mmu.lsu_dtlb_ppn_o[PPNWMin:12]' \
-  --filelist /tmp/p187-case2/fl_parent.f --json --evidence
+  --filelist docs/validation/p187_cva6_2026-11-19/case2/fl_parent.f --json --evidence
 python3 run_cli.py controlflow analyze \
   'p187_mmu_top.u_mmu.lsu_dtlb_ppn_o[PPNWMin - 12:0]' \
-  --filelist /tmp/p187-case2/fl_fix.f --json --evidence
+  --filelist docs/validation/p187_cva6_2026-11-19/case2/fl_fix.f --json --evidence
 ```
 
-原始 JSON/耗时记录：`/tmp/p187-results/{summary,bit_summary,stats_times}.json` 及
+原始 JSON/耗时记录：`docs/validation/p187_cva6_2026-11-19/results/{summary,bit_summary,stats_times}.json` 及
 同目录 `c1_*__*.json` / `c2_*__*.json`（`/tmp` 临时，非仓库产物）。
 
 ## 8. 变更范围
