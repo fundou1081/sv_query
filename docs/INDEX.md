@@ -241,7 +241,11 @@
 | [validation/long_range_12_usage_2026-11-05.json](validation/long_range_12_usage_2026-11-05.json) | **token/tool-call 汇总**: 四臂 token、tool calls、tokens/correct |
 | [validation/p187_cva6_2026-11-19/README.md](validation/p187_cva6_2026-11-19/README.md) | **P187 local archive**: CVA6 parent/fix blobs, portable filelists, scripts, results, checksums |
 | [validation/P187_VALUE_CASES_CVA6_2026-11-19.md](validation/P187_VALUE_CASES_CVA6_2026-11-19.md) |
-| [validation/P187_FOLLOWUPS_2026-11-19.md](validation/P187_FOLLOWUPS_2026-11-19.md) | **P187 follow-ups**: bit-select 查询、dataflow unknown、evidence source、snapshot/filelist 建议 |
+| [validation/P187_FOLLOWUPS_2026-11-19.md](validation/P187_FOLLOWUPS_2026-11-19.md) |
+| [validation/P192_blind_3404/README.md](validation/P192_blind_3404/README.md) |
+| [validation/P192_blind_3404/TASK.md](validation/P192_blind_3404/TASK.md) | **P192.1 blind task**: issue #3404 symptom-only task statement（无 fix） |
+ **P192.1 blind package**: issue #3404 symptom-only, parent RTL, portable filelist, checksums |
+ **P187 follow-ups**: bit-select 查询、dataflow unknown、evidence source、snapshot/filelist 建议 |
  **P187 CVA6 value cases**: 2 个历史 fix 的 grep vs sv_query 对照；位选下钻命中 / 总线级漏报 |
 | [architecture/long_range_structural_benchmark_2026-11-05.md](architecture/long_range_structural_benchmark_2026-11-05.md) | **长程结构查询对照基准**: B0/B1/T1/T2 对照、任务族、ground truth 冻结与准确度/成本指标 |
 | [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) | 已知限制 (含 pyslang 侧限制) |

@@ -1,0 +1,17 @@
++incdir+rtl/include
+rtl/cf_math_pkg.sv
+rtl/include/config_pkg.sv
+rtl/include/cv64a6_imafdc_sv39_config_pkg.sv
+rtl/include/riscv_pkg.sv
+rtl/include/ariane_pkg.sv
+rtl/include/dummy_l15_pkg.sv
+rtl/include/build_config_pkg.sv
+rtl/cva6_mmu.sv
+rtl/cva6_tlb.sv
+rtl/cva6_shared_tlb.sv
+rtl/cva6_ptw.sv
+rtl/lzc.sv
+rtl/lfsr.sv
+rtl/pmp.sv
+rtl/pmp_entry.sv
+rtl/p187_mmu_top.sv

@@ -9,12 +9,12 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P192.1 issue #3404 symptom-only protocol（不给 fix diff）** `<进行中>`
+- **当前 item**: **P192.2 source-only vs sv_query blind comparison** `<待做>`
   - P182 组全部完成：envelope / schema / stats / agent entry / snapshot eval / governance
   - P188 release readiness 完成；发布动作见 [RELEASE.md](RELEASE.md)
   - P189.1 docs 自洽 gate 完成
   - P182.5 结论：不扩 source-dependent snapshot、不做 serve、不改 cache 默认
-  - P191 双向 hint 完成；下一步 P192.1 非盲外部验证
+  - P192.1 盲测包完成；下一步 P192.2 盲对照
 
 
 ## 📌 当前真实基线
