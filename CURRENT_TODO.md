@@ -9,18 +9,18 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P185.4 command-surface ratchet/check** `<进行中>`
+- **当前 item**: **P186.1 measure shadow nodes by module/query path** `<待做>`
   - P182 组全部完成：envelope / schema / stats / agent entry / snapshot eval / governance
   - P188 release readiness 完成；发布动作见 [RELEASE.md](RELEASE.md)
   - P189.1 docs 自洽 gate 完成
   - P182.5 结论：不扩 source-dependent snapshot、不做 serve、不改 cache 默认
-  - P184 Phase 0 完成：scanner ratchet + safe_attr degraded；下一步 P185.4
+  - P185.4 命令面 ratchet 完成；下一步 P186 shadow-node 测量
 
 
 ## 📌 当前真实基线
 
 ```text
-canonical:  3113 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  3118 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 

@@ -13,11 +13,11 @@
 | 项 | 值 | 说明 |
 |---|---|---|
 | 源码规模 | 145 文件 / 50,873 行 | `find src -name "*.py"`（2026-11-16 实测） |
-| 测试规模 | 424 测试文件 / 69,594 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **3113 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-19 P182.5 全量复核（3113）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
+| 测试规模 | 425 测试文件 / 69,646 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
+| 全量 (canonical) | **3118 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-19 P182.5 全量复核（3118）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (527 份, 只增不改) | 每次迭代一份（2026-11-16 实测） |
+| 迭代记录 | `docs/task_tree/iterations/` (528 份, 只增不改) | 每次迭代一份（2026-11-16 实测） |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 | 语义 regex 纪律 | `python3 tools/check_semantic_regex.py` 必须 ✅ | 仅 UVM 宏例外；class/constraint/covergroup 语义走 slang (iter_368) |
@@ -56,6 +56,7 @@
 | [dev/SNAPSHOT_SURFACE.md](dev/SNAPSHOT_SURFACE.md) | **快照能力面矩阵 (P158.9.2)**: 字段级保真 / 命令级支持面 / 显式不保证清单 |
 | [dev/CLAIMS.md](dev/CLAIMS.md) | **claim 台账**: 公开能力的证据与状态 |
 | [dev/CODING_STYLE.md](dev/CODING_STYLE.md) | 编码风格与设计决策: 先探索后决策 / 单一实现 / 修根因 / 函数职责 / 结构化数据 / 影响面 / 协作规则 |
+| [dev/COMMAND_SURFACE_RATCHET.md](dev/COMMAND_SURFACE_RATCHET.md) | **P185.4**: 45/39/2/32/13 命令面 baseline；增删/别名/可见性漂移 gate |
 | [dev/ENVELOPE_INVENTORY.md](dev/ENVELOPE_INVENTORY.md) | **P182.1a**: 45 命令 envelope 只读盘点；32 standard（26 core + 6 exp）/ 13 direct；snapshot list 根类型不一致；P182.1b 增加 7-case canary gate；P182.1c 增加 26-case core standard 成功矩阵（当前 26 PASS） |
 | [dev/ENVELOPE_FAILURE_INVENTORY.md](dev/ENVELOPE_FAILURE_INVENTORY.md) | **P182.1d**: 26 个 core standard 各一条最小失败输入；只读观测 rc/ok/error_code/errors/result；当前 22 operational rc1 + 4 business rc0/okfalse；不是 gate |
 | [dev/ENVELOPE_STATS_COMPLETENESS.md](dev/ENVELOPE_STATS_COMPLETENESS.md) | **P182.3**: stats 成功无 elaboration errors；malformed JSON 结构化失败；stats-completeness gate |

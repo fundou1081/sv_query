@@ -1,0 +1,392 @@
+{
+  "schema": "sv_query.command_surface.v1",
+  "counts": {
+    "canonical": 45,
+    "default_visible": 39,
+    "aliases": 2,
+    "core": 39,
+    "exp": 6,
+    "standard": 32,
+    "direct": 13
+  },
+  "canonical": [
+    "architecture graph",
+    "audit",
+    "capabilities",
+    "class",
+    "connections",
+    "controlflow analyze",
+    "controlflow list-conditioned",
+    "dataflow analyze",
+    "diagnose",
+    "drivers",
+    "filelist prune",
+    "graph edges",
+    "graph nodes",
+    "graph subgraph",
+    "hierarchy",
+    "instances",
+    "loads",
+    "params",
+    "paths",
+    "ports",
+    "review render",
+    "scope",
+    "search",
+    "snapshot compare",
+    "snapshot delete",
+    "snapshot list",
+    "snapshot save",
+    "stats",
+    "trace constraint-chain",
+    "trace constraint-neighborhood",
+    "trace constraints",
+    "trace covergroup",
+    "trace covergroups",
+    "trace coverpoints",
+    "trace evidence",
+    "trace frontier",
+    "trace impact",
+    "trace lookup",
+    "trace manifest",
+    "trace overview",
+    "trace profile",
+    "trace tb-join",
+    "verify claim",
+    "verify consistency",
+    "verify structural"
+  ],
+  "hidden": [
+    "session"
+  ],
+  "default_visible": [
+    "capabilities",
+    "class",
+    "connections",
+    "controlflow analyze",
+    "controlflow list-conditioned",
+    "dataflow analyze",
+    "drivers",
+    "filelist prune",
+    "graph edges",
+    "graph nodes",
+    "graph subgraph",
+    "hierarchy",
+    "instances",
+    "loads",
+    "params",
+    "paths",
+    "ports",
+    "scope",
+    "search",
+    "snapshot compare",
+    "snapshot delete",
+    "snapshot list",
+    "snapshot save",
+    "stats",
+    "trace constraint-chain",
+    "trace constraint-neighborhood",
+    "trace constraints",
+    "trace covergroup",
+    "trace covergroups",
+    "trace coverpoints",
+    "trace evidence",
+    "trace frontier",
+    "trace lookup",
+    "trace manifest",
+    "trace profile",
+    "trace tb-join",
+    "verify claim",
+    "verify consistency",
+    "verify structural"
+  ],
+  "aliases": {
+    "trace fanin": "drivers",
+    "trace fanout": "loads"
+  },
+  "by_command": {
+    "drivers": {
+      "layer": "core",
+      "group": "semantic",
+      "envelope": "standard",
+      "listed": true
+    },
+    "loads": {
+      "layer": "core",
+      "group": "semantic",
+      "envelope": "standard",
+      "listed": true
+    },
+    "trace evidence": {
+      "layer": "core",
+      "group": "semantic",
+      "envelope": "standard",
+      "listed": true
+    },
+    "trace profile": {
+      "layer": "core",
+      "group": "semantic",
+      "envelope": "standard",
+      "listed": true
+    },
+    "trace lookup": {
+      "layer": "core",
+      "group": "semantic",
+      "envelope": "standard",
+      "listed": true
+    },
+    "trace manifest": {
+      "layer": "core",
+      "group": "semantic",
+      "envelope": "standard",
+      "listed": true
+    },
+    "trace constraints": {
+      "layer": "core",
+      "group": "semantic",
+      "envelope": "standard",
+      "listed": true
+    },
+    "trace constraint-neighborhood": {
+      "layer": "core",
+      "group": "semantic",
+      "envelope": "standard",
+      "listed": true
+    },
+    "trace tb-join": {
+      "layer": "core",
+      "group": "semantic",
+      "envelope": "standard",
+      "listed": true
+    },
+    "trace frontier": {
+      "layer": "core",
+      "group": "semantic",
+      "envelope": "standard",
+      "listed": true
+    },
+    "trace constraint-chain": {
+      "layer": "core",
+      "group": "semantic",
+      "envelope": "standard",
+      "listed": true
+    },
+    "trace covergroups": {
+      "layer": "core",
+      "group": "semantic",
+      "envelope": "standard",
+      "listed": true
+    },
+    "trace coverpoints": {
+      "layer": "core",
+      "group": "semantic",
+      "envelope": "standard",
+      "listed": true
+    },
+    "trace covergroup": {
+      "layer": "core",
+      "group": "semantic",
+      "envelope": "standard",
+      "listed": true
+    },
+    "controlflow analyze": {
+      "layer": "core",
+      "group": "semantic",
+      "envelope": "standard",
+      "listed": true
+    },
+    "controlflow list-conditioned": {
+      "layer": "core",
+      "group": "semantic",
+      "envelope": "standard",
+      "listed": true
+    },
+    "dataflow analyze": {
+      "layer": "core",
+      "group": "semantic",
+      "envelope": "standard",
+      "listed": true
+    },
+    "verify consistency": {
+      "layer": "core",
+      "group": "verify",
+      "envelope": "standard",
+      "listed": true
+    },
+    "verify claim": {
+      "layer": "core",
+      "group": "verify",
+      "envelope": "standard",
+      "listed": true
+    },
+    "verify structural": {
+      "layer": "core",
+      "group": "verify",
+      "envelope": "standard",
+      "listed": true
+    },
+    "scope": {
+      "layer": "core",
+      "group": "scope",
+      "envelope": "standard",
+      "listed": true
+    },
+    "instances": {
+      "layer": "core",
+      "group": "semantic",
+      "envelope": "direct",
+      "listed": true
+    },
+    "connections": {
+      "layer": "core",
+      "group": "semantic",
+      "envelope": "direct",
+      "listed": true
+    },
+    "hierarchy": {
+      "layer": "core",
+      "group": "semantic",
+      "envelope": "direct",
+      "listed": true
+    },
+    "params": {
+      "layer": "core",
+      "group": "semantic",
+      "envelope": "direct",
+      "listed": true
+    },
+    "ports": {
+      "layer": "core",
+      "group": "semantic",
+      "envelope": "direct",
+      "listed": true
+    },
+    "paths": {
+      "layer": "core",
+      "group": "semantic",
+      "envelope": "direct",
+      "listed": true
+    },
+    "class": {
+      "layer": "core",
+      "group": "semantic",
+      "envelope": "direct",
+      "listed": true
+    },
+    "audit": {
+      "layer": "exp",
+      "group": "semantic",
+      "envelope": "standard",
+      "listed": true
+    },
+    "trace impact": {
+      "layer": "exp",
+      "group": "semantic",
+      "envelope": "standard",
+      "listed": true
+    },
+    "stats": {
+      "layer": "core",
+      "group": "locate",
+      "envelope": "standard",
+      "listed": true
+    },
+    "search": {
+      "layer": "core",
+      "group": "locate",
+      "envelope": "direct",
+      "listed": true
+    },
+    "graph nodes": {
+      "layer": "core",
+      "group": "locate",
+      "envelope": "standard",
+      "listed": true
+    },
+    "graph edges": {
+      "layer": "core",
+      "group": "locate",
+      "envelope": "standard",
+      "listed": true
+    },
+    "filelist prune": {
+      "layer": "core",
+      "group": "locate",
+      "envelope": "standard",
+      "listed": true
+    },
+    "graph subgraph": {
+      "layer": "core",
+      "group": "locate",
+      "envelope": "standard",
+      "listed": true
+    },
+    "diagnose": {
+      "layer": "exp",
+      "group": "diagnose",
+      "envelope": "standard",
+      "listed": true
+    },
+    "capabilities": {
+      "layer": "core",
+      "group": "locate",
+      "envelope": "direct",
+      "listed": true
+    },
+    "session": {
+      "layer": "dev",
+      "group": "internal",
+      "envelope": "standard",
+      "listed": false
+    },
+    "snapshot save": {
+      "layer": "core",
+      "group": "state",
+      "envelope": "direct",
+      "listed": true
+    },
+    "snapshot list": {
+      "layer": "core",
+      "group": "state",
+      "envelope": "direct",
+      "listed": true
+    },
+    "snapshot compare": {
+      "layer": "core",
+      "group": "state",
+      "envelope": "direct",
+      "listed": true
+    },
+    "snapshot delete": {
+      "layer": "core",
+      "group": "state",
+      "envelope": "direct",
+      "listed": true
+    },
+    "trace overview": {
+      "layer": "exp",
+      "group": "render",
+      "envelope": "standard",
+      "listed": true
+    },
+    "review render": {
+      "layer": "exp",
+      "group": "render",
+      "envelope": "standard",
+      "listed": true
+    },
+    "architecture graph": {
+      "layer": "exp",
+      "group": "render",
+      "envelope": "standard",
+      "listed": true
+    }
+  },
+  "core_groups": {
+    "locate": 7,
+    "scope": 1,
+    "semantic": 24,
+    "state": 4,
+    "verify": 3
+  }
+}
