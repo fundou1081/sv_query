@@ -9,12 +9,12 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P190.1 reproduce MissingTimeScale conditions + fix or retire claim** `<待做>`
+- **当前 item**: **P191.1 dual bit-select hint contract（drivers/loads + dataflow）** `<待做>`
   - P182 组全部完成：envelope / schema / stats / agent entry / snapshot eval / governance
   - P188 release readiness 完成；发布动作见 [RELEASE.md](RELEASE.md)
   - P189.1 docs 自洽 gate 完成
   - P182.5 结论：不扩 source-dependent snapshot、不做 serve、不改 cache 默认
-  - P187 CVA6 2 例完成；下一步 P190.1
+  - P187 CVA6 2 例完成；P191 先做双向 bit-select hint，P190.1 后移
 
 
 ## 📌 当前真实基线
