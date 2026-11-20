@@ -38,6 +38,7 @@ def _build_tracer(
         log_level: str = "WARNING",
     include_dirs: list | None = None,
     preprocess_macros: bool = True,
+    inject_timescale: bool = True,
 ) -> UnifiedTracer:
     """[ADD 2026-06-11 Req-9] 统一构建 UnifiedTracer, 支持 --file / --filelist
 
@@ -48,6 +49,8 @@ def _build_tracer(
         include_dirs: include 搜索路径列表
         preprocess_macros: True (默认) = 跨文件宏展开 (Req-20);
                           False = 信任 pyslang 内置 (退回旧行为)
+        inject_timescale: True (默认) = 给缺 `timescale 的文件注入默认值；
+                          False = 保留原文件, 供 MissingTimeScale 诊断
 
     Returns:
         UnifiedTracer 实例 (未 build_graph, 调用方自己调)
@@ -93,6 +96,7 @@ def _build_tracer(
             include_dirs=_merged,
 
             preprocess_macros=preprocess_macros,  # [Req-20 2026-06-12]
+            inject_timescale=inject_timescale,
         )
     elif _resolved_file is not None:
         if not _resolved_file.exists():
@@ -105,6 +109,7 @@ def _build_tracer(
             include_dirs=include_dirs or [],
 
             preprocess_macros=preprocess_macros,  # [Req-20 2026-06-12]
+            inject_timescale=inject_timescale,
         )
     else:
         raise ValueError("Either --file or --filelist must be provided")
@@ -317,6 +322,7 @@ def collect_elaboration_diagnostics(
     file: Path | None = None,
     filelist: str | None = None,
     log_level: str = "ERROR",
+    inject_timescale: bool = True,
 ) -> ElaborationDiagnostics:
     """[iter_225] fix 类命令专用: "编译失败" 是预期输入, 不是异常.
 
@@ -333,7 +339,10 @@ def collect_elaboration_diagnostics(
     Returns:
         ElaborationDiagnostics
     """
-    tracer = _build_tracer(file=file, filelist=filelist, log_level=log_level)
+    tracer = _build_tracer(
+        file=file, filelist=filelist, log_level=log_level,
+        inject_timescale=inject_timescale,
+    )
     try:
         tracer.build_graph()
     except CompilationError as e:

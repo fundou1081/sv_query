@@ -100,7 +100,9 @@ def fix_timescale(
 
     # [iter_225] fix 的输入就是"有 elab 错的项目" —— 编译失败是预期路径,
     # 用结构化诊断入口 (不解析报错文本, 也不把 partial AST 当成功)。
-    diag = collect_elaboration_diagnostics(filelist=filelist, log_level=log_level)
+    diag = collect_elaboration_diagnostics(
+        filelist=filelist, log_level=log_level, inject_timescale=False,
+    )
     if diag.compile_failed and not diag.errors:
         typer.echo(f"Error: {diag.failure}", err=True)
         raise typer.Exit(code=1)

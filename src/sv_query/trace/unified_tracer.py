@@ -141,6 +141,7 @@ class UnifiedTracer:
         log_level: str = None,
         include_dirs: list[str] = None,
         preprocess_macros: bool = True,
+        inject_timescale: bool = True,
         top_modules: list[str] = None,
     ):
         """初始化 UnifiedTracer
@@ -154,6 +155,8 @@ class UnifiedTracer:
             include_dirs: include 搜索路径列表
             preprocess_macros: True (默认) 时跑 sv_preprocessor.preprocess_macros
                               跨文件展开 `MACRO 引用. False 则跳过 (信任 pyslang 内置).
+            inject_timescale: True (默认) 时给缺 `timescale 的文件注入默认值；
+                              False 保留原文件, 用于 MissingTimeScale 诊断.
             top_modules: [iter_145] 指定 top module 列表 → SVCompiler.top_modules
                     (只 elaborate 这些 top, free-floating 忽略 — 库 filelist +
                     显式 top 场景如 axi_xbar benchmark / CVA6)
@@ -176,6 +179,7 @@ class UnifiedTracer:
         self._load_tracer: LoadTracer | None = None
         self._include_dirs = include_dirs or []
         self._preprocess_macros = preprocess_macros  # [Req-20 2026-06-12] 默认跨文件宏展开
+        self._inject_timescale = inject_timescale  # [P190.1] 诊断路径可关闭注入
         self._preprocessed = False  # 标记是否已 preprocess
         self._top_modules = list(top_modules) if top_modules else None  # [iter_145]
 
@@ -268,7 +272,9 @@ class UnifiedTracer:
         _main_logger.info(
             f"[preprocess] 跨文件宏展开 + auto-inject imports: {len(self._sources)} files"
         )
-        self._sources = preprocess_all(self._sources)
+        self._sources = preprocess_all(
+            self._sources, enable_timescale_injection=self._inject_timescale,
+        )
         self._preprocessed = True
 
     def _get_compiler(self) -> SVCompiler:

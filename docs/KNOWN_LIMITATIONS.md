@@ -63,24 +63,29 @@ slang 走 script 模式 → 根节点成了**表达式** (`DivideExpression`, �
 回归测试: `sim/tests/unit/test_compiler_non_design_unit_guard.py` (守卫失效时测试进程
 会以 exit 133 死掉, 信号明确)。
 
-### 3.2 `MissingTimeScale` 诊断不触发 → `diagnose timescale` 形同虚设 (iter_234 发现)
+### 3.2 `MissingTimeScale` 诊断 (P190.1 已修复)
 
-`svq diagnose timescale` (原 `fix timescale`) 的判定依赖编译器报 `MissingTimeScale`,
-但**实测当前 pyslang + 我们的编译配置下该诊断不触发**:
+pyslang 11 **能**报 `MissingTimeScale`，但条件是**混合设计**：
 
-```
-# 构造: 缺 `timescale 的模块 (含 #5 延迟)
-svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors found. Nothing to fix.
-```
+- 至少一个文件有 `` `timescale``；
+- 另一个文件没有。
 
-推断: 该诊断可能只在特定选项/上下文下出现 (e.g. 命令行 `--timescale` 未给 + 需要时间语义的构造),
-而我们没有开启对应条件 → **命令对任何输入都返回"无需修复"**。
+单独一个无 timescale 文件、且设计中没有其他 timescale 时，pyslang 不报。
 
-**旁证**: 仓库里原有两个 `--apply` 端到端测试**早已被注释** (注释写着"如果 pyslang 不报 MissingTimeScale…"),
-说明这条路径从未被真正验证过。
+旧 `diagnose timescale` 看不到它的根因不是 pyslang，而是
+`preprocess_all()` 默认给每个文件注入 `` `timescale 1ns/1ps``，把触发条件抹掉了。
 
-**当前处置 (iter_234)**: 不掩盖 —— 写入逻辑抽成 `tools/fix_timescale.py::apply_timescale_to_files()` 直接单测
-(写入 + `.bak` + idempotent 已验证); 命令本身的"触发条件"问题**待单独诊断** (新任务, 需查 pyslang 选项)。
+**P190.1 修复**：只对 `diagnose timescale` 关闭 timescale 注入
+（`inject_timescale=False`），宏展开/import 注入和所有其他分析路径保持默认注入。
+
+回归：
+
+- 混合 fixture → 列出缺 timescale 文件；
+- 全部有 timescale → 空；
+- 单文件无混合 → 不误报；
+- `stats` 默认仍注入，行为不变。
+
+见 `test_p190_1_timescale_diagnostic.py`。
 
 ### 3.3 查询作用域与跨模块遍历 (iter_240)
 

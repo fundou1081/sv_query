@@ -3,7 +3,8 @@ TDD: fix timescale CLI 命令 (Req-16)
 
 [MOD 2026-08-01] 重构测试:
 - 保留了不依赖 CLI 的单元测试 (passing)
-- CLI 集成测试因 pyslang 11.0+ 不再报告 MissingTimeScale 而被注释掉
+- CLI 集成测试原先因 pyslang 11 的混合 timescale 条件未满足而被注释；
+  P190.1 已修复 diagnose 路径，见 test_p190_1_timescale_diagnostic.py
 - 核心逻辑 (_has_timescale / _insert_timescale) 已通过单元测试覆盖
 
 测试场景:
@@ -152,9 +153,8 @@ def test_fix_timescale_cli_is_readonly_no_apply_option():
 def test_tools_fix_timescale_apply_writes_and_backs_up():
     """写入能力搬到 tools/fix_timescale.py: 直接测写入函数 (写 + .bak + idempotent)。
 
-    为什么不走端到端: **实测当前 pyslang 配置不报 MissingTimeScale**
-    (带 `#5` 延迟的模块也不报) → `find_files_needing_fix` 永远返回空,
-    所以写入路径只能直接单测。这个"命令形同虚设"的问题已登记 (见 iter_234 / KNOWN_LIMITATIONS)。
+    为什么不走端到端: 写入工具与诊断是两条路径; P190.1 已让
+    `diagnose timescale` 在混合设计上触发, 这里仍直接单测写入/备份/idempotent。
     """
     import sys as _sys
     _sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "tools"))
@@ -237,7 +237,6 @@ if __name__ == "__main__":
         test_insert_timescale_custom_timescale,
         test_insert_timescale_on_empty_content,
         test_insert_timescale_with_only_whitespace,
-        test_fix_timescale_no_backup,
         test_fix_timescale_help_documented,
     ]
     for t in tests:

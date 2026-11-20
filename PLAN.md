@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P190.1 reproduce MissingTimeScale conditions + fix or retire claim <进行中>
+current item : P190.1 reproduce MissingTimeScale conditions + fix or retire claim <已完成>
 
 ## 计划树
 
@@ -583,8 +583,8 @@ P192 blind external value validation (P2) <已完成>
 -- P192.1 issue #3404 symptom-only protocol（不给 fix diff） <已完成>
 -- P192.2 source-only vs sv_query blind comparison <已完成>
 
-P190 diagnose timescale trigger investigation (2026-11-18 review) <待做>
--- P190.1 reproduce MissingTimeScale conditions + fix or retire claim <进行中>
+P190 diagnose timescale trigger investigation (2026-11-18 review) <已完成>
+-- P190.1 reproduce MissingTimeScale conditions + fix or retire claim <已完成>
 
 P182 agent delivery-layer plan from corrected review (2026-11-16) <已完成>
 -- P182.1 envelope inventory + check_envelope_contract gate <已完成>
