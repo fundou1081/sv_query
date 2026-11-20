@@ -1,0 +1,1346 @@
+[0m
+> build · hy4-flash-free
+I'll start by reading the task files and understanding the structure.
+[0m→ [0mRead /tmp/p192_sq/filelist.f 
+[0m→ [0mRead /tmp/p192_sq/TASK.md 
+[0m→ [0mRead /tmp/p192_sq/rtl 
+> build · hy4-flash-free
+[0m$ [0mdate +%s; echo "START: $(date)"
+1795132979
+START: 2026年11月20日 星期五 08时02分59秒 CST
+[0m$ [0m/tmp/svq-pypi-smoke2/bin/sv_query --help
+Usage: sv_query [OPTIONS] [COMMAND] [ARGS]...                                  
+                                                                                
+ SystemVerilog signal tracer and graph diff tool                                
+                                                                                
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ instances     [规范入口] 列出实例; 给实例路径 → 详情 (类型/父/子/端口)       │
+│ connections   [规范入口] 连接: 实例端口↔内部信号 (只接受实例路径)            │
+│ hierarchy     [规范入口] 实例层级树 (机器可读版 arch show)                   │
+│ params        [规范入口] 实例的生效参数值 (含是否被 override)                │
+│ ports         [规范入口] 模块端口总览 (方向/位宽/驱动数/负载数)              │
+│ paths         [规范入口] 图上路径 (跨模块端口可跳转; --all 枚举全部)         │
+│ scope         [规范入口] 一个 scope 的类型/父/子/端口/参数（不做因果追踪）   │
+│ class         [规范入口] 不给 class 名→列出所有 class;                       │
+│               给了→成员(类型级)+实例(实例级); --member 查成员实例            │
+│ drivers       [规范入口] 谁驱动这个信号 (上游); 不给 --module 时跨模块追,    │
+│               给了则限定模块内                                               │
+│ loads         [规范入口] 这个信号被谁使用 (下游); 不给 --module 时跨模块追,  │
+│               给了则限定模块内                                               │
+│ capabilities   机器可读的能力清单: 分层/契约/成本/recommended (agent         │
+│               首选入口)                                                      │
+│ stats         Show graph statistics                                          │
+│ search        Grep-like keyword search across .sv/.v files                   │
+│ trace         Trace signal drivers (fanin) and loads (fanout)                │
+│ snapshot      Snapshot management for graph diff                             │
+│ dataflow      Analyze dataflow paths between signals                         │
+│ verify        客观检查：双向一致性 + claim verification (只读, JSON-first)   │
+│ controlflow   Analyze control flow conditions for signals                    │
+│ graph         Inspect signal graph                                           │
+│ filelist      Filelist 操作 (只读/显式输出)                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && wc -l rtl/*.sv rtl/include/*.sv
+61 rtl/cf_math_pkg.sv
+     803 rtl/cva6_mmu.sv
+     703 rtl/cva6_ptw.sv
+     843 rtl/cva6_shared_tlb.sv
+     537 rtl/cva6_tlb.sv
+     315 rtl/lfsr.sv
+     112 rtl/lzc.sv
+      77 rtl/p187_mmu_top.sv
+     127 rtl/pmp_entry.sv
+      75 rtl/pmp.sv
+     876 rtl/include/ariane_pkg.sv
+     222 rtl/include/build_config_pkg.sv
+     537 rtl/include/config_pkg.sv
+     189 rtl/include/cv64a6_imafdc_sv39_config_pkg.sv
+     116 rtl/include/dummy_l15_pkg.sv
+    1025 rtl/include/riscv_pkg.sv
+      60 rtl/include/std_cache_pkg.sv
+    6678 total
+[0m$ [0mcd /tmp/p192_sq && /tmp/svq-pypi-smoke2/bin/sv_query capabilities 2>&1 | head -100
+=== sv_query capabilities ===
+总命令数: 45  |  按层: core=39, exp=6
+
+[core] consumer=agent stability=stable readonly=True schema=1  (39 个)
+   ★ drivers                                          cost=medium    json=True  [规范入口] 谁驱动这个信号 (上游; DRIVER 边反向遍历); 兼容别名 trace fanin
+   ★ loads                                            cost=medium    json=True  [规范入口] 这个信号被谁使用 (下游; DRIVER 边正向遍历); 兼容别名 trace fanout
+   ★ trace evidence                                   cost=medium    json=True  源码证据 (always/if 块原文)
+   ★ trace profile                                    cost=cheap     json=True  信号 profile: canonical/aliases/位映射/clock/reset/sequential/source (波形关联)
+   ★ trace lookup                                     cost=cheap     json=True  完整 RTL hier path → canonical id (严格; $root/位父回退/aliases; 不做模糊后缀)
+   ★ trace manifest                                   cost=medium    json=True  批量 waveform manifest: full path → canonical + profile (type/bit/clock/reset/stage)
+     trace constraints                                cost=cheap     json=True  [P63] 属性受哪些 constraint 约束 (类型/实例; 独立语义域, 不走 fanin)
+     trace constraint-neighborhood                     cost=medium    json=True  一次查询跨多个 constraint block 的 random 变量关系图 (co-constraint, 非 fanin; 含重要性指标, 启发式)
+     trace tb-join                                    cost=cheap     json=True  TB random field → RTL snapshot candidate join (name-based; single_candidate 不是连接证明)
+     trace frontier                                   cost=cheap     json=True  结构 trace 的边界/断点 + 下一步 probe；不分类 FIFO
+     trace constraint-chain                           cost=cheap     json=True  两个 random 变量之间的最短 constraint 链 (co-membership; 非 solver 证明)
+     trace covergroups                                cost=cheap     json=True  [P63] 列出 covergroup 定义 (可按 class 过滤)
+     trace coverpoints                                cost=cheap     json=True  [P63] 反向查询: 信号被哪些 covergroup/coverpoint 采样
+     trace covergroup                                 cost=medium    json=True  [P63] covergroup 采样链; --rand 查属性→约束链
+   ★ controlflow analyze                              cost=medium    json=True  信号的驱动条件分析; --conditions-only 只要扁平条件列表 (原 controlflow conditions)
+     controlflow list-conditioned                     cost=expensive json=True  列出所有带条件驱动的信号 (枚举, 用于找入口)
+   ★ dataflow analyze                                 cost=medium    json=True  源→目标路径 (有向, 跨模块; 实例级 id; 与 paths --directed 结论一致)
+   ★ verify consistency                               cost=medium    json=True  双向一致性: fanin/fanout、bit parent/bit_range、connection port↔internal
+   ★ verify claim                                     cost=medium    json=True  验证 claim: driver/path/connection/bit → verified|contradicted|unknown
+     verify structural                                cost=medium    json=True  [P61] 结构审查: sibling 端口集合对称性 → findings + evidence + subgraph spec
+   ★ scope                                            cost=cheap     json=True  [规范入口] scope 聚合: 类型/父/子/端口/参数 (入口层, 不做因果追踪)
+   ★ instances                                        cost=cheap     json=True  列出实例; 给实例路径 → 详情 (类型/父/子/端口); 支持 --filelist
+   ★ connections                                      cost=medium    json=True  [规范入口] 连接: 仅接受实例路径 → 端口↔内部信号 (输出带 resolved_as; 模块类型明确报错)
+   ★ hierarchy                                        cost=medium    json=True  [规范入口] 实例层级树 (机器可读版 arch show)
+   ★ params                                           cost=cheap     json=True  [规范入口] 实例的**生效**参数值 (含 is_overridden: 区分 override 与默认)
+   ★ ports                                            cost=cheap     json=True  [规范入口] 模块端口总览 (方向/位宽/入边数/出边数)
+   ★ paths                                            cost=medium    json=True  [规范入口] 图上路径 (实例级 id; --all 枚举; --directed 只沿数据流方向, 与 dataflow analyze 结论一致)
+     class                                            cost=medium    json=True  不给 name → 列出所有 class; 给了 → 成员(类型级)+实例(实例级); --member 查某成员实例
+   ★ stats                                            cost=cheap     json=True  
+     search                                           cost=cheap     json=True  文本/正则搜索; [iter_231] 已补 --json
+     graph nodes                                      cost=cheap     json=True  列图节点 (kind/module/--match 过滤; --detail 给表达式等富字段); 支持 --file / --filelist
+     graph edges                                      cost=cheap     json=True  列出图边; 支持 --file / --filelist (iter_236 补)
+     filelist prune                                   cost=cheap     json=True  [P91/P158.5] top-aware 保守 filelist 裁剪; 默认 dry-run; --apply 才写; 只允许 .f/.fl; 覆盖需 --force + .bak
+     graph subgraph                                   cost=cheap     json=True  [P60] seed 的 k-hop 局部子图; depth/direction/edge-kinds/budget; JSON boundary/truncated
+   ★ capabilities                                     cost=cheap     json=True  本清单自身 (agent 应先读它再决定调什么)
+     snapshot save                                    cost=medium    json=True  [iter_239 1b] 默认写缓存目录 (~/.svq/cache/snapshots; 可用 SVQ_SNAPSHOT_DIR 覆盖)
+     snapshot list                                    cost=cheap     json=True  列出快照; 给 tag → 该快照详情 (原 snapshot show)
+   ★ snapshot compare                                 cost=medium    json=True  比较两个快照, 或两个 SV 文件 (文件模式 = 原 diff compare; --signal 看可达性差异)
+     snapshot delete                                  cost=cheap     json=True  [iter_231] 已补 --json
+
+[bit precision] modes=one, full  precise=13 forms  coarse=6 forms
+   详见 `--json` 的 bit_precision 段; 位查询结果看 precision/coarse_fallback。
+
+提示: agent 建议用 `sv_query capabilities --json --recommended` 取最小工具集;
+      降级区需显式 `--include-exp`。
+[0m$ [0mcd /tmp/p192_sq && /tmp/svq-pypi-smoke2/bin/sv_query stats 2>&1 | head -100
+Error: --file or --filelist is required
+> build · hy4-flash-free
+[0m→ [0mRead /tmp/p192_sq/rtl/p187_mmu_top.sv 
+[0m$ [0mcd /tmp/p192_sq && /tmp/svq-pypi-smoke2/bin/sv_query stats --filelist filelist.f --json 2>&1 | head -120
+[auto-import] cva6_config_pkg: injected imports for ['config_pkg']
+[auto-import] riscv: injected imports for ['cva6_config_pkg']
+[auto-import] ariane_pkg: injected imports for ['config_pkg', 'cva6_config_pkg', 'riscv']
+[auto-import] build_config_pkg: injected imports for ['config_pkg']
+[WARNING] 186 warning(s)/note(s) found
+[WARNING] rtl/include/config_pkg.sv:479:38: [SignCompare]
+[WARNING] rtl/include/config_pkg.sv:480:38: [SignCompare]
+[WARNING] rtl/include/config_pkg.sv:481:37: [SignCompare]
+[WARNING] rtl/include/config_pkg.sv:502:65: [ArithOpMismatch]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:134:21: [PackedArrayConv]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:135:22: [PackedArrayConv]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:140:30: [PackedArrayConv]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:141:28: [PackedArrayConv]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:143:30: [PackedArrayConv]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:144:28: [PackedArrayConv]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:146:29: [PackedArrayConv]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:147:27: [PackedArrayConv]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:160:28: [UselessCast]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:162:7: [ConstantConversion]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:163:7: [ConstantConversion]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:182:27: [UselessCast]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:183:26: [UselessCast]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:186:26: [UselessCast]
+[WARNING] rtl/include/riscv_pkg.sv:978:12: [CaseRedundantDefault]
+[WARNING] rtl/include/ariane_pkg.sv:554:12: [CaseRedundantDefault]
+[WARNING] rtl/include/ariane_pkg.sv:566:12: [CaseRedundantDefault]
+[WARNING] rtl/include/ariane_pkg.sv:584:12: [CaseRedundantDefault]
+[WARNING] rtl/include/ariane_pkg.sv:601:12: [CaseRedundantDefault]
+[WARNING] rtl/include/ariane_pkg.sv:613:12: [CaseRedundantDefault]
+[WARNING] rtl/include/ariane_pkg.sv:629:12: [CaseRedundantDefault]
+[WARNING] rtl/include/ariane_pkg.sv:724:5: [CaseDefault]
+[WARNING] rtl/include/ariane_pkg.sv:751:9: [CaseDefault]
+[WARNING] rtl/include/ariane_pkg.sv:780:9: [CaseDefault]
+[WARNING] rtl/include/ariane_pkg.sv:878:12: [SignConversion]
+[WARNING] rtl/include/build_config_pkg.sv:27:39: [SignConversion]
+[WARNING] rtl/include/build_config_pkg.sv:28:39: [SignConversion]
+[WARNING] rtl/include/build_config_pkg.sv:29:40: [SignConversion]
+[WARNING] rtl/include/build_config_pkg.sv:43:28: [SignConversion]
+[WARNING] rtl/include/build_config_pkg.sv:57:48: [UselessCast]
+[WARNING] rtl/include/build_config_pkg.sv:89:25: [SignConversion]
+[WARNING] rtl/include/build_config_pkg.sv:91:24: [UselessCast]
+[WARNING] rtl/include/build_config_pkg.sv:92:18: [UselessCast]
+[WARNING] rtl/include/build_config_pkg.sv:94:21: [UselessCast]
+[WARNING] rtl/include/build_config_pkg.sv:95:22: [UselessCast]
+[WARNING] rtl/include/build_config_pkg.sv:96:25: [UselessCast]
+[WARNING] rtl/include/build_config_pkg.sv:97:21: [UselessCast]
+[WARNING] rtl/include/build_config_pkg.sv:102:32: [UselessCast]
+[WARNING] rtl/include/build_config_pkg.sv:142:28: [SignConversion]
+[WARNING] rtl/include/build_config_pkg.sv:142:45: [SignConversion]
+[WARNING] rtl/include/build_config_pkg.sv:157:63: [SignConversion]
+[WARNING] rtl/include/build_config_pkg.sv:166:63: [SignConversion]
+[WARNING] rtl/include/build_config_pkg.sv:189:23: [WidthTruncate]
+[WARNING] rtl/include/build_config_pkg.sv:192:28: [SignConversion]
+[WARNING] rtl/include/build_config_pkg.sv:194:32: [SignConversion]
+[WARNING] rtl/cva6_mmu.sv:373:56: [ArithOpMismatch]
+[WARNING] rtl/cva6_mmu.sv:379:45: [UselessCast]
+[WARNING] rtl/cva6_mmu.sv:405:60: [UselessCast]
+[WARNING] rtl/cva6_mmu.sv:422:42: [ArithOpMismatch]
+[WARNING] rtl/cva6_mmu.sv:422:132: [ArithOpMismatch]
+[WARNING] rtl/cva6_mmu.sv:441:62: [UselessCast]
+[WARNING] rtl/cva6_mmu.sv:454:62: [UselessCast]
+[WARNING] rtl/cva6_mmu.sv:471:82: [UselessCast]
+[WARNING] rtl/cva6_mmu.sv:480:82: [UselessCast]
+[WARNING] rtl/cva6_mmu.sv:491:62: [UselessCast]
+[WARNING] rtl/cva6_mmu.sv:573:33: [UselessCast]
+[WARNING] rtl/cva6_mmu.sv:589:28: [ArithOpMismatch]
+[WARNING] rtl/cva6_mmu.sv:589:104: [ArithOpMismatch]
+[WARNING] rtl/cva6_mmu.sv:627:52: [UselessCast]
+[WARNING] rtl/cva6_mmu.sv:654:52: [UselessCast]
+[WARNING] rtl/cva6_tlb.sv:101:20: [ConstantConversion]
+[WARNING] rtl/cva6_tlb.sv:108:51: [UnnamedGenerate]
+[WARNING] rtl/cva6_tlb.sv:109:58: [UnnamedGenerate]
+[WARNING] rtl/cva6_tlb.sv:118:25: [UnnamedGenerate]
+[WARNING] rtl/cva6_tlb.sv:120:18: [UnnamedGenerate]
+[WARNING] rtl/cva6_tlb.sv:121:64: [UnnamedGenerate]
+[WARNING] rtl/cva6_tlb.sv:126:20: [UnnamedGenerate]
+[WARNING] rtl/cva6_tlb.sv:140:61: [UnnamedGenerate]
+[WARNING] rtl/cva6_tlb.sv:147:18: [UnnamedGenerate]
+[WARNING] rtl/cva6_tlb.sv:149:92: [ArithOpMismatch]
+[WARNING] rtl/cva6_tlb.sv:157:55: [UnnamedGenerate]
+[WARNING] rtl/cva6_tlb.sv:163:110: [ArithOpMismatch]
+[WARNING] rtl/cva6_tlb.sv:170:24: [UnnamedGenerate]
+[WARNING] rtl/cva6_tlb.sv:179:62: [UnnamedGenerate]
+[WARNING] rtl/cva6_tlb.sv:237:40: [UselessCast]
+[WARNING] rtl/cva6_tlb.sv:391:79: [UselessCast]
+[WARNING] rtl/cva6_tlb.sv:440:40: [SignCompare]
+[WARNING] rtl/cva6_tlb.sv:443:39: [ArithOpMismatch]
+[WARNING] rtl/cva6_tlb.sv:468:38: [SignCompare]
+[WARNING] rtl/cva6_tlb.sv:471:37: [ArithOpMismatch]
+[WARNING] rtl/cva6_tlb.sv:520:13: [ArithOpMismatch]
+[WARNING] rtl/cva6_shared_tlb.sv:210:19: [WidthTruncate]
+[WARNING] rtl/cva6_shared_tlb.sv:228:13: [WidthExpand]
+[WARNING] rtl/cva6_shared_tlb.sv:230:32: [WidthExpand]
+[WARNING] rtl/cva6_shared_tlb.sv:232:33: [WidthExpand]
+[WARNING] rtl/cva6_shared_tlb.sv:232:91: [LogicalOpParentheses]
+[WARNING] rtl/cva6_shared_tlb.sv:232:183: [LogicalOpParentheses]
+[WARNING] rtl/cva6_shared_tlb.sv:251:56: [UnnamedGenerate]
+[WARNING] rtl/cva6_shared_tlb.sv:253:61: [ArithOpMismatch]
+[WARNING] rtl/cva6_shared_tlb.sv:255:61: [ArithOpMismatch]
+[WARNING] rtl/cva6_shared_tlb.sv:260:5: [UnnamedGenerate]
+[WARNING] rtl/cva6_shared_tlb.sv:368:34: [SignCompare]
+[WARNING] rtl/cva6_shared_tlb.sv:439:21: [WidthExpand]
+[WARNING] rtl/cva6_shared_tlb.sv:440:21: [WidthExpand]
+[WARNING] rtl/cva6_shared_tlb.sv:461:20: [UnnamedGenerate]
+[WARNING] rtl/cva6_shared_tlb.sv:502:12: [CaseRedundantDefault]
+[WARNING] rtl/cva6_shared_tlb.sv:555:32: [SignCompare]
+[WARNING] rtl/cva6_shared_tlb.sv:604:32: [SignCompare]
+[WARNING] rtl/cva6_shared_tlb.sv:654:32: [SignCompare]
+[WARNING] rtl/cva6_shared_tlb.sv:673:54: [UselessCast]
+[WARNING] rtl/cva6_shared_tlb.sv:708:34: [SignCompare]
+[WARNING] rtl/cva6_shared_tlb.sv:716:34: [SignCompare]
+[WARNING] rtl/cva6_shared_tlb.sv:736:88: [ArithOpMismatch]
+[WARNING] rtl/cva6_shared_tlb.sv:792:21: [IntBoolConv]
+[WARNING] rtl/cva6_shared_tlb.sv:796:21: [IntBoolConv]
+[WARNING] rtl/cva6_shared_tlb.sv:799:31: [UnnamedGenerate]
+[WARNING] rtl/cva6_shared_tlb.sv:838:14: [UnnamedGenerate]
+[WARNING] rtl/cva6_ptw.sv:170:28: [ConstantConversion]
+[WARNING] rtl/cva6_ptw.sv:181:48: [UnnamedGenerate]
+[WARNING] rtl/cva6_ptw.sv:189:45: [UnnamedGenerate]
+[WARNING] rtl/cva6_ptw.sv:195:24: [UnnamedGenerate]
+> build · hy4-flash-free
+[0m→ [0mRead /tmp/p192_sq/rtl/cva6_ptw.sv 
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && /tmp/svq-pypi-smoke2/bin/sv_query search --filelist filelist.f --json 'canonical' 2>&1 | head -80; echo ===; /tmp/svq-pypi-smoke2/bin/sv_query search --filelist filelist.f --json '39' 2>&1 | head -80
+Usage: sv_query search [OPTIONS] KEYWORD
+Try 'sv_query search --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────╮
+│ No such option '--filelist'. Did you mean '--file'?                          │
+╰──────────────────────────────────────────────────────────────────────────────╯
+zsh:1: == not found
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && /tmp/svq-pypi-smoke2/bin/sv_query search --help
+Usage: sv_query search [OPTIONS] KEYWORD                                       
+                                                                                
+ Grep-like keyword search across .sv/.v files                                   
+                                                                                
+╭─ Arguments ──────────────────────────────────────────────────────────────────╮
+│ *    keyword      TEXT  [required]                                           │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ *  --file          -f      PATH     File or directory to search [required]   │
+│    --context       -C      INTEGER  Lines of context before/after            │
+│                                     [default: 2]                             │
+│    --regex         -E               Interpret as extended regex (default:    │
+│                                     literal)                                 │
+│    --ignore-case   -i               Case-insensitive search                  │
+│    --max-results   -n      INTEGER  Max number of results [default: 50]      │
+│    --line-numbers  -l               Show line numbers [default: True]        │
+│    --json          -j                Output JSON (结构化契约, agent 用)      │
+│    --pretty        -p               [JSON] Pretty-print                      │
+│    --help                           Show this message and exit.              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && /tmp/svq-pypi-smoke2/bin/sv_query search 'canonical' --file rtl --json --pretty 2>&1 | head -100
+{
+  "keyword": "canonical",
+  "target": "/private/tmp/p192_sq/rtl",
+  "regex": false,
+  "case_insensitive": false,
+  "total_matches": 4,
+  "file_count": 1,
+  "files": [
+    {
+      "file": "rtl/cva6_mmu.sv",
+      "match_count": 4,
+      "lines": [
+        {
+          "line": 142,
+          "text": "  logic canonical_addr_check;  // canonical check on the virtual address for SV39"
+        },
+        {
+          "line": 542,
+          "text": "    canonical_addr_check = (lsu_req_i && en_ld_st_translation_i &&"
+        },
+        {
+          "line": 630,
+          "text": "          end else if ((en_ld_st_translation_i || !CVA6Cfg.RVH) && (!dtlb_pte_q.w || daccess_err || canonical_addr_check || !dtlb_pte_q.d)) begin"
+        },
+        {
+          "line": 658,
+          "text": "          end else if (daccess_err || canonical_addr_check) begin"
+        }
+      ],
+      "truncated": false
+    }
+  ]
+}
+> build · hy4-flash-free
+[0m→ [0mRead /tmp/p192_sq/rtl/cva6_mmu.sv [90m[offset=120, limit=80][0m
+> build · hy4-flash-free
+[0m→ [0mRead /tmp/p192_sq/rtl/cva6_mmu.sv [90m[offset=460, limit=260][0m
+> build · hy4-flash-free
+[0m→ [0mRead /tmp/p192_sq/rtl/cva6_mmu.sv [90m[offset=720, limit=90][0m
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && /tmp/svq-pypi-smoke2/bin/sv_query search 'VLEN' --file rtl/include/cv64a6_imafdc_sv39_config_pkg.sv --json --pretty --context 1 2>&1 | head -120; echo '---SV---'; /tmp/svq-pypi-smoke2/bin/sv_query search 'SV ' --file rtl/include/cv64a6_imafdc_sv39_config_pkg.sv --json --pretty --context 1 2>&1 | head -80
+{
+  "keyword": "VLEN",
+  "target": "/private/tmp/p192_sq/rtl/include/cv64a6_imafdc_sv39_config_pkg.sv",
+  "regex": false,
+  "case_insensitive": false,
+  "total_matches": 1,
+  "file_count": 1,
+  "files": [
+    {
+      "file": "cv64a6_imafdc_sv39_config_pkg.sv",
+      "match_count": 1,
+      "lines": [
+        {
+          "line": 80,
+          "text": "      VLEN: unsigned'(64),"
+        }
+      ],
+      "truncated": false
+    }
+  ]
+}
+---SV---
+{
+  "keyword": "SV ",
+  "target": "/private/tmp/p192_sq/rtl/include/cv64a6_imafdc_sv39_config_pkg.sv",
+  "regex": false,
+  "case_insensitive": false,
+  "total_matches": 0,
+  "file_count": 0,
+  "files": []
+}
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && /tmp/svq-pypi-smoke2/bin/sv_query search 'SV:' --file rtl/include/cv64a6_imafdc_sv39_config_pkg.sv --json --pretty --context 1 2>&1 | head -60; /tmp/svq-pypi-smoke2/bin/sv_query params --filelist filelist.f --json 2>&1 | head -60
+{
+  "keyword": "SV:",
+  "target": "/private/tmp/p192_sq/rtl/include/cv64a6_imafdc_sv39_config_pkg.sv",
+  "regex": false,
+  "case_insensitive": false,
+  "total_matches": 0,
+  "file_count": 0,
+  "files": []
+}
+Usage: sv_query params [OPTIONS] PATH
+Try 'sv_query params --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────╮
+│ Missing argument 'PATH'.                                                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && /tmp/svq-pypi-smoke2/bin/sv_query search 'SV' --file rtl/include/cv64a6_imafdc_sv39_config_pkg.sv --json --pretty --context 1 -n 30 2>&1 | head -160
+{
+  "keyword": "SV",
+  "target": "/private/tmp/p192_sq/rtl/include/cv64a6_imafdc_sv39_config_pkg.sv",
+  "regex": false,
+  "case_insensitive": false,
+  "total_matches": 0,
+  "file_count": 0,
+  "files": []
+}
+> build · hy4-flash-free
+[0m→ [0mRead /tmp/p192_sq/rtl/include/cv64a6_imafdc_sv39_config_pkg.sv [90m[offset=60, limit=50][0m
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && /tmp/svq-pypi-smoke2/bin/sv_query instances --filelist filelist.f --json --pretty 2>&1 | head -120
+[auto-import] cva6_config_pkg: injected imports for ['config_pkg']
+[auto-import] riscv: injected imports for ['cva6_config_pkg']
+[auto-import] ariane_pkg: injected imports for ['config_pkg', 'cva6_config_pkg', 'riscv']
+[auto-import] build_config_pkg: injected imports for ['config_pkg']
+[WARNING] 186 warning(s)/note(s) found
+[WARNING] rtl/include/config_pkg.sv:479:38: [SignCompare]
+[WARNING] rtl/include/config_pkg.sv:480:38: [SignCompare]
+[WARNING] rtl/include/config_pkg.sv:481:37: [SignCompare]
+[WARNING] rtl/include/config_pkg.sv:502:65: [ArithOpMismatch]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:134:21: [PackedArrayConv]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:135:22: [PackedArrayConv]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:140:30: [PackedArrayConv]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:141:28: [PackedArrayConv]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:143:30: [PackedArrayConv]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:144:28: [PackedArrayConv]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:146:29: [PackedArrayConv]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:147:27: [PackedArrayConv]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:160:28: [UselessCast]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:162:7: [ConstantConversion]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:163:7: [ConstantConversion]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:182:27: [UselessCast]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:183:26: [UselessCast]
+[WARNING] rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:186:26: [UselessCast]
+[WARNING] rtl/include/riscv_pkg.sv:978:12: [CaseRedundantDefault]
+[WARNING] rtl/include/ariane_pkg.sv:554:12: [CaseRedundantDefault]
+[WARNING] rtl/include/ariane_pkg.sv:566:12: [CaseRedundantDefault]
+[WARNING] rtl/include/ariane_pkg.sv:584:12: [CaseRedundantDefault]
+[WARNING] rtl/include/ariane_pkg.sv:601:12: [CaseRedundantDefault]
+[WARNING] rtl/include/ariane_pkg.sv:613:12: [CaseRedundantDefault]
+[WARNING] rtl/include/ariane_pkg.sv:629:12: [CaseRedundantDefault]
+[WARNING] rtl/include/ariane_pkg.sv:724:5: [CaseDefault]
+[WARNING] rtl/include/ariane_pkg.sv:751:9: [CaseDefault]
+[WARNING] rtl/include/ariane_pkg.sv:780:9: [CaseDefault]
+[WARNING] rtl/include/ariane_pkg.sv:878:12: [SignConversion]
+[WARNING] rtl/include/build_config_pkg.sv:27:39: [SignConversion]
+[WARNING] rtl/include/build_config_pkg.sv:28:39: [SignConversion]
+[WARNING] rtl/include/build_config_pkg.sv:29:40: [SignConversion]
+[WARNING] rtl/include/build_config_pkg.sv:43:28: [SignConversion]
+[WARNING] rtl/include/build_config_pkg.sv:57:48: [UselessCast]
+[WARNING] rtl/include/build_config_pkg.sv:89:25: [SignConversion]
+[WARNING] rtl/include/build_config_pkg.sv:91:24: [UselessCast]
+[WARNING] rtl/include/build_config_pkg.sv:92:18: [UselessCast]
+[WARNING] rtl/include/build_config_pkg.sv:94:21: [UselessCast]
+[WARNING] rtl/include/build_config_pkg.sv:95:22: [UselessCast]
+[WARNING] rtl/include/build_config_pkg.sv:96:25: [UselessCast]
+[WARNING] rtl/include/build_config_pkg.sv:97:21: [UselessCast]
+[WARNING] rtl/include/build_config_pkg.sv:102:32: [UselessCast]
+[WARNING] rtl/include/build_config_pkg.sv:142:28: [SignConversion]
+[WARNING] rtl/include/build_config_pkg.sv:142:45: [SignConversion]
+[WARNING] rtl/include/build_config_pkg.sv:157:63: [SignConversion]
+[WARNING] rtl/include/build_config_pkg.sv:166:63: [SignConversion]
+[WARNING] rtl/include/build_config_pkg.sv:189:23: [WidthTruncate]
+[WARNING] rtl/include/build_config_pkg.sv:192:28: [SignConversion]
+[WARNING] rtl/include/build_config_pkg.sv:194:32: [SignConversion]
+[WARNING] rtl/cva6_mmu.sv:373:56: [ArithOpMismatch]
+[WARNING] rtl/cva6_mmu.sv:379:45: [UselessCast]
+[WARNING] rtl/cva6_mmu.sv:405:60: [UselessCast]
+[WARNING] rtl/cva6_mmu.sv:422:42: [ArithOpMismatch]
+[WARNING] rtl/cva6_mmu.sv:422:132: [ArithOpMismatch]
+[WARNING] rtl/cva6_mmu.sv:441:62: [UselessCast]
+[WARNING] rtl/cva6_mmu.sv:454:62: [UselessCast]
+[WARNING] rtl/cva6_mmu.sv:471:82: [UselessCast]
+[WARNING] rtl/cva6_mmu.sv:480:82: [UselessCast]
+[WARNING] rtl/cva6_mmu.sv:491:62: [UselessCast]
+[WARNING] rtl/cva6_mmu.sv:573:33: [UselessCast]
+[WARNING] rtl/cva6_mmu.sv:589:28: [ArithOpMismatch]
+[WARNING] rtl/cva6_mmu.sv:589:104: [ArithOpMismatch]
+[WARNING] rtl/cva6_mmu.sv:627:52: [UselessCast]
+[WARNING] rtl/cva6_mmu.sv:654:52: [UselessCast]
+[WARNING] rtl/cva6_tlb.sv:101:20: [ConstantConversion]
+[WARNING] rtl/cva6_tlb.sv:108:51: [UnnamedGenerate]
+[WARNING] rtl/cva6_tlb.sv:109:58: [UnnamedGenerate]
+[WARNING] rtl/cva6_tlb.sv:118:25: [UnnamedGenerate]
+[WARNING] rtl/cva6_tlb.sv:120:18: [UnnamedGenerate]
+[WARNING] rtl/cva6_tlb.sv:121:64: [UnnamedGenerate]
+[WARNING] rtl/cva6_tlb.sv:126:20: [UnnamedGenerate]
+[WARNING] rtl/cva6_tlb.sv:140:61: [UnnamedGenerate]
+[WARNING] rtl/cva6_tlb.sv:147:18: [UnnamedGenerate]
+[WARNING] rtl/cva6_tlb.sv:149:92: [ArithOpMismatch]
+[WARNING] rtl/cva6_tlb.sv:157:55: [UnnamedGenerate]
+[WARNING] rtl/cva6_tlb.sv:163:110: [ArithOpMismatch]
+[WARNING] rtl/cva6_tlb.sv:170:24: [UnnamedGenerate]
+[WARNING] rtl/cva6_tlb.sv:179:62: [UnnamedGenerate]
+[WARNING] rtl/cva6_tlb.sv:237:40: [UselessCast]
+[WARNING] rtl/cva6_tlb.sv:391:79: [UselessCast]
+[WARNING] rtl/cva6_tlb.sv:440:40: [SignCompare]
+[WARNING] rtl/cva6_tlb.sv:443:39: [ArithOpMismatch]
+[WARNING] rtl/cva6_tlb.sv:468:38: [SignCompare]
+[WARNING] rtl/cva6_tlb.sv:471:37: [ArithOpMismatch]
+[WARNING] rtl/cva6_tlb.sv:520:13: [ArithOpMismatch]
+[WARNING] rtl/cva6_shared_tlb.sv:210:19: [WidthTruncate]
+[WARNING] rtl/cva6_shared_tlb.sv:228:13: [WidthExpand]
+[WARNING] rtl/cva6_shared_tlb.sv:230:32: [WidthExpand]
+[WARNING] rtl/cva6_shared_tlb.sv:232:33: [WidthExpand]
+[WARNING] rtl/cva6_shared_tlb.sv:232:91: [LogicalOpParentheses]
+[WARNING] rtl/cva6_shared_tlb.sv:232:183: [LogicalOpParentheses]
+[WARNING] rtl/cva6_shared_tlb.sv:251:56: [UnnamedGenerate]
+[WARNING] rtl/cva6_shared_tlb.sv:253:61: [ArithOpMismatch]
+[WARNING] rtl/cva6_shared_tlb.sv:255:61: [ArithOpMismatch]
+[WARNING] rtl/cva6_shared_tlb.sv:260:5: [UnnamedGenerate]
+[WARNING] rtl/cva6_shared_tlb.sv:368:34: [SignCompare]
+[WARNING] rtl/cva6_shared_tlb.sv:439:21: [WidthExpand]
+[WARNING] rtl/cva6_shared_tlb.sv:440:21: [WidthExpand]
+[WARNING] rtl/cva6_shared_tlb.sv:461:20: [UnnamedGenerate]
+[WARNING] rtl/cva6_shared_tlb.sv:502:12: [CaseRedundantDefault]
+[WARNING] rtl/cva6_shared_tlb.sv:555:32: [SignCompare]
+[WARNING] rtl/cva6_shared_tlb.sv:604:32: [SignCompare]
+[WARNING] rtl/cva6_shared_tlb.sv:654:32: [SignCompare]
+[WARNING] rtl/cva6_shared_tlb.sv:673:54: [UselessCast]
+[WARNING] rtl/cva6_shared_tlb.sv:708:34: [SignCompare]
+[WARNING] rtl/cva6_shared_tlb.sv:716:34: [SignCompare]
+[WARNING] rtl/cva6_shared_tlb.sv:736:88: [ArithOpMismatch]
+[WARNING] rtl/cva6_shared_tlb.sv:792:21: [IntBoolConv]
+[WARNING] rtl/cva6_shared_tlb.sv:796:21: [IntBoolConv]
+[WARNING] rtl/cva6_shared_tlb.sv:799:31: [UnnamedGenerate]
+[WARNING] rtl/cva6_shared_tlb.sv:838:14: [UnnamedGenerate]
+[WARNING] rtl/cva6_ptw.sv:170:28: [ConstantConversion]
+[WARNING] rtl/cva6_ptw.sv:181:48: [UnnamedGenerate]
+[WARNING] rtl/cva6_ptw.sv:189:45: [UnnamedGenerate]
+[WARNING] rtl/cva6_ptw.sv:195:24: [UnnamedGenerate]
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && /tmp/svq-pypi-smoke2/bin/sv_query instances --filelist filelist.f --json --pretty 2>/dev/null | head -120
+{
+  "ok": true,
+  "count": 24,
+  "module": null,
+  "instances": [
+    {
+      "full_path": "p187_mmu_top.u_mmu",
+      "name": "u_mmu",
+      "module_type": "cva6_mmu",
+      "parent": "p187_mmu_top"
+    },
+    {
+      "full_path": "p187_mmu_top.u_mmu.i_itlb",
+      "name": "i_itlb",
+      "module_type": "cva6_tlb",
+      "parent": "p187_mmu_top.u_mmu"
+    },
+    {
+      "full_path": "p187_mmu_top.u_mmu.i_dtlb",
+      "name": "i_dtlb",
+      "module_type": "cva6_tlb",
+      "parent": "p187_mmu_top.u_mmu"
+    },
+    {
+      "full_path": "p187_mmu_top.u_mmu.i_shared_tlb",
+      "name": "i_shared_tlb",
+      "module_type": "cva6_shared_tlb",
+      "parent": "p187_mmu_top.u_mmu"
+    },
+    {
+      "full_path": "p187_mmu_top.u_mmu.i_shared_tlb.i_lzc",
+      "name": "i_lzc",
+      "module_type": "lzc",
+      "parent": "p187_mmu_top.u_mmu.i_shared_tlb"
+    },
+    {
+      "full_path": "p187_mmu_top.u_mmu.i_shared_tlb.i_lfsr",
+      "name": "i_lfsr",
+      "module_type": "lfsr",
+      "parent": "p187_mmu_top.u_mmu.i_shared_tlb"
+    },
+    {
+      "full_path": "p187_mmu_top.u_mmu.i_ptw",
+      "name": "i_ptw",
+      "module_type": "cva6_ptw",
+      "parent": "p187_mmu_top.u_mmu"
+    },
+    {
+      "full_path": "p187_mmu_top.u_mmu.i_ptw.i_pmp_ptw",
+      "name": "i_pmp_ptw",
+      "module_type": "pmp",
+      "parent": "p187_mmu_top.u_mmu.i_ptw"
+    },
+    {
+      "full_path": "p187_mmu_top.u_mmu.i_ptw.i_pmp_ptw.gen_pmp.genblk1[0].i_pmp_entry",
+      "name": "i_pmp_entry",
+      "module_type": "pmp_entry",
+      "parent": "p187_mmu_top.u_mmu.i_ptw.i_pmp_ptw.gen_pmp.genblk1[0]"
+    },
+    {
+      "full_path": "p187_mmu_top.u_mmu.i_ptw.i_pmp_ptw.gen_pmp.genblk1[0].i_pmp_entry.i_lzc",
+      "name": "i_lzc",
+      "module_type": "lzc",
+      "parent": "p187_mmu_top.u_mmu.i_ptw.i_pmp_ptw.gen_pmp.genblk1[0].i_pmp_entry"
+    },
+    {
+      "full_path": "p187_mmu_top.u_mmu.i_ptw.i_pmp_ptw.gen_pmp.genblk1[1].i_pmp_entry",
+      "name": "i_pmp_entry",
+      "module_type": "pmp_entry",
+      "parent": "p187_mmu_top.u_mmu.i_ptw.i_pmp_ptw.gen_pmp.genblk1[1]"
+    },
+    {
+      "full_path": "p187_mmu_top.u_mmu.i_ptw.i_pmp_ptw.gen_pmp.genblk1[1].i_pmp_entry.i_lzc",
+      "name": "i_lzc",
+      "module_type": "lzc",
+      "parent": "p187_mmu_top.u_mmu.i_ptw.i_pmp_ptw.gen_pmp.genblk1[1].i_pmp_entry"
+    },
+    {
+      "full_path": "p187_mmu_top.u_mmu.i_ptw.i_pmp_ptw.gen_pmp.genblk1[2].i_pmp_entry",
+      "name": "i_pmp_entry",
+      "module_type": "pmp_entry",
+      "parent": "p187_mmu_top.u_mmu.i_ptw.i_pmp_ptw.gen_pmp.genblk1[2]"
+    },
+    {
+      "full_path": "p187_mmu_top.u_mmu.i_ptw.i_pmp_ptw.gen_pmp.genblk1[2].i_pmp_entry.i_lzc",
+      "name": "i_lzc",
+      "module_type": "lzc",
+      "parent": "p187_mmu_top.u_mmu.i_ptw.i_pmp_ptw.gen_pmp.genblk1[2].i_pmp_entry"
+    },
+    {
+      "full_path": "p187_mmu_top.u_mmu.i_ptw.i_pmp_ptw.gen_pmp.genblk1[3].i_pmp_entry",
+      "name": "i_pmp_entry",
+      "module_type": "pmp_entry",
+      "parent": "p187_mmu_top.u_mmu.i_ptw.i_pmp_ptw.gen_pmp.genblk1[3]"
+    },
+    {
+      "full_path": "p187_mmu_top.u_mmu.i_ptw.i_pmp_ptw.gen_pmp.genblk1[3].i_pmp_entry.i_lzc",
+      "name": "i_lzc",
+      "module_type": "lzc",
+      "parent": "p187_mmu_top.u_mmu.i_ptw.i_pmp_ptw.gen_pmp.genblk1[3].i_pmp_entry"
+    },
+    {
+      "full_path": "p187_mmu_top.u_mmu.i_ptw.i_pmp_ptw.gen_pmp.genblk1[4].i_pmp_entry",
+      "name": "i_pmp_entry",
+      "module_type": "pmp_entry",
+      "parent": "p187_mmu_top.u_mmu.i_ptw.i_pmp_ptw.gen_pmp.genblk1[4]"
+    },
+    {
+      "full_path": "p187_mmu_top.u_mmu.i_ptw.i_pmp_ptw.gen_pmp.genblk1[4].i_pmp_entry.i_lzc",
+      "name": "i_lzc",
+      "module_type": "lzc",
+      "parent": "p187_mmu_top.u_mmu.i_ptw.i_pmp_ptw.gen_pmp.genblk1[4].i_pmp_entry"
+    },
+    {
+      "full_path": "p187_mmu_top.u_mmu.i_ptw.i_pmp_ptw.gen_pmp.genblk1[5].i_pmp_entry",
+      "name": "i_pmp_entry",
+      "module_type": "pmp_entry",
+      "parent": "p187_mmu_top.u_mmu.i_ptw.i_pmp_ptw.gen_pmp.genblk1[5]"
+    },
+    {
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && echo '=== DRIVERS canonical_addr_check ==='; /tmp/svq-pypi-smoke2/bin/sv_query drivers canonical_addr_check --filelist filelist.f --json --pretty 2>/dev/null | head -100; echo '=== LOADS canonical_addr_check ==='; /tmp/svq-pypi-smoke2/bin/sv_query loads canonical_addr_check --filelist filelist.f --json --pretty 2>/dev/null | head -120
+=== DRIVERS canonical_addr_check ===
+{
+  "ok": true,
+  "command": "trace_fanin",
+  "params": {
+    "signals": [
+      "canonical_addr_check"
+    ],
+    "file": "None",
+    "depth": null,
+    "max_results": null,
+    "batch_file": null,
+    "batch": null,
+    "type": null,
+    "module": null,
+    "width_min": null,
+    "width_max": null,
+    "exclude": null,
+    "from_snapshot": null,
+    "no_cache": false
+  },
+  "result": {
+    "signals": [
+      {
+        "signal": "canonical_addr_check",
+        "index": 0,
+        "drivers": [
+          {
+            "id": "p187_mmu_top.u_mmu.lsu_req_i",
+            "kind": "PORT_IN",
+            "module": "p187_mmu_top.u_mmu",
+            "width_msb": 1,
+            "width_lsb": 0,
+            "width": 2,
+            "distance": 1,
+            "precision": "bus",
+            "is_signed": null,
+            "parent": null,
+            "bit_range": null,
+            "dynamic_index": false,
+            "function_call": false,
+            "runtime_system_call": false,
+            "condition": "",
+            "conditions": [],
+            "condition_path": [],
+            "condition_paths": [
+              {
+                "condition": "",
+                "path": [],
+                "simplified": "",
+                "analysis": {
+                  "simplified": "",
+                  "changed": false,
+                  "method": "empty",
+                  "confidence": "atom_identity",
+                  "four_state_safe": true,
+                  "tautology": false,
+                  "unsat": false,
+                  "analysis_incomplete": false,
+                  "error": null
+                }
+              }
+            ],
+            "condition_unconditional": true,
+            "condition_truncated": false,
+            "condition_simplified": "",
+            "conditions_simplified": [],
+            "condition_analysis": {
+              "changed": false,
+              "method": "local_bool_v1",
+              "confidence": "atom_identity",
+              "four_state_safe": true,
+              "tautology": false,
+              "unsat": false,
+              "analysis_incomplete": false,
+              "error": null
+            },
+            "condition_analysis_incomplete": false
+          },
+          {
+            "id": "p187_mmu_top.lsu_req_i",
+            "kind": "SIGNAL",
+            "module": "p187_mmu_top",
+            "width_msb": 1,
+            "width_lsb": 0,
+            "width": 2,
+            "distance": 2,
+            "precision": "bus",
+            "is_signed": false,
+            "parent": null,
+            "bit_range": null,
+            "dynamic_index": false,
+            "function_call": false,
+            "runtime_system_call": false,
+            "condition": "",
+            "conditions": [],
+            "condition_path": [],
+            "condition_paths": [
+              {
+                "condition": "",
+                "path": [],
+=== LOADS canonical_addr_check ===
+{
+  "ok": true,
+  "command": "trace_fanout",
+  "params": {
+    "signals": [
+      "canonical_addr_check"
+    ],
+    "file": "None",
+    "depth": null,
+    "max_results": null,
+    "batch_file": null,
+    "batch": null,
+    "type": null,
+    "module": null,
+    "width_min": null,
+    "width_max": null,
+    "exclude": null,
+    "from_snapshot": null,
+    "no_cache": false
+  },
+  "result": {
+    "signals": [
+      {
+        "signal": "canonical_addr_check",
+        "index": 0,
+        "loads": [],
+        "count": 0,
+        "pre_filter_count": 0,
+        "truncated": false,
+        "precision": "bus",
+        "coarse_fallback": false,
+        "top_modules": [
+          "p187_mmu_top"
+        ],
+        "top_ambiguous": false,
+        "bit_fallback": false,
+        "dynamic_index": false,
+        "function_call": false,
+        "runtime_system_call": false,
+        "conditions": [],
+        "condition_truncated": false,
+        "truncated_by_depth": false,
+        "cycles_detected": false,
+        "error": "",
+        "resolved_signal": "p187_mmu_top.u_mmu.canonical_addr_check",
+        "resolution": "relative",
+        "candidates": [],
+        "suggestions": []
+      }
+    ],
+    "total_signals": 1,
+    "total_count": 0,
+    "total_pre_filter": 0,
+    "truncated": false,
+    "failed_signals": 0
+  },
+  "errors": []
+}
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && /tmp/svq-pypi-smoke2/bin/sv_query controlflow --help 2>&1 | head -60; echo ===; /tmp/svq-pypi-smoke2/bin/sv_query trace --help 2>&1 | head -80
+Usage: sv_query controlflow [OPTIONS] COMMAND [ARGS]...                        
+                                                                                
+ Analyze control flow conditions for signals                                    
+                                                                                
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ analyze           Analyze control flow conditions for a signal.              │
+│ list-conditioned  List all signals with conditional drivers                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+zsh:1: == not found
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && /tmp/svq-pypi-smoke2/bin/sv_query controlflow analyze --help 2>&1 | head -80
+Usage: sv_query controlflow analyze [OPTIONS] SIGNAL                           
+                                                                                
+ Analyze control flow conditions for a signal.                                  
+                                                                                
+  合并原 `controlflow conditions` (2 → 1): 该命令的 `conditions` 是             
+ 本命令 `conditioned_drivers[].conditions[]` 的**扁平子视图** ——                
+ 同一输入、同一分析器,                                                          
+ 只是输出形状更窄。用 `--conditions-only` 取子视图。                            
+                                                                                
+╭─ Arguments ──────────────────────────────────────────────────────────────────╮
+│ *    signal      TEXT  [required]                                            │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --file             -f                     PATH  SystemVerilog source file    │
+│                                                 (单文件模式)                 │
+│ --filelist                                TEXT  Path to filelist (.f/.fl)    │
+│                                                 for multi-file projects      │
+│                                                 (项目模式)                   │
+│ --preprocess           --no-preprocess          Preprocess macros (default): │
+│                                                 跨文件 `MACRO 展开, 避免     │
+│                                                 TooFewArguments. Use         │
+│                                                 --no-preprocess 退回 pyslan… │
+│                                                 内置处理 (供不跨文件 define  │
+│                                                 的小项目用)                  │
+│                                                 [default: preprocess]        │
+│ --log-level                               TEXT  Compiler log level           │
+│                                                 (DEBUG/INFO/WARNING/ERROR)   │
+│                                                 [default: WARNING]           │
+│ --json             -j                           Output JSON format           │
+│ --pretty           -p                           Pretty-print JSON            │
+│ --evidence         -e                           Include source evidence for  │
+│                                                 each condition (optional)    │
+│ --human            -H                           Human-friendly arrow output  │
+│                                                 (default off)                │
+│ --tree             -T                           Tree-style vertical output   │
+│                                                 (default off; auto for       │
+│                                                 chains > 6)                  │
+│ --conditions-only                                只列条件的扁平列表 (原      │
+│                                                 `controlflow conditions`     │
+│                                                 视图)                        │
+│ --help                                          Show this message and exit.  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && echo '=== controlflow canonical_addr_check ==='; /tmp/svq-pypi-smoke2/bin/sv_query controlflow analyze canonical_addr_check --filelist filelist.f --json --pretty --evidence 2>/dev/null | head -160
+=== controlflow canonical_addr_check ===
+{
+  "ok": false,
+  "command": "controlflow",
+  "error": "signal not found: 'canonical_addr_check'",
+  "errors": [
+    "signal not found: 'canonical_addr_check'"
+  ]
+}
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && echo '=== controlflow full path ==='; /tmp/svq-pypi-smoke2/bin/sv_query controlflow analyze p187_mmu_top.u_mmu.canonical_addr_check --filelist filelist.f --json --pretty --evidence 2>/dev/null | head -200
+=== controlflow full path ===
+{
+  "ok": true,
+  "command": "controlflow",
+  "params": {
+    "signal": "p187_mmu_top.u_mmu.canonical_addr_check",
+    "file": "/private/tmp/p192_sq/rtl/cf_math_pkg.sv",
+    "evidence": true
+  },
+  "result": {
+    "signal": "p187_mmu_top.u_mmu.canonical_addr_check",
+    "conditioned_drivers": [],
+    "condition_status": "complete",
+    "warnings": []
+  },
+  "errors": []
+}
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && /tmp/svq-pypi-smoke2/bin/sv_query graph nodes --help 2>&1 | head -70; echo '---'; /tmp/svq-pypi-smoke2/bin/sv_query trace evidence --help 2>&1 | head -70
+Usage: sv_query graph nodes [OPTIONS]                                          
+                                                                                
+ 列图节点 (可按 kind/module/子串过滤; --detail 给富字段)。                      
+                                                                                
+  合并原 `graph find` (`--match`) 与 `graph dump` 的节点视图 (`--detail`);      
+ 整图导出请用 `graph nodes --detail --json` + `graph edges --json`。            
+                                                                                
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --file      -f      PATH  SystemVerilog source file                          │
+│ --filelist          TEXT   filelist (.f/.fl) 多文件项目                      │
+│ --kind      -k      TEXT  Filter by node kind (SIGNAL, EXPRESSION, etc)      │
+│ --module    -m      TEXT  Filter by module name                              │
+│ --match             TEXT   只保留 id 含该子串的节点 (原 `graph find`,        │
+│                           大小写不敏感)                                      │
+│ --detail                   附带表达式/条件等富字段 (原 `graph dump`          │
+│                           的节点部分)                                        │
+│ --json      -j            Output JSON format                                 │
+│ --help                    Show this message and exit.                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+---
+                                                                                
+ Usage: sv_query trace evidence [OPTIONS] [SIGNAL]                              
+                                                                                
+ 展示信号的源码 evidence (enclosing always/if 块完整源码)                       
+                                                                                
+ Single signal: sv_query trace evidence top.q -f top.sv                         
+ Batch:        sv_query trace evidence --batch 'top.q,top.a' -f top.sv          
+                                                                                
+╭─ Arguments ──────────────────────────────────────────────────────────────────╮
+│   signal      [SIGNAL]                                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --file           -f                     PATH  SystemVerilog source file      │
+│ --chain          -c                           Show evidence for entire       │
+│                                               driver chain                   │
+│ --json           -j                           Output JSON format             │
+│ --pretty         -p                           Pretty-print JSON              │
+│ --human          -H                           Human-friendly tree output     │
+│                                               (default off)                  │
+│ --tree           -T                           Tree-style vertical output     │
+│                                               (default off; auto for chains  │
+│                                               > 6)                           │
+│ --filelist                              TEXT  Path to filelist (.f/.fl) for  │
+│                                               multi-file projects            │
+│ --preprocess         --no-preprocess          Preprocess macros (default):   │
+│                                               跨文件 `MACRO 展开, 避免       │
+│                                               TooFewArguments                │
+│                                               [default: preprocess]          │
+│ --batch-file                            TEXT  [B1 2026-07-03] Path to file   │
+│                                               with one signal per line (#    │
+│                                               comment, blank skipped).       │
+│ --batch                                 TEXT  [B1 2026-07-03] Inline batch   │
+│                                               of signals, comma-separated    │
+│                                               (e.g., 'top.clk,top.rst_n').   │
+│ --from-snapshot                         TEXT  [B4 2026-07-03] Load graph     │
+│                                               from saved snapshot tag.       │
+│                                               Mutually exclusive with        │
+│                                               --file/--filelist.             │
+│ --no-cache                                    [A1 2026-07-04] Disable AST    │
+│                                               cache (default: cache enabled  │
+│                                               for repeat invocations).       │
+│ --help                                        Show this message and exit.    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && /tmp/svq-pypi-smoke2/bin/sv_query graph nodes --filelist filelist.f --match canonical_addr_check --detail --json --pretty 2>/dev/null | head -200
+(no output)
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && /tmp/svq-pypi-smoke2/bin/sv_query graph nodes --file rtl/cva6_mmu.sv --match canonical_addr_check --detail --json --pretty 2>&1 | head -200
+Usage: sv_query graph nodes [OPTIONS]
+Try 'sv_query graph nodes --help' for help.
+╭─ Error ──────────────────────────────────────────────────────────────────────╮
+│ No such option '--pretty'.                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && /tmp/svq-pypi-smoke2/bin/sv_query graph nodes --file rtl/cva6_mmu.sv --match canonical_addr_check --detail --json 2>&1 | head -200
+[ERROR] 79 error(s) found
+[ERROR] rtl/cva6_mmu.sv:27:10: [UnknownPackage]
+[ERROR] rtl/cva6_mmu.sv:29:15: [UnknownClassOrPackage]
+[ERROR] rtl/cva6_mmu.sv:29:55: [UnknownClassOrPackage]
+[ERROR] rtl/cva6_mmu.sv:68:11: [UnknownClassOrPackage]
+[ERROR] rtl/cva6_mmu.sv:70:11: [UnknownClassOrPackage]
+[ERROR] rtl/cva6_mmu.sv:108:11: [UnknownClassOrPackage]
+[ERROR] rtl/cva6_mmu.sv:180:40: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:181:55: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:186:3: [UnknownModule]
+[ERROR] rtl/cva6_mmu.sv:205:36: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:217:3: [UnknownModule]
+[ERROR] rtl/cva6_mmu.sv:249:3: [UnknownModule]
+[ERROR] rtl/cva6_mmu.sv:275:35: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:303:3: [UnknownModule]
+[ERROR] rtl/cva6_mmu.sv:378:18: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:378:46: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:379:18: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:383:18: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:385:32: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:386:22: [UnknownClassOrPackage]
+[ERROR] rtl/cva6_mmu.sv:387:24: [UnknownClassOrPackage]
+[ERROR] rtl/cva6_mmu.sv:390:40: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:400:50: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:400:81: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:400:150: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:401:102: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:402:22: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:402:47: [UnknownClassOrPackage]
+[ERROR] rtl/cva6_mmu.sv:403:22: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:405:24: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:407:24: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:408:24: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:409:24: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:413:20: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:416:20: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:422:22: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:422:112: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:428:22: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:428:62: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:436:22: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:436:50: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:438:24: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:438:49: [UnknownClassOrPackage]
+[ERROR] rtl/cva6_mmu.sv:439:24: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:441:26: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:443:26: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:444:26: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:445:26: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:451:24: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:451:49: [UnknownClassOrPackage]
+[ERROR] rtl/cva6_mmu.sv:452:24: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:454:26: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:456:26: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:457:26: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:458:26: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:466:22: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:469:26: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:469:51: [UnknownClassOrPackage]
+[ERROR] rtl/cva6_mmu.sv:470:26: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:471:46: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:473:28: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:474:28: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:474:97: [UnknownClassOrPackage]
+[ERROR] rtl/cva6_mmu.sv:474:132: [UnknownClassOrPackage]
+[ERROR] rtl/cva6_mmu.sv:475:28: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:478:26: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:478:51: [UnknownClassOrPackage]
+[ERROR] rtl/cva6_mmu.sv:479:26: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:480:46: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:482:28: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:483:28: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:484:28: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:488:24: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:488:49: [UnknownClassOrPackage]
+[ERROR] rtl/cva6_mmu.sv:489:24: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:491:26: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:493:26: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:494:26: [InvalidMemberAccess]
+[ERROR] rtl/cva6_mmu.sv:495:26: [InvalidMemberAccess]
+Error: Elaboration errors:
+rtl/cva6_mmu.sv:27:10: error: unknown package 'ariane_pkg'
+  import ariane_pkg::*;
+         ^
+rtl/cva6_mmu.sv:29:15: error: unknown class or package 'config_pkg'
+    parameter config_pkg::cva6_cfg_t CVA6Cfg        = config_pkg::cva6_cfg_empty,
+              ^~~~~~~~~~
+rtl/cva6_mmu.sv:29:55: error: unknown class or package 'config_pkg'
+    parameter config_pkg::cva6_cfg_t CVA6Cfg        = config_pkg::cva6_cfg_empty,
+                                                      ^~~~~~~~~~
+rtl/cva6_mmu.sv:68:11: error: unknown class or package 'riscv'
+  ... (228 more lines, see logs)
+
+Hint: First check your filelist is complete (missing modules? missing includes?).
+      Fix the root cause (fixture / src / filelist) instead of bypassing the check.
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && /tmp/svq-pypi-smoke2/bin/sv_query graph nodes --filelist filelist.f --match canonical_addr_check --detail --json 2>/dev/null | head -200
+{"ok": true, "command": "list_nodes", "params": {"file": null, "filelist": "filelist.f", "kind": null, "module": null, "match": "canonical_addr_check", "detail": true}, "result": {"nodes": [{"id": "p187_mmu_top.u_mmu.canonical_addr_check", "name": "canonical_addr_check", "kind": "SIGNAL", "module": "p187_mmu_top.u_mmu", "width": [1, 0], "expression": "", "operands": [], "signals": [], "function_name": "", "condition": "", "true_branch": "", "false_branch": ""}], "total": 1}, "errors": []}
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && /tmp/svq-pypi-smoke2/bin/sv_query drivers canonical_addr_check --filelist filelist.f --json 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); [print(x['id'], 'dist='+str(x['distance']), 'cond='+repr(x['condition'])) for x in d['result']['signals'][0]['drivers']]"
+p187_mmu_top.u_mmu.en_ld_st_translation_i dist=1 cond=''
+p187_mmu_top.u_mmu.lsu_req_i dist=1 cond=''
+p187_mmu_top.lsu_req_i dist=2 cond=''
+p187_mmu_top.u_mmu.lsu_vaddr_i[32'd63:32'd38] dist=1 cond=''
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && echo '=== profile canonical_addr_check vs lsu_vaddr_q ==='; /tmp/svq-pypi-smoke2/bin/sv_query trace profile p187_mmu_top.u_mmu.canonical_addr_check --filelist filelist.f --json 2>/dev/null | head -60; echo; /tmp/svq-pypi-smoke2/bin/sv_query trace profile p187_mmu_top.u_mmu.lsu_vaddr_q --filelist filelist.f --json 2>/dev/null | head -60
+=== profile canonical_addr_check vs lsu_vaddr_q ===
+{"ok": true, "command": "trace_profile", "params": {"signals": ["p187_mmu_top.u_mmu.canonical_addr_check"], "file": null, "filelist": "filelist.f", "batch_file": null, "batch": null}, "result": {"signals": [{"signal": "p187_mmu_top.u_mmu.canonical_addr_check", "index": 0, "resolved_signal": "p187_mmu_top.u_mmu.canonical_addr_check", "resolution": "exact", "aliases": ["p187_mmu_top.u_mmu.canonical_addr_check", "canonical_addr_check", "u_mmu.canonical_addr_check"], "width": [1, 0], "is_signed": false, "kind": "SIGNAL", "module": "p187_mmu_top.u_mmu", "type": {"kind": "SIGNAL", "known": true, "name": "logic", "canonical": "logic", "is_enum": false, "is_struct": false, "is_union": false, "is_unpacked_array": false, "is_packed_array": false, "is_array": false, "array_element": null, "bit_width": 1, "is_signed": false, "member_of": null, "member_offset": null, "enum_values": [], "packed_members": []}, "bit": {"bit_range": null, "parent": null, "parent_bit_start": null, "parent_bit_end": null, "select": null, "kind": null, "offset": null, "parent_width": null}, "source": {"file": "rtl/cva6_mmu.sv", "line": 142, "declaration": "rtl/cva6_mmu.sv:142", "driver": null}, "role": {"is_clock": false, "is_reset": false, "is_enable": false, "is_port": false, "modport_dir": null}, "clock_domains": [], "clocks": [], "resets": [], "sequential": {"is_sequential": true, "assign_types": ["nonblocking"], "stage": null, "stage_known": false, "stage_source": null, "stage_unknown_reason": "combinational", "sample": null, "sample_unknown_reason": "no_clock", "always": null}, "driver_count": 3, "load_count": 0, "error": ""}], "total_signals": 1, "failed_signals": 0}, "errors": []}
+
+{"ok": true, "command": "trace_profile", "params": {"signals": ["p187_mmu_top.u_mmu.lsu_vaddr_q"], "file": null, "filelist": "filelist.f", "batch_file": null, "batch": null}, "result": {"signals": [{"signal": "p187_mmu_top.u_mmu.lsu_vaddr_q", "index": 0, "resolved_signal": "p187_mmu_top.u_mmu.lsu_vaddr_q", "resolution": "exact", "aliases": ["p187_mmu_top.u_mmu.lsu_vaddr_q", "lsu_vaddr_q", "u_mmu.lsu_vaddr_q"], "width": [63, 0], "is_signed": null, "kind": "REG", "module": "p187_mmu_top.u_mmu", "type": {"kind": "REG", "known": true, "name": "logic[63:0]", "canonical": "logic[63:0]", "is_enum": false, "is_struct": false, "is_union": false, "is_unpacked_array": false, "is_packed_array": true, "is_array": false, "array_element": "logic", "bit_width": 64, "is_signed": false, "member_of": null, "member_offset": null, "enum_values": [], "packed_members": []}, "bit": {"bit_range": null, "parent": null, "parent_bit_start": null, "parent_bit_end": null, "select": null, "kind": null, "offset": null, "parent_width": null}, "source": {"file": "", "line": 0, "declaration": "", "driver": {"file": "rtl/cva6_mmu.sv", "line": 773}}, "role": {"is_clock": false, "is_reset": false, "is_enable": false, "is_port": false, "modport_dir": null}, "clock_domains": ["clk_i"], "clocks": [{"signal": "p187_mmu_top.u_mmu.clk_i", "condition": "!rst_ni", "clock_domain": "clk_i", "edge": "posedge"}, {"signal": "p187_mmu_top.u_mmu.clk_i", "condition": "!(!rst_ni)", "clock_domain": "clk_i", "edge": "posedge"}], "resets": [{"signal": "p187_mmu_top.u_mmu.rst_ni", "condition": "!rst_ni", "edge": "negedge", "async": true, "active_low": true}, {"signal": "p187_mmu_top.u_mmu.rst_ni", "condition": "!(!rst_ni)", "edge": "negedge", "async": true, "active_low": true}], "sequential": {"is_sequential": true, "assign_types": ["nonblocking"], "stage": 0, "stage_known": true, "stage_source": "pipeline_detect", "stage_unknown_reason": null, "sample": "posedge p187_mmu_top.u_mmu.clk_i", "sample_unknown_reason": null, "always": {"file": "rtl/cva6_mmu.sv", "line": 771}}, "driver_count": 4, "load_count": 1, "error": ""}], "total_signals": 1, "failed_signals": 0}, "errors": []}
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && /tmp/svq-pypi-smoke2/bin/sv_query controlflow analyze p187_mmu_top.u_mmu.lsu_exception_o.valid --filelist filelist.f --json --pretty --evidence 2>/dev/null | head -220
+{
+  "ok": true,
+  "command": "controlflow",
+  "params": {
+    "signal": "p187_mmu_top.u_mmu.lsu_exception_o.valid",
+    "file": "/private/tmp/p192_sq/rtl/cf_math_pkg.sv",
+    "evidence": true
+  },
+  "result": {
+    "signal": "p187_mmu_top.u_mmu.lsu_exception_o.valid",
+    "conditioned_drivers": [
+      {
+        "to_node": "p187_mmu_top.u_mmu.lsu_exception_o.valid",
+        "conditions": [
+          {
+            "expr": "en_ld_st_translation_i || en_ld_st_g_translation_i && !misaligned_ex_q.valid && dtlb_hit_q && lsu_req_q && !lsu_is_store_q && CVA6Cfg.RVH && d_g_st_access_err",
+            "edge": {
+              "src": "1'b1",
+              "dst": "p187_mmu_top.u_mmu.lsu_exception_o.valid",
+              "kind": "DRIVER",
+              "condition": "en_ld_st_translation_i || en_ld_st_g_translation_i && !misaligned_ex_q.valid && dtlb_hit_q && lsu_req_q && !lsu_is_store_q && CVA6Cfg.RVH && d_g_st_access_err"
+            },
+            "evidence": {
+              "signal": "p187_mmu_top.u_mmu.lsu_exception_o.valid",
+              "source_location": {
+                "file": "rtl/cva6_mmu.sv",
+                "line_start": 619,
+                "line_end": 619,
+                "column": 14
+              },
+              "source_text": "if(CVA6Cfg.RVH && en_ld_st_g_translation_i && (!dtlb_gpte_q.w || d_g_st_access_err || !dtlb_gpte_q.d)) begin",
+              "enclosing_always": null,
+              "enclosing_always_comb": null,
+              "enclosing_if": {
+                "file": "rtl/cva6_mmu.sv",
+                "line_start": 618,
+                "line_end": 642,
+                "column": 11,
+                "text": "if(CVA6Cfg.RVH && en_ld_st_g_translation_i && (!dtlb_gpte_q.w || d_g_st_access_err || !dtlb_gpte_q.d)) begin\n            lsu_exception_o.cause = riscv::STORE_GUEST_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = CVA6Cfg.GPLEN'(lsu_gpaddr_q[(CVA6Cfg.IS_XLEN32 ? CVA6Cfg.VLEN : CVA6Cfg.GPLEN)-1:0]);\n              lsu_exception_o.tinst = '0;\n              lsu_exception_o.gva = ld_st_v_i;\n            end\n          end else if ((en_ld_st_translation_i || !CVA6Cfg.RVH) && (!dtlb_pte_q.w || daccess_err || canonical_addr_check || !dtlb_pte_q.d)) begin\n            lsu_exception_o.cause = riscv::STORE_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = '0;\n              lsu_exception_o.tinst = lsu_tinst_q;\n              lsu_exception_o.gva   = ld_st_v_i;\n            end\n          end"
+              },
+              "enclosing_assign": null,
+              "enclosing_class": null,
+              "enclosing_constraint": null,
+              "enclosing_chain": [
+                {
+                  "file": "rtl/cva6_mmu.sv",
+                  "line_start": 618,
+                  "line_end": 618,
+                  "column": 14,
+                  "text": "CVA6Cfg.RVH && en_ld_st_g_translation_i && (!dtlb_gpte_q.w || d_g_st_access_err || !dtlb_gpte_q.d)"
+                },
+                {
+                  "file": "rtl/cva6_mmu.sv",
+                  "line_start": 618,
+                  "line_end": 618,
+                  "column": 14,
+                  "text": "CVA6Cfg.RVH && en_ld_st_g_translation_i && (!dtlb_gpte_q.w || d_g_st_access_err || !dtlb_gpte_q.d)"
+                },
+                {
+                  "file": "rtl/cva6_mmu.sv",
+                  "line_start": 618,
+                  "line_end": 618,
+                  "column": 14,
+                  "text": "CVA6Cfg.RVH && en_ld_st_g_translation_i && (!dtlb_gpte_q.w || d_g_st_access_err || !dtlb_gpte_q.d)"
+                },
+                {
+                  "file": "rtl/cva6_mmu.sv",
+                  "line_start": 618,
+                  "line_end": 642,
+                  "column": 11,
+                  "text": "if(CVA6Cfg.RVH && en_ld_st_g_translation_i && (!dtlb_gpte_q.w || d_g_st_access_err || !dtlb_gpte_q.d)) begin\n            lsu_exception_o.cause = riscv::STORE_GUEST_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = CVA6Cfg.GPLEN'(lsu_gpaddr_q[(CVA6Cfg.IS_XLEN32 ? CVA6Cfg.VLEN : CVA6Cfg.GPLEN)-1:0]);\n              lsu_exception_o.tinst = '0;\n              lsu_exception_o.gva = ld_st_v_i;\n            end\n          end else if ((en_ld_st_translation_i || !CVA6Cfg.RVH) && (!dtlb_pte_q.w || daccess_err || canonical_addr_check || !dtlb_pte_q.d)) begin\n            lsu_exception_o.cause = riscv::STORE_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = '0;\n              lsu_exception_o.tinst = lsu_tinst_q;\n              lsu_exception_o.gva   = ld_st_v_i;\n            end\n          end"
+                },
+                {
+                  "file": "rtl/cva6_mmu.sv",
+                  "line_start": 615,
+                  "line_end": 644,
+                  "column": 29,
+                  "text": "begin\n          // check if the page is write-able and we are not violating privileges\n          // also check if the dirty flag is set\n          if(CVA6Cfg.RVH && en_ld_st_g_translation_i && (!dtlb_gpte_q.w || d_g_st_access_err || !dtlb_gpte_q.d)) begin\n            lsu_exception_o.cause = riscv::STORE_GUEST_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = CVA6Cfg.GPLEN'(lsu_gpaddr_q[(CVA6Cfg.IS_XLEN32 ? CVA6Cfg.VLEN : CVA6Cfg.GPLEN)-1:0]);\n              lsu_exception_o.tinst = '0;\n              lsu_exception_o.gva = ld_st_v_i;\n            end\n          end else if ((en_ld_st_translation_i || !CVA6Cfg.RVH) && (!dtlb_pte_q.w || daccess_err || canonical_addr_check || !dtlb_pte_q.d)) begin\n            lsu_exception_o.cause = riscv::STORE_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = '0;\n              lsu_exception_o.tinst = lsu_tinst_q;\n              lsu_exception_o.gva   = ld_st_v_i;\n            end\n          end\n          // this is a load\n        end"
+                },
+                {
+                  "file": "rtl/cva6_mmu.sv",
+                  "line_start": 615,
+                  "line_end": 671,
+                  "column": 9,
+                  "text": "if (lsu_is_store_q) begin\n          // check if the page is write-able and we are not violating privileges\n          // also check if the dirty flag is set\n          if(CVA6Cfg.RVH && en_ld_st_g_translation_i && (!dtlb_gpte_q.w || d_g_st_access_err || !dtlb_gpte_q.d)) begin\n            lsu_exception_o.cause = riscv::STORE_GUEST_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = CVA6Cfg.GPLEN'(lsu_gpaddr_q[(CVA6Cfg.IS_XLEN32 ? CVA6Cfg.VLEN : CVA6Cfg.GPLEN)-1:0]);\n              lsu_exception_o.tinst = '0;\n              lsu_exception_o.gva = ld_st_v_i;\n            end\n          end else if ((en_ld_st_translation_i || !CVA6Cfg.RVH) && (!dtlb_pte_q.w || daccess_err || canonical_addr_check || !dtlb_pte_q.d)) begin\n            lsu_exception_o.cause = riscv::STORE_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = '0;\n              lsu_exception_o.tinst = lsu_tinst_q;\n              lsu_exception_o.gva   = ld_st_v_i;\n            end\n          end\n          // this is a load\n        end else begin\n          if (CVA6Cfg.RVH && d_g_st_access_err) begin\n            lsu_exception_o.cause = riscv::LOAD_GUEST_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = CVA6Cfg.GPLEN'(lsu_gpaddr_q[(CVA6Cfg.IS_XLEN32 ? CVA6Cfg.VLEN : CVA6Cfg.GPLEN)-1:0]);\n              lsu_exception_o.tinst = '0;\n              lsu_exception_o.gva = ld_st_v_i;\n            end\n            // check for sufficient access privileges - throw a page fault if necessary\n          end else if (daccess_err || canonical_addr_check) begin\n            lsu_exception_o.cause = riscv::LOAD_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = '0;\n              lsu_exception_o.tinst = lsu_tinst_q;\n              lsu_exception_o.gva   = ld_st_v_i;\n            end\n          end\n        end"
+                },
+                {
+                  "file": "rtl/cva6_mmu.sv",
+                  "line_start": 607,
+                  "line_end": 672,
+                  "column": 36,
+                  "text": "begin\n        lsu_valid_o = 1'b1;\n        // exception priority:\n        // PAGE_FAULTS have higher priority than ACCESS_FAULTS\n        // virtual memory based exceptions are PAGE_FAULTS\n        // physical memory based exceptions are ACCESS_FAULTS (PMA/PMP)\n\n        // this is a store\n        if (lsu_is_store_q) begin\n          // check if the page is write-able and we are not violating privileges\n          // also check if the dirty flag is set\n          if(CVA6Cfg.RVH && en_ld_st_g_translation_i && (!dtlb_gpte_q.w || d_g_st_access_err || !dtlb_gpte_q.d)) begin\n            lsu_exception_o.cause = riscv::STORE_GUEST_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = CVA6Cfg.GPLEN'(lsu_gpaddr_q[(CVA6Cfg.IS_XLEN32 ? CVA6Cfg.VLEN : CVA6Cfg.GPLEN)-1:0]);\n              lsu_exception_o.tinst = '0;\n              lsu_exception_o.gva = ld_st_v_i;\n            end\n          end else if ((en_ld_st_translation_i || !CVA6Cfg.RVH) && (!dtlb_pte_q.w || daccess_err || canonical_addr_check || !dtlb_pte_q.d)) begin\n            lsu_exception_o.cause = riscv::STORE_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = '0;\n              lsu_exception_o.tinst = lsu_tinst_q;\n              lsu_exception_o.gva   = ld_st_v_i;\n            end\n          end\n          // this is a load\n        end else begin\n          if (CVA6Cfg.RVH && d_g_st_access_err) begin\n            lsu_exception_o.cause = riscv::LOAD_GUEST_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = CVA6Cfg.GPLEN'(lsu_gpaddr_q[(CVA6Cfg.IS_XLEN32 ? CVA6Cfg.VLEN : CVA6Cfg.GPLEN)-1:0]);\n              lsu_exception_o.tinst = '0;\n              lsu_exception_o.gva = ld_st_v_i;\n            end\n            // check for sufficient access privileges - throw a page fault if necessary\n          end else if (daccess_err || canonical_addr_check) begin\n            lsu_exception_o.cause = riscv::LOAD_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = '0;\n              lsu_exception_o.tinst = lsu_tinst_q;\n              lsu_exception_o.gva   = ld_st_v_i;\n            end\n          end\n        end\n      end"
+                },
+                {
+                  "file": "rtl/cva6_mmu.sv",
+                  "line_start": 607,
+                  "line_end": 764,
+                  "column": 7,
+                  "text": "if (dtlb_hit_q && lsu_req_q) begin\n        lsu_valid_o = 1'b1;\n        // exception priority:\n        // PAGE_FAULTS have higher priority than ACCESS_FAULTS\n        // virtual memory based exceptions are PAGE_FAULTS\n        // physical memory based exceptions are ACCESS_FAULTS (PMA/PMP)\n\n        // this is a store\n        if (lsu_is_store_q) begin\n          // check if the page is write-able and we are not violating privileges\n          // also check if the dirty flag is set\n          if(CVA6Cfg.RVH && en_ld_st_g_translation_i && (!dtlb_gpte_q.w || d_g_st_access_err || !dtlb_gpte_q.d)) begin\n            lsu_exception_o.cause = riscv::STORE_GUEST_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = CVA6Cfg.GPLEN'(lsu_gpaddr_q[(CVA6Cfg.IS_XLEN32 ? CVA6Cfg.VLEN : CVA6Cfg.GPLEN)-1:0]);\n              lsu_exception_o.tinst = '0;\n              lsu_exception_o.gva = ld_st_v_i;\n            end\n          end else if ((en_ld_st_translation_i || !CVA6Cfg.RVH) && (!dtlb_pte_q.w || daccess_err || canonical_addr_check || !dtlb_pte_q.d)) begin\n            lsu_exception_o.cause = riscv::STORE_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = '0;\n              lsu_exception_o.tinst = lsu_tinst_q;\n              lsu_exception_o.gva   = ld_st_v_i;\n            end\n          end\n          // this is a load\n        end else begin\n          if (CVA6Cfg.RVH && d_g_st_access_err) begin\n            lsu_exception_o.cause = riscv::LOAD_GUEST_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = CVA6Cfg.GPLEN'(lsu_gpaddr_q[(CVA6Cfg.IS_XLEN32 ? CVA6Cfg.VLEN : CVA6Cfg.GPLEN)-1:0]);\n              lsu_exception_o.tinst = '0;\n              lsu_exception_o.gva = ld_st_v_i;\n            end\n            // check for sufficient access privileges - throw a page fault if necessary\n          end else if (daccess_err || canonical_addr_check) begin\n            lsu_exception_o.cause = riscv::LOAD_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = '0;\n              lsu_exception_o.tinst = lsu_tinst_q;\n              lsu_exception_o.gva   = ld_st_v_i;\n            end\n          end\n        end\n      end else\n\n      // ---------\n      // DTLB Miss\n      // ---------\n      // watch out for exceptions\n      if (ptw_active && !walking_instr) begin\n        // page table walker threw an exception\n        if (ptw_error) begin\n          // an error makes the translation valid\n          lsu_valid_o = 1'b1;\n          // the page table walker can only throw page faults\n          if (lsu_is_store_q) begin\n            if (CVA6Cfg.RVH && ptw_error_at_g_st) begin\n              lsu_exception_o.cause = riscv::STORE_GUEST_PAGE_FAULT;\n              lsu_exception_o.valid = 1'b1;\n              if (CVA6Cfg.TvalEn)\n                lsu_exception_o.tval = {\n                  {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, update_vaddr\n                };\n              if (CVA6Cfg.RVH) begin\n                lsu_exception_o.tval2 = ptw_bad_gpaddr[CVA6Cfg.GPLEN-1:0];\n                lsu_exception_o.tinst = (ptw_err_at_g_int_st ? (CVA6Cfg.IS_XLEN64 ? riscv::READ_64_PSEUDOINSTRUCTION : riscv::READ_32_PSEUDOINSTRUCTION) : '0);\n                lsu_exception_o.gva = ld_st_v_i;\n              end\n            end else begin\n              lsu_exception_o.cause = riscv::STORE_PAGE_FAULT;\n              lsu_exception_o.valid = 1'b1;\n              if (CVA6Cfg.TvalEn)\n                lsu_exception_o.tval = {\n                  {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, update_vaddr\n                };\n              if (CVA6Cfg.RVH) begin\n                lsu_exception_o.tval2 = '0;\n                lsu_exception_o.tinst = lsu_tinst_q;\n                lsu_exception_o.gva   = ld_st_v_i;\n              end\n            end\n          end else begin\n            if (CVA6Cfg.RVH && ptw_error_at_g_st) begin\n              lsu_exception_o.cause = riscv::LOAD_GUEST_PAGE_FAULT;\n              lsu_exception_o.valid = 1'b1;\n              if (CVA6Cfg.TvalEn)\n                lsu_exception_o.tval = {\n                  {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, update_vaddr\n                };\n              if (CVA6Cfg.RVH) begin\n                lsu_exception_o.tval2 = ptw_bad_gpaddr[CVA6Cfg.GPLEN-1:0];\n                lsu_exception_o.tinst = (ptw_err_at_g_int_st ? (CVA6Cfg.IS_XLEN64 ? riscv::READ_64_PSEUDOINSTRUCTION : riscv::READ_32_PSEUDOINSTRUCTION) : '0);\n                lsu_exception_o.gva = ld_st_v_i;\n              end\n            end else begin\n              lsu_exception_o.cause = riscv::LOAD_PAGE_FAULT;\n              lsu_exception_o.valid = 1'b1;\n              if (CVA6Cfg.TvalEn)\n                lsu_exception_o.tval = {\n                  {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, update_vaddr\n                };\n              if (CVA6Cfg.RVH) begin\n                lsu_exception_o.tval2 = '0;\n                lsu_exception_o.tinst = lsu_tinst_q;\n                lsu_exception_o.gva   = ld_st_v_i;\n              end\n            end\n          end\n        end\n        if (ptw_access_exception) begin\n          // an error makes the translation valid\n          lsu_valid_o = 1'b1;\n          // Any fault of the page table walk should be based of the original access type\n          if (lsu_is_store_q && !CVA6Cfg.RVH && CVA6Cfg.PtLevels == 3) begin\n            lsu_exception_o.cause = riscv::ST_ACCESS_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, update_vaddr\n              };\n          end else begin\n            // the page table walker can only throw page faults\n            lsu_exception_o.cause = riscv::LD_ACCESS_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, update_vaddr\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = '0;\n              lsu_exception_o.tinst = lsu_tinst_q;\n              lsu_exception_o.gva   = ld_st_v_i;\n            end\n          end\n        end\n      end"
+                }
+              ],
+              "is_verified": true,
+              "credibility_score": 0.4
+            }
+          },
+          {
+            "expr": "en_ld_st_translation_i || en_ld_st_g_translation_i && !misaligned_ex_q.valid && dtlb_hit_q && lsu_req_q && !lsu_is_store_q && !(CVA6Cfg.RVH && d_g_st_access_err) && daccess_err || canonical_addr_check",
+            "edge": {
+              "src": "1'b1",
+              "dst": "p187_mmu_top.u_mmu.lsu_exception_o.valid",
+              "kind": "DRIVER",
+              "condition": "en_ld_st_translation_i || en_ld_st_g_translation_i && !misaligned_ex_q.valid && dtlb_hit_q && lsu_req_q && !lsu_is_store_q && !(CVA6Cfg.RVH && d_g_st_access_err) && daccess_err || canonical_addr_check"
+            },
+            "evidence": {
+              "signal": "p187_mmu_top.u_mmu.lsu_exception_o.valid",
+              "source_location": {
+                "file": "rtl/cva6_mmu.sv",
+                "line_start": 619,
+                "line_end": 619,
+                "column": 14
+              },
+              "source_text": "if(CVA6Cfg.RVH && en_ld_st_g_translation_i && (!dtlb_gpte_q.w || d_g_st_access_err || !dtlb_gpte_q.d)) begin",
+              "enclosing_always": null,
+              "enclosing_always_comb": null,
+              "enclosing_if": {
+                "file": "rtl/cva6_mmu.sv",
+                "line_start": 618,
+                "line_end": 642,
+                "column": 11,
+                "text": "if(CVA6Cfg.RVH && en_ld_st_g_translation_i && (!dtlb_gpte_q.w || d_g_st_access_err || !dtlb_gpte_q.d)) begin\n            lsu_exception_o.cause = riscv::STORE_GUEST_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = CVA6Cfg.GPLEN'(lsu_gpaddr_q[(CVA6Cfg.IS_XLEN32 ? CVA6Cfg.VLEN : CVA6Cfg.GPLEN)-1:0]);\n              lsu_exception_o.tinst = '0;\n              lsu_exception_o.gva = ld_st_v_i;\n            end\n          end else if ((en_ld_st_translation_i || !CVA6Cfg.RVH) && (!dtlb_pte_q.w || daccess_err || canonical_addr_check || !dtlb_pte_q.d)) begin\n            lsu_exception_o.cause = riscv::STORE_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = '0;\n              lsu_exception_o.tinst = lsu_tinst_q;\n              lsu_exception_o.gva   = ld_st_v_i;\n            end\n          end"
+              },
+              "enclosing_assign": null,
+              "enclosing_class": null,
+              "enclosing_constraint": null,
+              "enclosing_chain": [
+                {
+                  "file": "rtl/cva6_mmu.sv",
+                  "line_start": 618,
+                  "line_end": 618,
+                  "column": 14,
+                  "text": "CVA6Cfg.RVH && en_ld_st_g_translation_i && (!dtlb_gpte_q.w || d_g_st_access_err || !dtlb_gpte_q.d)"
+                },
+                {
+                  "file": "rtl/cva6_mmu.sv",
+                  "line_start": 618,
+                  "line_end": 618,
+                  "column": 14,
+                  "text": "CVA6Cfg.RVH && en_ld_st_g_translation_i && (!dtlb_gpte_q.w || d_g_st_access_err || !dtlb_gpte_q.d)"
+                },
+                {
+                  "file": "rtl/cva6_mmu.sv",
+                  "line_start": 618,
+                  "line_end": 618,
+                  "column": 14,
+                  "text": "CVA6Cfg.RVH && en_ld_st_g_translation_i && (!dtlb_gpte_q.w || d_g_st_access_err || !dtlb_gpte_q.d)"
+                },
+                {
+                  "file": "rtl/cva6_mmu.sv",
+                  "line_start": 618,
+                  "line_end": 642,
+                  "column": 11,
+                  "text": "if(CVA6Cfg.RVH && en_ld_st_g_translation_i && (!dtlb_gpte_q.w || d_g_st_access_err || !dtlb_gpte_q.d)) begin\n            lsu_exception_o.cause = riscv::STORE_GUEST_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = CVA6Cfg.GPLEN'(lsu_gpaddr_q[(CVA6Cfg.IS_XLEN32 ? CVA6Cfg.VLEN : CVA6Cfg.GPLEN)-1:0]);\n              lsu_exception_o.tinst = '0;\n              lsu_exception_o.gva = ld_st_v_i;\n            end\n          end else if ((en_ld_st_translation_i || !CVA6Cfg.RVH) && (!dtlb_pte_q.w || daccess_err || canonical_addr_check || !dtlb_pte_q.d)) begin\n            lsu_exception_o.cause = riscv::STORE_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = '0;\n              lsu_exception_o.tinst = lsu_tinst_q;\n              lsu_exception_o.gva   = ld_st_v_i;\n            end\n          end"
+                },
+                {
+                  "file": "rtl/cva6_mmu.sv",
+                  "line_start": 615,
+                  "line_end": 644,
+                  "column": 29,
+                  "text": "begin\n          // check if the page is write-able and we are not violating privileges\n          // also check if the dirty flag is set\n          if(CVA6Cfg.RVH && en_ld_st_g_translation_i && (!dtlb_gpte_q.w || d_g_st_access_err || !dtlb_gpte_q.d)) begin\n            lsu_exception_o.cause = riscv::STORE_GUEST_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = CVA6Cfg.GPLEN'(lsu_gpaddr_q[(CVA6Cfg.IS_XLEN32 ? CVA6Cfg.VLEN : CVA6Cfg.GPLEN)-1:0]);\n              lsu_exception_o.tinst = '0;\n              lsu_exception_o.gva = ld_st_v_i;\n            end\n          end else if ((en_ld_st_translation_i || !CVA6Cfg.RVH) && (!dtlb_pte_q.w || daccess_err || canonical_addr_check || !dtlb_pte_q.d)) begin\n            lsu_exception_o.cause = riscv::STORE_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = '0;\n              lsu_exception_o.tinst = lsu_tinst_q;\n              lsu_exception_o.gva   = ld_st_v_i;\n            end\n          end\n          // this is a load\n        end"
+                },
+                {
+                  "file": "rtl/cva6_mmu.sv",
+                  "line_start": 615,
+                  "line_end": 671,
+                  "column": 9,
+                  "text": "if (lsu_is_store_q) begin\n          // check if the page is write-able and we are not violating privileges\n          // also check if the dirty flag is set\n          if(CVA6Cfg.RVH && en_ld_st_g_translation_i && (!dtlb_gpte_q.w || d_g_st_access_err || !dtlb_gpte_q.d)) begin\n            lsu_exception_o.cause = riscv::STORE_GUEST_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = CVA6Cfg.GPLEN'(lsu_gpaddr_q[(CVA6Cfg.IS_XLEN32 ? CVA6Cfg.VLEN : CVA6Cfg.GPLEN)-1:0]);\n              lsu_exception_o.tinst = '0;\n              lsu_exception_o.gva = ld_st_v_i;\n            end\n          end else if ((en_ld_st_translation_i || !CVA6Cfg.RVH) && (!dtlb_pte_q.w || daccess_err || canonical_addr_check || !dtlb_pte_q.d)) begin\n            lsu_exception_o.cause = riscv::STORE_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = '0;\n              lsu_exception_o.tinst = lsu_tinst_q;\n              lsu_exception_o.gva   = ld_st_v_i;\n            end\n          end\n          // this is a load\n        end else begin\n          if (CVA6Cfg.RVH && d_g_st_access_err) begin\n            lsu_exception_o.cause = riscv::LOAD_GUEST_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = CVA6Cfg.GPLEN'(lsu_gpaddr_q[(CVA6Cfg.IS_XLEN32 ? CVA6Cfg.VLEN : CVA6Cfg.GPLEN)-1:0]);\n              lsu_exception_o.tinst = '0;\n              lsu_exception_o.gva = ld_st_v_i;\n            end\n            // check for sufficient access privileges - throw a page fault if necessary\n          end else if (daccess_err || canonical_addr_check) begin\n            lsu_exception_o.cause = riscv::LOAD_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = '0;\n              lsu_exception_o.tinst = lsu_tinst_q;\n              lsu_exception_o.gva   = ld_st_v_i;\n            end\n          end\n        end"
+                },
+                {
+                  "file": "rtl/cva6_mmu.sv",
+                  "line_start": 607,
+                  "line_end": 672,
+                  "column": 36,
+                  "text": "begin\n        lsu_valid_o = 1'b1;\n        // exception priority:\n        // PAGE_FAULTS have higher priority than ACCESS_FAULTS\n        // virtual memory based exceptions are PAGE_FAULTS\n        // physical memory based exceptions are ACCESS_FAULTS (PMA/PMP)\n\n        // this is a store\n        if (lsu_is_store_q) begin\n          // check if the page is write-able and we are not violating privileges\n          // also check if the dirty flag is set\n          if(CVA6Cfg.RVH && en_ld_st_g_translation_i && (!dtlb_gpte_q.w || d_g_st_access_err || !dtlb_gpte_q.d)) begin\n            lsu_exception_o.cause = riscv::STORE_GUEST_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = CVA6Cfg.GPLEN'(lsu_gpaddr_q[(CVA6Cfg.IS_XLEN32 ? CVA6Cfg.VLEN : CVA6Cfg.GPLEN)-1:0]);\n              lsu_exception_o.tinst = '0;\n              lsu_exception_o.gva = ld_st_v_i;\n            end\n          end else if ((en_ld_st_translation_i || !CVA6Cfg.RVH) && (!dtlb_pte_q.w || daccess_err || canonical_addr_check || !dtlb_pte_q.d)) begin\n            lsu_exception_o.cause = riscv::STORE_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = '0;\n              lsu_exception_o.tinst = lsu_tinst_q;\n              lsu_exception_o.gva   = ld_st_v_i;\n            end\n          end\n          // this is a load\n        end else begin\n          if (CVA6Cfg.RVH && d_g_st_access_err) begin\n            lsu_exception_o.cause = riscv::LOAD_GUEST_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = CVA6Cfg.GPLEN'(lsu_gpaddr_q[(CVA6Cfg.IS_XLEN32 ? CVA6Cfg.VLEN : CVA6Cfg.GPLEN)-1:0]);\n              lsu_exception_o.tinst = '0;\n              lsu_exception_o.gva = ld_st_v_i;\n            end\n            // check for sufficient access privileges - throw a page fault if necessary\n          end else if (daccess_err || canonical_addr_check) begin\n            lsu_exception_o.cause = riscv::LOAD_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = '0;\n              lsu_exception_o.tinst = lsu_tinst_q;\n              lsu_exception_o.gva   = ld_st_v_i;\n            end\n          end\n        end\n      end"
+                },
+                {
+                  "file": "rtl/cva6_mmu.sv",
+                  "line_start": 607,
+                  "line_end": 764,
+                  "column": 7,
+                  "text": "if (dtlb_hit_q && lsu_req_q) begin\n        lsu_valid_o = 1'b1;\n        // exception priority:\n        // PAGE_FAULTS have higher priority than ACCESS_FAULTS\n        // virtual memory based exceptions are PAGE_FAULTS\n        // physical memory based exceptions are ACCESS_FAULTS (PMA/PMP)\n\n        // this is a store\n        if (lsu_is_store_q) begin\n          // check if the page is write-able and we are not violating privileges\n          // also check if the dirty flag is set\n          if(CVA6Cfg.RVH && en_ld_st_g_translation_i && (!dtlb_gpte_q.w || d_g_st_access_err || !dtlb_gpte_q.d)) begin\n            lsu_exception_o.cause = riscv::STORE_GUEST_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = CVA6Cfg.GPLEN'(lsu_gpaddr_q[(CVA6Cfg.IS_XLEN32 ? CVA6Cfg.VLEN : CVA6Cfg.GPLEN)-1:0]);\n              lsu_exception_o.tinst = '0;\n              lsu_exception_o.gva = ld_st_v_i;\n            end\n          end else if ((en_ld_st_translation_i || !CVA6Cfg.RVH) && (!dtlb_pte_q.w || daccess_err || canonical_addr_check || !dtlb_pte_q.d)) begin\n            lsu_exception_o.cause = riscv::STORE_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = '0;\n              lsu_exception_o.tinst = lsu_tinst_q;\n              lsu_exception_o.gva   = ld_st_v_i;\n            end\n          end\n          // this is a load\n        end else begin\n          if (CVA6Cfg.RVH && d_g_st_access_err) begin\n            lsu_exception_o.cause = riscv::LOAD_GUEST_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = CVA6Cfg.GPLEN'(lsu_gpaddr_q[(CVA6Cfg.IS_XLEN32 ? CVA6Cfg.VLEN : CVA6Cfg.GPLEN)-1:0]);\n              lsu_exception_o.tinst = '0;\n              lsu_exception_o.gva = ld_st_v_i;\n            end\n            // check for sufficient access privileges - throw a page fault if necessary\n          end else if (daccess_err || canonical_addr_check) begin\n            lsu_exception_o.cause = riscv::LOAD_PAGE_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, lsu_vaddr_q\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = '0;\n              lsu_exception_o.tinst = lsu_tinst_q;\n              lsu_exception_o.gva   = ld_st_v_i;\n            end\n          end\n        end\n      end else\n\n      // ---------\n      // DTLB Miss\n      // ---------\n      // watch out for exceptions\n      if (ptw_active && !walking_instr) begin\n        // page table walker threw an exception\n        if (ptw_error) begin\n          // an error makes the translation valid\n          lsu_valid_o = 1'b1;\n          // the page table walker can only throw page faults\n          if (lsu_is_store_q) begin\n            if (CVA6Cfg.RVH && ptw_error_at_g_st) begin\n              lsu_exception_o.cause = riscv::STORE_GUEST_PAGE_FAULT;\n              lsu_exception_o.valid = 1'b1;\n              if (CVA6Cfg.TvalEn)\n                lsu_exception_o.tval = {\n                  {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, update_vaddr\n                };\n              if (CVA6Cfg.RVH) begin\n                lsu_exception_o.tval2 = ptw_bad_gpaddr[CVA6Cfg.GPLEN-1:0];\n                lsu_exception_o.tinst = (ptw_err_at_g_int_st ? (CVA6Cfg.IS_XLEN64 ? riscv::READ_64_PSEUDOINSTRUCTION : riscv::READ_32_PSEUDOINSTRUCTION) : '0);\n                lsu_exception_o.gva = ld_st_v_i;\n              end\n            end else begin\n              lsu_exception_o.cause = riscv::STORE_PAGE_FAULT;\n              lsu_exception_o.valid = 1'b1;\n              if (CVA6Cfg.TvalEn)\n                lsu_exception_o.tval = {\n                  {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, update_vaddr\n                };\n              if (CVA6Cfg.RVH) begin\n                lsu_exception_o.tval2 = '0;\n                lsu_exception_o.tinst = lsu_tinst_q;\n                lsu_exception_o.gva   = ld_st_v_i;\n              end\n            end\n          end else begin\n            if (CVA6Cfg.RVH && ptw_error_at_g_st) begin\n              lsu_exception_o.cause = riscv::LOAD_GUEST_PAGE_FAULT;\n              lsu_exception_o.valid = 1'b1;\n              if (CVA6Cfg.TvalEn)\n                lsu_exception_o.tval = {\n                  {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, update_vaddr\n                };\n              if (CVA6Cfg.RVH) begin\n                lsu_exception_o.tval2 = ptw_bad_gpaddr[CVA6Cfg.GPLEN-1:0];\n                lsu_exception_o.tinst = (ptw_err_at_g_int_st ? (CVA6Cfg.IS_XLEN64 ? riscv::READ_64_PSEUDOINSTRUCTION : riscv::READ_32_PSEUDOINSTRUCTION) : '0);\n                lsu_exception_o.gva = ld_st_v_i;\n              end\n            end else begin\n              lsu_exception_o.cause = riscv::LOAD_PAGE_FAULT;\n              lsu_exception_o.valid = 1'b1;\n              if (CVA6Cfg.TvalEn)\n                lsu_exception_o.tval = {\n                  {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, update_vaddr\n                };\n              if (CVA6Cfg.RVH) begin\n                lsu_exception_o.tval2 = '0;\n                lsu_exception_o.tinst = lsu_tinst_q;\n                lsu_exception_o.gva   = ld_st_v_i;\n              end\n            end\n          end\n        end\n        if (ptw_access_exception) begin\n          // an error makes the translation valid\n          lsu_valid_o = 1'b1;\n          // Any fault of the page table walk should be based of the original access type\n          if (lsu_is_store_q && !CVA6Cfg.RVH && CVA6Cfg.PtLevels == 3) begin\n            lsu_exception_o.cause = riscv::ST_ACCESS_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, update_vaddr\n              };\n          end else begin\n            // the page table walker can only throw page faults\n            lsu_exception_o.cause = riscv::LD_ACCESS_FAULT;\n            lsu_exception_o.valid = 1'b1;\n            if (CVA6Cfg.TvalEn)\n              lsu_exception_o.tval = {\n                {CVA6Cfg.XLEN - CVA6Cfg.VLEN{lsu_vaddr_q[CVA6Cfg.VLEN-1]}}, update_vaddr\n              };\n            if (CVA6Cfg.RVH) begin\n              lsu_exception_o.tval2 = '0;\n              lsu_exception_o.tinst = lsu_tinst_q;\n              lsu_exception_o.gva   = ld_st_v_i;\n            end\n          end\n        end\n      end"
+                }
+              ],
+              "is_verified": true,
+              "credibility_score": 0.4
+            }
+          },
+          {
+            "expr": "en_ld_st_translation_i || en_ld_st_g_translation_i && !misaligned_ex_q.valid && !(dtlb_hit_q && lsu_req_q) && ptw_active && !walking_instr && ptw_error && lsu_is_store_q && CVA6Cfg.RVH && ptw_error_at_g_st",
+            "edge": {
+              "src": "1'b1",
+              "dst": "p187_mmu_top.u_mmu.lsu_exception_o.valid",
+              "kind": "DRIVER",
+              "condition": "en_ld_st_translation_i || en_ld_st_g_translation_i && !misaligned_ex_q.valid && !(dtlb_hit_q && lsu_req_q) && ptw_active && !walking_instr && ptw_error && lsu_is_store_q && CVA6Cfg.RVH && ptw_error_at_g_st"
+            },
+            "evidence": {
+              "signal": "p187_mmu_top.u_mmu.lsu_exception_o.valid",
+              "source_location": {
+                "file": "rtl/cva6_mmu.sv",
+                "line_start": 619,
+                "line_end": 619,
+                "column": 14
+              },
+              "source_text": "if(CVA6Cfg.RVH && en_ld_st_g_translation_i && (!dtlb_gpte_q.w || d_g_st_access_err || !dtlb_gpte_q.d)) begin",
+              "enclosing_always": null,
+              "enclosing_always_comb": null,
+              "enclosing_if": {
+                "file": "rtl/cva6_mmu.sv",
+                "line_start": 618,
+                "line_end": 642,
+                "column": 11,
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && /tmp/svq-pypi-smoke2/bin/sv_query params p187_mmu_top.u_mmu --filelist filelist.f --json 2>/dev/null | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+s=json.dumps(d)
+import re
+for k in ['SV','VLEN','XLEN','PLEN','PtLevels','VpnLen','TvalEn','RVH','IS_XLEN64']:
+    m=re.search(r'\"'+k+r'\"\s*:\s*(\{[^}]*\}|[^,\}]+)', s)
+    print(k, m.group(1)[:200] if m else 'NOT FOUND')
+"
+SV NOT FOUND
+VLEN NOT FOUND
+XLEN NOT FOUND
+PLEN NOT FOUND
+PtLevels NOT FOUND
+VpnLen NOT FOUND
+TvalEn NOT FOUND
+RVH NOT FOUND
+IS_XLEN64 NOT FOUND
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && /tmp/svq-pypi-smoke2/bin/sv_query params p187_mmu_top.u_mmu --filelist filelist.f --json 2>/dev/null | head -c 3000
+{"ok": true, "instance": "p187_mmu_top.u_mmu", "module_type": "cva6_mmu", "count": 13, "parameters": [{"name": "CVA6Cfg", "value": "17270'd91462955266386179955882639462842674798...e5153", "is_overridden": true, "is_local_param": false}, {"name": "icache_areq_t", "value": "None", "is_overridden": true, "is_local_param": false}, {"name": "icache_arsp_t", "value": "None", "is_overridden": true, "is_local_param": false}, {"name": "icache_dreq_t", "value": "None", "is_overridden": true, "is_local_param": false}, {"name": "icache_drsp_t", "value": "None", "is_overridden": true, "is_local_param": false}, {"name": "dcache_req_i_t", "value": "None", "is_overridden": true, "is_local_param": false}, {"name": "dcache_req_o_t", "value": "None", "is_overridden": true, "is_local_param": false}, {"name": "exception_t", "value": "None", "is_overridden": true, "is_local_param": false}, {"name": "HYP_EXT", "value": "32'd0", "is_overridden": false, "is_local_param": false}, {"name": "pte_cva6_t", "value": "None", "is_overridden": false, "is_local_param": true}, {"name": "tlb_update_cva6_t", "value": "None", "is_overridden": false, "is_local_param": true}, {"name": "PPNWMin", "value": "29", "is_overridden": false, "is_local_param": true}, {"name": "MegaPageSubstWidth", "value": "32'd9", "is_overridden": false, "is_local_param": true}]}
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && echo '=== dataflow: lsu_vaddr_i -> lsu_exception_o.valid ==='; /tmp/svq-pypi-smoke2/bin/sv_query dataflow analyze p187_mmu_top.u_mmu.lsu_vaddr_i p187_mmu_top.u_mmu.lsu_exception_o.valid --filelist filelist.f --json 2>/dev/null | head -c 2500; echo; echo '=== dataflow: canonical_addr_check -> lsu_exception_o.cause ==='; /tmp/svq-pypi-smoke2/bin/sv_query dataflow analyze p187_mmu_top.u_mmu.canonical_addr_check p187_mmu_top.u_mmu.lsu_exception_o.cause --filelist filelist.f --json 2>/dev/null | head -c 2500
+=== dataflow: lsu_vaddr_i -> lsu_exception_o.valid ===
+{"ok": true, "command": "dataflow", "params": {"from_signal": "p187_mmu_top.u_mmu.lsu_vaddr_i", "to_signal": "p187_mmu_top.u_mmu.lsu_exception_o.valid", "bits": null, "file": null, "filelist": "filelist.f", "from_snapshot": null, "max_paths": 100, "max_expansions": 200000, "timeout": null, "evidence": false}, "result": {"from_signal": "p187_mmu_top.u_mmu.lsu_vaddr_i", "to_signal": "p187_mmu_top.u_mmu.lsu_exception_o.valid", "from_resolved": "p187_mmu_top.u_mmu.lsu_vaddr_i", "to_resolved": "p187_mmu_top.u_mmu.lsu_exception_o.valid", "bits": {"src": {"requested_bit": null, "requested_range": null, "resolved": "p187_mmu_top.u_mmu.lsu_vaddr_i", "precision": "bus", "coarse_fallback": false, "kind": "bus"}, "dst": {"requested_bit": null, "requested_range": null, "resolved": "p187_mmu_top.u_mmu.lsu_exception_o.valid", "precision": "bus", "coarse_fallback": false, "kind": "bus"}, "coarse_fallback": false}, "is_reachable": false, "search_status": "complete", "truncated": false, "truncation_reason": "", "expansions": 0, "elapsed_s": 0.02299, "paths_count": 0, "intermediate_signals": [], "primary_latency_cycles": null, "primary_is_async": false, "all_conditions": [], "clock_domain": null, "timing_risk": "safe", "risk_model": "heuristic_v1_uncalibrated", "paths": []}, "errors": []}
+
+=== dataflow: canonical_addr_check -> lsu_exception_o.cause ===
+{"ok": true, "command": "dataflow", "params": {"from_signal": "p187_mmu_top.u_mmu.canonical_addr_check", "to_signal": "p187_mmu_top.u_mmu.lsu_exception_o.cause", "bits": null, "file": null, "filelist": "filelist.f", "from_snapshot": null, "max_paths": 100, "max_expansions": 200000, "timeout": null, "evidence": false}, "result": {"from_signal": "p187_mmu_top.u_mmu.canonical_addr_check", "to_signal": "p187_mmu_top.u_mmu.lsu_exception_o.cause", "from_resolved": "p187_mmu_top.u_mmu.canonical_addr_check", "to_resolved": "p187_mmu_top.u_mmu.lsu_exception_o.cause", "bits": {"src": {"requested_bit": null, "requested_range": null, "resolved": "p187_mmu_top.u_mmu.canonical_addr_check", "precision": "bus", "coarse_fallback": false, "kind": "bus"}, "dst": {"requested_bit": null, "requested_range": null, "resolved": "p187_mmu_top.u_mmu.lsu_exception_o.cause", "precision": "bus", "coarse_fallback": false, "kind": "bus"}, "coarse_fallback": false}, "is_reachable": false, "search_status": "complete", "truncated": false, "truncation_reason": "", "expansions": 0, "elapsed_s": 0.023069, "paths_count": 0, "intermediate_signals": [], "primary_latency_cycles": null, "primary_is_async": false, "all_conditions": [], "clock_domain": null, "timing_risk": "safe", "risk_model": "heuristic_v1_uncalibrated", "paths": []}, "errors": []}
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && /tmp/svq-pypi-smoke2/bin/sv_query trace evidence p187_mmu_top.u_mmu.canonical_addr_check --filelist filelist.f --json 2>/dev/null | head -c 2200
+{"ok": true, "command": "trace_evidence", "params": {"signals": ["p187_mmu_top.u_mmu.canonical_addr_check"], "file": null, "chain": false, "batch_file": null, "batch": null, "from_snapshot": null, "no_cache": false}, "result": {"signals": [{"signal": "p187_mmu_top.u_mmu.canonical_addr_check", "index": 0, "evidence": {"signal": "p187_mmu_top.u_mmu.canonical_addr_check", "source_location": null, "source_text": "", "enclosing_always": null, "enclosing_always_comb": null, "enclosing_if": null, "enclosing_assign": null, "enclosing_class": null, "enclosing_constraint": null, "enclosing_chain": [], "is_verified": false, "credibility_score": 0.0}, "error": "", "resolved_signal": "p187_mmu_top.u_mmu.canonical_addr_check", "resolution": "exact", "candidates": [], "suggestions": []}], "total_signals": 1, "failed_signals": 0}, "errors": [], "evidence": {"signal": "p187_mmu_top.u_mmu.canonical_addr_check", "source_location": null, "source_text": "", "enclosing_always": null, "enclosing_always_comb": null, "enclosing_if": null, "enclosing_assign": null, "enclosing_class": null, "enclosing_constraint": null, "enclosing_chain": [], "is_verified": false, "credibility_score": 0.0}}
+> build · hy4-flash-free
+[0m$ [0mwhich verilator iverilog vvp vcs xrun 2>/dev/null; echo "exit=$?"
+/opt/homebrew/bin/verilator
+iverilog not found
+vvp not found
+vcs not found
+xrun not found
+exit=1
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && /tmp/svq-pypi-smoke2/bin/sv_query search 'CVA6ConfigHExtEn|CVA6ConfigXlen|CVA6ConfigSvnapot' --file rtl/include/cv64a6_imafdc_sv39_config_pkg.sv --regex --json --context 0 2>/dev/null | head -80
+{"keyword": "CVA6ConfigHExtEn|CVA6ConfigXlen|CVA6ConfigSvnapot", "target": "/private/tmp/p192_sq/rtl/include/cv64a6_imafdc_sv39_config_pkg.sv", "regex": true, "case_insensitive": false, "total_matches": 6, "file_count": 1, "files": [{"file": "cv64a6_imafdc_sv39_config_pkg.sv", "match_count": 6, "lines": [{"line": 13, "text": "  localparam CVA6ConfigXlen = 64;"}, {"line": 27, "text": "  localparam CVA6ConfigHExtEn = 0;  // always disabled"}, {"line": 36, "text": "  localparam CVA6ConfigFetchUserWidth = CVA6ConfigXlen;"}, {"line": 38, "text": "  localparam CVA6ConfigDataUserWidth = CVA6ConfigXlen;"}, {"line": 79, "text": "      XLEN: unsigned'(CVA6ConfigXlen),"}, {"line": 103, "text": "      RVH: bit'(CVA6ConfigHExtEn),"}], "truncated": false}]}
+> build · hy4-flash-free
+[0m$ [0mdate +%s; date
+1795133441
+2026年11月20日 星期五 08时10分41秒 CST
+> build · hy4-flash-free
+I have a concrete root cause. Let me write the answer file.
+[0m← [0mWrite /tmp/p192_sq/ANSWER.md
+Created file successfully: /tmp/p192_sq/ANSWER.md
+> build · hy4-flash-free
+[0m→ [0mRead /tmp/p192_sq/rtl/cva6_mmu.sv [90m[offset=535, limit=12][0m
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_sq && ls -l ANSWER.md && git status --short 2>/dev/null || true; wc -l ANSWER.md
+-rw-r--r--@ 1 fundou  wheel  12276 11月 20 08:11 ANSWER.md
+     239 ANSWER.md
+> build · hy4-flash-free
+Done. Summary:
+
+**Root cause:** In `rtl/cva6_mmu.sv:542–543`, `canonical_addr_check` is computed combinationally from the *current* inputs `lsu_req_i`/`lsu_vaddr_i[63:38]`, but it is consumed at lines 630 and 658 inside the DTLB-hit branch that evaluates the *registered* request (`dtlb_hit_q && lsu_req_q`, `lsu_vaddr_q`). This one-stage mismatch means a non-canonical address presented one cycle after a legal access spuriously faults the earlier access, with `tval` taken from the earlier (canonical) `lsu_vaddr_q` — matching causes 13/15 and the canonical `tval`.
+
+**Fix (not applied):** change those two driver references from `lsu_req_i`/`lsu_vaddr_i` to `lsu_req_q`/`lsu_vaddr_q`, aligning the flag with the response stage.
+
+**Evidence:** sv_query `search`, `drivers` (bit hint `lsu_vaddr_i[32'd63:32'd38]`), `trace profile` (no clock domain vs. stage-0 flop), and `controlflow analyze --evidence` (condition binds `canonical_addr_check` with `dtlb_hit_q && lsu_req_q` and shows `tval` from `lsu_vaddr_q`).
+
+Full write-up, diff, alternatives, and elapsed time are in `/tmp/p192_sq/ANSWER.md`.

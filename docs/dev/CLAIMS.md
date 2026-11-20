@@ -54,6 +54,7 @@
 | C-31 | 5 个 canonical fixture 当前 shadow=0，保留默认定名空间；不新增 drop_shadows API | fixture | `test_p186_1_shadow_measure.py` / `measure_shadow_nodes.py` | `verified`（fixture 范围） |
 | C-32 | CVA6 2 个历史 fix 的 non-blind 对照：drivers --evidence 命中驱动表达式；bit-select 需下钻；非自动发现率、无本地动态 oracle | doc | `P187_VALUE_CASES_CVA6_2026-11-19.md` / `P187_FOLLOWUPS_2026-11-19.md` | `scoped`（non-blind，C2 总线级漏报已记录） |
 | C-33 | bit-select hints: drivers/loads 附 has_bit_select_*/bit_nodes；dataflow bus false 附 bit_node_paths_exist；不改变 false/empty | fixture | `test_p191_1_bit_hints.py` / `test_p191_2_trace_bit_hints.py` / `test_p191_3_dataflow_bit_hints.py` | `verified` |
+| C-34 | P192.2 N=1 同模型盲对照：两臂均精确 root cause；sv_query 给上游等价 2 行 patch，source-only 给有效替代 patch + Verilator 验证；不能外推为准确率/提速 | doc | `P192_BLIND_COMPARE_2026-11-20.md` | `scoped`（N=1、同模型、症状已知） |
 
 ---
 

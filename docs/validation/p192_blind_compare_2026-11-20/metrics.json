@@ -1,0 +1,16 @@
+{
+  "date": "2026-11-20",
+  "task": "P192.2 issue #3404 blind comparison",
+  "model": "opencode/hy4-flash-free",
+  "source_only": {
+    "elapsed_s": 547,
+    "answer": "source_only/ANSWER.md",
+    "run_log": "source_only/run.log"
+  },
+  "sv_query": {
+    "elapsed_s": 516,
+    "answer": "sv_query/ANSWER.md",
+    "run_log": "sv_query/run.log"
+  },
+  "oracle": "C1 fix 47b72e31: canonical_addr_check uses lsu_req_q/lsu_vaddr_q"
+}

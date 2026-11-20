@@ -17,7 +17,7 @@
 | 全量 (canonical) | **3130 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-19 P182.5 全量复核（3130）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (531 份, 只增不改) | 每次迭代一份（2026-11-16 实测） |
+| 迭代记录 | `docs/task_tree/iterations/` (532 份, 只增不改) | 每次迭代一份（2026-11-16 实测） |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 | 语义 regex 纪律 | `python3 tools/check_semantic_regex.py` 必须 ✅ | 仅 UVM 宏例外；class/constraint/covergroup 语义走 slang (iter_368) |
@@ -243,7 +243,11 @@
 | [validation/P187_VALUE_CASES_CVA6_2026-11-19.md](validation/P187_VALUE_CASES_CVA6_2026-11-19.md) |
 | [validation/P187_FOLLOWUPS_2026-11-19.md](validation/P187_FOLLOWUPS_2026-11-19.md) |
 | [validation/P192_blind_3404/README.md](validation/P192_blind_3404/README.md) |
-| [validation/P192_blind_3404/TASK.md](validation/P192_blind_3404/TASK.md) | **P192.1 blind task**: issue #3404 symptom-only task statement（无 fix） |
+| [validation/P192_blind_3404/TASK.md](validation/P192_blind_3404/TASK.md) |
+| [validation/P192_BLIND_COMPARE_2026-11-20.md](validation/P192_BLIND_COMPARE_2026-11-20.md) |
+| [validation/p192_blind_compare_2026-11-20/source_only/ANSWER.md](validation/p192_blind_compare_2026-11-20/source_only/ANSWER.md) | **P192.2 source-only** 盲解答案与证据 |
+| [validation/p192_blind_compare_2026-11-20/sv_query/ANSWER.md](validation/p192_blind_compare_2026-11-20/sv_query/ANSWER.md) | **P192.2 sv_query** 盲解答案与证据 | **P192.2**: source-only vs sv_query 盲对照；两臂精确 root cause，sv_query 最小 patch，source-only 动态验证 |
+ **P192.1 blind task**: issue #3404 symptom-only task statement（无 fix） |
  **P192.1 blind package**: issue #3404 symptom-only, parent RTL, portable filelist, checksums |
  **P187 follow-ups**: bit-select 查询、dataflow unknown、evidence source、snapshot/filelist 建议 |
  **P187 CVA6 value cases**: 2 个历史 fix 的 grep vs sv_query 对照；位选下钻命中 / 总线级漏报 |

@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P192.2 source-only vs sv_query blind comparison <进行中>
+current item : P190.1 reproduce MissingTimeScale conditions + fix or retire claim <待做>
 
 ## 计划树
 
@@ -579,9 +579,9 @@ P191 bit-select discoverability + dual hints (P187 P0) <已完成>
 -- P191.4 C1/C2 regression：hint 必现、默认键不变、无 bit-select 不提示 <已完成>
 -- P191.5 query-protocol skill 五步协议 + docs（hint 之后） <已完成>
 
-P192 blind external value validation (P2) <待做>
+P192 blind external value validation (P2) <已完成>
 -- P192.1 issue #3404 symptom-only protocol（不给 fix diff） <已完成>
--- P192.2 source-only vs sv_query blind comparison <进行中>
+-- P192.2 source-only vs sv_query blind comparison <已完成>
 
 P190 diagnose timescale trigger investigation (2026-11-18 review) <待做>
 -- P190.1 reproduce MissingTimeScale conditions + fix or retire claim <待做>

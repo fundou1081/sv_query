@@ -9,12 +9,12 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P192.2 source-only vs sv_query blind comparison** `<进行中>`
+- **当前 item**: **P190.1 reproduce MissingTimeScale conditions + fix or retire claim** `<待做>`
   - P182 组全部完成：envelope / schema / stats / agent entry / snapshot eval / governance
   - P188 release readiness 完成；发布动作见 [RELEASE.md](RELEASE.md)
   - P189.1 docs 自洽 gate 完成
   - P182.5 结论：不扩 source-dependent snapshot、不做 serve、不改 cache 默认
-  - P192.1 盲测包完成；下一步 P192.2 盲对照
+  - P192.2 盲对照完成：两臂精确 root cause；下一步 P190.1
 
 
 ## 📌 当前真实基线

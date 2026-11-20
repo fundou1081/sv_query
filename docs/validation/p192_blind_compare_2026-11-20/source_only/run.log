@@ -1,0 +1,1184 @@
+[0m
+> build · hy4-flash-free
+I'll start by reading the task files and exploring the RTL directory.
+[0m→ [0mRead /tmp/p192_so/TASK.md 
+[0m→ [0mRead /tmp/p192_so/filelist.f 
+[0m→ [0mRead /tmp/p192_so/rtl 
+> build · hy4-flash-free
+Let me look at the RTL files and their sizes.
+[0m$ [0mwc -l /tmp/p192_so/rtl/*.sv /tmp/p192_so/rtl/include/*.sv
+61 /tmp/p192_so/rtl/cf_math_pkg.sv
+     803 /tmp/p192_so/rtl/cva6_mmu.sv
+     703 /tmp/p192_so/rtl/cva6_ptw.sv
+     843 /tmp/p192_so/rtl/cva6_shared_tlb.sv
+     537 /tmp/p192_so/rtl/cva6_tlb.sv
+     315 /tmp/p192_so/rtl/lfsr.sv
+     112 /tmp/p192_so/rtl/lzc.sv
+      77 /tmp/p192_so/rtl/p187_mmu_top.sv
+     127 /tmp/p192_so/rtl/pmp_entry.sv
+      75 /tmp/p192_so/rtl/pmp.sv
+     876 /tmp/p192_so/rtl/include/ariane_pkg.sv
+     222 /tmp/p192_so/rtl/include/build_config_pkg.sv
+     537 /tmp/p192_so/rtl/include/config_pkg.sv
+     189 /tmp/p192_so/rtl/include/cv64a6_imafdc_sv39_config_pkg.sv
+     116 /tmp/p192_so/rtl/include/dummy_l15_pkg.sv
+    1025 /tmp/p192_so/rtl/include/riscv_pkg.sv
+      60 /tmp/p192_so/rtl/include/std_cache_pkg.sv
+    6678 total
+> build · hy4-flash-free
+Let me read the MMU top and the simulation top.
+[0m→ [0mRead /tmp/p192_so/rtl/p187_mmu_top.sv 
+[0m→ [0mRead /tmp/p192_so/rtl/cva6_mmu.sv 
+> build · hy4-flash-free
+Let me search for all uses of `canonical_addr_check` and related canonical-check logic across the RTL.
+[0m✱ [0mGrep "CVA6Cfg.SV\b" [90min /tmp/p192_so/rtl · 14 matches[0m
+[0m✱ [0mGrep "canonical_addr_check" [90min /tmp/p192_so/rtl · 4 matches[0m
+> build · hy4-flash-free
+Let me check the configuration values to confirm Sv39 settings.
+[0m✱ [0mGrep "\b(SV|VLEN|PLEN|XLEN|PtLevels|VpnLen|PPNW|TvalEn|RVH)\b" [90min /tmp/p192_so/rtl/include/cv64a6_imafdc_sv39_config_pkg.sv · 4 matches[0m
+> build · hy4-flash-free
+[0m→ [0mRead /tmp/p192_so/rtl/include/cv64a6_imafdc_sv39_config_pkg.sv [90m[offset=60, limit=90][0m
+> build · hy4-flash-free
+[0m✱ [0mGrep "\bSV:|SV\s*=|SV\b" [90min /tmp/p192_so/rtl/include/build_config_pkg.sv · 3 matches[0m
+> build · hy4-flash-free
+[0m$ [0mfor t in verilator iverilog vvp pyslang slang sv2v yosys python3; do printf '%s: ' "$t"; command -v "$t" || echo MISSING; done
+verilator: /opt/homebrew/bin/verilator
+iverilog: MISSING
+vvp: MISSING
+pyslang: MISSING
+slang: MISSING
+sv2v: MISSING
+yosys: MISSING
+python3: ~/miniconda3/bin/python3
+> build · hy4-flash-free
+Let me examine the PTW's `update_vaddr` handling and shared TLB to rule out alternative causes.
+[0m✱ [0mGrep "update_vaddr" [90min /tmp/p192_so/rtl/cva6_ptw.sv · 2 matches[0m
+[0m✱ [0mGrep "ptw_error|ptw_active|bad_paddr|bad_gpaddr" [90min /tmp/p192_so/rtl/cva6_ptw.sv · 12 matches[0m
+> build · hy4-flash-free
+[0m→ [0mRead /tmp/p192_so/rtl/cva6_ptw.sv [90m[offset=140, limit=110][0m
+> build · hy4-flash-free
+Let me read the PTW state machine to understand the request/response protocol for a possible simulation.
+[0m→ [0mRead /tmp/p192_so/rtl/cva6_ptw.sv [90m[offset=1, limit=140][0m
+> build · hy4-flash-free
+[0m→ [0mRead /tmp/p192_so/rtl/cva6_ptw.sv [90m[offset=290, limit=170][0m
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && verilator --lint-only --top-module p187_mmu_top -f filelist.f 2>&1 | head -60
+%Warning-PINMISSING: rtl/p187_mmu_top.sv:71:5: Instance has missing pin: 'flush_i'
+   71 |   ) u_mmu (
+      |     ^~~~~
+                     rtl/cva6_mmu.sv:41:17: ... Location of port declaration
+   41 |     input logic flush_i,
+      |                 ^~~~~~~
+                     ... For warning description see https://verilator.org/warn/PINMISSING?v=5.048
+                     ... Use "/* verilator lint_off PINMISSING */" and lint_on around source to disable this message.
+%Warning-PINMISSING: rtl/p187_mmu_top.sv:71:5: Instance has missing pin: 'enable_translation_i'
+   71 |   ) u_mmu (
+      |     ^~~~~
+                     rtl/cva6_mmu.sv:42:17: ... Location of port declaration
+   42 |     input logic enable_translation_i,
+      |                 ^~~~~~~~~~~~~~~~~~~~
+%Warning-PINMISSING: rtl/p187_mmu_top.sv:71:5: Instance has missing pin: 'enable_g_translation_i'
+   71 |   ) u_mmu (
+      |     ^~~~~
+                     rtl/cva6_mmu.sv:43:17: ... Location of port declaration
+   43 |     input logic enable_g_translation_i,
+      |                 ^~~~~~~~~~~~~~~~~~~~~~
+%Warning-PINMISSING: rtl/p187_mmu_top.sv:71:5: Instance has missing pin: 'en_ld_st_translation_i'
+   71 |   ) u_mmu (
+      |     ^~~~~
+                     rtl/cva6_mmu.sv:44:17: ... Location of port declaration
+   44 |     input logic en_ld_st_translation_i,   
+      |                 ^~~~~~~~~~~~~~~~~~~~~~
+%Warning-PINMISSING: rtl/p187_mmu_top.sv:71:5: Instance has missing pin: 'en_ld_st_g_translation_i'
+   71 |   ) u_mmu (
+      |     ^~~~~
+                     rtl/cva6_mmu.sv:45:17: ... Location of port declaration
+   45 |     input logic en_ld_st_g_translation_i,   
+      |                 ^~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-PINMISSING: rtl/p187_mmu_top.sv:71:5: Instance has missing pin: 'icache_areq_i'
+   71 |   ) u_mmu (
+      |     ^~~~~
+                     rtl/cva6_mmu.sv:47:25: ... Location of port declaration
+   47 |     input icache_arsp_t icache_areq_i,
+      |                         ^~~~~~~~~~~~~
+%Warning-PINMISSING: rtl/p187_mmu_top.sv:71:5: Instance has missing pin: 'icache_areq_o'
+   71 |   ) u_mmu (
+      |     ^~~~~
+                     rtl/cva6_mmu.sv:48:26: ... Location of port declaration
+   48 |     output icache_areq_t icache_areq_o,
+      |                          ^~~~~~~~~~~~~
+%Warning-PINMISSING: rtl/p187_mmu_top.sv:71:5: Instance has missing pin: 'misaligned_ex_i'
+   71 |   ) u_mmu (
+      |     ^~~~~
+                     rtl/cva6_mmu.sv:52:23: ... Location of port declaration
+   52 |     input exception_t misaligned_ex_i,
+      |                       ^~~~~~~~~~~~~~~
+%Warning-PINMISSING: rtl/p187_mmu_top.sv:71:5: Instance has missing pin: 'lsu_tinst_i'
+   71 |   ) u_mmu (
+      |     ^~~~~
+                     rtl/cva6_mmu.sv:55:24: ... Location of port declaration
+   55 |     input logic [31:0] lsu_tinst_i,   
+      |                        ^~~~~~~~~~~
+%Warning-PINMISSING: rtl/p187_mmu_top.sv:71:5: Instance has missing pin: 'lsu_is_store_i'
+   71 |   ) u_mmu (
+      |     ^~~~~
+                     rtl/cva6_mmu.sv:56:17: ... Location of port declaration
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && verilator --lint-only --top-module p187_mmu_top -f filelist.f 2>&1 | grep -E '%Error|%Warning-(LATCH|MULTITOP|WIDTH|UNUSESIGNAL)' | head -40; echo "EXIT_PIPE_DONE"
+%Warning-WIDTHTRUNC: rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:159:7: Operator PATMEMBER expects 2 bits on the Pattern value, but Pattern value's REPLICATE generates 4 bits.
+%Warning-WIDTHTRUNC: rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:160:7: Operator PATMEMBER expects 10 bits on the Pattern value, but Pattern value's REPLICATE generates 100 bits.
+%Warning-WIDTHTRUNC: rtl/include/build_config_pkg.sv:186:21: Operator ASSIGN expects 1 bits on the Assign RHS, but Assign RHS's OR generates 32 bits.
+%Warning-WIDTHEXPAND: rtl/lfsr.sv:298:17: Operator GT expects 32 bits on the LHS, but LHS's VARREF 'RstVal' generates 8 bits.
+%Warning-WIDTHTRUNC: rtl/cva6_tlb.sv:100:20: Operator ASSIGNW expects 1 bits on the Assign RHS, but Assign RHS's COND generates 3 bits.
+%Warning-LATCH: rtl/cva6_mmu.sv:375:3: Latch inferred for signal 'p187_mmu_top.u_mmu.final_fetch_ppn' (not all control paths of combinational always assign a value)
+%Warning-LATCH: rtl/cva6_tlb.sv:184:3: Latch inferred for signal 'p187_mmu_top.u_mmu.i_itlb.patched_pte' (not all control paths of combinational always assign a value)
+%Warning-LATCH: rtl/cva6_tlb.sv:298:3: Latch inferred for signal 'p187_mmu_top.u_mmu.i_itlb.temp_stored_vpn' (not all control paths of combinational always assign a value)
+%Warning-LATCH: rtl/cva6_tlb.sv:298:3: Latch inferred for signal 'p187_mmu_top.u_mmu.i_itlb.flush_vpn_masked' (not all control paths of combinational always assign a value)
+%Warning-LATCH: rtl/cva6_tlb.sv:298:3: Latch inferred for signal 'p187_mmu_top.u_mmu.i_itlb.stored_vpn_masked' (not all control paths of combinational always assign a value)
+%Warning-LATCH: rtl/cva6_tlb.sv:298:3: Latch inferred for signal 'p187_mmu_top.u_mmu.i_itlb.flush_addr_napot_match' (not all control paths of combinational always assign a value)
+%Warning-LATCH: rtl/cva6_tlb.sv:298:3: Latch inferred for signal 'p187_mmu_top.u_mmu.i_itlb.flush_addr_matches' (not all control paths of combinational always assign a value)
+%Warning-LATCH: rtl/cva6_tlb.sv:298:3: Latch inferred for signal 'p187_mmu_top.u_mmu.i_itlb.vpn_to_store' (not all control paths of combinational always assign a value)
+%Warning-LATCH: rtl/cva6_tlb.sv:184:3: Latch inferred for signal 'p187_mmu_top.u_mmu.i_dtlb.patched_pte' (not all control paths of combinational always assign a value)
+%Warning-LATCH: rtl/cva6_tlb.sv:298:3: Latch inferred for signal 'p187_mmu_top.u_mmu.i_dtlb.temp_stored_vpn' (not all control paths of combinational always assign a value)
+%Warning-LATCH: rtl/cva6_tlb.sv:298:3: Latch inferred for signal 'p187_mmu_top.u_mmu.i_dtlb.flush_vpn_masked' (not all control paths of combinational always assign a value)
+%Warning-LATCH: rtl/cva6_tlb.sv:298:3: Latch inferred for signal 'p187_mmu_top.u_mmu.i_dtlb.stored_vpn_masked' (not all control paths of combinational always assign a value)
+%Warning-LATCH: rtl/cva6_tlb.sv:298:3: Latch inferred for signal 'p187_mmu_top.u_mmu.i_dtlb.flush_addr_napot_match' (not all control paths of combinational always assign a value)
+%Warning-LATCH: rtl/cva6_tlb.sv:298:3: Latch inferred for signal 'p187_mmu_top.u_mmu.i_dtlb.flush_addr_matches' (not all control paths of combinational always assign a value)
+%Warning-LATCH: rtl/cva6_tlb.sv:298:3: Latch inferred for signal 'p187_mmu_top.u_mmu.i_dtlb.vpn_to_store' (not all control paths of combinational always assign a value)
+%Error: Exiting due to 69 warning(s)
+EXIT_PIPE_DONE
+> build · hy4-flash-free
+[0m→ [0mRead /tmp/p192_so/rtl/cva6_ptw.sv [90m[offset=580, limit=124][0m
+> build · hy4-flash-free
+[0m→ [0mRead /tmp/p192_so/rtl/cva6_tlb.sv [90m[offset=1, limit=200][0m
+> build · hy4-flash-free
+[0m→ [0mRead /tmp/p192_so/rtl/pmp.sv 
+> build · hy4-flash-free
+[0m✱ [0mGrep "pmp|allow_access|priv_lvl" [90min /tmp/p192_so/rtl/cva6_ptw.sv · 10 matches[0m
+> build · hy4-flash-free
+[0m✱ [0mGrep "pmp_access_t|PMPCFG|pmpcfg_t|PMP_READ|PMP_WRITE|addr_mode" [90min /tmp/p192_so/rtl/include/riscv_pkg.sv · 20 matches[0m
+> build · hy4-flash-free
+[0m→ [0mRead /tmp/p192_so/rtl/include/riscv_pkg.sv [90m[offset=826, limit=36][0m
+> build · hy4-flash-free
+[0m→ [0mRead /tmp/p192_so/rtl/pmp_entry.sv 
+> build · hy4-flash-free
+[0m→ [0mRead /tmp/p192_so/rtl/cva6_ptw.sv [90m[offset=246, limit=20][0m
+> build · hy4-flash-free
+[0m✱ [0mGrep "PLEN|PPNW|GPPNW|VPNW|CVA6ConfigAxiAddrWidth" [90min /tmp/p192_so/rtl/include/build_config_pkg.sv · 6 matches[0m
+> build · hy4-flash-free
+[0m→ [0mRead /tmp/p192_so/rtl/cva6_ptw.sv [90m[offset=459, limit=122][0m
+> build · hy4-flash-free
+[0m✱ [0mGrep "CVA6ConfigHExtEn|CVA6ConfigXlen|CVA6ConfigSvnapotEn" [90min /tmp/p192_so/rtl/include/cv64a6_imafdc_sv39_config_pkg.sv · 6 matches[0m
+> build · hy4-flash-free
+I have a strong hypothesis. Let me verify it with a real simulation using a small testbench (outside `rtl/`).
+[0m← [0mWrite /tmp/p192_so/tb_mmu.sv
+Created file successfully: /tmp/p192_so/tb_mmu.sv
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && verilator --binary -j 0 --timing -Wno-fatal -Wno-PINMISSING -Wno-LATCH --top-module tb_mmu -f filelist.f tb_mmu.sv -o sim_tb 2>&1 | tail -30
+6 | module tb_mmu;
+      |        ^~~~~~
+%Warning-TIMESCALEMOD: rtl/pmp_entry.sv:15:8: Timescale missing on this module as other modules have it (IEEE 1800-2023 3.14.2.3)
+   15 | module pmp_entry #(
+      |        ^~~~~~~~~
+                       tb_mmu.sv:6:8: ... Location of module with timescale
+    6 | module tb_mmu;
+      |        ^~~~~~
+%Warning-TIMESCALEMOD: rtl/p187_mmu_top.sv:8:8: Timescale missing on this module as other modules have it (IEEE 1800-2023 3.14.2.3)
+    8 | module p187_mmu_top;
+      |        ^~~~~~~~~~~~
+                       tb_mmu.sv:6:8: ... Location of module with timescale
+    6 | module tb_mmu;
+      |        ^~~~~~
+%Error: tb_mmu.sv:88:20: Can't find definition of task/function: 'avoid_neg'
+   88 |   riscv::pmpcfg_t [avoid_neg(CVA6Cfg.NrPMPEntries-1):0] pmpcfg_i = '0;
+      |                    ^~~~~~~~~
+        ... See the manual at https://verilator.org/verilator_doc.html?v=5.048 for more assistance.
+%Error: tb_mmu.sv:89:10: Can't find definition of task/function: 'avoid_neg'
+   89 |   logic [avoid_neg(CVA6Cfg.NrPMPEntries-1):0][CVA6Cfg.PLEN-3:0] pmpaddr_i = '0;
+      |          ^~~~~~~~~
+%Error: tb_mmu.sv:97:6: Can't find definition of variable: 'clk_i'
+                      : ... Suggested alternative: 'clk'
+   97 |     .clk_i, .rst_ni, .flush_i, .enable_translation_i, .enable_g_translation_i,
+      |      ^~~~~
+%Error: tb_mmu.sv:97:14: Can't find definition of variable: 'rst_ni'
+                       : ... Suggested alternative: 'rst_n'
+   97 |     .clk_i, .rst_ni, .flush_i, .enable_translation_i, .enable_g_translation_i,
+      |              ^~~~~~
+%Error: Exiting due to 4 error(s)
+> build · hy4-flash-free
+[0m← [0mEdit /tmp/p192_so/tb_mmu.sv
+Index: /tmp/p192_so/tb_mmu.sv
+===================================================================
+--- /tmp/p192_so/tb_mmu.sv
++++ /tmp/p192_so/tb_mmu.sv
+@@ -5,8 +5,9 @@
+ 
+ module tb_mmu;
+   import config_pkg::*;
+   import cva6_config_pkg::*;
++  import ariane_pkg::*;
+ 
+   localparam cva6_cfg_t CVA6Cfg = build_config_pkg::build_config(cva6_cfg);
+ 
+   typedef struct packed {
+
+> build · hy4-flash-free
+[0m← [0mEdit /tmp/p192_so/tb_mmu.sv
+Index: /tmp/p192_so/tb_mmu.sv
+===================================================================
+--- /tmp/p192_so/tb_mmu.sv
++++ /tmp/p192_so/tb_mmu.sv
+@@ -94,9 +94,9 @@
+     .icache_areq_t(icache_areq_t), .icache_arsp_t(icache_arsp_t),
+     .icache_dreq_t(logic), .icache_drsp_t(logic),
+     .dcache_req_i_t(dcache_req_i_t), .dcache_req_o_t(dcache_req_o_t)
+   ) u_mmu (
+-    .clk_i, .rst_ni, .flush_i, .enable_translation_i, .enable_g_translation_i,
++    .clk_i(clk), .rst_ni(rst_n), .flush_i, .enable_translation_i, .enable_g_translation_i,
+     .en_ld_st_translation_i, .en_ld_st_g_translation_i,
+     .icache_areq_i, .icache_areq_o,
+     .misaligned_ex_i, .lsu_req_i, .lsu_vaddr_i, .lsu_tinst_i, .lsu_is_store_i,
+     .csr_hs_ld_st_inst_o, .lsu_dtlb_hit_o, .lsu_dtlb_ppn_o,
+
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && verilator --binary -j 0 --timing -Wno-fatal -Wno-PINMISSING -Wno-LATCH --top-module tb_mmu -f filelist.f tb_mmu.sv -o sim_tb 2>&1 | grep -E '%Error' | head -30; echo BUILD_DONE
+%Error: 'make -C obj_dir -f Vtb_mmu.mk -j 8' exited with 2
+%Error: Command Failed /opt/homebrew/Cellar/verilator/5.048/bin/verilator_bin --binary -j 0 --timing -Wno-fatal -Wno-PINMISSING -Wno-LATCH --top-module tb_mmu -f filelist.f tb_mmu.sv -o sim_tb
+BUILD_DONE
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && verilator --binary -j 1 --timing -Wno-fatal -Wno-PINMISSING -Wno-LATCH --top-module tb_mmu -f filelist.f tb_mmu.sv -o sim_tb 2>&1 | tail -40
+... For warning description see https://verilator.org/warn/WIDTHTRUNC?v=5.048
+                     ... Use "/* verilator lint_off WIDTHTRUNC */" and lint_on around source to disable this message.
+%Warning-WIDTHTRUNC: rtl/include/cv64a6_imafdc_sv39_config_pkg.sv:160:7: Operator PATMEMBER expects 10 bits on the Pattern value, but Pattern value's REPLICATE generates 100 bits.
+  160 |       SdtrigSupportedMatch: {10{10'b00_0000_0001}},
+      |       ^~~~~~~~~~~~~~~~~~~~
+%Warning-WIDTHTRUNC: rtl/include/build_config_pkg.sv:186:21: Operator ASSIGN expects 1 bits on the Assign RHS, but Assign RHS's OR generates 32 bits.
+                                                           : ... note: In instance 'tb_mmu'
+  186 |     cfg.AXI_USER_EN = CVA6Cfg.DataUserEn | CVA6Cfg.FetchUserEn;
+      |                     ^
+%Warning-WIDTHEXPAND: rtl/lfsr.sv:298:17: Operator GT expects 32 bits on the LHS, but LHS's VARREF 'RstVal' generates 8 bits.
+                                        : ... note: In instance 'tb_mmu.u_mmu.i_shared_tlb.i_lfsr'
+  298 |   assert(RstVal > unsigned'(0)) else
+      |                 ^
+                      ... For warning description see https://verilator.org/warn/WIDTHEXPAND?v=5.048
+                      ... Use "/* verilator lint_off WIDTHEXPAND */" and lint_on around source to disable this message.
+%Warning-SELRANGE: rtl/cva6_shared_tlb.sv:666:17: Extracting 29 bits from only 27 bit number
+                                                : ... note: In instance 'tb_mmu.u_mmu.i_shared_tlb'
+  666 |           gppn_i[CVA6Cfg.GPPNW-1:0] = pte[i][0].ppn[CVA6Cfg.GPPNW-1:0];
+      |                 ^
+                   ... For warning description see https://verilator.org/warn/SELRANGE?v=5.048
+                   ... Use "/* verilator lint_off SELRANGE */" and lint_on around source to disable this message.
+%Warning-SELRANGE: rtl/cva6_shared_tlb.sv:666:17: Selection index out of range: 28:0 outside 26:0
+                                                : ... note: In instance 'tb_mmu.u_mmu.i_shared_tlb'
+  666 |           gppn_i[CVA6Cfg.GPPNW-1:0] = pte[i][0].ppn[CVA6Cfg.GPPNW-1:0];
+      |                 ^
+%Warning-WIDTHTRUNC: rtl/cva6_tlb.sv:100:20: Operator ASSIGNW expects 1 bits on the Assign RHS, but Assign RHS's COND generates 3 bits.
+                                           : ... note: In instance 'tb_mmu.u_mmu.i_dtlb'
+  100 |   assign v_st_enbl = (CVA6Cfg.RVH) ? {v_i, g_st_enbl_i, s_st_enbl_i} : '1;
+      |                    ^
+c++ -Os  -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=1 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension    -DVL_TIME_CONTEXT   -std=gnu++20 -c -o verilated.o /opt/homebrew/Cellar/verilator/5.048/share/verilator/include/verilated.cpp
+warning: unknown warning option '-Wno-unnecessary-virtual-specifier'; did you mean '-Wno-duplicate-decl-specifier'? [-Wunknown-warning-option]
+In file included from /opt/homebrew/Cellar/verilator/5.048/share/verilator/include/verilated.cpp:51:
+/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/verilatedos.h:371:10: fatal error: 'cstdint' file not found
+  371 | #include <cstdint>
+      |          ^~~~~~~~~
+1 warning and 1 error generated.
+make: *** [verilated.o] Error 1
+%Error: 'make -C obj_dir -f Vtb_mmu.mk -j 1' exited with 2
+        ... See the manual at https://verilator.org/verilator_doc.html?v=5.048 for more assistance.
+%Error: Command Failed /opt/homebrew/Cellar/verilator/5.048/bin/verilator_bin --binary -j 1 --timing -Wno-fatal -Wno-PINMISSING -Wno-LATCH --top-module tb_mmu -f filelist.f tb_mmu.sv -o sim_tb
+> build · hy4-flash-free
+[0m$ [0mxcrun --find clang++ 2>&1; xcrun --show-sdk-path 2>&1; c++ --version 2>&1 | head -5; ls /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs 2>&1 | head
+/Library/Developer/CommandLineTools/usr/bin/clang++
+/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
+Apple clang version 17.0.0 (clang-1700.6.4.2)
+Target: arm64-apple-darwin25.3.0
+Thread model: posix
+InstalledDir: /Library/Developer/CommandLineTools/usr/bin
+ls: /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs: No such file or directory
+> build · hy4-flash-free
+[0m$ [0mls /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/cstdint 2>&1; echo '---'; echo 'int main(){return 0;}' > /tmp/t.cpp && c++ -c /tmp/t.cpp -o /tmp/t.o 2>&1 | head
+ls: /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/cstdint: No such file or directory
+---
+> build · hy4-flash-free
+[0m$ [0mls /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include 2>&1 | head -20; echo '---'; find /Library/Developer/CommandLineTools -name cstdint 2>/dev/null | head; echo '---'; find /usr -name cstdint 2>/dev/null | head
+___wctype.h
+__libunwind_config.h
+__wctype.h
+__xlocale.h
+_abort.h
+_assert.h
+_bounds.h
+_ctermid.h
+_ctype.h
+_DarwinFoundation2.apinotes
+_inttypes.h
+_langinfo.h
+_locale_posix2008.h
+_locale.h
+_mb_cur_max.h
+_modules
+_monetary.h
+_printf.h
+_regex.h
+_static_assert.h
+---
+/Library/Developer/CommandLineTools/SDKs/MacOSX15.4.sdk/usr/include/c++/v1/cstdint
+/Library/Developer/CommandLineTools/SDKs/MacOSX13.1.sdk/usr/include/c++/v1/cstdint
+/Library/Developer/CommandLineTools/SDKs/MacOSX26.2.sdk/usr/include/c++/v1/cstdint
+/Library/Developer/CommandLineTools/SDKs/MacOSX26.2.sdk/usr/include/c++/v1/__cxx03/cstdint
+---
+> build · hy4-flash-free
+[0m$ [0mls -la /Library/Developer/CommandLineTools/SDKs/; echo '---'; SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.2.sdk c++ -E -x c++ - -v < /dev/null 2>&1 | grep -A8 'search starts here' | head -12
+total 0
+drwxr-xr-x  8 root  wheel  256  3月  8  2026 .
+drwxr-xr-x  5 root  wheel  160 10月 15  2023 ..
+lrwxr-xr-x  1 root  wheel   14  3月  8  2026 MacOSX.sdk -> MacOSX26.2.sdk
+drwxr-xr-x  7 root  wheel  224 11月 13  2022 MacOSX13.1.sdk
+drwxr-xr-x  7 root  wheel  224  4月 25  2025 MacOSX15.4.sdk
+lrwxr-xr-x  1 root  wheel   14  3月  8  2026 MacOSX15.sdk -> MacOSX15.4.sdk
+drwxr-xr-x  7 root  wheel  224  1月  6  2026 MacOSX26.2.sdk
+lrwxr-xr-x  1 root  wheel   14  3月  8  2026 MacOSX26.sdk -> MacOSX26.2.sdk
+---
+#include "..." search starts here:
+#include <...> search starts here:
+ /Library/Developer/CommandLineTools/usr/bin/../include/c++/v1
+ /Library/Developer/CommandLineTools/usr/lib/clang/17/include
+ /Library/Developer/CommandLineTools/SDKs/MacOSX26.2.sdk/usr/include
+ /Library/Developer/CommandLineTools/usr/include
+ /Library/Developer/CommandLineTools/SDKs/MacOSX26.2.sdk/System/Library/Frameworks (framework directory)
+ /Library/Developer/CommandLineTools/SDKs/MacOSX26.2.sdk/System/Library/SubFrameworks (framework directory)
+End of search list.
+# 1 "<stdin>"
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.2.sdk verilator --binary -j 0 --timing -Wno-fatal -Wno-PINMISSING -Wno-LATCH --top-module tb_mmu -f filelist.f tb_mmu.sv -o sim_tb 2>&1 | tail -20
+In file included from /opt/homebrew/Cellar/verilator/5.048/share/verilator/include/verilated_timing.h:29:
+In file included from /opt/homebrew/Cellar/verilator/5.048/share/verilator/include/verilated.h:43:
+/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/verilatedos.h:371:10: fatal error: 'cstdint' file not found
+  371 | #include <cstdint>
+      |          ^~~~~~~~~
+1 warning and 11 error warning generated and .
+1 error generated.
+1 warning and 1 error generated.
+make: *** [Vtb_mmu__pch.h.slow.gch] Error 1
+make: *** Waiting for unfinished jobs....
+make: *** [Vtb_mmu__pch.h.fast.gch] Error 1
+make: *** [verilated_timing.o] Error 1
+1 warning and 1 error generated.
+make: *** [verilated_threads.o] Error 1
+1 warning and 1 error generated.
+make: *** [verilated.o] Error 1
+rm Vtb_mmu__ALL.verilator_deplist.tmp
+%Error: 'make -C obj_dir -f Vtb_mmu.mk -j 8' exited with 2
+        ... See the manual at https://verilator.org/verilator_doc.html?v=5.048 for more assistance.
+%Error: Command Failed /opt/homebrew/Cellar/verilator/5.048/bin/verilator_bin --binary -j 0 --timing -Wno-fatal -Wno-PINMISSING -Wno-LATCH --top-module tb_mmu -f filelist.f tb_mmu.sv -o sim_tb
+> build · hy4-flash-free
+[0m$ [0mls -la /Library/Developer/CommandLineTools/usr/include/c++/v1/cstdint 2>&1; echo '---'; cd /tmp/p192_so && grep -n 'CXXFLAGS\|CPPFLAGS\|INCLUDE' obj_dir/Vtb_mmu.mk 2>/dev/null | head -20
+ls: /Library/Developer/CommandLineTools/usr/include/c++/v1/cstdint: No such file or directory
+---
+16:# SystemC include directory with systemc.h (from $SYSTEMC_INCLUDE)
+17:SYSTEMC_INCLUDE ?=
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so/obj_dir && c++ -std=gnu++20 -c -o /tmp/vtest.o /opt/homebrew/Cellar/verilator/5.048/share/verilator/include/verilated.cpp -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/Library/Developer/CommandLineTools/SDKs/MacOSX26.2.sdk/usr/include/c++/v1 2>&1 | head -20; echo EXIT=$?
+EXIT=0
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && rm -rf obj_dir && CXXFLAGS="-I/Library/Developer/CommandLineTools/SDKs/MacOSX26.2.sdk/usr/include/c++/v1 -Os" verilator --binary -j 0 --timing -Wno-fatal -Wno-PINMISSING -Wno-LATCH --top-module tb_mmu -f filelist.f tb_mmu.sv -o sim_tb 2>&1 | tail -12
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+1 warning generated.
+c++  -Wl,-U,__Z15vl_time_stamp64v,-U,__Z13sc_time_stampv,-U,_vlog_startup_routines   verilated.o verilated_timing.o verilated_threads.o Vtb_mmu__ALL.a    -pthread -lpthread   -o sim_tb
+rm Vtb_mmu__ALL.verilator_deplist.tmp
+- V e r i l a t i o n   R e p o r t: Verilator 5.048 2026-04-26 rev vUNKNOWN-built20260426
+- Verilator: Built from 2.449 MB sources in 19 modules, into 2.124 MB in 12 C++ files needing 0.001 MB
+- Verilator: Walltime 2.887 s (elab=0.310, cvt=0.266, bld=2.267); cpu 0.625 s on 8 threads; allocated 57.375 MB
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && ./sim_tb 2>&1 | head -40
+zsh:1: no such file or directory: ./sim_tb
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && ls -la obj_dir/sim_tb obj_dir/Vtb_mmu 2>&1; find /tmp/p192_so -maxdepth 2 -name 'sim_tb' -o -name 'Vtb_mmu' | head
+ls: obj_dir/Vtb_mmu: No such file or directory
+-rwxr-xr-x@ 1 fundou  wheel  489608 11月 20 08:06 obj_dir/sim_tb
+/tmp/p192_so/obj_dir/sim_tb
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && ./obj_dir/sim_tb 2>&1 | head -40
+[prime ] cyc=25 hit=0 valid=0 exc.valid=0 exc.cause=0 paddr=00000000000fff
+[resp N] cyc=27 in_vaddr=0000000080000000 q_vaddr=0000000080000000 dtlb_hit_q=0 can=0 -> exc.valid=0 exc.cause=0 tval=0000000000000000
+- tb_mmu.sv:171: Verilog $finish
+- S i m u l a t i o n   R e p o r t: Verilator 5.048 2026-04-26
+- Verilator: $finish at 305ns; walltime 0.000 s; speed 2.194 ms/s
+- Verilator: cpu 0.000 s on 1 threads; allocated 2 MB
+> build · hy4-flash-free
+The priming walk didn't populate the TLB. Let me add a cycle-by-cycle monitor and fix the sampling point.
+[0m← [0mEdit /tmp/p192_so/tb_mmu.sv
+Index: /tmp/p192_so/tb_mmu.sv
+===================================================================
+--- /tmp/p192_so/tb_mmu.sv
++++ /tmp/p192_so/tb_mmu.sv
+@@ -137,8 +137,20 @@
+ 
+   int cyc;
+   always_ff @(posedge clk) cyc <= cyc + 1;
+ 
++  always @(posedge clk) begin
++    #1;
++    if (cyc >= 4 && cyc <= 32)
++      $display("MON cyc=%0d req=%b va=%h ptwstate=%b act=%b perr=%b paex=%b gnt=%b rval=%b stlb_acc=%b stlb_hit=%b dtlb_hit=%b d_hit_q=%b d_va_q=%h can=%b ex=%b/%0d/%h vld=%b",
++               cyc, lsu_req_i, lsu_vaddr_i, u_mmu.i_ptw.state_q, u_mmu.ptw_active,
++               u_mmu.ptw_error, u_mmu.ptw_access_exception, req_port_o.data_req,
++               req_port_i.data_rvalid, u_mmu.shared_tlb_access, u_mmu.shared_tlb_hit,
++               u_mmu.dtlb_lu_hit, u_mmu.dtlb_hit_q, u_mmu.lsu_vaddr_q,
++               u_mmu.canonical_addr_check, lsu_exception_o.valid,
++               lsu_exception_o.cause, lsu_exception_o.tval, lsu_valid_o);
++  end
++
+   initial begin : drive
+     cyc = 0;
+     repeat (4) @(posedge clk);
+     rst_n = 1;
+
+> build · hy4-flash-free
+[0m← [0mEdit /tmp/p192_so/tb_mmu.sv
+Index: /tmp/p192_so/tb_mmu.sv
+===================================================================
+--- /tmp/p192_so/tb_mmu.sv
++++ /tmp/p192_so/tb_mmu.sv
+@@ -158,27 +158,32 @@
+     @(posedge clk);
+ 
+     // --- priming access at N (fills the TLB via a real page-table walk) ---
+     lsu_req_i = 1; lsu_vaddr_i = N;
+-    @(posedge clk);
++    @(posedge clk); #1;
+     lsu_req_i = 0;
+     // wait for the walk to finish and the TLB to be populated
+-    repeat (20) @(posedge clk);
++    repeat (22) @(posedge clk); #1;
+     $display("[prime ] cyc=%0d hit=%b valid=%b exc.valid=%b exc.cause=%0d paddr=%h",
+              cyc, lsu_dtlb_hit_o, lsu_valid_o, lsu_exception_o.valid,
+              lsu_exception_o.cause, lsu_paddr_o);
+ 
+     // --- back-to-back: request N, then non-canonical N+1 on next cycle ---
+     // cycle A: request N
+     lsu_req_i = 1; lsu_vaddr_i = N;
+-    @(posedge clk);
++    @(posedge clk); #1;
++    $display("[req N ] cyc=%0d in_vaddr=%h q_vaddr=%h dtlb_hit_q=%b can=%b -> exc.valid=%b exc.cause=%0d tval=%h",
++             cyc, lsu_vaddr_i, u_mmu.lsu_vaddr_q, u_mmu.dtlb_hit_q,
++             u_mmu.canonical_addr_check, lsu_exception_o.valid,
++             lsu_exception_o.cause, lsu_exception_o.tval);
+     // cycle A+1: switch input to non-canonical N+1 while response to N is live
+     lsu_req_i = 1; lsu_vaddr_i = Np1;
+-    @(posedge clk);
++    #1;
+     $display("[resp N] cyc=%0d in_vaddr=%h q_vaddr=%h dtlb_hit_q=%b can=%b -> exc.valid=%b exc.cause=%0d tval=%h",
+              cyc, lsu_vaddr_i, u_mmu.lsu_vaddr_q, u_mmu.dtlb_hit_q,
+              u_mmu.canonical_addr_check, lsu_exception_o.valid,
+              lsu_exception_o.cause, lsu_exception_o.tval);
++    @(posedge clk); #1;
+     lsu_req_i = 0;
+     repeat (3) @(posedge clk);
+     $finish;
+   end
+
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && rm -rf obj_dir && CXXFLAGS="-I/Library/Developer/CommandLineTools/SDKs/MacOSX26.2.sdk/usr/include/c++/v1 -Os" verilator --binary -j 0 --timing -Wno-fatal -Wno-PINMISSING -Wno-LATCH --top-module tb_mmu -f filelist.f tb_mmu.sv -o sim_tb > /tmp/build.log 2>&1 && ./obj_dir/sim_tb 2>&1 | head -60
+MON cyc=4 req=0 va=0000000000000000 ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000000000000000 can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=5 req=1 va=000000007fffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=1 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=000000007fffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=6 req=0 va=000000007fffffff ptwstate=001 act=1 perr=0 paex=0 gnt=1 rval=0 stlb_acc=1 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=000000007fffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=7 req=0 va=000000007fffffff ptwstate=010 act=1 perr=0 paex=0 gnt=0 rval=1 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=000000007fffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=8 req=0 va=000000007fffffff ptwstate=010 act=1 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=000000007fffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=9 req=0 va=000000007fffffff ptwstate=100 act=1 perr=1 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=000000007fffffff can=0 ex=1/13/000000007fffffff vld=1
+MON cyc=10 req=0 va=000000007fffffff ptwstate=111 act=1 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=000000007fffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=11 req=0 va=000000007fffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=000000007fffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=12 req=0 va=000000007fffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=000000007fffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=13 req=0 va=000000007fffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=000000007fffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=14 req=0 va=000000007fffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=000000007fffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=15 req=0 va=000000007fffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=000000007fffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=16 req=0 va=000000007fffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=000000007fffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=17 req=0 va=000000007fffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=000000007fffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=18 req=0 va=000000007fffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=000000007fffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=19 req=0 va=000000007fffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=000000007fffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=20 req=0 va=000000007fffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=000000007fffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=21 req=0 va=000000007fffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=000000007fffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=22 req=0 va=000000007fffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=000000007fffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=23 req=0 va=000000007fffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=000000007fffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=24 req=0 va=000000007fffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=000000007fffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=25 req=0 va=000000007fffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=000000007fffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=26 req=0 va=000000007fffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=000000007fffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=27 req=0 va=000000007fffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=000000007fffffff can=0 ex=0/0/0000000000000000 vld=0
+[prime ] cyc=28 hit=0 valid=0 exc.valid=0 exc.cause=0 paddr=00000000000fff
+MON cyc=28 req=1 va=000000007fffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=000000007fffffff can=0 ex=0/0/0000000000000000 vld=0
+[req N ] cyc=29 in_vaddr=000000007fffffff q_vaddr=000000007fffffff dtlb_hit_q=0 can=0 -> exc.valid=0 exc.cause=0 tval=0000000000000000
+MON cyc=29 req=1 va=0000000080000000 ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=1 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=000000007fffffff can=0 ex=0/0/0000000000000000 vld=0
+[resp N] cyc=29 in_vaddr=0000000080000000 q_vaddr=000000007fffffff dtlb_hit_q=0 can=0 -> exc.valid=0 exc.cause=0 tval=0000000000000000
+MON cyc=30 req=1 va=0000000080000000 ptwstate=001 act=1 perr=0 paex=0 gnt=1 rval=0 stlb_acc=1 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000000080000000 can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=31 req=0 va=0000000080000000 ptwstate=010 act=1 perr=0 paex=0 gnt=0 rval=1 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000000080000000 can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=32 req=0 va=0000000080000000 ptwstate=010 act=1 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000000080000000 can=0 ex=0/0/0000000000000000 vld=0
+- tb_mmu.sv:188: Verilog $finish
+- S i m u l a t i o n   R e p o r t: Verilator 5.048 2026-04-26
+- Verilator: $finish at 325ns; walltime 0.001 s; speed 298.165 us/s
+- Verilator: cpu 0.001 s on 1 threads; allocated 2 MB
+> build · hy4-flash-free
+Two setup issues: my "non-canonical" address was actually canonical, and the leaf PPN violated superpage alignment. Let me correct both.
+[0m← [0mEdit /tmp/p192_so/tb_mmu.sv
+Index: /tmp/p192_so/tb_mmu.sv
+===================================================================
+--- /tmp/p192_so/tb_mmu.sv
++++ /tmp/p192_so/tb_mmu.sv
+@@ -113,9 +113,9 @@
+ 
+   // ---- toy memory: grant every PTW request, return a valid 1GiB leaf PTE ----
+   // pte_cva6_t = { n, reserved[8:0], ppn[43:0], rsw[1:0], d,a,g,u,x,w,r,v }
+   logic [CVA6Cfg.XLEN-1:0] leaf_pte;
+-  assign leaf_pte = {1'b0, 9'b0, 44'h0_1000, 2'b0,
++  assign leaf_pte = {1'b0, 9'b0, 44'h0_2000, 2'b0,
+                      1'b1 /*d*/, 1'b1 /*a*/, 1'b0 /*g*/, 1'b0 /*u*/,
+                      1'b0 /*x*/, 1'b1 /*w*/, 1'b1 /*r*/, 1'b1 /*v*/};
+   assign req_port_i.data_gnt    = req_port_o.data_req;
+   assign req_port_i.data_rdata  = leaf_pte;
+
+> build · hy4-flash-free
+[0m← [0mEdit /tmp/p192_so/tb_mmu.sv
+Index: /tmp/p192_so/tb_mmu.sv
+===================================================================
+--- /tmp/p192_so/tb_mmu.sv
++++ /tmp/p192_so/tb_mmu.sv
+@@ -131,10 +131,12 @@
+     pmpcfg_i[0].access_type.r = 1;
+     pmpaddr_i[0] = '1;
+   end
+ 
+-  localparam logic [CVA6Cfg.VLEN-1:0] N     = 64'h0000_0000_7fff_ffff;
+-  localparam logic [CVA6Cfg.VLEN-1:0] Np1   = 64'h0000_0000_8000_0000;
++  // Sv39: bit 38 is the sign bit. N is the last canonical low-half address,
++  // N+1 has bit 38 set but bits [63:39] clear => non-canonical.
++  localparam logic [CVA6Cfg.VLEN-1:0] N     = 64'h0000_003f_ffff_ffff;
++  localparam logic [CVA6Cfg.VLEN-1:0] Np1   = 64'h0000_0040_0000_0000;
+ 
+   int cyc;
+   always_ff @(posedge clk) cyc <= cyc + 1;
+ 
+
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && rm -rf obj_dir && CXXFLAGS="-I/Library/Developer/CommandLineTools/SDKs/MacOSX26.2.sdk/usr/include/c++/v1 -Os" verilator --binary -j 0 --timing -Wno-fatal -Wno-PINMISSING -Wno-LATCH --top-module tb_mmu -f filelist.f tb_mmu.sv -o sim_tb > /tmp/build.log 2>&1 && ./obj_dir/sim_tb 2>&1 | grep -E 'MON cyc=(5|6|7|8|9|10|11|12|13|28|29|30)|prime|resp N|req N'
+MON cyc=5 req=1 va=0000003fffffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=1 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=6 req=0 va=0000003fffffffff ptwstate=001 act=1 perr=0 paex=0 gnt=1 rval=0 stlb_acc=1 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=7 req=0 va=0000003fffffffff ptwstate=010 act=1 perr=0 paex=0 gnt=0 rval=1 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=8 req=0 va=0000003fffffffff ptwstate=010 act=1 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=9 req=0 va=0000003fffffffff ptwstate=100 act=1 perr=1 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=1/13/0000003fffffffff vld=1
+MON cyc=10 req=0 va=0000003fffffffff ptwstate=111 act=1 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=11 req=0 va=0000003fffffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=12 req=0 va=0000003fffffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=13 req=0 va=0000003fffffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+[prime ] cyc=28 hit=0 valid=0 exc.valid=0 exc.cause=0 paddr=00000000000fff
+MON cyc=28 req=1 va=0000003fffffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+[req N ] cyc=29 in_vaddr=0000003fffffffff q_vaddr=0000003fffffffff dtlb_hit_q=0 can=0 -> exc.valid=0 exc.cause=0 tval=0000000000000000
+MON cyc=29 req=1 va=0000004000000000 ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=1 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+[resp N] cyc=29 in_vaddr=0000004000000000 q_vaddr=0000003fffffffff dtlb_hit_q=0 can=1 -> exc.valid=0 exc.cause=0 tval=0000000000000000
+MON cyc=30 req=1 va=0000004000000000 ptwstate=001 act=1 perr=0 paex=0 gnt=1 rval=0 stlb_acc=1 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000004000000000 can=1 ex=0/0/0000000000000000 vld=0
+> build · hy4-flash-free
+The walk still faults. Let me inspect the decoded PTE fields to fix the test setup.
+[0m← [0mEdit /tmp/p192_so/tb_mmu.sv
+Index: /tmp/p192_so/tb_mmu.sv
+===================================================================
+--- /tmp/p192_so/tb_mmu.sv
++++ /tmp/p192_so/tb_mmu.sv
+@@ -149,8 +149,16 @@
+                req_port_i.data_rvalid, u_mmu.shared_tlb_access, u_mmu.shared_tlb_hit,
+                u_mmu.dtlb_lu_hit, u_mmu.dtlb_hit_q, u_mmu.lsu_vaddr_q,
+                u_mmu.canonical_addr_check, lsu_exception_o.valid,
+                lsu_exception_o.cause, lsu_exception_o.tval, lsu_valid_o);
++    if (cyc >= 6 && cyc <= 9)
++      $display("PTE  cyc=%0d state=%b pte={v%b r%b w%b x%b a%b d%b g%b u%b n%b rsv%h ppn%h} misal=%b upd=%b rdata=%h",
++               cyc, u_mmu.i_ptw.state_q, u_mmu.i_ptw.pte.v, u_mmu.i_ptw.pte.r,
++               u_mmu.i_ptw.pte.w, u_mmu.i_ptw.pte.x, u_mmu.i_ptw.pte.a,
++               u_mmu.i_ptw.pte.d, u_mmu.i_ptw.pte.g, u_mmu.i_ptw.pte.u,
++               u_mmu.i_ptw.pte.n, u_mmu.i_ptw.pte.reserved, u_mmu.i_ptw.pte.ppn,
++               u_mmu.i_ptw.misaligned_page, u_mmu.i_ptw.shared_tlb_update_valid,
++               u_mmu.i_ptw.data_rdata_q);
+   end
+ 
+   initial begin : drive
+     cyc = 0;
+
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && rm -rf obj_dir && CXXFLAGS="-I/Library/Developer/CommandLineTools/SDKs/MacOSX26.2.sdk/usr/include/c++/v1 -Os" verilator --binary -j 0 --timing -Wno-fatal -Wno-PINMISSING -Wno-LATCH --top-module tb_mmu -f filelist.f tb_mmu.sv -o sim_tb > /tmp/build.log 2>&1 && ./obj_dir/sim_tb 2>&1 | grep -E '^PTE|MON cyc=9|MON cyc=8'
+PTE  cyc=6 state=001 pte={v1 r1 w1 x0 a1 d1 g0 u0 n0 rsv000 ppn00000002000} misal=01 upd=0 rdata=00000000008000c7
+PTE  cyc=7 state=010 pte={v1 r1 w1 x0 a1 d1 g0 u0 n0 rsv000 ppn00000002000} misal=01 upd=0 rdata=00000000008000c7
+MON cyc=8 req=0 va=0000003fffffffff ptwstate=010 act=1 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+PTE  cyc=8 state=010 pte={v1 r1 w1 x0 a1 d1 g0 u0 n0 rsv000 ppn00000002000} misal=01 upd=0 rdata=00000000008000c7
+MON cyc=9 req=0 va=0000003fffffffff ptwstate=100 act=1 perr=1 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=1/13/0000003fffffffff vld=1
+PTE  cyc=9 state=100 pte={v1 r1 w1 x0 a1 d1 g0 u0 n0 rsv000 ppn00000002000} misal=01 upd=0 rdata=00000000008000c7
+> build · hy4-flash-free
+[0m← [0mEdit /tmp/p192_so/tb_mmu.sv
+Index: /tmp/p192_so/tb_mmu.sv
+===================================================================
+--- /tmp/p192_so/tb_mmu.sv
++++ /tmp/p192_so/tb_mmu.sv
+@@ -113,9 +113,10 @@
+ 
+   // ---- toy memory: grant every PTW request, return a valid 1GiB leaf PTE ----
+   // pte_cva6_t = { n, reserved[8:0], ppn[43:0], rsw[1:0], d,a,g,u,x,w,r,v }
+   logic [CVA6Cfg.XLEN-1:0] leaf_pte;
+-  assign leaf_pte = {1'b0, 9'b0, 44'h0_2000, 2'b0,
++  // 1GiB leaf: PPN[25:0] must be zero for a level-0 superpage (VPN1,VPN0)
++  assign leaf_pte = {1'b0, 9'b0, 44'h0_400_0000, 2'b0,
+                      1'b1 /*d*/, 1'b1 /*a*/, 1'b0 /*g*/, 1'b0 /*u*/,
+                      1'b0 /*x*/, 1'b1 /*w*/, 1'b1 /*r*/, 1'b1 /*v*/};
+   assign req_port_i.data_gnt    = req_port_o.data_req;
+   assign req_port_i.data_rdata  = leaf_pte;
+
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && rm -rf obj_dir && CXXFLAGS="-I/Library/Developer/CommandLineTools/SDKs/MacOSX26.2.sdk/usr/include/c++/v1 -Os" verilator --binary -j 0 --timing -Wno-fatal -Wno-PINMISSING -Wno-LATCH --top-module tb_mmu -f filelist.f tb_mmu.sv -o sim_tb > /tmp/build.log 2>&1 && ./obj_dir/sim_tb 2>&1 | grep -E '^PTE|MON cyc=(5|6|7|8|9|10|11|12|13|28|29)|prime|resp N|req N'
+MON cyc=5 req=1 va=0000003fffffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=1 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=6 req=0 va=0000003fffffffff ptwstate=001 act=1 perr=0 paex=0 gnt=1 rval=0 stlb_acc=1 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+PTE  cyc=6 state=001 pte={v1 r1 w1 x0 a1 d1 g0 u0 n0 rsv000 ppn00004000000} misal=00 upd=0 rdata=00000010000000c7
+MON cyc=7 req=0 va=0000003fffffffff ptwstate=010 act=1 perr=0 paex=0 gnt=0 rval=1 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+PTE  cyc=7 state=010 pte={v1 r1 w1 x0 a1 d1 g0 u0 n0 rsv000 ppn00004000000} misal=00 upd=0 rdata=00000010000000c7
+MON cyc=8 req=0 va=0000003fffffffff ptwstate=010 act=1 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=1 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+PTE  cyc=8 state=010 pte={v1 r1 w1 x0 a1 d1 g0 u0 n0 rsv000 ppn00004000000} misal=00 upd=1 rdata=00000010000000c7
+MON cyc=9 req=0 va=0000003fffffffff ptwstate=111 act=1 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+PTE  cyc=9 state=111 pte={v1 r1 w1 x0 a1 d1 g0 u0 n0 rsv000 ppn00004000000} misal=00 upd=0 rdata=00000010000000c7
+MON cyc=10 req=0 va=0000003fffffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=11 req=0 va=0000003fffffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=12 req=0 va=0000003fffffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=13 req=0 va=0000003fffffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+[prime ] cyc=28 hit=0 valid=0 exc.valid=0 exc.cause=0 paddr=00000000000fff
+MON cyc=28 req=1 va=0000003fffffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+[req N ] cyc=29 in_vaddr=0000003fffffffff q_vaddr=0000003fffffffff dtlb_hit_q=0 can=0 -> exc.valid=0 exc.cause=0 tval=0000000000000000
+MON cyc=29 req=1 va=0000004000000000 ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=1 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+[resp N] cyc=29 in_vaddr=0000004000000000 q_vaddr=0000003fffffffff dtlb_hit_q=0 can=1 -> exc.valid=0 exc.cause=0 tval=0000000000000000
+> build · hy4-flash-free
+The walk succeeded but shared-TLB lookup needs `enable_translation_i` too. Let me set it.
+[0m← [0mEdit /tmp/p192_so/tb_mmu.sv
+Index: /tmp/p192_so/tb_mmu.sv
+===================================================================
+--- /tmp/p192_so/tb_mmu.sv
++++ /tmp/p192_so/tb_mmu.sv
+@@ -164,8 +164,9 @@
+   initial begin : drive
+     cyc = 0;
+     repeat (4) @(posedge clk);
+     rst_n = 1;
++    enable_translation_i = 1;
+     en_ld_st_translation_i = 1;
+     @(posedge clk);
+ 
+     // --- priming access at N (fills the TLB via a real page-table walk) ---
+
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && rm -rf obj_dir && CXXFLAGS="-I/Library/Developer/CommandLineTools/SDKs/MacOSX26.2.sdk/usr/include/c++/v1 -Os" verilator --binary -j 0 --timing -Wno-fatal -Wno-PINMISSING -Wno-LATCH --top-module tb_mmu -f filelist.f tb_mmu.sv -o sim_tb > /tmp/build.log 2>&1 && ./obj_dir/sim_tb 2>&1 | grep -E 'MON cyc=(5|6|7|8|9|10|28|29)|prime|resp N|req N'
+MON cyc=5 req=1 va=0000003fffffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=1 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=6 req=0 va=0000003fffffffff ptwstate=001 act=1 perr=0 paex=0 gnt=1 rval=0 stlb_acc=1 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=7 req=0 va=0000003fffffffff ptwstate=010 act=1 perr=0 paex=0 gnt=0 rval=1 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=8 req=0 va=0000003fffffffff ptwstate=010 act=1 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=1 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=9 req=0 va=0000003fffffffff ptwstate=111 act=1 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=10 req=0 va=0000003fffffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+[prime ] cyc=28 hit=0 valid=0 exc.valid=0 exc.cause=0 paddr=00000000000fff
+MON cyc=28 req=1 va=0000003fffffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+[req N ] cyc=29 in_vaddr=0000003fffffffff q_vaddr=0000003fffffffff dtlb_hit_q=0 can=0 -> exc.valid=0 exc.cause=0 tval=0000000000000000
+MON cyc=29 req=1 va=0000004000000000 ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=1 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+[resp N] cyc=29 in_vaddr=0000004000000000 q_vaddr=0000003fffffffff dtlb_hit_q=0 can=1 -> exc.valid=0 exc.cause=0 tval=0000000000000000
+> build · hy4-flash-free
+[0m✱ [0mGrep "shared_tlb_update_i|update_i|lu_hit_o|dtlb_hit" [90min /tmp/p192_so/rtl/cva6_shared_tlb.sv · 35 matches[0m
+> build · hy4-flash-free
+[0m→ [0mRead /tmp/p192_so/rtl/cva6_shared_tlb.sv [90m[offset=240, limit=130][0m
+> build · hy4-flash-free
+[0m✗ [0mEdit /tmp/p192_so/tb_mmu.sv failed
+[91m[1mError: [0mCould not find oldString in /tmp/p192_so/tb_mmu.sv. It must match exactly, including whitespace and indentation.
+
+The closest lines in the file:
+134:   end
+> build · hy4-flash-free
+[0m→ [0mRead /tmp/p192_so/tb_mmu.sv [90m[offset=108, limit=40][0m
+> build · hy4-flash-free
+[0m→ [0mRead /tmp/p192_so/tb_mmu.sv [90m[offset=148, limit=28][0m
+> build · hy4-flash-free
+[0m✗ [0mEdit /tmp/p192_so/tb_mmu.sv failed
+[91m[1mError: [0mCould not find oldString in /tmp/p192_so/tb_mmu.sv. It must match exactly, including whitespace and indentation.
+
+The closest lines in the file:
+161:                u_mmu.i_ptw.data_rdata_q);
+162:   end
+> build · hy4-flash-free
+[0m✗ [0mEdit /tmp/p192_so/tb_mmu.sv failed
+[91m[1mError: [0mCould not find oldString in /tmp/p192_so/tb_mmu.sv. It must match exactly, including whitespace and indentation.
+
+The closest lines in the file:
+161:                u_mmu.i_ptw.data_rdata_q);
+162:   end
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && sed -n '154,164p' tb_mmu.sv | cat -A
+cat: illegal option -- A
+usage: cat [-belnstuv] [file ...]
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && sed -n '154,164p' tb_mmu.sv | od -c | head -20
+0000000                    i   f       (   c   y   c       >   =       6
+0000020        &   &       c   y   c       <   =       9   )  \n        
+0000040                    $   d   i   s   p   l   a   y   (   "   P   T
+0000060    E           c   y   c   =   %   0   d       s   t   a   t   e
+0000100    =   %   b       p   t   e   =   {   v   %   b       r   %   b
+0000120        w   %   b       x   %   b       a   %   b       d   %   b
+0000140        g   %   b       u   %   b       n   %   b       r   s   v
+0000160    %   h       p   p   n   %   h   }       m   i   s   a   l   =
+0000200    %   b       u   p   d   =   %   b       r   d   a   t   a   =
+0000220    %   h   "   ,  \n                                            
+0000240                    c   y   c   ,       u   _   m   m   u   .   i
+0000260    _   p   t   w   .   s   t   a   t   e   _   q   ,       u   _
+0000300    m   m   u   .   i   _   p   t   w   .   p   t   e   .   v   ,
+0000320        u   _   m   m   u   .   i   _   p   t   w   .   p   t   e
+0000340    .   r   ,  \n                                                
+0000360                u   _   m   m   u   .   i   _   p   t   w   .   p
+0000400    t   e   .   w   ,       u   _   m   m   u   .   i   _   p   t
+0000420    w   .   p   t   e   .   x   ,       u   _   m   m   u   .   i
+0000440    _   p   t   w   .   p   t   e   .   a   ,  \n                
+0000460                                                u   _   m   m   u
+> build · hy4-flash-free
+[0m✗ [0mEdit /tmp/p192_so/tb_mmu.sv failed
+[91m[1mError: [0mCould not find oldString in /tmp/p192_so/tb_mmu.sv. It must match exactly, including whitespace and indentation.
+
+The closest lines in the file:
+162:   end
+163: 
+164:   initial begin : drive
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && sed -n '160,166p' tb_mmu.sv | od -c
+0000000                                                                u
+0000020    _   m   m   u   .   i   _   p   t   w   .   m   i   s   a   l
+0000040    i   g   n   e   d   _   p   a   g   e   ,       u   _   m   m
+0000060    u   .   i   _   p   t   w   .   s   h   a   r   e   d   _   t
+0000100    l   b   _   u   p   d   a   t   e   _   v   a   l   i   d   ,
+0000120   \n                                                            
+0000140    u   _   m   m   u   .   i   _   p   t   w   .   d   a   t   a
+0000160    _   r   d   a   t   a   _   q   )   ;  \n           e   n   d
+0000200   \n  \n           i   n   i   t   i   a   l       b   e   g   i
+0000220    n       :       d   r   i   v   e  \n                   c   y
+0000240    c       =       0   ;  \n                   r   e   p   e   a
+0000260    t       (   4   )       @   (   p   o   s   e   d   g   e    
+0000300    c   l   k   )   ;  \n                                        
+0000306
+> build · hy4-flash-free
+[0m← [0mEdit /tmp/p192_so/tb_mmu.sv
+Index: /tmp/p192_so/tb_mmu.sv
+===================================================================
+--- /tmp/p192_so/tb_mmu.sv
++++ /tmp/p192_so/tb_mmu.sv
+@@ -158,8 +158,13 @@
+                u_mmu.i_ptw.pte.d, u_mmu.i_ptw.pte.g, u_mmu.i_ptw.pte.u,
+                u_mmu.i_ptw.pte.n, u_mmu.i_ptw.pte.reserved, u_mmu.i_ptw.pte.ppn,
+                u_mmu.i_ptw.misaligned_page, u_mmu.i_ptw.shared_tlb_update_valid,
+                u_mmu.i_ptw.data_rdata_q);
++    if (cyc == 8 || cyc == 9 || cyc == 28 || cyc == 29)
++      $display("TLB  cyc=%0d dtlb_req_q=%b stlb_hit_d=%b upvalid=%b dtlb_upvalid=%b tag0=%h content0=%h lu_hit=%b",
++               cyc, u_mmu.i_shared_tlb.dtlb_req_q, u_mmu.i_shared_tlb.shared_tlb_hit_d,
++               u_mmu.update_shared_tlb.valid, u_mmu.update_dtlb.valid,
++               u_mmu.i_dtlb.tags_q[0], u_mmu.i_dtlb.content_q[0], u_mmu.dtlb_lu_hit);
+   end
+ 
+   initial begin : drive
+     cyc = 0;
+
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && rm -rf obj_dir && CXXFLAGS="-I/Library/Developer/CommandLineTools/SDKs/MacOSX26.2.sdk/usr/include/c++/v1 -Os" verilator --binary -j 0 --timing -Wno-fatal -Wno-PINMISSING -Wno-LATCH --top-module tb_mmu -f filelist.f tb_mmu.sv -o sim_tb > /tmp/build.log 2>&1 && ./obj_dir/sim_tb 2>&1 | grep -E '^TLB|MON cyc=(8|9|28|29)|prime|resp N|req N'
+MON cyc=8 req=0 va=0000003fffffffff ptwstate=010 act=1 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=1 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+TLB  cyc=8 dtlb_req_q=0 stlb_hit_d=1 upvalid=1 dtlb_upvalid=0 tag0=0000000000000000 content0=00000000000000000000000000000000 lu_hit=0
+MON cyc=9 req=0 va=0000003fffffffff ptwstate=111 act=1 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+TLB  cyc=9 dtlb_req_q=0 stlb_hit_d=0 upvalid=0 dtlb_upvalid=0 tag0=0000000000000000 content0=00000000000000000000000000000000 lu_hit=0
+[prime ] cyc=28 hit=0 valid=0 exc.valid=0 exc.cause=0 paddr=00000000000fff
+MON cyc=28 req=1 va=0000003fffffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+TLB  cyc=28 dtlb_req_q=0 stlb_hit_d=0 upvalid=0 dtlb_upvalid=0 tag0=0000000000000000 content0=00000000000000000000000000000000 lu_hit=0
+[req N ] cyc=29 in_vaddr=0000003fffffffff q_vaddr=0000003fffffffff dtlb_hit_q=0 can=0 -> exc.valid=0 exc.cause=0 tval=0000000000000000
+MON cyc=29 req=1 va=0000004000000000 ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=1 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+TLB  cyc=29 dtlb_req_q=1 stlb_hit_d=0 upvalid=0 dtlb_upvalid=0 tag0=0000000000000000 content0=00000000000000000000000000000000 lu_hit=0
+[resp N] cyc=29 in_vaddr=0000004000000000 q_vaddr=0000003fffffffff dtlb_hit_q=0 can=1 -> exc.valid=0 exc.cause=0 tval=0000000000000000
+> build · hy4-flash-free
+[0m→ [0mRead /tmp/p192_so/rtl/cva6_shared_tlb.sv [90m[offset=364, limit=110][0m
+> build · hy4-flash-free
+[0m← [0mEdit /tmp/p192_so/tb_mmu.sv
+Index: /tmp/p192_so/tb_mmu.sv
+===================================================================
+--- /tmp/p192_so/tb_mmu.sv
++++ /tmp/p192_so/tb_mmu.sv
+@@ -176,9 +176,10 @@
+ 
+     // --- priming access at N (fills the TLB via a real page-table walk) ---
+     lsu_req_i = 1; lsu_vaddr_i = N;
+     @(posedge clk); #1;
+-    lsu_req_i = 0;
++    // keep the request asserted until the walk has populated the shared TLB
++    // (the shared TLB forwards the update only while dtlb_req_q is still set)
+     // wait for the walk to finish and the TLB to be populated
+     repeat (22) @(posedge clk); #1;
+     $display("[prime ] cyc=%0d hit=%b valid=%b exc.valid=%b exc.cause=%0d paddr=%h",
+              cyc, lsu_dtlb_hit_o, lsu_valid_o, lsu_exception_o.valid,
+
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && rm -rf obj_dir && CXXFLAGS="-I/Library/Developer/CommandLineTools/SDKs/MacOSX26.2.sdk/usr/include/c++/v1 -Os" verilator --binary -j 0 --timing -Wno-fatal -Wno-PINMISSING -Wno-LATCH --top-module tb_mmu -f filelist.f tb_mmu.sv -o sim_tb > /tmp/build.log 2>&1 && ./obj_dir/sim_tb 2>&1 | grep -E '^TLB|MON cyc=(5|6|7|8|9|10|28|29)|prime|resp N|req N'
+MON cyc=5 req=1 va=0000003fffffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=1 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=6 req=1 va=0000003fffffffff ptwstate=001 act=1 perr=0 paex=0 gnt=1 rval=0 stlb_acc=1 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=7 req=1 va=0000003fffffffff ptwstate=010 act=1 perr=0 paex=0 gnt=0 rval=1 stlb_acc=1 stlb_hit=0 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+MON cyc=8 req=1 va=0000003fffffffff ptwstate=010 act=1 perr=0 paex=0 gnt=0 rval=0 stlb_acc=1 stlb_hit=1 dtlb_hit=0 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+TLB  cyc=8 dtlb_req_q=1 stlb_hit_d=1 upvalid=1 dtlb_upvalid=1 tag0=0000000000000000 content0=00000000000000000000000000000000 lu_hit=0
+MON cyc=9 req=1 va=0000003fffffffff ptwstate=111 act=1 perr=0 paex=0 gnt=0 rval=0 stlb_acc=1 stlb_hit=0 dtlb_hit=1 d_hit_q=0 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=0
+TLB  cyc=9 dtlb_req_q=1 stlb_hit_d=0 upvalid=0 dtlb_upvalid=0 tag0=000000007fffffee content0=00000010000000c70000000000000000 lu_hit=1
+MON cyc=10 req=1 va=0000003fffffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=1 d_hit_q=1 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=1
+[prime ] cyc=28 hit=1 valid=1 exc.valid=0 exc.cause=0 paddr=0000403fffffff
+MON cyc=28 req=1 va=0000003fffffffff ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=1 d_hit_q=1 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=1
+TLB  cyc=28 dtlb_req_q=0 stlb_hit_d=0 upvalid=0 dtlb_upvalid=0 tag0=000000007fffffee content0=00000010000000c70000000000000000 lu_hit=1
+[req N ] cyc=29 in_vaddr=0000003fffffffff q_vaddr=0000003fffffffff dtlb_hit_q=1 can=0 -> exc.valid=0 exc.cause=0 tval=0000000000000000
+MON cyc=29 req=1 va=0000004000000000 ptwstate=000 act=0 perr=0 paex=0 gnt=0 rval=0 stlb_acc=0 stlb_hit=0 dtlb_hit=1 d_hit_q=1 d_va_q=0000003fffffffff can=0 ex=0/0/0000000000000000 vld=1
+TLB  cyc=29 dtlb_req_q=0 stlb_hit_d=0 upvalid=0 dtlb_upvalid=0 tag0=000000007fffffee content0=00000010000000c70000000000000000 lu_hit=1
+[resp N] cyc=29 in_vaddr=0000004000000000 q_vaddr=0000003fffffffff dtlb_hit_q=1 can=1 -> exc.valid=1 exc.cause=13 tval=0000003fffffffff
+> build · hy4-flash-free
+Reproduced exactly. Let me also confirm the store variant (cause 15), then validate a patched copy.
+[0m→ [0mRead /tmp/p192_so/tb_mmu.sv [90m[offset=170, limit=45][0m
+> build · hy4-flash-free
+[0m← [0mEdit /tmp/p192_so/tb_mmu.sv
+Index: /tmp/p192_so/tb_mmu.sv
+===================================================================
+--- /tmp/p192_so/tb_mmu.sv
++++ /tmp/p192_so/tb_mmu.sv
+@@ -201,8 +201,22 @@
+              u_mmu.canonical_addr_check, lsu_exception_o.valid,
+              lsu_exception_o.cause, lsu_exception_o.tval);
+     @(posedge clk); #1;
+     lsu_req_i = 0;
++    repeat (3) @(posedge clk); #1;
++
++    // --- same sequence, store variant ---
++    lsu_is_store_i = 1;
++    lsu_req_i = 1; lsu_vaddr_i = N;
++    @(posedge clk); #1;
++    lsu_req_i = 1; lsu_vaddr_i = Np1;
++    #1;
++    $display("[resp N/store] cyc=%0d in_vaddr=%h q_vaddr=%h dtlb_hit_q=%b can=%b -> exc.valid=%b exc.cause=%0d tval=%h",
++             cyc, lsu_vaddr_i, u_mmu.lsu_vaddr_q, u_mmu.dtlb_hit_q,
++             u_mmu.canonical_addr_check, lsu_exception_o.valid,
++             lsu_exception_o.cause, lsu_exception_o.tval);
++    @(posedge clk); #1;
++    lsu_req_i = 0; lsu_is_store_i = 0;
+     repeat (3) @(posedge clk);
+     $finish;
+   end
+ 
+
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && rm -rf obj_dir && CXXFLAGS="-I/Library/Developer/CommandLineTools/SDKs/MacOSX26.2.sdk/usr/include/c++/v1 -Os" verilator --binary -j 0 --timing -Wno-fatal -Wno-PINMISSING -Wno-LATCH --top-module tb_mmu -f filelist.f tb_mmu.sv -o sim_tb > /tmp/build.log 2>&1 && ./obj_dir/sim_tb 2>&1 | grep -E 'prime|resp N'
+[prime ] cyc=28 hit=1 valid=1 exc.valid=0 exc.cause=0 paddr=0000403fffffff
+[resp N] cyc=29 in_vaddr=0000004000000000 q_vaddr=0000003fffffffff dtlb_hit_q=1 can=1 -> exc.valid=1 exc.cause=13 tval=0000003fffffffff
+[resp N/store] cyc=34 in_vaddr=0000004000000000 q_vaddr=0000003fffffffff dtlb_hit_q=1 can=1 -> exc.valid=1 exc.cause=15 tval=0000003fffffffff
+> build · hy4-flash-free
+Both tohost values (13/15) reproduced. Now let me validate the proposed patch on a **copy** of the RTL (leaving `rtl/` untouched).
+[0m$ [0mcd /tmp/p192_so && rm -rf rtl_fixed && cp -R rtl rtl_fixed && sed -e 's|^rtl/|rtl_fixed/|' -e 's|^+incdir+rtl/|+incdir+rtl_fixed/|' filelist.f > filelist_fixed.f && cat filelist_fixed.f
++incdir+rtl_fixed/include
+rtl_fixed/cf_math_pkg.sv
+rtl_fixed/include/config_pkg.sv
+rtl_fixed/include/cv64a6_imafdc_sv39_config_pkg.sv
+rtl_fixed/include/riscv_pkg.sv
+rtl_fixed/include/ariane_pkg.sv
+rtl_fixed/include/dummy_l15_pkg.sv
+rtl_fixed/include/build_config_pkg.sv
+rtl_fixed/cva6_mmu.sv
+rtl_fixed/cva6_tlb.sv
+rtl_fixed/cva6_shared_tlb.sv
+rtl_fixed/cva6_ptw.sv
+rtl_fixed/lzc.sv
+rtl_fixed/lfsr.sv
+rtl_fixed/pmp.sv
+rtl_fixed/pmp_entry.sv
+rtl_fixed/p187_mmu_top.sv
+> build · hy4-flash-free
+[0m⚙ [0mexecute {"code":"const fs = require('fs');\nconst p = '/tmp/p192_so/rtl_fixed/cva6_mmu.sv';\nlet s = fs.readFileSync(p, 'utf8');\nconst reps = [\n  ['  logic canonical_addr_check;  // canonical check on the virtual address for SV39',\n   '  logic canonical_addr_check_n, canonical_addr_check_q;  // canonical check, registered to align with the response-stage request registers'],\n  ['    canonical_addr_check = (lsu_req_i && en_ld_st_translation_i &&',\n   '    canonical_addr_check_n = (lsu_req_i && en_ld_st_translation_i &&'],\n  ['|| daccess_err || canonical_addr_check || !dtlb_pte_q.d',\n   '|| daccess_err || canonical_addr_check_q || !dtlb_pte_q.d'],\n  ['end else if (daccess_err || canonical_addr_check) begin',\n   'end else if (daccess_err || canonical_addr_check_q) begin'],\n  [\"      misaligned_ex_q <= '0;\",\n   \"      misaligned_ex_q <= '0;\\n      canonical_addr_check_q <= 1'b0;\"],\n  ['      misaligned_ex_q <= misaligned_ex_n;',\n   '      misaligned_ex_q <= misaligned_ex_n;\\n      canonical_addr_check_q <= canonical_addr_check_n;'],\n];\nfor (const [a,b] of reps) {\n  const n = s.split(a).length - 1;\n  if (n !== 1) throw new Error('expected 1 match, got '+n+' for: '+a);\n  s = s.replace(a,b);\n}\nfs.writeFileSync(p, s);\nconsole.log('patched');\n"} 
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && python3 - <<'PY'
+from pathlib import Path
+p = Path('rtl_fixed/cva6_mmu.sv')
+s = p.read_text()
+reps = [
+  ('  logic canonical_addr_check;  // canonical check on the virtual address for SV39',
+   '  logic canonical_addr_check_n, canonical_addr_check_q;  // canonical check, registered to align with the response-stage request registers'),
+  ('    canonical_addr_check = (lsu_req_i && en_ld_st_translation_i &&',
+   '    canonical_addr_check_n = (lsu_req_i && en_ld_st_translation_i &&'),
+  ('|| daccess_err || canonical_addr_check || !dtlb_pte_q.d',
+   '|| daccess_err || canonical_addr_check_q || !dtlb_pte_q.d'),
+  ('end else if (daccess_err || canonical_addr_check) begin',
+   'end else if (daccess_err || canonical_addr_check_q) begin'),
+  ("      misaligned_ex_q <= '0;",
+   "      misaligned_ex_q <= '0;\n      canonical_addr_check_q <= 1'b0;"),
+  ('      misaligned_ex_q <= misaligned_ex_n;',
+   '      misaligned_ex_q <= misaligned_ex_n;\n      canonical_addr_check_q <= canonical_addr_check_n;'),
+]
+for a,b in reps:
+    n = s.count(a)
+    assert n == 1, (n, a)
+    s = s.replace(a,b)
+p.write_text(s)
+print("patched rtl_fixed/cva6_mmu.sv")
+PY
+patched rtl_fixed/cva6_mmu.sv
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && sed 's/canonical_addr_check\b/canonical_addr_check_q/g' tb_mmu.sv > tb_mmu_fixed.sv && rm -rf obj_dir_fixed && CXXFLAGS="-I/Library/Developer/CommandLineTools/SDKs/MacOSX26.2.sdk/usr/include/c++/v1 -Os" verilator --binary -j 0 --timing -Wno-fatal -Wno-PINMISSING -Wno-LATCH -Mdir obj_dir_fixed --top-module tb_mmu -f filelist_fixed.f tb_mmu_fixed.sv -o sim_tb_fixed > /tmp/build_fixed.log 2>&1 && ./obj_dir_fixed/sim_tb_fixed 2>&1 | grep -E 'prime|resp N'
+(no output)
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && tail -25 /tmp/build_fixed.log
+15 | module pmp_entry #(
+      |        ^~~~~~~~~
+                       tb_mmu_fixed.sv:6:8: ... Location of module with timescale
+    6 | module tb_mmu;
+      |        ^~~~~~
+%Warning-TIMESCALEMOD: rtl_fixed/p187_mmu_top.sv:8:8: Timescale missing on this module as other modules have it (IEEE 1800-2023 3.14.2.3)
+    8 | module p187_mmu_top;
+      |        ^~~~~~~~~~~~
+                       tb_mmu_fixed.sv:6:8: ... Location of module with timescale
+    6 | module tb_mmu;
+      |        ^~~~~~
+%Error: tb_mmu_fixed.sv:152:22: Can't find definition of 'canonical_addr_check' in dotted variable/method: 'u_mmu.canonical_addr_check'
+  152 |                u_mmu.canonical_addr_check, lsu_exception_o.valid,
+      |                      ^~~~~~~~~~~~~~~~~~~~
+        ... See the manual at https://verilator.org/verilator_doc.html?v=5.048 for more assistance.
+%Error: tb_mmu_fixed.sv:194:20: Can't find definition of 'canonical_addr_check' in dotted variable/method: 'u_mmu.canonical_addr_check'
+  194 |              u_mmu.canonical_addr_check, lsu_exception_o.valid,
+      |                    ^~~~~~~~~~~~~~~~~~~~
+%Error: tb_mmu_fixed.sv:201:20: Can't find definition of 'canonical_addr_check' in dotted variable/method: 'u_mmu.canonical_addr_check'
+  201 |              u_mmu.canonical_addr_check, lsu_exception_o.valid,
+      |                    ^~~~~~~~~~~~~~~~~~~~
+%Error: tb_mmu_fixed.sv:215:20: Can't find definition of 'canonical_addr_check' in dotted variable/method: 'u_mmu.canonical_addr_check'
+  215 |              u_mmu.canonical_addr_check, lsu_exception_o.valid,
+      |                    ^~~~~~~~~~~~~~~~~~~~
+%Error: Exiting due to 4 error(s)
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && python3 - <<'PY'
+from pathlib import Path
+s = Path('tb_mmu.sv').read_text().replace('canonical_addr_check', 'canonical_addr_check_q')
+Path('tb_mmu_fixed.sv').write_text(s)
+PY
+rm -rf obj_dir_fixed && CXXFLAGS="-I/Library/Developer/CommandLineTools/SDKs/MacOSX26.2.sdk/usr/include/c++/v1 -Os" verilator --binary -j 0 --timing -Wno-fatal -Wno-PINMISSING -Wno-LATCH -Mdir obj_dir_fixed --top-module tb_mmu -f filelist_fixed.f tb_mmu_fixed.sv -o sim_tb_fixed > /tmp/build_fixed.log 2>&1 && ./obj_dir_fixed/sim_tb_fixed 2>&1 | grep -E 'prime|resp N'
+[prime ] cyc=28 hit=1 valid=1 exc.valid=0 exc.cause=0 paddr=0000403fffffff
+[resp N] cyc=29 in_vaddr=0000004000000000 q_vaddr=0000003fffffffff dtlb_hit_q=1 can=0 -> exc.valid=0 exc.cause=0 tval=0000000000000000
+[resp N/store] cyc=34 in_vaddr=0000004000000000 q_vaddr=0000003fffffffff dtlb_hit_q=1 can=0 -> exc.valid=0 exc.cause=0 tval=0000000000000000
+> build · hy4-flash-free
+Let me verify the fix still produces a *legitimate* canonical fault when the non-canonical address itself hits the TLB.
+[0m$ [0mcd /tmp/p192_so && python3 - <<'PY'
+from pathlib import Path
+addon = '''
+    // --- legitimate fault: prime the TLB with the non-canonical address itself,
+    //     then access it so the DTLB-hit path checks its own (registered) VA ---
+    lsu_req_i = 1; lsu_vaddr_i = Np1;
+    repeat (14) @(posedge clk); #1;
+    lsu_req_i = 1; lsu_vaddr_i = Np1;
+    @(posedge clk); #1;
+    $display("[legit Np1] cyc=%0d in_vaddr=%h q_vaddr=%h dtlb_hit_q=%b can=%b -> exc.valid=%b exc.cause=%0d tval=%h",
+             cyc, lsu_vaddr_i, CANARY, u_mmu.dtlb_hit_q,
+             u_mmu.CANARY, lsu_exception_o.valid,
+             lsu_exception_o.cause, lsu_exception_o.tval);
+    @(posedge clk); #1;
+    lsu_req_i = 0;
+    repeat (3) @(posedge clk);
+'''
+for name, canary in [('tb_mmu.sv','canonical_addr_check'), ('tb_mmu_fixed.sv','canonical_addr_check_q')]:
+    p = Path(name)
+    s = p.read_text()
+    anchor = '    lsu_req_i = 0; lsu_is_store_i = 0;\n    repeat (3) @(posedge clk);\n    $finish;'
+    assert s.count(anchor) == 1, name
+    s = s.replace(anchor, addon.replace('CANARY', canary) + '    $finish;')
+    s = s.replace('u_mmu.lsu_vaddr_q, CANARY,', 'u_mmu.lsu_vaddr_q, CANARY,')
+    s = s.replace('in_vaddr=%h q_vaddr=%h', 'in_vaddr=%h q_vaddr=%h')
+    p.write_text(s)
+print('extended both TBs')
+PY
+extended both TBs
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && python3 - <<'PY'
+from pathlib import Path
+for name, canary in [('tb_mmu.sv','canonical_addr_check'), ('tb_mmu_fixed.sv','canonical_addr_check_q')]:
+    p = Path(name)
+    s = p.read_text().replace('cyc, lsu_vaddr_i, ' + canary + ', u_mmu.dtlb_hit_q,',
+                              'cyc, lsu_vaddr_i, u_mmu.lsu_vaddr_q, u_mmu.dtlb_hit_q,')
+    p.write_text(s)
+print('fixed monitor args')
+PY
+fixed monitor args
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && rm -rf obj_dir obj_dir_fixed && CXXFLAGS="-I/Library/Developer/CommandLineTools/SDKs/MacOSX26.2.sdk/usr/include/c++/v1 -Os" verilator --binary -j 0 --timing -Wno-fatal -Wno-PINMISSING -Wno-LATCH --top-module tb_mmu -f filelist.f tb_mmu.sv -o sim_tb > /tmp/build.log 2>&1 && CXXFLAGS="-I/Library/Developer/CommandLineTools/SDKs/MacOSX26.2.sdk/usr/include/c++/v1 -Os" verilator --binary -j 0 --timing -Wno-fatal -Wno-PINMISSING -Wno-LATCH -Mdir obj_dir_fixed --top-module tb_mmu -f filelist_fixed.f tb_mmu_fixed.sv -o sim_tb_fixed > /tmp/build_fixed.log 2>&1 && echo '=== ORIGINAL ===' && ./obj_dir/sim_tb 2>&1 | grep -E 'prime|resp N|legit' && echo '=== PATCHED ===' && ./obj_dir_fixed/sim_tb_fixed 2>&1 | grep -E 'prime|resp N|legit'
+=== ORIGINAL ===
+[prime ] cyc=28 hit=1 valid=1 exc.valid=0 exc.cause=0 paddr=0000403fffffff
+[resp N] cyc=29 in_vaddr=0000004000000000 q_vaddr=0000003fffffffff dtlb_hit_q=1 can=1 -> exc.valid=1 exc.cause=13 tval=0000003fffffffff
+[resp N/store] cyc=34 in_vaddr=0000004000000000 q_vaddr=0000003fffffffff dtlb_hit_q=1 can=1 -> exc.valid=1 exc.cause=15 tval=0000003fffffffff
+[legit Np1] cyc=50 in_vaddr=0000004000000000 q_vaddr=0000004000000000 dtlb_hit_q=1 can=1 -> exc.valid=1 exc.cause=15 tval=0000004000000000
+=== PATCHED ===
+[prime ] cyc=28 hit=1 valid=1 exc.valid=0 exc.cause=0 paddr=0000403fffffff
+[resp N] cyc=29 in_vaddr=0000004000000000 q_vaddr=0000003fffffffff dtlb_hit_q=1 can=0 -> exc.valid=0 exc.cause=0 tval=0000000000000000
+[resp N/store] cyc=34 in_vaddr=0000004000000000 q_vaddr=0000003fffffffff dtlb_hit_q=1 can=0 -> exc.valid=0 exc.cause=0 tval=0000000000000000
+[legit Np1] cyc=50 in_vaddr=0000004000000000 q_vaddr=0000004000000000 dtlb_hit_q=1 can=1 -> exc.valid=1 exc.cause=15 tval=0000004000000000
+> build · hy4-flash-free
+Let me capture the exact patch diff and record timing.
+[0m$ [0mcd /tmp/p192_so && diff -u rtl/cva6_mmu.sv rtl_fixed/cva6_mmu.sv
+--- rtl/cva6_mmu.sv	2026-11-20 08:02:42
++++ rtl_fixed/cva6_mmu.sv	2026-11-20 08:10:09
+@@ -139,7 +139,7 @@
+   logic iaccess_err;  // insufficient privilege to access this instruction page
+   logic i_g_st_access_err;  // insufficient privilege at g stage to access this instruction page
+   logic daccess_err;  // insufficient privilege to access this data page
+-  logic canonical_addr_check;  // canonical check on the virtual address for SV39
++  logic canonical_addr_check_n, canonical_addr_check_q;  // canonical check, registered to align with the response-stage request registers
+   logic d_g_st_access_err;  // insufficient privilege to access this data page
+   logic ptw_active;  // PTW is currently walking a page table
+   logic walking_instr;  // PTW is walking because of an ITLB miss
+@@ -539,7 +539,7 @@
+     misaligned_ex_n.valid = misaligned_ex_i.valid & lsu_req_i;
+ 
+     // we work with SV39 or SV32, so if VM is enabled, check that all bits [CVA6Cfg.VLEN-1:CVA6Cfg.SV-1] are equal to bit [CVA6Cfg.SV]
+-    canonical_addr_check = (lsu_req_i && en_ld_st_translation_i &&
++    canonical_addr_check_n = (lsu_req_i && en_ld_st_translation_i &&
+            !((&lsu_vaddr_i[CVA6Cfg.VLEN-1:CVA6Cfg.SV-1]) == 1'b1 || (|lsu_vaddr_i[CVA6Cfg.VLEN-1:CVA6Cfg.SV-1]) == 1'b0));
+ 
+     // Check if the User flag is set, then we may only access it in supervisor mode
+@@ -627,7 +627,7 @@
+               lsu_exception_o.tinst = '0;
+               lsu_exception_o.gva = ld_st_v_i;
+             end
+-          end else if ((en_ld_st_translation_i || !CVA6Cfg.RVH) && (!dtlb_pte_q.w || daccess_err || canonical_addr_check || !dtlb_pte_q.d)) begin
++          end else if ((en_ld_st_translation_i || !CVA6Cfg.RVH) && (!dtlb_pte_q.w || daccess_err || canonical_addr_check_q || !dtlb_pte_q.d)) begin
+             lsu_exception_o.cause = riscv::STORE_PAGE_FAULT;
+             lsu_exception_o.valid = 1'b1;
+             if (CVA6Cfg.TvalEn)
+@@ -655,7 +655,7 @@
+               lsu_exception_o.gva = ld_st_v_i;
+             end
+             // check for sufficient access privileges - throw a page fault if necessary
+-          end else if (daccess_err || canonical_addr_check) begin
++          end else if (daccess_err || canonical_addr_check_q) begin
+             lsu_exception_o.cause = riscv::LOAD_PAGE_FAULT;
+             lsu_exception_o.valid = 1'b1;
+             if (CVA6Cfg.TvalEn)
+@@ -782,6 +782,7 @@
+       hs_ld_st_inst_q <= '0;
+       hlvx_inst_q     <= '0;
+       misaligned_ex_q <= '0;
++      canonical_addr_check_q <= 1'b0;
+     end else begin
+       lsu_vaddr_q     <= lsu_vaddr_n;
+       lsu_req_q       <= lsu_req_n;
+@@ -790,6 +791,7 @@
+       lsu_is_store_q  <= lsu_is_store_n;
+       dtlb_is_page_q  <= dtlb_is_page_n;
+       misaligned_ex_q <= misaligned_ex_n;
++      canonical_addr_check_q <= canonical_addr_check_n;
+ 
+       if (CVA6Cfg.RVH) begin
+         lsu_tinst_q     <= lsu_tinst_n;
+> build · hy4-flash-free
+Let me also test an even smaller one-line alternative for the alternatives section.
+[0m$ [0mcd /tmp/p192_so && rm -rf rtl_fixed2 obj_dir_fixed2 && cp -R rtl rtl_fixed2 && python3 - <<'PY'
+from pathlib import Path
+p = Path('rtl_fixed2/cva6_mmu.sv')
+s = p.read_text()
+old = """    canonical_addr_check = (lsu_req_i && en_ld_st_translation_i &&
+           !((&lsu_vaddr_i[CVA6Cfg.VLEN-1:CVA6Cfg.SV-1]) == 1'b1 || (|lsu_vaddr_i[CVA6Cfg.VLEN-1:CVA6Cfg.SV-1]) == 1'b0));"""
+new = """    canonical_addr_check = (lsu_req_q && en_ld_st_translation_i &&
+           !((&lsu_vaddr_q[CVA6Cfg.VLEN-1:CVA6Cfg.SV-1]) == 1'b1 || (|lsu_vaddr_q[CVA6Cfg.VLEN-1:CVA6Cfg.SV-1]) == 1'b0));"""
+assert s.count(old) == 1
+p.write_text(s.replace(old, new))
+print('one-line variant applied')
+PY
+sed -e 's|^rtl/|rtl_fixed2/|' -e 's|^+incdir+rtl/|+incdir+rtl_fixed2/|' filelist.f > filelist_fixed2.f
+CXXFLAGS="-I/Library/Developer/CommandLineTools/SDKs/MacOSX26.2.sdk/usr/include/c++/v1 -Os" verilator --binary -j 0 --timing -Wno-fatal -Wno-PINMISSING -Wno-LATCH -Mdir obj_dir_fixed2 --top-module tb_mmu -f filelist_fixed2.f tb_mmu.sv -o sim_tb_fixed2 > /tmp/build_fixed2.log 2>&1 && ./obj_dir_fixed2/sim_tb_fixed2 2>&1 | grep -E 'prime|resp N|legit'
+one-line variant applied
+[prime ] cyc=28 hit=1 valid=1 exc.valid=0 exc.cause=0 paddr=0000403fffffff
+[resp N] cyc=29 in_vaddr=0000004000000000 q_vaddr=0000003fffffffff dtlb_hit_q=1 can=0 -> exc.valid=0 exc.cause=0 tval=0000000000000000
+[resp N/store] cyc=34 in_vaddr=0000004000000000 q_vaddr=0000003fffffffff dtlb_hit_q=1 can=0 -> exc.valid=0 exc.cause=0 tval=0000000000000000
+[legit Np1] cyc=50 in_vaddr=0000004000000000 q_vaddr=0000004000000000 dtlb_hit_q=1 can=1 -> exc.valid=1 exc.cause=15 tval=0000004000000000
+> build · hy4-flash-free
+[0m$ [0mdate '+%Y-%m-%d %H:%M:%S %Z'; echo '---'; date -r /tmp/p192_so/TASK.md '+TASK.md mtime: %Y-%m-%d %H:%M:%S'
+2026-11-20 08:11:14 CST
+---
+TASK.md mtime: 2026-11-20 08:02:42
+> build · hy4-flash-free
+[0m← [0mWrite /tmp/p192_so/ANSWER.md
+Created file successfully: /tmp/p192_so/ANSWER.md
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && echo '=== rtl vs pristine copy (should differ only in cva6_mmu.sv, which was patched only in the copy) ===' && diff -rq rtl rtl_fixed2; echo '=== ANSWER.md size ==='; wc -l ANSWER.md; echo '=== files in workspace ==='; ls -1
+=== rtl vs pristine copy (should differ only in cva6_mmu.sv, which was patched only in the copy) ===
+Files rtl/cva6_mmu.sv and rtl_fixed2/cva6_mmu.sv differ
+=== ANSWER.md size ===
+     265 ANSWER.md
+=== files in workspace ===
+ANSWER.md
+filelist_fixed.f
+filelist_fixed2.f
+filelist.f
+meta
+obj_dir
+obj_dir_fixed
+obj_dir_fixed2
+README.md
+rtl
+rtl_fixed
+rtl_fixed2
+SHA256SUMS
+TASK.md
+tb_mmu_fixed.sv
+tb_mmu.sv
+> build · hy4-flash-free
+[0m$ [0mcd /tmp/p192_so && head -5 SHA256SUMS && echo '--- verify ---' && shasum -c SHA256SUMS 2>&1 | tail -20
+ae7a5812788838d25cdc879b6806a45ef1051f50f778776b08cfa9eef1a8a800  ./filelist.f
+b41106a9d0de1cf6ab4ea56bedf677503085c0570248f37fe2cdf657a5e72601  ./meta/LICENSE_CVA6
+b3152f41d05f9b8183f2057c1fa7aa4dd0b28a9728b74524e3f3bd1086f59226  ./README.md
+afc32fcae21f6cbb834c5ee602a1aaee1b518fc436a86d4fe1b97942473d35c8  ./rtl/cf_math_pkg.sv
+9e398a9f24c92bf98703d55759e86cfb790e76ba527a6b64b46349d1897b50a7  ./rtl/cva6_mmu.sv
+--- verify ---
+./meta/LICENSE_CVA6: OK
+./README.md: OK
+./rtl/cf_math_pkg.sv: OK
+./rtl/cva6_mmu.sv: OK
+./rtl/cva6_ptw.sv: OK
+./rtl/cva6_shared_tlb.sv: OK
+./rtl/cva6_tlb.sv: OK
+./rtl/include/ariane_pkg.sv: OK
+./rtl/include/build_config_pkg.sv: OK
+./rtl/include/config_pkg.sv: OK
+./rtl/include/cv64a6_imafdc_sv39_config_pkg.sv: OK
+./rtl/include/dummy_l15_pkg.sv: OK
+./rtl/include/riscv_pkg.sv: OK
+./rtl/include/std_cache_pkg.sv: OK
+./rtl/lfsr.sv: OK
+./rtl/lzc.sv: OK
+./rtl/p187_mmu_top.sv: OK
+./rtl/pmp_entry.sv: OK
+./rtl/pmp.sv: OK
+./TASK.md: OK
+> build · hy4-flash-free
+[0m← [0mEdit /tmp/p192_so/ANSWER.md
+Index: /tmp/p192_so/ANSWER.md
+===================================================================
+--- /tmp/p192_so/ANSWER.md
++++ /tmp/p192_so/ANSWER.md
+@@ -137,10 +137,14 @@
+ ```
+ 
+ Scope: 6 line changes, all inside `cva6_mmu.sv`. No other module, no architectural
+ behavior change for legal accesses, and genuine non-canonical faults are preserved
+-(validated below).
++(validated below). `rtl/` remained pristine — verified with the bundled checksums:
+ 
++```
++$ shasum -c SHA256SUMS | grep -v ': OK'   # no mismatches; all rtl/*.sv OK
++```
++
+ ---
+ 
+ ## 3. Evidence trail
+ 
+
+> build · hy4-flash-free
+Done. `/tmp/p192_so/ANSWER.md` is written.
+
+**Diagnosis:** In `rtl/cva6_mmu.sv`, `canonical_addr_check` (line 142, assigned at lines 542–543) is computed combinationally from the *current* inputs `lsu_req_i`/`lsu_vaddr_i`, but it is consumed in the *response* stage of the registered data-interface pipeline (lines 607, 630, 658) alongside `dtlb_hit_q`, `lsu_req_q` and `lsu_vaddr_q`. When a legal access at canonical address N is followed immediately by a non-canonical N+1, the check fires during N's response cycle, raising a spurious LOAD/STORE_PAGE_FAULT with `tval` taken from `lsu_vaddr_q = N` — exactly the reported symptom.
+
+**Fix:** register the check (`canonical_addr_check_n/_q`) so it is sampled with the request and used with the response (6-line diff in ANSWER.md, not applied to `rtl/`).
+
+**Evidence:** a local Verilator testbench against the unmodified RTL reproduced causes 13 and 15 with canonical `tval`; the patched copy removes both while preserving a genuine non-canonical fault. `rtl/` was verified unchanged via `SHA256SUMS`.
