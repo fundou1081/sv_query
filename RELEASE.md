@@ -6,7 +6,7 @@
 
 - [x] `PLAN.md` current item and release scope agree.
 - [x] `CHANGELOG.md` has the release entry.
-- [x] Version in `pyproject.toml` is final (`0.3.1` for the current beta).
+- [x] Version in `pyproject.toml` is final (`0.3.2` for the current beta).
 - [x] `docs/KNOWN_LIMITATIONS.md` is linked from README.
 - [x] No `package.json` / `package-lock.json` at the repository root.
 - [x] Dependency ranges are compatible ranges, not exact runtime pins.
@@ -48,8 +48,8 @@ python3 -m venv /tmp/svq-release-venv
 ```bash
 git checkout main
 git pull
-git tag -a v0.3.1 -m "sv_query 0.3.1 beta"
-git push origin v0.3.1
+git tag -a v0.3.2 -m "sv_query 0.3.2 beta"
+git push origin v0.3.2
 ```
 
 Pushing a `v*` tag triggers `.github/workflows/release.yml`:
@@ -63,7 +63,7 @@ After publish:
 ```bash
 pip index versions sv_query
 python3 -m venv /tmp/svq-pypi-smoke
-/tmp/svq-pypi-smoke/bin/pip install sv_query==0.3.1
+/tmp/svq-pypi-smoke/bin/pip install sv_query==0.3.2
 /tmp/svq-pypi-smoke/bin/sv_query capabilities --json
 ```
 

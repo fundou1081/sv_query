@@ -3,6 +3,14 @@
 > 完整历史 changelog. README 短版只展示"为什么用 sv_query" + 5 分钟上手.
 > 详细 release notes 看这里.
 
+## 2026-11-20 (0.3.2 beta — MissingTimeScale diagnostic fix)
+
+- `diagnose timescale` now disables timescale injection for its own compile path;
+  a mixed design (some files with `timescale, some without) is reported correctly.
+- Other analysis paths keep the default injection behavior.
+- Add 3 regressions: mixed design, all-present, default stats unchanged.
+- Canonical 3133 passed / 0 failed.
+
 ## 2026-11-20 (0.3.1 beta — PyPI metadata fix)
 
 - 修复 0.3.0 PyPI 页面仍显示“尚未上传/从 Git 安装”的构建时 README；
