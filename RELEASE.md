@@ -74,6 +74,7 @@ Published status (2026-11-20):
 ```text
 sv_query 0.3.0  published (PyPI description stale README; superseded)
 sv_query 0.3.1  published (corrected PyPI README/install)
+sv_query 0.3.2  published (MissingTimeScale diagnostic fix)
 ```
 
 ## 5. Rollback
