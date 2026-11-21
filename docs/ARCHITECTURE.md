@@ -1,336 +1,85 @@
-# sv_query 架构文档 v2.0
+# sv_query architecture
 
-> ⚠️ **2026-11-11 校准：本文正文是 2026-08-26 快照，已不代表当前实现。**
-> 已知差异：CLI 命令面 23 → **45（core 39 + exp 6）**；VizData/`visualize` 全设计图已退役；
-> 构建走 `src/sv_query/trace/core/pipeline.py` 的 **11 步声明式 DAG**；边分类唯一实现在
-> `src/sv_query/trace/core/graph/contracts.py`（data/control/structural）。
-> 当前语义契约见 [SEMANTIC_CONTRACTS](dev/SEMANTIC_CONTRACTS.md)。
-> 本文只作历史设计记录。
+> **状态**: 当前架构概览（2026-11-21）
+> **入口**: agent 先读 [README](../README.md) → 本文 → [USER_GUIDE](USER_GUIDE.md)
 
-> ⚠️ **2026-11-03 更新**: 全设计图可视化层（VizData/ELK/visualize/arch/design）已退役；
-> 本文 §2.4 与 VizData 相关段落为历史记录。当前方向见
-> [structural_review_plan_2026-11-02](architecture/structural_review_plan_2026-11-02.md)。
+## 1. 分层
 
-> 更新日期: 2026-08-26
-> 项目路径: ~/my_dv_proj/sv_query
-
----
-
-## 一、架构概览
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    CLI Layer (23 commands)                  │
-│  trace / arch / visualize / dataflow / cdc / timing / ...   │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Query Layer (API)                       │
-│  UnifiedTracer — 统一入口, trace_fanin/trace_fanout/...    │
-│  SignalTracer / LoadTracer / ClockDomainTracer             │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│             Graph Layer (核心数据模型)                       │
-│  SignalGraph ←─ DataFlowGraph ←─ ModuleInstanceGraph (MIG) │
-│  VizData — 统一可视化中间层 (V6.7)                          │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│              Extractor Layer (5 extractors)                │
-│  Driver / Load / Connection / Clock / Module               │
-│  SVA / Covergroup / UVM                                   │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                 Visitor Layer (10+ visitors)               │
-│  SignalExpression / StatementCollector / Constraint / ...  │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                pyslang AST (Semantic)                      │
-│  Compilation + getRoot() — 唯一可信数据源 [铁律1]           │
-└─────────────────────────────────────────────────────────────┘
+```text
+RTL / filelist / snapshot
+  │
+  ├─ pyslang semantic AST        src/sv_query/trace/core
+  │    parser → semantic adapter → extractors
+  │
+  ├─ SignalGraph + MIG           src/sv_query/trace/core/graph
+  │    nodes/edges: data, control, structural
+  │
+  ├─ query layer                 src/sv_query/cli/core
+  │    drivers/loads, paths, dataflow, verify, scope, snapshot
+  │
+  └─ CLI / Session               src/sv_query/cli, src/sv_query/session.py
+       JSON envelope, capabilities, stable error codes
 ```
 
----
+CLI 与 Python Session 共用同一 registry 和 JSON contract；`sv_query` console
+entry 是 `sv_query.cli._entry:main`。
 
-## 二、核心数据模型
+## 2. 命令面
 
-### 2.1 SignalGraph — 信号关系图
-
-**文件**: `src/sv_query/trace/core/graph/models.py` (744 行)
-
-```python
-class NodeKind(Enum):
-    # ═══ 核心: 硬件信号 (≈80% 引用) ═══
-    SIGNAL, WIRE, REG, PORT_IN, PORT_OUT, PORT_INOUT, CONST
-    # ═══ 核心: 架构 ═══
-    PARAM, INSTANTIATED_MODULE, GENERATE_BLOCK
-    # ═══ 扩展: Class / Constraint ═══
-    CLASS, CLASS_INSTANCE, CLASS_PROPERTY, CONSTRAINT_*, ...
-    # ═══ 实验: 表达式 ═══
-    EXPRESSION, FUNCTION_CALL
-
-class EdgeKind(Enum):  # V6.6 重新分区
-    # ═══ 核心: 硬件信号边 (≈90% 引用) ═══
-    DRIVER, CLOCK, RESET, CONNECTION, BIT_SELECT
-    # ═══ 扩展: Class / Constraint ═══
-    CONSTRAINS, HAS_CONDITION, HAS_CONSEQUENT, HAS_ALTERNATE,
-    HAS_LHS, HAS_RHS, HAS_MEMBER, IS_INSTANCE_OF, ...
+```text
+45 canonical listed commands
+39 default-visible
+2 aliases
+6 experimental (exp/)
+32 standard envelopes / 13 direct envelopes
 ```
 
-```python
-@dataclass
-class TraceNode:
-    id: str              # "picorv32.cpuregs"
-    name: str            # "cpuregs"
-    module: str          # "picorv32"
-    kind: NodeKind
-    width: tuple[int, int]  # (31, 0)
-    bit_range: str | None
-    parent: str | None        # 位选父节点
-    is_clock/is_reset: bool
+权威来源：
 
-@dataclass  
-class TraceEdge:
-    src: str
-    dst: str
-    kind: EdgeKind
-    assign_type: str       # continuous / nonblocking / blocking
-    condition: str         # "state == FETCH" — 显示在边上
-    clock_domain: str
-    expression: str        # "a + b" — 驱动表达式
-    bit_slice: str         # "[7:0]"
-    source: SignalSource | None  # V6.5/V6.6 位精确结构化源
-    confidence: str        # high / medium / low
+- [`capabilities --json`](agent/CAPABILITIES_GENERATED.md)
+- [`src/sv_query/cli/_registry.py`](../src/sv_query/cli/_registry.py)
+- 命令面变更 gate：`tools/check_command_surface.py --check`
+
+core/exp 边界：
+
+- `core`：只读、JSON、稳定 schema；
+- `exp`：实验能力，不承诺兼容；
+- 业务失败与调用失败使用不同的 rc/ok/error_code 约定，见
+  [ENVELOPE_FAILURE_CONTRACT](dev/ENVELOPE_FAILURE_CONTRACT.md)。
+
+## 3. 语义契约
+
+数据边、路径、`verified` / `unknown`、snapshot 行为以
+[SEMANTIC_CONTRACTS](dev/SEMANTIC_CONTRACTS.md) 为唯一真相源。
+
+关键不变量：
+
+- CLOCK/RESET 是时序注解，不是数据边；
+- 搜索预算耗尽 → `is_reachable=null` / `unknown`，不写 false；
+- sample/truncated 不得标成 `verified`；
+- 位级追踪只在已建模算子/连接上成立；比较/变量移位等仍是总线粒度；
+- 输出证据分级见 [CLAIMS](dev/CLAIMS.md) 与 [KNOWN_LIMITATIONS](KNOWN_LIMITATIONS.md)。
+
+## 4. 代码布局
+
+```text
+src/sv_query/trace/core/      parser / semantic adapter / extractors / graph
+src/sv_query/trace/core/graph/models.py    SignalGraph
+src/sv_query/trace/core/graph/contracts.py edge 分类唯一实现
+src/sv_query/cli/core/        CLI query implementations
+src/sv_query/cli/_registry.py command/JSON contract registry
+src/sv_query/session.py       Python Session contract
+sim/tests/                    canonical + integration + usage tests
+docs/                         contracts, validation, user docs
 ```
 
-### 2.2 SignalSource — 位精确信号源 (V6.5/V6.6)
+## 5. 证据与验证
 
-**driver 和 load 共享**。替代纯字符串的 expression/bit_slice。
+- [CLAIMS](dev/CLAIMS.md)：公开能力与 gate 对应关系；
+- [TESTING](../TESTING.md)：canonical 命令与测试语义；
+- [docs/validation/](validation/)：真实验证证据（CVA6 案例、release、snapshot 等）；
+- `tools/run_gates.sh`：提交前全门禁。
 
-```python
-@dataclass
-class SignalSource:
-    signal: str             # "a"
-    bit_start: int | None   # 7 (MSB)
-    bit_end: int | None     # 0 (LSB)
-    full_expression: str    # "a[7:0] + b[3:0]"
-    op: str                 # "Add" / "ArithmeticShiftRight"
-    operand_side: str       # "left" / "right"
-    casts: list[str]        # ["$signed"]
-    is_decomposed: bool     # True = 从 binary op 分解
-```
+## 6. 历史文档
 
-### 2.3 DriverInfo — 驱动详情 (V6.6)
-
-```python
-@dataclass
-class DriverInfo:
-    node: TraceNode
-    source: SignalSource | None  # V6.6 替代 expression/bit_slice
-    condition: str         # "state == FETCH"
-    reset_condition: str   # "!rst_n"
-    clock_domain: str      # "clk"
-    assign_type: str       # nonblocking / continuous / blocking
-    distance: int
-    target_signal: str
-    
-    @property
-    def expression(self) -> str:  # 从 source 派生
-    @property
-    def bit_slice(self) -> str:   # 从 source 派生
-```
-
-### 2.4 VizData — 统一可视化中间层 (V6.7)
-
-**数据和渲染彻底解耦**。所有画图功能的输入。
-
-```python
-@dataclass
-class VizNode:
-    id, label, full_path, module, kind           # 必需
-    class_: str          # DATA/CONTROL/CLOCK/RESET  (可选)
-    stage_id: int | None # pipeline 阶段 (可选)
-    risk_level: str      # LOW/MEDIUM/HIGH/CRITICAL (可选)
-    is_critical: bool    # chain critical path (可选)
-
-@dataclass
-class VizEdge:
-    id, src, dst, kind                           # 必需
-    expression: str      # 驱动表达式
-    condition: str       # "state == FETCH" — 显示在边上!
-    source_signal: str   # 位精确信号名
-    source_op: str       # 操作符
-    is_control_edge: bool # 控制边 → 虚线
-    edge_cycle_delta: int # chain cycle 计数 (可选)
-```
-
-**渲染管线**: `SignalGraph → build_viz_data(options) → VizData → render_dot(config) → DOT`
-
----
-
-## 三、Extractor 层 (5 + 3)
-
-| Extractor | 文件 | 职责 |
-|-----------|------|------|
-| **DriverExtractor** | `driver_extractor.py` (3987行) | DRIVER/CLOCK/RESET 边 + SignalSource |
-| ~~**LoadExtractor**~~ | `load_extractor.py` (删除, iter_276) | 曾负责模块定义端口节点 |
-| **ConnectionExtractor** | `connection_extractor.py` (503行) | CONNECTION 边 (port mapping) |
-| ~~**ClockDomainExtractor**~~ | `clock_domain_extractor.py` (删除, iter_276) | 曾负责模块定义端口节点 + clock/reset 标记 |
-| **ModuleExtractor** | `module_extractor.py` (467行) | 模块实例信息 |
-| SVAExtractor | `sva_extractor.py` | SVA assertion 提取 |
-| CovergroupExtractor | `covergroup_extractor.py` | 覆盖率提取 |
-| UVMTestbenchExtractor | `uvm_testbench_extractor.py` | UVM 结构提取 |
-
-所有 extractor 返回 `ExtractorResult(nodes, edges, errors)`（端口即图节点，无单独映射表）。
-
----
-
-## 四、VizData 渲染管线 (V6.7)
-
-### 4.1 设计原则
-
-- **数据和渲染彻底解耦** — VizData 是纯数据，不包含渲染逻辑
-- **一个格式，所有画图功能** — graph/dataflow/pipeline/chain 共用
-- **可选字段** — 每条命令只取自己需要的 5-10 个字段
-- **统一渲染器** — `render_dot(viz, config)` 约 200 行
-
-### 4.2 迁移状态
-
-| 命令 | 状态 | 备注 |
-|------|------|------|
-| `visualize graph` | ✅ 已迁移 | 用户命令 |
-| `visualize dataflow` | ✅ 已迁移 | 用户命令 |
-| `visualize pipeline` | ✅ 已迁移 | 用户命令 |
-| `visualize chain` | ⏸ 保留 | 不同数据源 (路径遍历器) |
-| `visualize module` | ⏸ 保留 | 不同数据源 (InstanceResult) |
-| `arch show` | ⏸ 保留 | 不同数据源 (实例图) |
-| `visualize teach` | ⏸ 保留 | 自定义 HTML |
-
-### 4.3 文件结构
-
-```
-src/sv_query/trace/core/graph/viz/
-├── __init__.py            # 公开 API
-├── viz_data_models.py     # VizNode / VizEdge / VizData
-├── viz_data_builder.py    # build_viz_data(graph, options)
-└── viz_dot_renderer.py    # render_dot(viz, config) — 统一 DOT 生成
-```
-
-### 4.4 旧渲染器状态
-
-| 文件 | 状态 |
-|------|------|
-| `signal_graph_viewer.py` | 📦 **已归档出源码树** (iter_245 → `private archive: 2026-10-19-src-archived/`): 零 import 方, 且自带 `__main__` 实测跑不通 (`KeyError: show_type`); 主渲染路径是 VizData → ELK → SVG |
-| `dataflow_viz.py::generate_dataflow_dot` | ⛔ `_emit_split_by_module` 仍在使用 |
-| `pipeline_viz.py::generate_pipeline_dot` | 🗑 deprecated [V6.7] |
-| `pipeline_viz.py::generate_pipeline_timing_dot` | 🗑 deprecated [V6.7] |
-| `pipeline_viz.py::generate_pipeline_load_dot` | 🗑 deprecated [V6.6] |
-| `viz_legend.py` | ⛔ CLI 层仍在使用 |
-
----
-
-## 五、Query API
-
-| 类 | 文件 | 职责 |
-|----|------|------|
-| **SignalTracer** | `query/signal.py` | trace_fanin / trace_fanout / trace_fanin_detailed (`make_id` 是 id 解析的**唯一**规则) |
-| **LoadTracer** | `query/load.py` | trace_loads —— **薄适配层** (iter_241): 遍历委托 `SignalTracer.trace_fanout`, 只做入参解析 + `LoadChain` 打包, 不再持有第二份遍历 |
-| **ClockDomainTracer** | `query/clock_domain.py` | trace_clock_domain |
-| **ModuleTracer** | `query/module.py` | trace_module |
-
-> [iter_241] 原 `core/graph_traversal.py` (`GraphTraversal` 基类) 的唯一子类是
-> `LoadTracer`; 改成适配层后它成为死代码, 已删除。任何"再写一份 loads 遍历"的改动
-> 都会被 `test_load_tracer_adapter.py` 的结构性断言挡住。
-
-`trace_fanin_detailed()` 返回 `list[DriverInfo]`，DriverInfo 包含 SignalSource.
-
----
-
-## 六、Graph/Analyzer 层
-
-| 分析器 | 职责 | 稳定性 |
-|--------|------|--------|
-| **DataFlowGraph** | 跨模块数据流路径搜索 | ✅ 核心 |
-| **ControlFlowAnalyzer** | 控制流分析 | ⚠️ 次流 |
-| **CDCAnalyzer** | 跨时钟域检测 | ✅ 核心 |
-| **TimingAnalyzer** | 关键路径 (reg depth) | ⚠️ 次流 |
-| **SignalClassifier** | DATA/CONTROL/CLOCK 分类 | ✅ 核心 |
-| **ControlCoverageGenerator** | 控制覆盖率生成 | ⚠️ 次流 |
-| **HandshakeDetector** | 握手协议检测 | ⚠️ 次流 |
-| **HandshakeDetector** | 握手协议检测 | ⚠️ 次流 |
-
----
-
-## 七、技术栈
-
-| 组件 | 技术 |
-|------|------|
-| AST 解析 | pyslang (Compilation + getRoot) |
-| 图结构 | NetworkX DiGraph |
-| 数据类 | dataclass + Enum + auto() |
-| VISITOR | @on 装饰器 handler 注册 |
-| CLI | Typer |
-| 测试 | pytest — 计数/基线见 [INDEX.md 当前基线](INDEX.md#-当前基线-单一真相源--计数只写在这里) |
-| 渲染 | Graphviz DOT + `dot -Tpng/svg` |
-
----
-
-## 八、核心设计铁律
-
-| 铁律 | 内容 |
-|------|------|
-| 铁律1 | pyslang Semantic AST 唯一数据源 |
-| 铁律4 | 不允许创建孤儿节点 |
-| 铁律13 | 金标准测试优先 |
-| 铁律15 | Visitor 模式 |
-| 铁律16 | ENABLE/DATA 不作为独立边类型 |
-| 铁律26 | AST 遍历必须使用 Visitor，禁止 if-elif 链 |
-| 铁律29 | Visitor 调用统一通过 extract() |
-
----
-
-## 九、版本历史
-
-| 日期 | 版本 | 变更 |
-|------|------|------|
-| 2026-07-29 | V6.7 | VizData 统一可视化层，graph/dataflow/pipeline 迁移 |
-| 2026-07-29 | V6.6 | DriverSource→SignalSource, DriverInfo含SignalSource, NodeKind/EdgeKind分区, 可视化清理 |
-| 2026-07-28 | V6.5 | DriverSource结构化驱动源 (位精确binary decomposition) |
-| 2026-07-28 | V6.4 | binary operator decomposition + generate-if限制文档化 |
-| 2026-07-27 | V6.3 | ast_utils: unwrap/kind_matches 统一包装解包 |
-| 2026-06-25 | PR1-7 | Module-level抽取+L2跨模块+L3内部信号+L4可视化+L5 benchmark+L6 CI+L7 picorv32 |
-| 2026-06-15 | 1.0+ | Evidence/Snapshot/Verify/Dataflow/Controlflow 全套 |
-| 2026-05-26 | 1.0 | 初始架构 + 996 tests |
-
----
-
-## 🔧 adapter 层结构 (2026-09-08, iter_174~177)
-
-`SemanticAdapter` 曾为 3,049 行单类;现按域拆分为 **facade + 6 mixin**
-(方法名/签名不变, 调用方零改动;API 面由 `sim/tests/unit/test_semantic_adapter_api_surface.py`
-MRO-wide 冻结):
-
-| 模块 | 职责 |
-|---|---|
-| `core/semantic_adapter.py` (≈123 行) | facade: `__init__`/状态/property + mixin 组合 + 兼容再导出 |
-| `core/semantic/source_core.py` | 源位置/文本/子节点/名字清洗 |
-| `core/semantic/modules.py` | module/instance/generate/primitive 导航 |
-| `core/semantic/ports_ifaces.py` | 端口/接口/modport |
-| `core/semantic/connections.py` | 实例连接/表达式→信号名/索引求值 |
-| `core/semantic/exprs_drivers.py` | 赋值/数据声明/驱动/任务函数参数 (+表达式分派器) |
-| `core/semantic/classes.py` | class/约束/参数化特化 |
-| `core/semantic/_expr_helpers.py` | 表达式信号抽取 16 个 kind 处理器 |
-| `core/semantic/_wrappers.py` | instance 包装类 (modules 域使用) |
-
-历史 legacy 层 (`ASTWalker` + 旧 `PyslangAdapter` + 3 Collector, 2,341 行,
-运行时从未实例化) 已移出 → `../svq-legacy-pyslang-adapter/base_pyslang_adapter.py`;
-零调用方法归档 → `../svq-legacy-pyslang-adapter/dead_semantic_adapter_methods.py` (可恢复)。
-方案与回归计划: [architecture/semantic_adapter_split_plan.md](architecture/semantic_adapter_split_plan.md)
+旧架构快照已从公开树移除，保存在私有归档；本文不再维护“已过期”正文。
