@@ -62,6 +62,7 @@
 | C-39 | 核心查询路径无静默宽 except；`check_core_except.py` 进 gate | tool | `test_p193_4_core_except.py` | `verified`（核心 5 文件） |
 | C-40 | English USER_GUIDE + KNOWN_LIMITATIONS available; README links them; Chinese full docs remain canonical | doc/test | `test_p193_6_english_docs.py` | `verified` |
 | C-41 | Miss report template + guide require desensitized fixture / structural-only fallback; no proprietary RTL | template/doc/test | `test_p193_7_miss_report.py` | `verified` |
+| C-42 | installed runtime has no network/telemetry imports; cache/snapshot are local-only | tool/test | `test_p193_8_privacy.py` | `verified`（static） |
 
 ---
 

@@ -9,7 +9,7 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P193.8 local-only logs + no-telemetry statement** `<待做>`
+- **当前 item**: **P193.9 external beta contract page（稳定/不承诺/冷启动预期）** `<待做>`
   - P182 组全部完成：envelope / schema / stats / agent entry / snapshot eval / governance
   - P188 release readiness 完成；发布动作见 [RELEASE.md](RELEASE.md)
   - P189.1 docs 自洽 gate 完成
@@ -20,7 +20,7 @@
 ## 📌 当前真实基线
 
 ```text
-canonical:  3145 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  3147 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 
