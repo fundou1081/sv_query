@@ -3,6 +3,19 @@
 > 完整历史 changelog. README 短版只展示"为什么用 sv_query" + 5 分钟上手.
 > 详细 release notes 看这里.
 
+## 2026-11-22 (0.3.4 beta — cache correctness + local graph session)
+
+- P194.1: remove CLI entry sys.path bootstrap, author pyslang/UVM paths,
+  duplicate imports; explicit `SVQ_PYSLANG_BINDINGS` / `SVQ_UVM_SRC`.
+- P194.2a: single `BuildIdentity` graph-cache key (preprocess/timescale/top/
+  target/versions/semantics); payload capability manifest; cache schema 3.0;
+  missing manifest/capability is a miss.
+- P194.2b: `graph nodes/edges/subgraph` use graph cache with `--no-cache` and
+  `params.cache` hit/miss/disabled; verilog-axi 47.22s cold -> 0.85s warm.
+- P194.2c1: `GraphSession` + hidden stdio `session --serve` graph-only server;
+  snapshot hydration for graph+MIG.
+- Canonical 3159 passed / 0 failed / 123 deferred.
+
 ## 2026-11-21 (0.3.3 beta — CLI namespace + external trial readiness)
 
 - CLI moved from top-level `cli` to `sv_query.cli`; console entry
