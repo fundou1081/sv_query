@@ -36,8 +36,9 @@ Changing any field must produce a different key:
 - cache schema or graph semantics version;
 - pyslang or sv_query version.
 
-`+define+` lines are part of the filelist content hash (they are no longer
-skipped by `compute_filelist_hash`).
+**Known gap (2026-11-22):** `+define+` and filelist-declared `+incdir+` lines are
+currently skipped because they are not files; headers under a filelist `+incdir+`
+are not hashed. This is tracked as P195.1 and blocks the cache-correctness claim.
 
 ### Extractor semantics
 
@@ -60,6 +61,9 @@ Every entry self-describes:
 
 Current graph cache owns **graph only**. MIG/class/path-resolver capabilities are
 not yet cached; commands that require them must not treat this entry as complete.
+**Known gap (2026-11-22):** the current `drivers`/`loads`/GraphSession paths are
+not yet capability-enforced; a graph-only hit can leave MIG unset. Tracked as
+P195.2.
 
 A missing manifest or missing required capability is a **miss**, not a partial
 hit. Old entries without the manifest are rebuilt.

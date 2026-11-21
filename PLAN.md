@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P194.2f session coverage for verify/scope/instances <待做>
+current item : P195.1 cache closure correctness: hash resolved files + +define+ + +incdir+ headers; unreadable => explicit miss <待做>
 
 ## 计划树
 
@@ -591,12 +591,23 @@ P194.2 cold-start cache contract and session reuse <待做>
 P194.2c local session/server reuse + snapshot persistence <待做>
 -- P194.2d GraphSession + stdio graph server + snapshot hydrate <已完成>
 -- P194.2e expose remaining core query ops + invalidation <已完成>
--- P194.2f session coverage for verify/scope/instances <待做>
+-- P194.2f session coverage for verify/scope/instances (blocked by P195.1/P195.2) <阻塞>
 -- P194.3 API facade + deprecation policy <待做>
 -- P194.4 split 500+ line extractor functions <待做>
 -- P194.5 external benchmark + token cost validation <待做>
 -- P194.6 pyright/mypy + generated JSON schema <待做>
 -- P194.7 docs slimming + human onboarding <待做>
+
+P195 external user + maintainer review follow-up (2026-11-22) <待做>
+-- P195.1 cache closure correctness: hash resolved files + +define+ + +incdir+ headers; unreadable => explicit miss <待做>
+-- P195.2 capability enforcement: required graph/mig capabilities; graph-only entry must not satisfy MIG ops <待做>
+-- P195.3 scalar width normalization: 1-bit signal must not report width=[1,0]/width=2 <待做>
+-- P195.4 release gating: publish only after tests + tag/version consistency check <待做>
+-- P195.5 session docs/envelope: document ops/envelope, add verify support or explicit unsupported <待做>
+-- P195.6 stdio lifecycle: try/finally, BrokenPipeError, context manager, closed-state guard <待做>
+-- P195.7 single-source version: BuildIdentity uses PACKAGE_VERSION; release check <待做>
+-- P195.8 user docs: --version, --quiet, cache controls, error_code/envelope semantics <待做>
+-- P195.9 maintenance cleanup: dead cache APIs, except gate coverage, claims freshness <待做>
 
 P193 external trial readiness (2026-11-21 review) <待做>
 -- P193.1 fix sim/tests/config absolute symlink + clone hygiene <已完成>
