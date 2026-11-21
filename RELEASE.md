@@ -76,6 +76,7 @@ sv_query 0.3.0  published (PyPI description stale README; superseded)
 sv_query 0.3.1  published (corrected PyPI README/install)
 sv_query 0.3.2  published (MissingTimeScale diagnostic fix)
 sv_query 0.3.3  published (CLI namespace + external trial readiness)
+sv_query 0.3.4  published (cache correctness + local graph session)
 ```
 
 ## 5. Rollback
