@@ -1,8 +1,8 @@
 # 架构决策: BitSelect 提取改用 pyslang Semantic API (替代 regex)
 
 > **决策 ID**: ARCH-2026-08-28-bitselect-semantic-api
-> **关联**: [ARCHITECTURE_TODOLIST #2](../INDEX.md) / [BITSELECT_HANDLER_G2_PLAN.md](../archive/2026-09-08-cleanup/BITSELECT_HANDLER_G2_PLAN.md)
-> **迭代记录**: [iter_035](../task_tree/iterations/iter_035_bitselect_semantic_api_decision.md)
+> **关联**: [ARCHITECTURE_TODOLIST #2](../INDEX.md) / BITSELECT_HANDLER_G2_PLAN.md
+> **迭代记录**: iter_035
 
 ---
 

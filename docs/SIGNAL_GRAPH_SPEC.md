@@ -44,7 +44,7 @@ GraphBuilder(adapter, target_module)  .build()  →  SignalGraph
 
 ### 1.3 支持的 SV 输入语法（adapter 层契约）
 
-> 2026-08-27 Phase 3 修订: 前版表过于乐观。仅列 ✅ 完整 / ⚠️ 不支持两档，没有反映 🔶 有条件支持 / ⛔ 不支持中间状态。表内所有 ⛔/⚠️/🔶 行均由 [test_spec_unsupported_syntax.py](../../sim/tests/test_spec_unsupported_syntax.py) 实测锁口，fixture 在 [spec_golden/](../../sim/tests/fixtures/spec_golden/)。
+> 2026-08-27 Phase 3 修订: 前版表过于乐观。仅列 ✅ 完整 / ⚠️ 不支持两档，没有反映 🔶 有条件支持 / ⛔ 不支持中间状态。表内所有 ⛔/⚠️/🔶 行均由 test_spec_unsupported_syntax.py 实测锁口，fixture 在 spec_golden/。
 
 | SV 语法 | 处理路径 | 支持级别 |
 |---------|---------|---------|

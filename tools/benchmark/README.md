@@ -125,7 +125,7 @@ python3 tools/benchmark/regen_baselines.py --check    # 只对比: rc=2 表示�
 `SVCompiler._do_compile()` 把 `pyslang.SourceManager` 存成局部变量, parse 循环
 结束后被 GC → 源文件 buffer 释放 → 符号名/token (指向 buffer 的 `string_view`)
 读到垃圾字节。修复后同一输入 3 次**完全一致** (stdev = 0.0), 乱码名归零。
-详见 `docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md` 与
+详见 `private iteration archive: iter_185_slang_sourcemanager_lifetime.md` 与
 `docs/PYSLANG_MEMORY_ISSUE.md`。
 
 `reclaim_memory()` 仍在 `run_benchmark.py` 里 (每次 +3s) — iter_185 后不再必要,

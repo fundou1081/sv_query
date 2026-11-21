@@ -1,7 +1,7 @@
 # P134 — Real-Use Field Pilot: sv_query on OpenTitan UART/I2C
 
 **Date:** 2026-11-09 · **Mode:** independent verification-engineer field pilot (not a unit test)
-**Workspace:** `~/.dsh/opencode-workers-lite/opentitan-pilot/workspace` @ `a82c4892`
+**Workspace:** `private worker workspace` @ `a82c4892`
 **Snapshots:** I2C `/tmp/opentitan_svq_i2c/snapshots/opentitan_i2c`, UART `/tmp/opentitan_svq/snapshots/opentitan_uart`
 **Artifacts:** `/tmp/p134_real_pilot/{REPORT.md, commands.log, i2c_core_arch.json, i2c_core_arch.svg, i2c_core_arch.dot, i2c_dv.f}`
 Nothing was fixed; no code/tasks/snapshots/tracked files modified.

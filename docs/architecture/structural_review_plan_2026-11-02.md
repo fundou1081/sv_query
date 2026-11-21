@@ -287,7 +287,7 @@ finding 面板 → 局部图 → 点击节点展开一跳 → evidence 面板
 
 1. **先冻结，再删**：先隐藏/停止注册，跑全量；再删除/归档；
 2. **先盘点，不盲删**：每个文件/命令/测试/文档标记 keep/archive/delete；
-3. **保留 git 历史**：删除前确认可追溯；文档归档到 `docs/archive/`；
+3. **保留 git 历史**：删除前确认可追溯；文档归档到 `private archive: `；
 4. **不删 SignalGraph / trace / verify**；
 5. **不删 bit/width/cache 相关核心修复**；
 6. **一个语义只留一个实现**。

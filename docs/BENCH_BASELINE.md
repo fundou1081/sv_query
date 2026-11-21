@@ -65,7 +65,7 @@ iter_180~184 记录的本语料"跨次波动"表 (保留为历史):
   变量**, parse 循环结束后被 GC → 源文件 buffer 释放 → 符号名 / token 文本
   (指向 buffer 的 `string_view`) 变垃圾字节;
 - 最小复现: 私有 SourceManager 用完即丢 → 所有 top 名 `UnicodeDecodeError`;
-  只要多持有一份引用就正常 (见 `docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md`);
+  只要多持有一份引用就正常 (见 `private iteration archive: iter_185_slang_sourcemanager_lifetime.md`);
 - 症状组合 (乱码名 / getter 抛错 / 部分 elaboration / 节点数漂移) 全部由
   **内存复用模式** 决定 → 这正是"跑几次结果都不同"的来源。
 

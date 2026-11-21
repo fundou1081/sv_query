@@ -2,7 +2,7 @@
 
 > **状态**: `svq exp ...` 统一命名空间已退役；但 **exp 层仍有 6 个直接 hidden 命令**。
 > 它们没有 canonical group entrypoint，不是 core，也没有 schema/claim 承诺。
-> 历史 exp 资产在 [docs/archive/2026-10-20-exp-attic/](archive/2026-10-20-exp-attic/)。
+> 历史 exp 资产在 private archive: 2026-10-20-exp-attic/。
 > 想法记录在 [EXP_IDEAS.md](EXP_IDEAS.md)。
 
 ---

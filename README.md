@@ -78,7 +78,6 @@ claims remain limited; see [KNOWN_LIMITATIONS](docs/KNOWN_LIMITATIONS.md).
 
 > 全设计图已退役；局部 finding review 仍为 `exp`（`review render`），不是核心能力。
 > RTL typo detection / ranking 属于独立项目 `rtl_typo_checker`，不在 sv_query core。
-> 语义纪律见 [DISCIPLINE §3.5](docs/dev/DISCIPLINE.md)。
 
 ---
 
@@ -287,7 +286,7 @@ python -m pytest sim/tests/ -m opensource -v
 - [12-task 固定协议](docs/validation/LONG_RANGE_12_FIXED_2026-11-07.md) · [最终验证摘要](docs/validation/FINAL_VALIDATION_SUMMARY_2026-11-07.md) · [硬隔离审计](docs/validation/HARD_ISOLATION_2026-11-05.md)
 - [架构文档](docs/ARCHITECTURE.md)
 - [准确性审计](docs/architecture/signal_graph_accuracy_audit.md)
-- [语义 regex 纪律](docs/dev/DISCIPLINE.md) · [开发纪律](AGENTS.md) · [当前任务](CURRENT_TODO.md)
+- 语义 regex 纪律 · [开发纪律](AGENTS.md) · [当前任务](CURRENT_TODO.md)
 - [文档索引](docs/INDEX.md)
 - [已知限制](docs/KNOWN_LIMITATIONS.md)
 

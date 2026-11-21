@@ -9,7 +9,7 @@
 ## 1. 条件
 
 - `prompt`：原有 A+D prompt；
-- `inline`：把 `.dsh/skills/svq-query-protocol/SKILL.md` 的 body
+- `inline`：把 `private legacy skill` 的 body
   直接追加到 prompt，并给出源路径。
 
 相同：

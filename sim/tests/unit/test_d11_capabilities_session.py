@@ -9,7 +9,7 @@
 4. `version` 是 Session 内置 op，不可被 handler 覆盖（构造时显式报错）；
 5. CLI `capabilities` 经 `Session.execute` 走 `cli._registry.to_json` 单一数据源，
    失败路径走 `cli._output.fail`；
-6. CLI A/B（subprocess，baseline `129035bd` 的 `capabilities.py` vs 当前实现）
+6. CLI A/B（subprocess，fixture 中 D11 baseline `capabilities.py` vs 当前实现）
    六个 case 的 stdout / stderr / 退出码逐字节一致。
 """
 from __future__ import annotations
@@ -30,8 +30,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 SRC = PROJECT_ROOT / "src"
 SESSION_PY = SRC / "sv_query" / "session.py"
 
-#: D11 开工前的最后一个提交（baseline）。A/B 用它作为 pre-D11 行为 oracle。
+#: D11 pre-change file, archived as a fixture so clean clones do not need old git history.
 BASELINE_COMMIT = "129035bd"
+BASELINE_FILE = PROJECT_ROOT / "sim/tests/fixtures/baseline/d11_capabilities.py"
 CAPABILITIES_REL = "cli/core/locate/capabilities.py"
 
 sys.path.insert(0, str(SRC))
@@ -342,27 +343,18 @@ _RUNNER = (
 
 @pytest.fixture(scope="module")
 def baseline_src(tmp_path_factory) -> Path:
-    """把 baseline 的 `capabilities.py` 覆盖到一份当前 src 副本上。"""
-    try:
-        blob = subprocess.run(
-            ["git", "show", f"{BASELINE_COMMIT}:src/{CAPABILITIES_REL}"],
-            cwd=str(PROJECT_ROOT),
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-    except FileNotFoundError:
-        pytest.skip("git 不可用，无法读取 baseline 快照")
-    if blob.returncode != 0:
-        pytest.skip(f"baseline blob 不可用: {blob.stderr.strip()[:200]}")
-
+    """把 fixture 中 D11 baseline 的 `capabilities.py` 覆盖到当前 src 副本上。"""
+    if not BASELINE_FILE.is_file():
+        pytest.fail(f"missing baseline fixture: {BASELINE_FILE}")
     root = tmp_path_factory.mktemp("d11_baseline") / "src"
     shutil.copytree(
         SRC,
         root,
         ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
     )
-    (root / CAPABILITIES_REL).write_text(blob.stdout, encoding="utf-8")
+    (root / CAPABILITIES_REL).write_text(
+        BASELINE_FILE.read_text(encoding="utf-8"), encoding="utf-8",
+    )
     return root
 
 

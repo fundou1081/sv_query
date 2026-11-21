@@ -4,7 +4,7 @@
 > 已知差异：CLI 命令面 23 → **45（core 39 + exp 6）**；VizData/`visualize` 全设计图已退役；
 > 构建走 `src/sv_query/trace/core/pipeline.py` 的 **11 步声明式 DAG**；边分类唯一实现在
 > `src/sv_query/trace/core/graph/contracts.py`（data/control/structural）。
-> 恢复上下文请读 [HANDOFF §4](dev/HANDOFF.md) / [SEMANTIC_CONTRACTS](dev/SEMANTIC_CONTRACTS.md)，
+> 当前语义契约见 [SEMANTIC_CONTRACTS](dev/SEMANTIC_CONTRACTS.md)。
 > 本文只作历史设计记录。
 
 > ⚠️ **2026-11-03 更新**: 全设计图可视化层（VizData/ELK/visualize/arch/design）已退役；
@@ -228,7 +228,7 @@ src/sv_query/trace/core/graph/viz/
 
 | 文件 | 状态 |
 |------|------|
-| `signal_graph_viewer.py` | 📦 **已归档出源码树** (iter_245 → `docs/archive/2026-10-19-src-archived/`): 零 import 方, 且自带 `__main__` 实测跑不通 (`KeyError: show_type`); 主渲染路径是 VizData → ELK → SVG |
+| `signal_graph_viewer.py` | 📦 **已归档出源码树** (iter_245 → `private archive: 2026-10-19-src-archived/`): 零 import 方, 且自带 `__main__` 实测跑不通 (`KeyError: show_type`); 主渲染路径是 VizData → ELK → SVG |
 | `dataflow_viz.py::generate_dataflow_dot` | ⛔ `_emit_split_by_module` 仍在使用 |
 | `pipeline_viz.py::generate_pipeline_dot` | 🗑 deprecated [V6.7] |
 | `pipeline_viz.py::generate_pipeline_timing_dot` | 🗑 deprecated [V6.7] |

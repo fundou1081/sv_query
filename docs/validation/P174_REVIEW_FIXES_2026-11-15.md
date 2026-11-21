@@ -36,7 +36,7 @@ coverage_complete = (not truncated) and checked_groups > 0
 
 ## 4. Status/count/example hygiene
 
-- `CURRENT_TODO`/`HANDOFF` 去掉“P173 处理中”；
+- `CURRENT_TODO`/`private archive` 去掉“P173 处理中”；
 - INDEX 测试行数改为实测；iterations 511（新 P174 后再 +1）；
 - INDEX 的 EXPERIMENTAL_FEATURES 描述改为当前；
 - TESTING 的 OpenTitan marker 从归档 test 改为当前测试；

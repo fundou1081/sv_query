@@ -2,7 +2,7 @@
 
 **日期**: 2026-11-12
 **状态**: ✅ 完成
-**输入**: HANDOFF §7 / P160 triage / P161 remediation
+**输入**: private archive §7 / P160 triage / P161 remediation
 
 ---
 
@@ -117,5 +117,5 @@ unexecuted:  123 + 9 = 132
 
 1. 只有三类可以保留 skip：外部 fixture 永久缺失、已知 timeout、显式环境限制；
 2. retired 命令测试应归档/删除，不能长期 `skip`；
-3. 新增 skip 必须写清实际缺失路径/超时/命令，并更新 REPORT_STATUS；
+3. 新增 skip 必须写清实际缺失路径/超时/命令，并更新 TESTING；
 4. 不允许用 skip 掩盖 fail。

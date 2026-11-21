@@ -59,8 +59,8 @@
 |---|---|---|
 | **三件套** | 最低完成判定 | 代码 ✅ + 测试 ✅ + 文档 ✅, 缺一即未完成；语义能力还需契约/反事实/claim（见 SEMANTIC_CONTRACTS §9） |
 | **计划树** | 全局唯一计划源 | `PLAN.md`, 所有代码修改计划先登记; `CURRENT_TODO.md` 只记"此刻在做什么" |
-| **迭代记录** | 只增不减的历史 | `docs/task_tree/iterations/iter_NNN_*.md`, 失败也如实写 |
-| **门禁** | 提交前必跑的机械检查 | 见 [dev/WORKFLOW.md](dev/WORKFLOW.md) §5 的检查器表; 全部 0 退出码才算过 |
+| **迭代记录** | 只增不减的历史 | `private iteration archive: iter_NNN_*.md`, 失败也如实写 |
+| **门禁** | 提交前必跑的机械检查 | 见 dev/contributor guide §5 的检查器表; 全部 0 退出码才算过 |
 | **棘轮 (ratchet)** | 复杂度门禁的形态 | 只拦**新增**的、以及从阈值下方**涨过**阈值的复杂度; 存量超阈值的只报告不拦截, 否则历史债会永久阻塞提交 |
 | **CRAP** | 复杂度×覆盖率的复合指标 | `CRAP = CC² × (1 − coverage)³ + CC`; 每函数 < 10 是 ub-mode 的目标 |
 | **CC** | 圈复杂度 (cyclomatic complexity) | 分支点计数; 无覆盖率时的**复杂度下界** |

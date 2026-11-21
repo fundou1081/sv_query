@@ -10,7 +10,7 @@
 
 新增 DSH 工具：
 
-[tools/agent/svq-query-tool](tools/agent/svq-query-tool)
+tools/agent/svq-query-tool
 
 参数：
 
@@ -31,7 +31,7 @@ depth
 
 配套 patch：
 
-[tools/agent/svq_query.patch.yml](tools/agent/svq_query.patch.yml)
+tools/agent/svq_query.patch.yml
 
 同时禁用：
 

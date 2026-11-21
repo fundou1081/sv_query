@@ -116,7 +116,7 @@ T.66 + T.83 + T.85 + T.87 architecture deep-read traced these to a deeper archit
 | `docs/KNOWN_LIMITATIONS.md` | Remove Gap 1 + Gap 2 from "active bugs" — they're now **accepted limitations** under D2. Add Gap 3 to "to-fix" list. |
 | `docs/ARCHITECTURE_EVOLUTION.md` | Add 2026-08-26 entry for this decision. |
 | `docs/VIZ_DESIGN_SPEC.md` | Add "Flattened visualization" section documenting D3. |
-| `docs/task_tree/iterations/iter_033_*.md` | New iteration journal entry for the Gap 3 fix. |
+| `private iteration archive: iter_033_*.md` | New iteration journal entry for the Gap 3 fix. |
 
 ### NOT required (explicit non-goals)
 

@@ -57,6 +57,7 @@
 | C-34 | P192.2 N=1 同模型盲对照：两臂均精确 root cause；sv_query 给上游等价 2 行 patch，source-only 给有效替代 patch + Verilator 验证；不能外推为准确率/提速 | doc | `P192_BLIND_COMPARE_2026-11-20.md` | `scoped`（N=1、同模型、症状已知） |
 | C-35 | `diagnose timescale` 在混合 timescale 设计上能触发 MissingTimeScale；仅诊断路径关闭注入，其他分析保持默认 | fixture | `test_p190_1_timescale_diagnostic.py` | `verified` |
 | C-36 | tracked symlink 不得指向绝对路径；`check_repo_hygiene.py` 进 gate | tool | `test_p193_1_repo_hygiene.py` | `verified` |
+| C-37 | 公开仓库无私人开发资产/作者绝对路径；privacy + repo-hygiene gate 绿 | tool | `test_p193_2_privacy.py` | `verified` |
 
 ---
 

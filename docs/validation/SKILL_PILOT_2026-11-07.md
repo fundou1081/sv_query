@@ -10,7 +10,7 @@
 ## 1. 条件
 
 - A `prompt`：原有 A+D prompt，source 存在，snapshot 可用；
-- B `skill`：workspace 安装 `.dsh/skills/svq-query-protocol`，prompt 要求先加载 skill。
+- B `skill`：workspace 安装 `private legacy skill`，prompt 要求先加载 skill。
 
 Skill 内容：
 

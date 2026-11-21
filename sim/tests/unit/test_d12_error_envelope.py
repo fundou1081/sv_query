@@ -9,7 +9,7 @@
    - message 取 `error.message`（缺失/非法 → 显式 fallback）；
    - 未知 code → `E_INTERNAL`，原 code 保留在 `session_error_code`。
 3. `capabilities` provider 失败**确实经过**该 adapter（rc=1、结构化 fail）。
-4. 成功路径不变：6 个 case 与 D12 baseline `3642e64d` 的 stdout/stderr/rc
+4. 成功路径不变：6 个 case 与 fixture 中 D12 baseline 的 stdout/stderr/rc
    逐字节一致。
 5. `session.py` 仍不 import CLI/Typer/sys/os/env/`sv_query.trace`；
    `sv_query/errors.py` 零 import（层中立，连 stdlib 都不需要）。
@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import ast
-import io
 import json
 import subprocess
 import sys
@@ -32,8 +31,9 @@ SESSION_PY = SRC / "sv_query" / "session.py"
 ERRORS_PY = SRC / "sv_query" / "errors.py"
 CAPABILITIES_REL = "cli/core/locate/capabilities.py"
 
-#: D12 开工前的最后一个提交（baseline）。成功路径 A/B 的 oracle。
+#: D12 pre-change source, archived as a fixture so clean clones do not need old git history.
 BASELINE_COMMIT = "3642e64d"
+BASELINE_ARCHIVE = PROJECT_ROOT / "sim/tests/fixtures/baseline/d12_src.tar.gz"
 
 sys.path.insert(0, str(SRC))
 
@@ -302,23 +302,11 @@ _RUNNER = (
 
 @pytest.fixture(scope="module")
 def baseline_src(tmp_path_factory) -> Path:
-    """用 `git archive` 导出 D12 baseline 的 `src/`（不碰工作区）。"""
-    try:
-        proc = subprocess.run(
-            ["git", "archive", "--format=tar", BASELINE_COMMIT, "src"],
-            cwd=str(PROJECT_ROOT),
-            capture_output=True,
-            timeout=120,
-        )
-    except FileNotFoundError:
-        pytest.skip("git 不可用，无法读取 baseline 快照")
-    if proc.returncode != 0:
-        pytest.skip(
-            f"baseline 快照不可用: {proc.stderr.decode('utf-8', 'replace').strip()[:200]}"
-        )
-
+    """解压 fixture 中 D12 baseline 的 `src/`（不碰工作区）。"""
+    if not BASELINE_ARCHIVE.is_file():
+        pytest.fail(f"missing baseline fixture: {BASELINE_ARCHIVE}")
     root = tmp_path_factory.mktemp("d12_baseline")
-    with tarfile.open(fileobj=io.BytesIO(proc.stdout)) as archive:
+    with tarfile.open(BASELINE_ARCHIVE) as archive:
         archive.extractall(root)
     src_root = root / "src"
     assert (src_root / CAPABILITIES_REL).is_file()

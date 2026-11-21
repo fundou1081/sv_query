@@ -16,7 +16,7 @@ ERROR: file or directory not found:
 这些测试已归档到：
 
 ```text
-docs/archive/2026-10-20-exp-attic/tests/
+private archive: 2026-10-20-exp-attic/tests/
 ```
 
 workflow 仍按旧路径运行，导致每次 push 必红。

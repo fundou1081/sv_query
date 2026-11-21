@@ -12,7 +12,7 @@
 | Item | Value |
 |---|---|
 | Source repo | `~/openrtl/opentitan` |
-| Worktree (used) | `~/.dsh/opencode-workers-lite/opentitan-pilot/workspace` |
+| Worktree (used) | `private worker workspace` |
 | HEAD | `a82c4892e88253924b3f7af05ce7494232ab263a` (same commit as the UART pilot) |
 | HEAD subject | `[doc] Update ILA debugging documentation` |
 | Tracked-file modifications | **none** (`git status --porcelain` → only pre-existing untracked `AGENTS.md`) |
@@ -49,7 +49,7 @@ than UART (210 `logic` fields in `i2c_reg_pkg.sv` vs UART's 107).
 
 ```bash
 export SVQ_SNAPSHOT_DIR=/tmp/opentitan_svq_i2c/snapshots
-cd ~/.dsh/opencode-workers-lite/opentitan-pilot/workspace
+cd private worker workspace
 python3 ./tools/agent/setup_snapshot.py \
   --path . --tag opentitan_i2c --filelist /tmp/opentitan_svq_i2c/opentitan_i2c.f \
   --snapshot-dir /tmp/opentitan_svq_i2c/snapshots --source-root . --json
@@ -276,7 +276,7 @@ which is why I chose `verify claim` for task 3.
 
 ```bash
 export SVQ_SNAPSHOT_DIR=/tmp/opentitan_svq_i2c/snapshots
-cd ~/.dsh/opencode-workers-lite/opentitan-pilot/workspace
+cd private worker workspace
 
 # rebuild the snapshot (~16.5 s)
 python3 ./tools/agent/setup_snapshot.py \

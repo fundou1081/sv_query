@@ -2,9 +2,7 @@
 
 > **唯一文档入口** — 所有文档从本文件进入;新增文档必须在本文件登记
 > (由 `tools/check_docs.py` 强制检查)。
-> **最后整理**: 2026-11-16 (P182 agent delivery plan；历史 2026-09-08 iter_171 文档清理 — 63 份过期/重复文档归档至
-> `docs/archive/2026-09-08-cleanup/`,原 INDEX / DOC_INDEX / LLM_INDEX 三份
-> 索引合并为本文件)。
+> **最后整理**: 2026-11-21（公开仓库裁剪；历史记录已移入私有归档）。
 
 ---
 
@@ -13,11 +11,10 @@
 | 项 | 值 | 说明 |
 |---|---|---|
 | 源码规模 | 145 文件 / 50,992 行 | `find src -name "*.py"`（2026-11-16 实测） |
-| 测试规模 | 431 测试文件 / 69,9?? 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **3136 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-19 P182.5 全量复核（3136）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 [REPORT_STATUS](dev/REPORT_STATUS.md) / TESTING §语义测试 |
+| 测试规模 | 433 测试文件 / 70,006 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
+| 全量 (canonical) | **3138 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-19 P182.5 全量复核（3138）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (534 份, 只增不改) | 每次迭代一份（2026-11-16 实测） |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 | 语义 regex 纪律 | `python3 tools/check_semantic_regex.py` 必须 ✅ | 仅 UVM 宏例外；class/constraint/covergroup 语义走 slang (iter_368) |
@@ -38,21 +35,15 @@
 | [CHANGELOG.md](../CHANGELOG.md) | 变更日志 (历史记录) |
 | [CONTRIBUTING.md](../CONTRIBUTING.md) | 贡献指南 |
 | [RELEASE.md](../RELEASE.md) | PyPI 发布清单 / 校验 / 回滚 |
-| [memory/](../memory/) | 经验沉淀索引 (`memory/` 按日) |
 
 ## 🛠️ 开发纪律与流程 (`docs/dev/` — 细则层)
 
 > 入口在 [AGENTS.md](../AGENTS.md)；本节是它链接到的细则文件。
-> 规则变更必须**同一次改动**里同步检查器或测试 (见 WORKFLOW §5)。
+> 规则变更必须**同一次改动**里同步检查器或测试。
 
 | 文档 | 作用 |
 |---|---|
-| [dev/DISCIPLINE.md](dev/DISCIPLINE.md) | **开发纪律 (强制)**: 产品不变量 I1~I5 + 5 条硬规则 + 归因顺序 + 例外 + 违规处置 |
-| [dev/HANDOFF.md](dev/HANDOFF.md) | **交接**: 当前状态 / 剩余工作 / worker 协议 / 交回 checklist |
-| [dev/HANDOFF_2026-11-12.md](dev/HANDOFF_2026-11-12.md) | **会话交接快照 (2026-11-12)**: P158.9.2→12.6 三次提交 / 设计裁决 / 待拍板 / 踩坑 / 接手 checklist |
-| [sessions/2026-11-11_sv_query_session_log.md](sessions/2026-11-11_sv_query_session_log.md) | **P163**: 对话/工作事实记录（非逐字） |
 | [dev/SEMANTIC_CONTRACTS.md](dev/SEMANTIC_CONTRACTS.md) | **语义契约**: 数据边 / 路径 / verified / snapshot / 完成判定 |
-| [dev/REPORT_STATUS.md](dev/REPORT_STATUS.md) | **绿色口径统一 (P158.12.6)**: 7 类状态 / canonical+opensource 合并视图 / false_confident 分母 |
 | [dev/SNAPSHOT_SURFACE.md](dev/SNAPSHOT_SURFACE.md) | **快照能力面矩阵 (P158.9.2)**: 字段级保真 / 命令级支持面 / 显式不保证清单 |
 | [dev/CLAIMS.md](dev/CLAIMS.md) | **claim 台账**: 公开能力的证据与状态 |
 | [dev/CODING_STYLE.md](dev/CODING_STYLE.md) | 编码风格与设计决策: 先探索后决策 / 单一实现 / 修根因 / 函数职责 / 结构化数据 / 影响面 / 协作规则 |
@@ -68,7 +59,6 @@
 | [dev/ENVELOPE_JSON_SCHEMA.md](dev/ENVELOPE_JSON_SCHEMA.md) | **P182.2**: 从 JSON_CONTRACT 生成 standard success 顶层 schema；26/26 matrix 可执行校验 |
 | [dev/ENVELOPE_DIRECT_CONTRACT.md](dev/ENVELOPE_DIRECT_CONTRACT.md) | **P182.1e**: 13 个 direct 命令的显式根契约；snapshot list 双根；静态 direct-contract gate |
 | [dev/ENVELOPE_FAILURE_CONTRACT.md](dev/ENVELOPE_FAILURE_CONTRACT.md) | **P182.1f**: 严格失败契约（非 allowlist 必须 rc1+okfalse）；恰好 4 条 hybrid 例外（drivers/loads/trace evidence/trace profile，rc0+okfalse+E_SIGNAL_NOT_FOUND）；`--matrix-failure` gate 当前 26/26 PASS |
-| [dev/WORKFLOW.md](dev/WORKFLOW.md) | 开发流程: 任务生命周期 / 迭代记录 / 文档卫生 / 测试与冒烟 / 机械检查 / ADR / 提交合并 |
 | [dev/PROJECT_ADAPTATION.md](dev/PROJECT_ADAPTATION.md) | **项目适配理念**: core 不自动推断特定项目；外部 adapter 模板 |
 | [agent/GUIDED_TRACE.md](agent/GUIDED_TRACE.md) | **P139 guided trace**: frontier + next probes；不分类 FIFO |
 | [agent/CAPABILITIES_GENERATED.md](agent/CAPABILITIES_GENERATED.md) | **P182.4**: 从 `capabilities --json` 生成的 39 core 命令索引；gate `gen_agent_skill.py --check` |
@@ -124,7 +114,6 @@
 | [validation/P165_3_4_MUTATION_COVERAGE_2026-11-13.md](validation/P165_3_4_MUTATION_COVERAGE_2026-11-13.md) | **P165.3.4**: 14 mutations; detection_rate/by_query |
 | [validation/P165_3_5_MUTATION_COVERAGE_2026-11-13.md](validation/P165_3_5_MUTATION_COVERAGE_2026-11-13.md) | **P165.3.5**: 20 mutations; multi/generate/wrapper/case |
 | [validation/P165_3_6_MULTI_DRIVER_CONFLICT_2026-11-13.md](validation/P165_3_6_MULTI_DRIVER_CONFLICT_2026-11-13.md) | **P165.3.6**: driver_count/multi_driver/driver_conflict mutation |
-| [lessons/2026-11-11_pitfalls.md](lessons/2026-11-11_pitfalls.md) | **P159**: 22 个踩坑/误判/经验，含对外分享版 |
 | [validation/REVIEW_2026-11-11.md](validation/REVIEW_2026-11-11.md) | **P158 输入**: 4-angle review + 28 项修复账本 |
 | [validation/P139_FRONTIER_2026-11-09.md](validation/P139_FRONTIER_2026-11-09.md) | **P139 frontier**: 断点 + next probes；不分类 FIFO |
 | [validation/P139_WORKER_REVIEW_2026-11-09.md](validation/P139_WORKER_REVIEW_2026-11-09.md) | **P139 worker review**: APPROVE WITH NITS；nits 已修 |
@@ -132,8 +121,6 @@
 | [validation/P140_WORKER_REVIEW_2026-11-09.md](validation/P140_WORKER_REVIEW_2026-11-09.md) | **P140 worker review**: APPROVE WITH NITS；nits 已修 |
 | [validation/P141_DEEP_PATHS_2026-11-09.md](validation/P141_DEEP_PATHS_2026-11-09.md) | **P141**: 三模块深层 from/to |
 | [validation/P142_CONSTRAINT_CHAIN_2026-11-09.md](validation/P142_CONSTRAINT_CHAIN_2026-11-09.md) | **P142**: random 变量 constraint 链 |
-| [dev/REVIEW_CHECKLIST.md](dev/REVIEW_CHECKLIST.md) | 提交前检查清单: 机械检查命令 + 纪律/设计/影响面/记录四组自检 + 反模式表 |
-| [dev/REVIEW_LENSES.md](dev/REVIEW_LENSES.md) | **架构可持续性评审视角 v1.0（2026-11-17，建议稿）**: 三次提问整理为 L1~L6 + 补充 L7 语义正确性 / L8 安全信任边界 / L9 可复现性·成本·可观测性；规定一次只评一个视角、报告模板、覆盖台账与完成判定；`L*` 不是 PLAN 项 |
 
 ## 📜 能力与边界 (对外声明)
 
@@ -325,43 +312,8 @@
 | [PROJECT_PLAN.md](PROJECT_PLAN.md) | 开源 RTL 验证问题生成计划 (独立工作流) |
 | [TODO.md](TODO.md) | 版本级功能待办 (月~季) |
 
-## 📓 记录类 (按 [WORKFLOW §0.1](dev/WORKFLOW.md) 设施表)
-
-| 位置 | 内容 |
-|---|---|
-| [task_tree/overview.md](task_tree/overview.md) | 任务树 + 迭代汇总表 |
-| [task_tree/iterations/](task_tree/iterations/) | **每次迭代一份** (只增不减, 历史快照) |
-| [task_tree/tasks/](task_tree/tasks/) | 任务定义 (L1/L2/L3) |
-| [debugging_lessons/debug-mindset-skill.md](debugging_lessons/debug-mindset-skill.md) | 调试复盘 + 调试思路技能 |
-| [refactoring/README.md](refactoring/README.md) | 重构计划索引 (2026-06 一轮) |
-| [refactoring/2026-06-26_refactoring_roadmap.md](refactoring/2026-06-26_refactoring_roadmap.md) | 拆解计划 |
-| [refactoring/2026-06-26_bad_smell_audit.md](refactoring/2026-06-26_bad_smell_audit.md) | Bad smell 报告 |
-| [refactoring/2026-06-26_extract_refactoring.md](refactoring/2026-06-26_extract_refactoring.md) | DriverExtractor.extract 拆解 |
-| [refactoring/2026-10-19_core_smell_review.md](refactoring/2026-10-19_core_smell_review.md) | **核心代码坏味道评审 + CLI 减法方案** (2026-10-19, 带 P0~P3 严重度) |
-| [refactoring/2026-06-26_b-phase_1-2_baseline.md](refactoring/2026-06-26_b-phase_1-2_baseline.md) | B-Phase 1-2 基线 |
-| [debugging_lessons/2026-08-25_picorv32_render_tree_cycle.md](debugging_lessons/2026-08-25_picorv32_render_tree_cycle.md) | 调试案例: 渲染树递归 |
-| [debugging_lessons/2026-08-25_plan_b_step_g_picorv32_wb_port.md](debugging_lessons/2026-08-25_plan_b_step_g_picorv32_wb_port.md) | 调试案例: ELK dangling port |
-| [archive/2026-09-08-cleanup/README.md](archive/2026-09-08-cleanup/README.md) | **归档区** (过期报告 / 重复稿 — 只归档不删除) |
-| [archive/2026-10-20-exp-attic/README.md](archive/2026-10-20-exp-attic/README.md) | **归档区**: exp 区整体退役 (24 命令 + applications 库 + 30 测试文件) |
-| [archive/2026-10-19-src-archived/README.md](archive/2026-10-19-src-archived/README.md) | **归档区**: `src/` 内 19 个死代码文件 (旧 DOT 渲染器 / 孤立模块 4,273 行 — iter_245) |
-| [archive/2026-11-16-retired-feature-docs/README.md](archive/2026-11-16-retired-feature-docs/README.md) | **归档**: visualize/coverage/cheatsheet/arch 示例等退役文档 |
-| [archive/2026-11-16-implementation-abstraction-reviews/README.md](archive/2026-11-16-implementation-abstraction-reviews/README.md) | **归档**: 实现层/抽象层评审（已提取 P183） |
-| [archive/2026-11-16-agent-interface-review/README.md](archive/2026-11-16-agent-interface-review/README.md) | **归档**: agent interface review v1（被 v2 取代） |
-| [archive/2026-11-15-status-cleanup/README.md](archive/2026-11-15-status-cleanup/README.md) | **归档**: 2026-11-15 状态清理 |
-| [archive/2026-07-29-cleanup/README.md](archive/2026-07-29-cleanup/README.md) | **归档**: 2026-07-29 架构/评估清理 |
-| [archive/scripts/README.md](archive/scripts/README.md) | **归档**: 历史脚本快照 |
-| [validation/opentitan_i2c/WORKER_REPORT.md](validation/opentitan_i2c/WORKER_REPORT.md) | **历史**: OpenTitan I2C worker 报告 |
-| [validation/opentitan_p127/WORKER_REPORT.md](validation/opentitan_p127/WORKER_REPORT.md) | **历史**: OpenTitan P127 worker 报告 |
-| [validation/p134_real_use/WORKER_REPORT.md](validation/p134_real_use/WORKER_REPORT.md) | **历史**: P134 real-use worker 报告 |
-| [archive/2026-11-16-historical-docs/README.md](archive/2026-11-16-historical-docs/README.md) | **归档**: 旧 DEVELOPMENT/EXAMPLES/TEST_MAP/架构待办/README |
-| [archive/README_legacy.md](archive/README_legacy.md) | 早期归档 (2026-07 前) |
-
----
-
-## 🧹 文档卫生规则 (强制, 细则见 [dev/WORKFLOW.md §3](dev/WORKFLOW.md))
 
 1. **新增文档必须登记在本文件** — `tools/check_docs.py` 检查 (未登记 = 失败)。
-2. **过期报告 / 被取代的稿子 → 归档不删** — 移到 `docs/archive/<日期>-cleanup/`,
    并在该目录 `README.md` 说明原因 (信息不丢, 历史可追)。
 3. **计数只写在"当前基线"一节** — 其他文档引用本表, 不写死 passed 数。
 4. **提交前跑** `python3 tools/check_docs.py` — 死链 / 归档越界 / 未登记 三项必须 ✅。

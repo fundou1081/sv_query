@@ -2,14 +2,14 @@
 
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
-> **交接状态**: [HANDOFF](docs/dev/HANDOFF.md) — 当前状态/主线/历史功能；旧会话快照 [2026-11-12](docs/dev/HANDOFF_2026-11-12.md)。
+> **状态**: 当前 P193.2 外部试用准备。
 > **最后更新**: 2026-11-19 (P182.6 governance cleanup)
 
 ---
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P193.2 strip personal dev assets + privacy scan（agents/memory/task_tree/sessions）** `<进行中>`
+- **当前 item**: **P193.3 migrate bare cli package to sv_query.cli（独立 PR）** `<待做>`
   - P182 组全部完成：envelope / schema / stats / agent entry / snapshot eval / governance
   - P188 release readiness 完成；发布动作见 [RELEASE.md](RELEASE.md)
   - P189.1 docs 自洽 gate 完成
@@ -20,7 +20,7 @@
 ## 📌 当前真实基线
 
 ```text
-canonical:  3136 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  3138 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 
@@ -44,7 +44,7 @@ opensource: 112 passed / 11 skipped / 0 failed
 ## ✅ P173 清理结果
 
 1. CLI/exp truth：`trace impact` 已隐藏；CLI_SURFACE/feature map/EXP_NAMESPACE 已对齐；
-2. 状态文档：CURRENT_TODO/HANDOFF/PLAN/契约已对齐；
+2. 状态文档：CURRENT_TODO/private archive/PLAN/契约已对齐；
 3. 证据：退役 zombie/coverage-suggest tests；canonical 3027；
 4. coverage POC：conftest 改为 lazy import；公开示例已改写/归档。
 

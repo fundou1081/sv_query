@@ -1,7 +1,7 @@
 # 编码风格与设计决策 (Coding Style & Decision Logic)
 
 > **本文是 `AGENTS.md` 的细则文件之一。** 入口/索引见 [AGENTS.md](../../AGENTS.md)。
-> 硬性禁止项在 [DISCIPLINE.md](DISCIPLINE.md)；提交前检查在 [REVIEW_CHECKLIST.md](REVIEW_CHECKLIST.md)。
+> 硬性禁止项在 project rules；提交前检查在 REVIEW_CHECKLIST.md。
 > **最后修订**: 2026-11-04
 
 写代码前先想清楚"**该怎么做**"，而不是"能不能跑通"。
@@ -51,7 +51,7 @@
 (机械检查 / 结构性测试 / 契约变更)。
 
 **配套要求**: 根因修复要留**回归锁**——
-- 能机械化检查的 → 写进 `tools/` 检查器 ([WORKFLOW.md](WORKFLOW.md) §5)
+- 能机械化检查的 → 写进 `tools/` 检查器 (contributor guide §5)
 - 行为契约 → 写成测试，特别是**反向断言**（"不应该出现的节点不出现"）
 
 ---
@@ -217,4 +217,4 @@ max 142，CC>10 占 25.8% —— 存量债不该阻塞每次提交。棘轮只�
 - 例外代码只允许在 `src/sv_query/trace/core/query/uvm.py`；
 - 输出必须标 `confidence: "syntactic"`；
 - 机械检查：`python3 tools/check_semantic_regex.py`；
-- 详细规则见 [DISCIPLINE §3.5](DISCIPLINE.md)。
+- 详细规则见 DISCIPLINE §3.5。

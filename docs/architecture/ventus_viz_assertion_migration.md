@@ -82,4 +82,4 @@ iter_188 的处理: artifact 内容判定为 SVG → `pytest.skip` 并说明原�
 
 - `sim/tests/usage/test_ventus_all_viz_validation.py` (13 skip, 0 failed, iter_188)
 - CLI 语义: `src/cli/view/visualize.py:192`、`src/cli/commands/trace.py:611`
-- 相关记录: `docs/task_tree/iterations/iter_188_ventus_viz_suite_triage.md`
+- 相关记录: `private iteration archive: iter_188_ventus_viz_suite_triage.md`

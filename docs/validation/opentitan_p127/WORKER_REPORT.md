@@ -1,7 +1,7 @@
 # OpenTitan → sv_query Intake Extension (P127) — 2 NEW tasks
 
 **Date:** 2026-11-09
-**OpenTitan source root:** `~/.dsh/opencode-workers-lite/opentitan-pilot/workspace`
+**OpenTitan source root:** `private worker workspace`
 **OpenTitan HEAD:** `a82c4892e88253924b3f7af05ce7494232ab263a` (`[doc] Update ILA debugging documentation`)
 **Artifacts:** `/tmp/opentitan_intake_p127/tasks.json`, `/tmp/opentitan_intake_p127/REPORT.md`
 **No OpenTitan or sv_query file was modified. No LLM/DSH agent was run.**
@@ -231,7 +231,7 @@ answers actually depend on.
 ### Reproduce the validation
 
 ```bash
-cd ~/.dsh/opencode-workers-lite/opentitan-pilot/workspace
+cd private worker workspace
 
 # T1 (UART snapshot)
 export SVQ_SNAPSHOT_DIR=/tmp/opentitan_svq/snapshots

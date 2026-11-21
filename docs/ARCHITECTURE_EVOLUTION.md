@@ -313,7 +313,7 @@ iter_034 启动, 发现 pyslang v11 跟 v10/v9 的 API 差异是 case27 Gap 3 �
 | **风险** | 🟢 LOW — 当前 installed pyslang 已是 v11 |
 | **状态** | ✅ DONE (2026-08-27, HEAD `62ef835`) — 6 commits, 1470 tests pass, 0 回归 |
 | **commit chain** | P1 docs `1b4b573` → P2 imports `88c0f05` → P3 probes `2ce4e09` → P4 compat shim `6199a03` → P5 注释 `0fb950c` (amended) → P6 tests + alias bridge `62ef835` |
-| **任务** | iter_034 (见 `docs/task_tree/iterations/iter_034_pyslang_v11_only_cleanup.md`) |
+| **任务** | iter_034 (见 `private iteration archive: iter_034_pyslang_v11_only_cleanup.md`) |
 
 ### 关键技术变化
 

@@ -1,7 +1,7 @@
 # PLAN — 全局唯一计划树
 
 > **唯一真相源**：sv_query **所有代码修改计划**只登记在本文件。
-> 迭代记录（[docs/task_tree/iterations/](docs/task_tree/iterations/)）是**历史**；本文件是**现在做什么、做到哪**。
+> 迭代记录（private iteration archive: ）是**历史**；本文件是**现在做什么、做到哪**。
 >
 > 维护规则见 [AGENTS.md §2](AGENTS.md)；机械校验：`python3 tools/check_plan.py`。
 >
@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P193.2 strip personal dev assets + privacy scan（agents/memory/task_tree/sessions） <进行中>
+current item : P193.3 migrate bare cli package to sv_query.cli（独立 PR） <待做>
 
 ## 计划树
 
@@ -505,7 +505,7 @@ P163 session/history record <已完成>
 
 P164 文档状态校准（2026-11-11 接手） <已完成>
 -- P164.1 计划树修正：current item / P158.9 拆分 / 四级缩进不可见项 <已完成>
--- P164.2 CURRENT_TODO / HANDOFF / 会话日志状态同步 <已完成>
+-- P164.2 CURRENT_TODO / private archive / 会话日志状态同步 <已完成>
 -- P164.3 契约与基线文档过期状态清理 <已完成>
 -- P164.4 计数漂移检查器覆盖根文档 <已完成>
 
@@ -585,7 +585,7 @@ P192 blind external value validation (P2) <已完成>
 
 P193 external trial readiness (2026-11-21 review) <待做>
 -- P193.1 fix sim/tests/config absolute symlink + clone hygiene <已完成>
--- P193.2 strip personal dev assets + privacy scan（agents/memory/task_tree/sessions） <进行中>
+-- P193.2 strip private development assets + privacy scan <已完成>
 -- P193.3 migrate bare cli package to sv_query.cli（独立 PR） <待做>
 -- P193.4 audit wide-except on core query paths（unknown/partial 显式） <待做>
 -- P193.5 regenerate/archive ARCHITECTURE.md <待做>
@@ -935,7 +935,7 @@ P4 已完成归档 <已完成>
 | 2026-10-25 | 建立本计划树；P0~P3 来自底座审计结论（iter_278） |
 | 2026-10-26 | P0/P1/P2/P3 全部完成（iter_279~288）；计划树进入"无待办"状态 |
 | 2026-10-27 | P5~P12 位精确性系列完成（iter_289~300）；P13 评审 backlog 登记（iter_301，见 architecture/trace_capability_review_2026-10-27） |
-| 2026-11-11 | 接手校准（P164）：current item 按 HANDOFF 建议指向 P158.11.2b 前置的文档校准；P158.9 拆出 9.2；`--`/`----` 缩进统一，check_plan 新增 P9（不可见项）与字母后缀 id |
+| 2026-11-11 | 接手校准（P164）：current item 按 private archive 建议指向 P158.11.2b 前置的文档校准；P158.9 拆出 9.2；`--`/`----` 缩进统一，check_plan 新增 P9（不可见项）与字母后缀 id |
 | 2026-11-11 | P158.11.2b 完成（iter_491）：SearchBudget 抽为 graph/search_budget.py 唯一实现；dataflow 有界 DFS + `--max-expansions/--timeout` + truncated 契约；P158.11 整体收口；current item → P158.9.2 |
 | 2026-11-11 | arch_eval 评审采纳（P165 登记，方豆确认）：P165.1 signal.py pred/succ 化 / P165.2 packaging 重命名 / P165.3 外部故障集 / P165.4 filelist 闭包自动化；方案 B 拒绝、方案 C 暂缓；P158.9.2 验收补"不许中间态" |
 | 2026-11-12 | P158.12.6 完成（iter_495）：7 类状态分类（report_status.py）+ canonical/opensource 合并视图 + false_confident 分母=answered_n（默认口径待确认）；8 项机械 gate |

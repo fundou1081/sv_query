@@ -12,7 +12,7 @@ ground truth, and record the onboarding problems a real user hits.
 | Item | Value |
 |---|---|
 | Source repo | `~/openrtl/opentitan` |
-| Isolated worktree (used) | `~/.dsh/opencode-workers-lite/opentitan-pilot/workspace` |
+| Isolated worktree (used) | `private worker workspace` |
 | HEAD | `a82c4892e88253924b3f7af05ce7494232ab263a` |
 | HEAD subject | `[doc] Update ILA debugging documentation` |
 | HEAD date | `Wed Nov 27 16:25:51 2024 +0100` |
@@ -70,7 +70,7 @@ Derivation: `hw/ip/uart/uart.core` `files_rtl.depend` →
 
 ```bash
 export SVQ_SNAPSHOT_DIR=/tmp/opentitan_svq/snapshots
-cd ~/.dsh/opencode-workers-lite/opentitan-pilot/workspace
+cd private worker workspace
 python3 ./tools/agent/setup_snapshot.py \
   --path . --tag opentitan_uart \
   --filelist /tmp/opentitan_svq/opentitan.f \
@@ -410,7 +410,7 @@ knowing the reggen packing convention. This is a real onboarding trap.
 
 ```bash
 export SVQ_SNAPSHOT_DIR=/tmp/opentitan_svq/snapshots
-cd ~/.dsh/opencode-workers-lite/opentitan-pilot/workspace
+cd private worker workspace
 
 # rebuild the snapshot (~7.6 s)
 python3 ./tools/agent/setup_snapshot.py \

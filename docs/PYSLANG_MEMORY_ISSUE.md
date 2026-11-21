@@ -6,7 +6,7 @@
 > `SVCompiler._do_compile()` 把 `pyslang.SourceManager` 存成局部变量,
 > parse 循环结束后被 GC, 它持有的**源文件 buffer 被释放**, 而所有符号名 /
 > token 文本都是指向这些 buffer 的 `string_view`。
-> 完整复盘: `docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md`
+> 完整复盘: `private iteration archive: iter_185_slang_sourcemanager_lifetime.md`
 > 原文 (内存压力观察) 保留在下方"历史记录", 但结论不再成立。
 
 ## 摘要 (现行结论)
@@ -91,7 +91,7 @@ graph nodes **2,275 (波动) → 4,946 (3/3 完全一致)**、flakiness `--runs 
 
 ## 参考
 
-- 真根因复盘: `docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md`
+- 真根因复盘: `private iteration archive: iter_185_slang_sourcemanager_lifetime.md`
 - 上游代码: `~/my_dv_proj/slang/source/text/SourceManager.cpp`
   (`assignText` 复制文本 / `cacheBuffer` 把 buffer 交给 manager 的 `FileData`),
   `bindings/python/SyntaxBindings.cpp` (`fromText` 的 `py::keep_alive<0,2>`)

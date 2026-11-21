@@ -129,5 +129,5 @@ if isinstance(body, pyslang.InstanceBodySymbol): ...  # 自动从 pyslang.ast �
 ## 8. 相关文档
 
 - `docs/architecture/case27_signal_graph_completeness_decision.md` — D1-D5 决策记录
-- `docs/task_tree/iterations/iter_034_pyslang_v11_only_cleanup.md` — 实际执行记录
+- `private iteration archive: iter_034_pyslang_v11_only_cleanup.md` — 实际执行记录
 - `docs/ARCHITECTURE_EVOLUTION.md` 第 8 节 — iter_034 在版本演进史中的位置

@@ -1,7 +1,7 @@
 # OpenTitan → sv_query Task Intake (independent, DV-artifact derived)
 
 **Date:** 2026-11-09
-**OpenTitan source root:** `~/.dsh/opencode-workers-lite/opentitan-pilot/workspace`
+**OpenTitan source root:** `private worker workspace`
 **OpenTitan HEAD:** `a82c4892e88253924b3f7af05ce7494232ab263a` (`[doc] Update ILA debugging documentation`)
 **Artifacts:** `/tmp/opentitan_intake/tasks.json`, `/tmp/opentitan_intake/REPORT.md`
 **No tracked file was modified. No LLM/DSH agent was run.** All validation used the `sv_query` CLI plus direct source inspection.
@@ -280,7 +280,7 @@ Snapshots used read-only (not modified): `/tmp/opentitan_svq/snapshots/opentitan
 ### Reproduce the validation
 
 ```bash
-cd ~/.dsh/opencode-workers-lite/opentitan-pilot/workspace
+cd private worker workspace
 
 # T1 (UART snapshot)
 export SVQ_SNAPSHOT_DIR=/tmp/opentitan_svq/snapshots

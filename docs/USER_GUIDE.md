@@ -4,7 +4,7 @@
 **定位**: agent 的 RTL 查询 + 客观校验层。完整命令面以 `sv_query capabilities --json` 为准。
 
 > 旧版 USER_GUIDE（2026-08-26，包含已退役 `visualize/cdc/timing/sva/risk`）已归档：
-> [archive/2026-11-15-status-cleanup/USER_GUIDE_stale_2026-08-26.md](archive/2026-11-15-status-cleanup/USER_GUIDE_stale_2026-08-26.md)。
+> archive/2026-11-15-status-cleanup/USER_GUIDE_stale_2026-08-26.md。
 
 ---
 

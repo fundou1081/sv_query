@@ -36,12 +36,12 @@ D5 锁定: 只支持 v11 API, 不再考虑 v9/v10 兼容。
 > 内存压力仍然会让 pyslang 变慢/失败, 但不再产生乱码名与结果漂移。
 
 **文档**: `docs/PYSLANG_MEMORY_ISSUE.md` (已按真因改写),
-`docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md`
+`private iteration archive: iter_185_slang_sourcemanager_lifetime.md`
 
 ### 3.1 `-f` / `--file` 传 filelist → 原生 SIGTRAP (用法不一致, 不是上游缺陷)
 
 > **方豆判定 (2026-09-09)**: 这是**用法不一致**问题 —— **不向上游 pyslang 报 issue**,
-> 记录清楚并**避免这样使用**即可 (见 [DISCIPLINE.md §4](dev/DISCIPLINE.md))。
+> 记录清楚并**避免这样使用**即可 (见 project rules §4)。
 
 **正确用法**: `-f` / `--file` 只接受 SystemVerilog **源码**; filelist 一律用 `--filelist`。
 
@@ -637,8 +637,8 @@ Typer 分发，并受进程全局态 `_QUIET` / `_ACTIVE_CONFIG` 影响。`Reque
 ## 📞 相关引用
 
 - 决策文件: `docs/architecture/case27_signal_graph_completeness_decision.md`
-- iter_032 (前置已知问题): `docs/task_tree/iterations/iter_032_case27_semantic_gaps.md`
-- iter_033 (待开工): `docs/task_tree/iterations/iter_033_*.md` (创建中)
+- iter_032 (前置已知问题): `private iteration archive: iter_032_case27_semantic_gaps.md`
+- iter_033 (待开工): `private iteration archive: iter_033_*.md` (创建中)
 
 ### 2026-11-09 新增 §3.8~3.13 的证据文档
 
@@ -661,11 +661,10 @@ Typer 分发，并受进程全局态 `_QUIET` / `_ACTIVE_CONFIG` 影响。`Reque
 agent 解析失败信封时必须分支。
 
 
-### 3.21 `.dsh/skills/svq-query-protocol` 是旁路手写 skill
+### 3.21 旧 benchmark skill 已移出公开仓库
 
-`.dsh/skills/svq-query-protocol/SKILL.md` 仍硬编码部分命令形态，供 benchmark harness 使用；
-它不受 `gen_agent_skill.py --check` 覆盖。P182.4 未改它，agent 入口以
-`.agents/skills/query-protocol/SKILL.md` + generated table 为准。
+旧 `.dsh` 旁路 skill 已随私有开发资产移除。公开 agent 入口以
+`.agents/skills/query-protocol/SKILL.md` + generated capability table 为准。
 
 
 ### 3.22 PyPI wheel top-level `cli` package

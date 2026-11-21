@@ -8,4 +8,4 @@ Current entry points:
 - implementation/abstraction reviews extracted into PLAN P183 (archived)
 
 The old 2026-05 catalog is archived at
-[archive/2026-11-16-historical-docs/architecture_README.md](../../archive/2026-11-16-historical-docs/).
+archive/2026-11-16-historical-docs/architecture_README.md.

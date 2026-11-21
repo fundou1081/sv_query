@@ -4,7 +4,7 @@
 > **最后评审**: 2026-11-09（内容未重测，仅标注口径与状态）
 > **维护人**: QClaw Agent + 方豆
 > **状态**: 初版
-> **来源**: [memory/2026-08-27.md §Phase 1A](../memory/2026-08-27.md) + 实测修正 + 100+ fixtures 盘点
+> **来源**: 实测 + 100+ fixtures 盘点
 > **关联**: [SV_SYNTAX_MAPPING.md](SV_SYNTAX_MAPPING.md) (SV 语法 → sv_query 节点映射) +
 >          [PYSLANG_SEMANTIC_USAGE.md](PYSLANG_SEMANTIC_USAGE.md) (pyslang 11.0 API 用法)
 
@@ -167,7 +167,7 @@
 - [SV_SYNTAX_MAPPING.md](SV_SYNTAX_MAPPING.md) — SV 语法 → TraceNode/TraceEdge 类型映射 (29 KB)
 - [PYSLANG_SEMANTIC_USAGE.md](PYSLANG_SEMANTIC_USAGE.md) — pyslang 11.0 API 在 sv_query 的用法 (16 KB)
 - [SIGNAL_GRAPH_SPEC.md](SIGNAL_GRAPH_SPEC.md) — SignalGraph 数据模型 spec (3.6 KB)
-- [ARCHITECTURE_REVIEW_2026-08-27.md](archive/2026-09-08-cleanup/ARCHITECTURE_REVIEW_2026-08-27.md) — 架构 review (8.8 KB)
+- ARCHITECTURE_REVIEW_2026-08-27.md — 架构 review (8.8 KB)
 - [INDEX.md](INDEX.md) — 7 项改造任务追踪
 
 ## 🔄 状态变更日志

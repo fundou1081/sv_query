@@ -22,7 +22,7 @@
 
 ## 1. 核心对应表：SV 语法 → Node/Edge
 
-> **黄金代词**: 所有 ⛔ / ⚠️ / 🔶 行有 [Phase 3 golden](test_spec_unsupported_syntax.py) 实测锁口。
+> **黄金代词**: 所有 ⛔ / ⚠️ / 🔶 行有 Phase 3 golden 实测锁口。
 >
 > 所有赋值类（`assign`/wire init/过程赋值）最终都生成 **`EdgeKind.DRIVER`** + 不同 `assign_type`；区别在**怎么建节点、怎么命名、怎么展开 generate**。
 

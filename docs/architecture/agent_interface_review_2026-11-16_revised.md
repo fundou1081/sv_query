@@ -96,7 +96,7 @@ search  --json (无参数)  -> rc=2, 不输出 JSON
 
 ### 2.4 agent 入口与文档
 
-`tools/agent/svq_query.patch.yml`、`.dsh/skills`、`skills/sv-query`、CLI 文档四套入口并存；
+旧 agent 接入脚本、skill 与 CLI 文档曾多套入口并存；
 skill 文档与运行时命令面没有机械一致性 gate。v1 的方向判断成立。
 
 ### 2.5 结构重复与大文件

@@ -17,9 +17,9 @@
 ## 2. P173.2 status docs
 
 - `CURRENT_TODO.md` 重写：当前 P173、真实基线、边界、已知清理项；
-- `HANDOFF.md` 重写：主线/exp/历史/风险/接手命令；
+- `private archive.md` 重写：主线/exp/历史/风险/接手命令；
 - `PLAN.md`：P62.2 改为 gate 评估（no-go），补 P171/P172/P173 变更记录，修掉损坏行；
-- README / KNOWN_LIMITATIONS / INDEX / TESTING / REPORT_STATUS 计数统一；
+- README / KNOWN_LIMITATIONS / INDEX / TESTING / TESTING 计数统一；
 - `SEMANTIC_CONTRACTS` P158.12 标完成；
 - `check_docs.py` 在 `run_gates.sh` 改为 `--strict`。
 
@@ -28,7 +28,7 @@
 - 删除 `test_e2e_rtl_to_coverage_suggest.py`（已退役 coverage-suggest 测试）；
 - 退役 `test_cli_filelist_parity.py` 中 cdc/coverage/sva/timing/verify-gap 的 zombie 测试，只保留当前 dataflow/controlflow 一致性并加 rc 断言；
 - coverage POC 在 unit conftest 改为 **lazy import**，不再是 canonical suite import-time 依赖；
-- 重写 `docs/USER_GUIDE.md` 为当前命令；旧版归档到 `docs/archive/2026-11-15-status-cleanup/`；
+- 重写 `docs/USER_GUIDE.md` 为当前命令；旧版归档到 `private archive: 2026-11-15-status-cleanup/`；
 - 修 README/USER_GUIDE/FILELIST/PRIMARY 的 broken imports、`kind`→`type`、退役 visualize 示例；
 - `VISUALIZATION.md`、`CLI_COMMAND_CHEATSHEET.md`、`COVERAGE_GENERATOR.md` 加历史/退役声明；
 - `EXPERIMENTAL_FEATURES.md` 改为当前 6 个 exp。
