@@ -202,3 +202,27 @@ it currently uses MIG instances for `modules` and stores elaboration errors;
 that belongs to P194.2c/integration with a fuller GraphState.
 
 Cold/warm node IDs are compared in the regression test.
+
+
+## 8. P194.2c1 local graph session (2026-11-21)
+
+Added a first local-session slice:
+
+```python
+from sv_query.graph_session import GraphSession
+gs = GraphSession(filelist="design.f")   # one build
+gs.graph_nodes(); gs.graph_edges()       # same graph
+gs.cache_info()
+```
+
+and a hidden stdio adapter:
+
+```bash
+sv_query session --serve --filelist design.f
+```
+
+One JSON request per line, one response per line; graph nodes/edges only.
+`GraphSession(from_snapshot=tag)` hydrates graph+MIG from a snapshot.
+
+Current limit: only graph-only ops are exposed. Drivers/loads/paths/dataflow/
+verify remain P194.2e.

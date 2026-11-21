@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P194.2c local session/server reuse + snapshot persistence <待做>
+current item : P194.2e expose remaining core query ops + invalidation <待做>
 
 ## 计划树
 
@@ -588,7 +588,9 @@ P194 external review follow-up (2026-11-21) <待做>
 P194.2 cold-start cache contract and session reuse <待做>
 -- P194.2a BuildIdentity + payload capability manifest + mutation tests <已完成>
 -- P194.2b enable graph-only cache + cold/warm measurements <已完成>
--- P194.2c local session/server reuse + snapshot persistence <待做>
+P194.2c local session/server reuse + snapshot persistence <待做>
+-- P194.2d GraphSession + stdio graph server + snapshot hydrate <已完成>
+-- P194.2e expose remaining core query ops + invalidation <待做>
 -- P194.3 API facade + deprecation policy <待做>
 -- P194.4 split 500+ line extractor functions <待做>
 -- P194.5 external benchmark + token cost validation <待做>

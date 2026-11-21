@@ -12,6 +12,7 @@ one Session call/error path.
 from __future__ import annotations
 
 import json as _json
+import sys
 
 import typer
 
@@ -29,12 +30,50 @@ def _capabilities_handler(request):
     return _capabilities_provider(request)
 
 
+def _serve(filelist: str | None, from_snapshot: str | None, file: str | None) -> None:
+    """Local JSON-lines graph session: one build, many graph queries."""
+    from sv_query import Session
+    from sv_query.graph_session import GraphSession
+
+    try:
+        gs = GraphSession(
+            file=file, filelist=filelist, from_snapshot=from_snapshot,
+        )
+    except Exception as exc:
+        print(_json.dumps({"ok": False, "error": str(exc)}), flush=True)
+        raise typer.Exit(code=1) from None
+    session = Session(handlers=gs.handlers())
+    for raw in sys.stdin:
+        raw = raw.strip()
+        if not raw:
+            continue
+        try:
+            request = _json.loads(raw)
+        except (TypeError, ValueError) as exc:
+            response = {"ok": False, "error": f"invalid request JSON: {exc}"}
+        else:
+            response = session.execute(request) if isinstance(request, dict) else {
+                "ok": False, "error": "request root must be an object"}
+        print(_json.dumps(response, ensure_ascii=False), flush=True)
+    gs.close()
+
+
 def session_cmd(
-    request: str = typer.Option(..., "--request", "-r", help="JSON request object"),
+    request: str = typer.Option(None, "--request", "-r", help="JSON request object"),
+    serve: bool = typer.Option(False, "--serve", help="Read JSON-lines requests from stdin; one graph for all queries"),
+    file: str = typer.Option(None, "--file", "-f", help="[serve] single source file"),
+    filelist: str = typer.Option(None, "--filelist", help="[serve] filelist (.f/.fl)"),
+    from_snapshot: str = typer.Option(None, "--from-snapshot", help="[serve] load graph/MIG from snapshot tag"),
     json_output: bool = typer.Option(False, "--json", "-j", help="JSON output (recommended)"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty JSON"),
 ) -> None:
-    """Execute one transport-agnostic Session request (hidden developer entry)."""
+    """Execute one Session request, or a local stdio graph session with --serve."""
+    if serve:
+        _serve(filelist=filelist, from_snapshot=from_snapshot, file=file)
+        return
+    if not request:
+        fail("--request is required unless --serve is used", json_output,
+             pretty, error_code=ErrorCode.E_INVALID_REQUEST.value)
     try:
         payload = _json.loads(request)
     except (TypeError, ValueError) as exc:
