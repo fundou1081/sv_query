@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P193.1 fix sim/tests/config absolute symlink + clone hygiene <进行中>
+current item : P193.2 strip personal dev assets + privacy scan（agents/memory/task_tree/sessions） <待做>
 
 ## 计划树
 
@@ -584,7 +584,7 @@ P192 blind external value validation (P2) <已完成>
 -- P192.2 source-only vs sv_query blind comparison <已完成>
 
 P193 external trial readiness (2026-11-21 review) <待做>
--- P193.1 fix sim/tests/config absolute symlink + clone hygiene <进行中>
+-- P193.1 fix sim/tests/config absolute symlink + clone hygiene <已完成>
 -- P193.2 strip personal dev assets + privacy scan（agents/memory/task_tree/sessions） <待做>
 -- P193.3 migrate bare cli package to sv_query.cli（独立 PR） <待做>
 -- P193.4 audit wide-except on core query paths（unknown/partial 显式） <待做>

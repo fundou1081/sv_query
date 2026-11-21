@@ -9,18 +9,18 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P193.1 fix sim/tests/config absolute symlink + clone hygiene** `<进行中>`
+- **当前 item**: **P193.2 strip personal dev assets + privacy scan（agents/memory/task_tree/sessions）** `<待做>`
   - P182 组全部完成：envelope / schema / stats / agent entry / snapshot eval / governance
   - P188 release readiness 完成；发布动作见 [RELEASE.md](RELEASE.md)
   - P189.1 docs 自洽 gate 完成
   - P182.5 结论：不扩 source-dependent snapshot、不做 serve、不改 cache 默认
-  - P190.1 完成；新增 P193 外部试用准备，当前 P193.1
+  - P193.1 clone hygiene 完成；下一步 P193.2 资产剥离
 
 
 ## 📌 当前真实基线
 
 ```text
-canonical:  3133 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  3136 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 
