@@ -24,14 +24,14 @@ from pyslang.pyslang.ast import (
     BinaryOperator,  # [V6.9] semantic AST only (ExpressionKind/StatementKind 已随 Step 5/6 拆走)
 )
 
-from .._safe import safe_attr, safe_str, safe_str  # [iter_141] pyslang 对象安全 str (非 utf8 防崩)
+from .._safe import safe_attr, safe_str  # [iter_141] pyslang 对象安全 str (非 utf8 防崩)
 from .ast_utils import unwrap  # [V6.3+3 2026-07-27] (kind_matches 已随 Step 6 always 拆走)
-from .semantic_adapter import SemanticAdapter
 from .builder.subroutine_expander import SubroutineExpander  # [Step 7] CallSiteInfo 已随 function_extractor 拆走
 from .edge_factory import TraceEdgeFactory
 from .extractor_models import ExtractorResult  # [P1 cycle 9] 共享
 from .extractors._common import safe_symbol_name  # [iter_141] symbol 名安全提取
 from .graph.models import EdgeKind, NodeKind, SignalSource, TraceNode
+from .semantic_adapter import SemanticAdapter
 
 # [V6.9] SignalExpressionVisitor removed — using semantic_adapter
 
@@ -917,7 +917,6 @@ class DriverExtractor:
             # [V6.9] 统一用 _extract_signals_from_expr 提取信号集合
             # 然后匹配 leaf signal。pyslang 可能返回全限定名 (module.signal)
             # 或短名 (signal)，都尝试匹配。
-            side_kind = str(getattr(side, "kind", ""))
             side_signals = self._signal_visitor._extract_signals_from_expr(side) or []
 
             # 匹配：全限定名 或 短名
@@ -1299,9 +1298,9 @@ class DriverExtractor:
                 self._current_module = module
                 # [P1-3] 获取当前模块的源文件位置
                 try:
-                    src_file, src_line, _, _ = self.adapter.get_source_location(module)
+                    src_file, _, _, _ = self.adapter.get_source_location(module)
                 except Exception:
-                    src_file, src_line = '', 0
+                    src_file = ''
                 self._current_source_file = src_file
 
                 # [REFACTOR 2026-06-26 B-Phase 1-2] 抽 _create_port_nodes + _create_var_nodes

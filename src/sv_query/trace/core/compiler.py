@@ -45,22 +45,19 @@ def set_quiet(quiet: bool = True) -> None:
     global _QUIET
     _QUIET = quiet
 
-# [iter_186] pyslang bindings 覆盖路径 (仅当**存在**时才插入 sys.path)。
-# 原实现把开发机绝对路径无条件插进 sys.path — 该目录在正常安装环境并不存在,
-# 属于死路径 + 个人路径硬编码 (换机器/开源环境会误导排查)。只有当用户自己
-# clone 了 slang 并构建了 bindings 时才生效。
-PYSLLANG_BINDINGS_PATH = os.path.expanduser("~/my_dv_proj/slang/build/bindings")
-if os.path.isdir(PYSLLANG_BINDINGS_PATH) and PYSLLANG_BINDINGS_PATH not in sys.path:
-    sys.path.insert(0, PYSLLANG_BINDINGS_PATH)
+# [P194.1] Bindings override is explicit (SVQ_PYSLANG_BINDINGS); no author path.
+from ._bindings import add_bindings_from_env
 
-# UVM 源码路径 (自动检测)
+add_bindings_from_env()
+
+# UVM 源码路径: explicit env first, then generic install locations.
 DEFAULT_UVM_SRC = None
 for candidate in [
-    os.path.expanduser("~/my_dv_proj/openrtl/uvm-1.2/src"),
+    os.environ.get("SVQ_UVM_SRC"),
     os.path.expanduser("~/uvm-1.2/src"),
     "/usr/local/uvm-1.2/src",
 ]:
-    if os.path.isfile(os.path.join(candidate, "uvm_pkg.sv")):
+    if candidate and os.path.isfile(os.path.join(candidate, "uvm_pkg.sv")):
         DEFAULT_UVM_SRC = candidate
         break
 

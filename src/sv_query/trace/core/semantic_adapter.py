@@ -7,12 +7,15 @@
 # ==============================================================================
 
 import logging
-import os
-import sys
-from typing import Callable, Iterator
+from typing import Callable
 
 logger = logging.getLogger(__name__)
 
+from .._safe import _safe_attr, _safe_str, safe_attr, safe_str  # noqa: F401
+from .._safe import clean_name as _clean_name_fn  # noqa: F401
+
+# [P194.1] explicit pyslang bindings override; no author path.
+from ._bindings import add_bindings_from_env
 from .semantic import (  # noqa: E402  [iter_176 分域 mixin]
     ClassesMixin,
     ConnectionsMixin,
@@ -20,10 +23,6 @@ from .semantic import (  # noqa: E402  [iter_176 分域 mixin]
     ModulesMixin,
     PortsIfacesMixin,
     SourceCoreMixin,
-)
-from .semantic._wrappers import (  # noqa: E402,F401  向后兼容再导出
-    SemanticInstanceDeclWrapper,
-    SemanticInstanceWrapper,
 )
 from .semantic._expr_helpers import (  # noqa: E402,F401  向后兼容再导出
     _expr_assignment,
@@ -44,18 +43,14 @@ from .semantic._expr_helpers import (  # noqa: E402,F401  向后兼容再导出
     _expr_unary,
     _fold_select_index,
 )
+from .semantic._wrappers import (  # noqa: E402,F401  向后兼容再导出
+    SemanticInstanceDeclWrapper,
+    SemanticInstanceWrapper,
+)
 
-from .._safe import _safe_attr, _safe_str, safe_attr, safe_str
-from .._safe import clean_name as _clean_name_fn
+add_bindings_from_env()
 
-# 确保 pyslang bindings 在 path 中 (仅当存在; 见 compiler.py 同名单 [iter_186])
-PYSLLANG_BINDINGS_PATH = os.path.expanduser("~/my_dv_proj/slang/build/bindings")
-if os.path.isdir(PYSLLANG_BINDINGS_PATH) and PYSLLANG_BINDINGS_PATH not in sys.path:
-    sys.path.insert(0, PYSLLANG_BINDINGS_PATH)
 
-import pyslang
-
-from sv_query.trace.core.ast_utils import is_syntax_list, iter_syntax_list
 
 
 class SemanticAdapter(

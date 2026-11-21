@@ -196,6 +196,7 @@ ignore = [
 "src/sv_query/cli/core/semantic/paths.py" = ["B905"]
 "src/sv_query/cli/view/review.py" = ["B905"]
 "src/sv_query/cli/core/semantic/trace_common.py" = ["E731"]
+"src/sv_query/trace/core/graph_builder.py" = ["B023"]
 # BaseVisitor 是抽象基类，空方法是设计意图
 "src/sv_query/trace/core/visitors/base_visitor.py" = [
     "B027",  # empty-method-without-abstract-decorator

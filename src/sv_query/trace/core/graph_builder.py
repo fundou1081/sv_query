@@ -5,12 +5,11 @@
 from __future__ import annotations
 
 import logging
-
-from .._safe import safe_attr, safe_str, safe_str  # [iter_182]
+from typing import Any
 
 import pyslang
 
-from .semantic_adapter import SemanticAdapter
+from .._safe import safe_attr, safe_str  # [iter_182]
 from .builder.graph_pipeline import GraphPipeline, Stage
 from .builder.subroutine_expander import SubroutineExpander
 from .connection_extractor import ConnectionExtractor  # [P1 cycle 9b] re-export 保兼容
@@ -18,6 +17,7 @@ from .driver_extractor import DriverExtractor  # [P1 cycle 8] re-export 保兼�
 from .extractor_models import ExtractorResult  # [P1 cycle 9] 共享 (避免循环 import)
 from .graph.contracts import CONTROL_EDGE_KINDS, DATA_EDGE_KINDS
 from .graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
+from .semantic_adapter import SemanticAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -534,8 +534,6 @@ class GraphBuilder:
             target_top = self._find_target_top(self.target_module or '')
             if target_top is None:
                 return
-            target_module = self.target_module or ''
-
             # [V16.11 2026-08-18] 1st pass: GenerateBlockArray (for-loop 型)
             # entries[i].sub 里的 ContinuousAssign, case27/29 都走这条路
             for item in target_top.body:
@@ -1598,7 +1596,7 @@ class GraphBuilder:
         - 设 RangeSelect 4 属性 (bit_range / parent_bit_start / parent_bit_end / width)
         - ElementSelect 只创 BIT_SELECT 边, 不设 4 属性 (跟路径 A 一致)
         """
-        from sv_query.trace.core.extractors._common import iter_bit_selects, BitSelectHit
+        from sv_query.trace.core.extractors._common import iter_bit_selects
 
         # [G3 Option 3 2026-08-28] target_module 为空时 (trace_signal 内部 build_graph 无 target),
         # 用首个 top instance 的实际名字当前缀, 跟 DriverExtractor 的 top.out[0] 前缀一致.
@@ -1960,6 +1958,7 @@ class GraphBuilder:
         合成节点**不加 BIT_SELECT 聚合边**（防父总线提升污染），并受总量上限保护。
         """
         import os as _os
+
         from .graph.models import NodeKind, TraceEdge
 
         mode = (_os.environ.get("SVQ_BIT_BRIDGE") or "one").strip().lower()
