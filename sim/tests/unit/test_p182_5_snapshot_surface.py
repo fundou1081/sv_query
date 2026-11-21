@@ -19,7 +19,10 @@ def test_snapshot_surface_counts_and_sets():
         "loads", "paths", "ports", "trace evidence", "trace frontier",
         "trace tb-join", "verify claim", "verify consistency",
     ]
-    assert data["core_no_cache"] == ["drivers", "loads", "trace evidence"]
+    assert data["core_no_cache"] == [
+        "drivers", "graph edges", "graph nodes", "graph subgraph",
+        "loads", "trace evidence",
+    ]
     assert len(data["core_without_snapshot"]) == 26
     assert "stats" in data["core_without_snapshot"]
     assert data["snapshot_commands"] == [

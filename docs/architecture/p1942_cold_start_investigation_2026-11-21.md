@@ -170,3 +170,35 @@ Based on the review discussion:
 
 The cache-key omission is treated as a correctness bug, not a performance
 optimization.
+
+## 7. P194.2b result (2026-11-21)
+
+Graph cache enabled for pure-graph commands:
+
+```text
+graph nodes
+graph edges
+graph subgraph
+```
+
+Each returns cache metadata in `params.cache` (not `result`, so the result
+schema stays unchanged):
+
+```json
+"cache": {"status": "miss|hit|disabled", "key": "...", "capabilities": ["graph"]}
+```
+
+`--no-cache` forces a rebuild.
+
+Measured on verilog-axi (isolated cache):
+
+```text
+graph nodes cold: 47.22 s, status=miss
+graph nodes warm:  0.85 s, status=hit
+```
+
+`graph edges` shares the same BuildIdentity key. `stats` is **not** enabled yet:
+it currently uses MIG instances for `modules` and stores elaboration errors;
+that belongs to P194.2c/integration with a fuller GraphState.
+
+Cold/warm node IDs are compared in the regression test.

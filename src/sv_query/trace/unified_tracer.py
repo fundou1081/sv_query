@@ -180,6 +180,8 @@ class UnifiedTracer:
         self._include_dirs = include_dirs or []
         self._preprocess_macros = preprocess_macros  # [Req-20 2026-06-12] 默认跨文件宏展开
         self._inject_timescale = inject_timescale  # [P190.1] 诊断路径可关闭注入
+        self._cache_status = "disabled"  # disabled|miss|hit
+        self._cache_key: str | None = None
         self._preprocessed = False  # 标记是否已 preprocess
         self._top_modules = list(top_modules) if top_modules else None  # [iter_145]
 
@@ -252,6 +254,14 @@ class UnifiedTracer:
         log_level_val = _log_level_map.get(level, logging.WARNING)
         _root_logger.setLevel(log_level_val)
         _main_logger.setLevel(log_level_val)
+
+    def cache_info(self) -> dict:
+        """[P194.2b] Observable graph-cache status for a completed build."""
+        return {
+            "status": self._cache_status,
+            "key": self._cache_key,
+            "capabilities": ["graph"] if self._cache_status == "hit" else [],
+        }
 
     def get_log_level(self) -> str:
         """获取当前日志级别名称"""
@@ -348,6 +358,8 @@ class UnifiedTracer:
             # 尝试从缓存加载
             identity = self._build_identity(target_module) if use_cache else None
             cache_key = identity.key() if identity is not None else None
+            self._cache_key = cache_key
+            self._cache_status = "miss" if cache_key else "disabled"
             project_key = self._graph_project_key() if use_cache else None
             if use_cache and cache_key:
                 from sv_query.trace.core.cache import get_cache
@@ -362,6 +374,7 @@ class UnifiedTracer:
                     self._graph = SignalGraph.from_dict(payload["graph_data"])
                     self._init_tracers()
                     self._build_phase = "hydrated"
+                    self._cache_status = "hit"
                     return self._graph
                 if payload:
                     _main_logger.debug(

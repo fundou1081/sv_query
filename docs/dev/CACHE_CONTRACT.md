@@ -66,8 +66,12 @@ hit. Old entries without the manifest are rebuilt.
 
 ## 3. Default policy
 
-`build_graph(use_cache=False)` remains the default. Only trace commands currently
-opt in. Enabling more commands is P194.2b, after this contract and its tests.
+`build_graph(use_cache=False)` remains the library default. Opt-in surface:
+
+- trace commands (`drivers`/`loads`/...) already used it;
+- P194.2b adds `graph nodes`, `graph edges`, `graph subgraph` with `--no-cache`;
+- `stats` is intentionally not enabled yet: its `modules`/elaboration-error path
+  still needs MIG/metadata beyond `graph` capability.
 
 ## 4. Tests
 

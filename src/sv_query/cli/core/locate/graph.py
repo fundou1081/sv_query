@@ -28,6 +28,7 @@ graph_app = typer.Typer(help="Inspect signal graph")
 def list_nodes(
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str = typer.Option(None, "--filelist", help="[iter_236 1a] filelist (.f/.fl) 多文件项目"),
+    no_cache: bool = typer.Option(False, "--no-cache", help="Disable graph cache for this query"),
     kind: str | None = typer.Option(None, "--kind", "-k", help="Filter by node kind (SIGNAL, EXPRESSION, etc)"),
     module: str | None = typer.Option(None, "--module", "-m", help="Filter by module name"),
     match: str | None = typer.Option(None, "--match", help="[iter_249] 只保留 id 含该子串的节点 "
@@ -43,7 +44,7 @@ def list_nodes(
     """
     try:
         tracer = _build_tracer(file=file, filelist=filelist)
-        graph = tracer.build_graph()
+        graph = tracer.build_graph(use_cache=not no_cache)
 
         nodes = []
         for nid in graph.nodes():
@@ -83,7 +84,8 @@ def list_nodes(
             "ok": True,
             "command": "list_nodes",
             "params": {"file": str(file) if file else None, "filelist": filelist,
-                       "kind": kind, "module": module, "match": match, "detail": detail},
+                       "kind": kind, "module": module, "match": match, "detail": detail,
+                       "no_cache": no_cache, "cache": tracer.cache_info()},
             "result": {"nodes": nodes, "total": len(nodes)},
             "errors": [],
         }
@@ -111,6 +113,7 @@ def list_nodes(
 def list_edges(
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str = typer.Option(None, "--filelist", help="[iter_236 1a] filelist (.f/.fl) 多文件项目"),
+    no_cache: bool = typer.Option(False, "--no-cache", help="Disable graph cache for this query"),
     kind: str | None = typer.Option(None, "--kind", "-k", help="Filter by edge kind (DRIVER, etc)"),
     src: str | None = typer.Option(None, "--src", "-s", help="Filter by source node"),
     dst: str | None = typer.Option(None, "--dst", "-d", help="Filter by destination node"),
@@ -119,7 +122,7 @@ def list_edges(
     """List all edges in the graph"""
     try:
         tracer = _build_tracer(file=file, filelist=filelist)
-        graph = tracer.build_graph()
+        graph = tracer.build_graph(use_cache=not no_cache)
 
         edges = []
         for e_src, e_dst in graph.edges():
@@ -145,7 +148,9 @@ def list_edges(
         data = {
             "ok": True,
             "command": "list_edges",
-            "params": {"file": str(file) if file else None, "filelist": filelist, "kind": kind, "src": src, "dst": dst},
+            "params": {"file": str(file) if file else None, "filelist": filelist, "kind": kind,
+                       "src": src, "dst": dst, "no_cache": no_cache,
+                       "cache": tracer.cache_info()},
             "result": {"edges": edges, "total": len(edges)},
             "errors": [],
         }
@@ -215,6 +220,7 @@ def subgraph_cmd(
     seeds: list[str] = typer.Argument(..., help="Canonical/relative seed signal(s)"),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str = typer.Option(None, "--filelist", help="filelist (.f/.fl) 多文件项目"),
+    no_cache: bool = typer.Option(False, "--no-cache", help="Disable graph cache for this query"),
     depth: int = typer.Option(2, "--depth", help="k-hop depth (0 = seeds only)"),
     direction: str = typer.Option("both", "--direction", help="in / out / both (relative to seeds)"),
     edge_kinds: str = typer.Option("driver,connection", "--edge-kinds",
@@ -227,7 +233,7 @@ def subgraph_cmd(
     """局部子图：从 seed 出发的 k-hop 邻域（有预算，不做全图 BFS）。"""
     try:
         tracer = _build_tracer(file=file, filelist=filelist)
-        graph = tracer.build_graph()
+        graph = tracer.build_graph(use_cache=not no_cache)
         valid, seed_rows, seed_errors = _resolve_subgraph_seeds(graph, seeds)
         if not valid:
             data = {
@@ -264,6 +270,8 @@ def subgraph_cmd(
                 "max_nodes": max_nodes,
                 "max_edges": max_edges,
                 "evidence": evidence,
+                "no_cache": no_cache,
+                "cache": tracer.cache_info(),
             },
             "seeds": seed_rows,
             "result": result,

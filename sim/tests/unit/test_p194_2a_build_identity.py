@@ -57,9 +57,8 @@ def test_manifest_declares_graph_capability_only():
 
 
 def test_cache_entry_without_manifest_is_not_hydrated(tmp_path, monkeypatch):
-    from sv_query.trace.unified_tracer import UnifiedTracer
-
     from sv_query.trace.core.cache import ast_cache as ac
+    from sv_query.trace.unified_tracer import UnifiedTracer
     monkeypatch.setattr(ac, "_global_cache", ac.ASTCache(cache_dir=str(tmp_path)))
     fl = "sim/tests/fixtures/minimal_3module/filelist.f"
     tracer = UnifiedTracer(filelist=fl, log_level="ERROR")
