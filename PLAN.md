@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P194.2 cold-start graph cache / session server design + benchmark <待做>
+current item : P194.2 cold-start graph cache / session server design + benchmark <进行中>
 
 ## 计划树
 
@@ -585,7 +585,7 @@ P192 blind external value validation (P2) <已完成>
 
 P194 external review follow-up (2026-11-21) <待做>
 -- P194.1 remove sys.path bootstrap + personal pyslang path + duplicate imports <已完成>
--- P194.2 cold-start graph cache / session server design + benchmark <待做>
+-- P194.2 cold-start graph cache / session server design + benchmark <进行中>
 -- P194.3 API facade + deprecation policy <待做>
 -- P194.4 split 500+ line extractor functions <待做>
 -- P194.5 external benchmark + token cost validation <待做>

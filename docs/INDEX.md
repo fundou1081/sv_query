@@ -154,6 +154,7 @@
 | [architecture/agent_interface_review_2026-11-16_revised.md](architecture/agent_interface_review_2026-11-16_revised.md) | **面向 agent 的交付层评审 v2（2026-11-16，HEAD `8da675b3`）**: 修正 v1 的 direct/缺参/计数错误；只读评审，建议已登记 P182 |
 | [architecture/dto_mapping_audit_2026-11-17.md](architecture/dto_mapping_audit_2026-11-17.md) | **DTO 映射审计（D9 / P183.3）**: snapshot/CLI/core 精确字段集；每上下文一份 canonical projection，不做全局合并 |
 | [architecture/p1834_session_seam_decision_2026-11-17.md](architecture/p1834_session_seam_decision_2026-11-17.md) | **P183.4 决策（D15）**: 保留 Session/runner/hidden session；不重写 Typer run() 全量 dispatch |
+| [architecture/p1942_cold_start_investigation_2026-11-21.md](architecture/p1942_cold_start_investigation_2026-11-21.md) | **P194.2**: cold-start benchmark; graph cache narrow; snapshot 0.6–0.8s after 46s build |
 | [architecture/p1861_shadow_measure_2026-11-19.md](architecture/p1861_shadow_measure_2026-11-19.md) | **P186.1**: 5 fixture 实测 shadow=0；不新增 drop_shadows，保留测量工具 |
 | [architecture/p1825_snapshot_cache_session_eval.md](architecture/p1825_snapshot_cache_session_eval.md) | **P182.5**: 13 个命令暴露 --from-snapshot（12 可源替代；tb-join 仍需 TB 源）；不扩 source-dependent / 不做 serve / 不改 cache 默认 |
 | [architecture/p1835_candidate_decision_2026-11-18.md](architecture/p1835_candidate_decision_2026-11-18.md) | **P183.5 决策**: DesignView 拒绝全量；ASTFrontend 仅采纳 Phase 0（inventory + degraded） |
