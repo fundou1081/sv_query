@@ -9,7 +9,7 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P194.2e expose remaining core query ops + invalidation** `<待做>`
+- **当前 item**: **P194.2f session coverage for verify/scope/instances** `<待做>`
   - P182 组全部完成：envelope / schema / stats / agent entry / snapshot eval / governance
   - P188 release readiness 完成；发布动作见 [RELEASE.md](RELEASE.md)
   - P189.1 docs 自洽 gate 完成
@@ -20,7 +20,7 @@
 ## 📌 当前真实基线
 
 ```text
-canonical:  3159 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  3162 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 

@@ -52,8 +52,13 @@ def _serve(filelist: str | None, from_snapshot: str | None, file: str | None) ->
         except (TypeError, ValueError) as exc:
             response = {"ok": False, "error": f"invalid request JSON: {exc}"}
         else:
-            response = session.execute(request) if isinstance(request, dict) else {
-                "ok": False, "error": "request root must be an object"}
+            try:
+                gs.refresh()
+            except Exception as exc:
+                response = {"ok": False, "error": f"refresh failed: {exc}"}
+            else:
+                response = session.execute(request) if isinstance(request, dict) else {
+                    "ok": False, "error": "request root must be an object"}
         print(_json.dumps(response, ensure_ascii=False), flush=True)
     gs.close()
 

@@ -373,6 +373,9 @@ class UnifiedTracer:
                     _main_logger.info(f"Loading graph from cache (key={cache_key[:8]}...)")
                     self._graph = SignalGraph.from_dict(payload["graph_data"])
                     self._init_tracers()
+                    from .core.module_instance_graph import PathResolver
+                    self._path_resolver = PathResolver(
+                        self._graph, getattr(self, "_module_graph", None))
                     self._build_phase = "hydrated"
                     self._cache_status = "hit"
                     return self._graph

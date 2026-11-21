@@ -68,6 +68,7 @@
 | C-45 | graph cache key from single BuildIdentity; payload declares graph-only capability; no manifest => miss | code/test | `test_p194_2a_build_identity.py` | `verified` |
 | C-46 | graph nodes/edges/subgraph opt into graph cache with hit/miss/disabled status and --no-cache | code/test | `test_p194_2b_graph_cache.py` | `verified` |
 | C-47 | GraphSession reuses one graph; stdio session serves graph nodes/edges; snapshot hydrate works | code/test | `test_p194_2c_graph_session.py` | `verified`（graph-only） |
+| C-48 | GraphSession exposes drivers/loads/paths/dataflow and refresh; stdio server reuses one graph | code/test | `test_p194_2c_graph_session.py` | `verified`（session scope） |
 
 ---
 

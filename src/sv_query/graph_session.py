@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .trace._safe import safe_attr
+from .trace.core.graph.dataflow import DataFlowGraph
 from .trace.core.snapshot_manager import SnapshotManager
 from .trace.unified_tracer import UnifiedTracer
 
@@ -26,6 +27,11 @@ class GraphSession:
         use_cache: bool = True,
     ) -> None:
         self._from_snapshot = from_snapshot
+        self._file = str(file) if file else None
+        self._filelist = filelist
+        self._cache_key = None
+        self._log_level = log_level
+        self._use_cache = use_cache
         if from_snapshot:
             if file or filelist:
                 raise ValueError("from_snapshot is mutually exclusive with file/filelist")
@@ -46,10 +52,39 @@ class GraphSession:
             else:
                 self.tracer = UnifiedTracer(filelist=filelist, log_level=log_level)
             self.tracer.build_graph(use_cache=use_cache)
+        self._cache_key = self._current_cache_key()
 
     @property
     def graph(self):
         return self.tracer.get_graph()
+
+    def _current_cache_key(self) -> str | None:
+        if self._from_snapshot:
+            return None
+        identity = self.tracer._build_identity(None)
+        return identity.key() if identity is not None else None
+
+    def refresh(self) -> bool:
+        """Rebuild when source content changed; return whether a rebuild happened."""
+        if self._from_snapshot:
+            return False
+        current = self._current_cache_key()
+        if current is None or current == self._cache_key:
+            return False
+        # A tracer caches its compiler/filelist after the first build; rebuild
+        # from a fresh tracer so changed files are re-read (force alone is not enough).
+        if self._file:
+            source = Path(self._file).read_text(encoding="utf-8")
+            tracer = UnifiedTracer(
+                sources={str(Path(self._file).resolve()): source},
+                log_level=self._log_level,
+            )
+        else:
+            tracer = UnifiedTracer(filelist=self._filelist, log_level=self._log_level)
+        tracer.build_graph(use_cache=self._use_cache)
+        self.tracer = tracer
+        self._cache_key = current
+        return True
 
     def cache_info(self) -> dict:
         if self._from_snapshot:
@@ -109,8 +144,66 @@ class GraphSession:
             rows.append({"src": e_src, "dst": e_dst, "kind": edge_kind})
         return {"edges": rows, "total": len(rows)}
 
+    def drivers(self, signal: str, *, depth: int | None = None,
+                module: str | None = None) -> dict:
+        rows = self.tracer.trace_fanin_detailed(signal, module=module, depth=depth)
+        return {
+            "signal": signal,
+            "drivers": [{
+                "id": d.id,
+                "kind": d.node.kind.name if hasattr(d.node.kind, "name") else str(d.node.kind),
+                "module": d.node.module,
+                "expression": d.expression,
+                "condition": d.condition,
+                "assign_type": d.assign_type,
+                "distance": d.distance,
+            } for d in rows],
+            "count": len(rows),
+        }
+
+    def loads(self, signal: str, *, depth: int | None = None,
+              module: str | None = None) -> dict:
+        rows = self.tracer.trace_fanout(signal, module=module, depth=depth)
+        return {
+            "signal": signal,
+            "loads": [{
+                "id": n.id,
+                "kind": n.kind.name if hasattr(n.kind, "name") else str(n.kind),
+                "module": n.module,
+            } for n in rows],
+            "count": len(rows),
+        }
+
+    def paths(self, src: str, dst: str, *, directed: bool = False) -> dict:
+        resolver = self.tracer.get_path_resolver()
+        if resolver is None:
+            raise ValueError("path resolver unavailable")
+        path = resolver.find_path(src, dst, directed=directed)
+        return {"src": src, "dst": dst, "directed": directed,
+                "found": path is not None,
+                "hop_count": (len(path) - 1) if path else None,
+                "path": path}
+
+    def dataflow(self, src: str, dst: str, *, max_paths: int = 100) -> dict:
+        graph = self.graph
+        if src not in graph.nodes() or dst not in graph.nodes():
+            raise ValueError("signal id not found in graph")
+        result = DataFlowGraph(graph, self.tracer.get_module_graph()).analyze(
+            src, dst, max_paths=max_paths)
+        return {
+            "from": src,
+            "to": dst,
+            "is_reachable": result.is_reachable,
+            "paths_count": result.paths_count,
+            "truncated": result.truncated,
+            "truncation_reason": result.truncation_reason,
+            "paths": [[seg.from_signal for seg in p.segments] + [dst]
+                      for p in result.paths],
+        }
+
     def handlers(self) -> dict:
         """Session op handlers backed by this one graph."""
+
         def nodes(request):
             return self.graph_nodes(
                 kind=request.get("kind"), module=request.get("module"),
@@ -122,7 +215,25 @@ class GraphSession:
                 kind=request.get("kind"), src=request.get("src"), dst=request.get("dst"),
             )
 
-        return {"graph_nodes": nodes, "graph_edges": edges}
+        def drivers(request):
+            return self.drivers(request.get("signal"), depth=request.get("depth"),
+                                module=request.get("module"))
+
+        def loads(request):
+            return self.loads(request.get("signal"), depth=request.get("depth"),
+                              module=request.get("module"))
+
+        def paths(request):
+            return self.paths(request.get("src"), request.get("dst"),
+                              directed=bool(request.get("directed")))
+
+        def dataflow(request):
+            return self.dataflow(request.get("src"), request.get("dst"),
+                                 max_paths=int(request.get("max_paths", 100)))
+
+        return {"graph_nodes": nodes, "graph_edges": edges,
+                "drivers": drivers, "loads": loads,
+                "paths": paths, "dataflow": dataflow}
 
     def close(self) -> None:
         self.tracer = None

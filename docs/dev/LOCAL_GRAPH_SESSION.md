@@ -58,6 +58,12 @@ graph edges
 Only graph-only ops are exposed in P194.2d. Drivers/loads/paths/dataflow/verify
 still need the full command/session integration; that is P194.2e.
 
+## 4b. Invalidation
+
+`GraphSession.refresh()` checks the current BuildIdentity. If source content
+changed, it creates a fresh tracer and rebuilds; the stdio server calls this
+before every request. Snapshot sessions are immutable and skip refresh.
+
 ## 5. Cache policy
 
 - GraphSession defaults to `use_cache=True`;
