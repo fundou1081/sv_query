@@ -12,7 +12,7 @@
 |---|---|---|
 | 源码规模 | 145 文件 / 50,978 行 | `find src -name "*.py"`（2026-11-16 实测） |
 | 测试规模 | 432 测试文件 / 70,006 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **3138 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-19 P182.5 全量复核（3138）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
+| 全量 (canonical) | **3140 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-19 P182.5 全量复核（3140）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
@@ -47,6 +47,7 @@
 | [dev/SNAPSHOT_SURFACE.md](dev/SNAPSHOT_SURFACE.md) | **快照能力面矩阵 (P158.9.2)**: 字段级保真 / 命令级支持面 / 显式不保证清单 |
 | [dev/CLAIMS.md](dev/CLAIMS.md) | **claim 台账**: 公开能力的证据与状态 |
 | [dev/CODING_STYLE.md](dev/CODING_STYLE.md) | 编码风格与设计决策: 先探索后决策 / 单一实现 / 修根因 / 函数职责 / 结构化数据 / 影响面 / 协作规则 |
+| [dev/WIDE_EXCEPT_AUDIT.md](dev/WIDE_EXCEPT_AUDIT.md) | **P193.4**: 核心查询路径宽 except 审计 + 静态门禁；无静默空结果 |
 | [dev/REPOSITORY_LAYOUT.md](dev/REPOSITORY_LAYOUT.md) | **开发位置规则**: public 是唯一开发主线；private 是冻结归档 |
 | [dev/P193_ASSET_INVENTORY.md](dev/P193_ASSET_INVENTORY.md) | **P193.2**: 私有资产清单、迁移规则、git 历史策略待确认 |
 | [dev/REPO_HYGIENE.md](dev/REPO_HYGIENE.md) | **P193.1**: 禁止 tracked absolute-path symlink；clone/Windows 安全 |
