@@ -56,5 +56,7 @@ def test_graph_cache_key_uses_cache_version_constant():
     tracer = UnifiedTracer(sources={"a.sv": "module a; endmodule\n"}, log_level="ERROR")
     key = tracer._graph_cache_key(None)
     assert key is not None
-    assert f"-cv{CACHE_VERSION}-" in key
+    identity = tracer._build_identity(None)
+    assert identity.cache_schema == CACHE_VERSION
+    assert identity.graph_semantics
     assert "-v17-" not in key

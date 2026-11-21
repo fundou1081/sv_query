@@ -38,17 +38,17 @@ class TestCacheModeKey:
         k_one = t._graph_cache_key(None)
         monkeypatch.setenv("SVQ_BIT_BRIDGE", "one")
         k_one2 = t._graph_cache_key(None)
+        assert t._build_identity(None).bit_bridge == "one"
         monkeypatch.setenv("SVQ_BIT_BRIDGE", "full")
         k_full = t._graph_cache_key(None)
-        assert k_one.endswith("-bbone")
         assert k_one2 == k_one
-        assert k_full.endswith("-bbfull")
+        assert t._build_identity(None).bit_bridge == "full"
         assert k_one != k_full
 
     def test_invalid_mode_normalizes_to_one(self, monkeypatch):
         t = UnifiedTracer(sources={"t.sv": SRC}, log_level="ERROR")
         monkeypatch.setenv("SVQ_BIT_BRIDGE", "bogus")
-        assert t._graph_cache_key(None).endswith("-bbone")
+        assert t._build_identity(None).bit_bridge == "one"
 
 
 class TestModeSwitchEndToEnd:

@@ -61,7 +61,7 @@ def resolve_cache_dir(explicit: str | os.PathLike | None = None) -> Path:
 CACHE_DIR = resolve_cache_dir()
 
 # 缓存版本
-CACHE_VERSION = "2.0"  # [P77] AST+graph cache schema; bump when either format changes
+CACHE_VERSION = "3.0"  # [P194.2a] graph cache manifest schema; bump for format/semantics
 
 # [iter_271] 缓存文件: gzip 压缩 + 总量上限 (LRU 淘汰)
 # 单工程图 JSON 可达 20MB, 压缩后通常 3~5MB。上限默认 1GB, 可用 SVQ_CACHE_MAX_MB 覆盖。
@@ -122,7 +122,7 @@ class ASTCache:
         hasher.update(fl.name.encode())
         for raw in fl.read_text(errors="replace").splitlines():
             line = raw.strip()
-            if not line or line.startswith(("//", "#", "+incdir+", "+define+")):
+            if not line or line.startswith(("//", "#")):
                 continue
             p = Path(line)
             p = p if p.is_absolute() else (base / p)

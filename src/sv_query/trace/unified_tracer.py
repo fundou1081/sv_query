@@ -195,36 +195,38 @@ class UnifiedTracer:
         mode = (_os.environ.get("SVQ_BIT_BRIDGE") or "one").strip().lower()
         return mode if mode in ("one", "full") else "one"
 
-    def _graph_cache_key(self, target_module: str | None) -> str | None:
-        """[iter_270] 图缓存 key: 内容 hash + **图模式**。
-
-        旧 key 只有 sources hash → 模块级/实例级共用同一个 key, 先建哪个就命中哪个
-        (实测: 先模块级再请求实例级, 直接返回旧图, 静默错误)。现在把
-        target_module 编进 key (v2: 图模式只有实例级, 用固定版本段区分旧缓存)。
-
-        filelist 模式: 用 filelist + 所有引用文件的内容 hash (iter_270 新增),
-        以前 `_sources` 为空直接跳过缓存 → 真实工程永远不命中。
-        """
+    def _build_identity(self, target_module: str | None):
+        """[P194.2a] single typed cache identity; no hand-built keys."""
         from sv_query.trace.core.cache import get_cache
+        from sv_query.trace.core.cache.ast_cache import CACHE_VERSION
+        from sv_query.trace.core.cache.build_identity import BuildIdentity
 
         cache = get_cache()
         try:
             if self._sources:
-                base = cache.compute_sources_hash(self._sources)
+                source_hash = cache.compute_sources_hash(self._sources)
             elif self._filelist:
-                base = cache.compute_filelist_hash(self._filelist, self._include_dirs)
+                source_hash = cache.compute_filelist_hash(
+                    self._filelist, self._include_dirs)
             else:
                 return None
         except (OSError, FileNotFoundError) as e:
             _main_logger.debug("缓存 key 计算失败, 跳过缓存: %s", e)
             return None
-        # [iter_302 / PLAN P13.1] 位桥模式影响图内容；不编进 key 会串模式（静默错误）
-        # [iter_313/P183.2] 图缓存 schema/语义版本与 AST cache 共用 CACHE_VERSION；
-        # 图格式变化时必须 bump CACHE_VERSION，避免旧图被静默复用。
-        from .core.cache.ast_cache import CACHE_VERSION
+        return BuildIdentity(
+            source_hash=source_hash,
+            include_dirs=tuple(str(d) for d in self._include_dirs),
+            preprocess_macros=self._preprocess_macros,
+            inject_timescale=self._inject_timescale,
+            top_modules=tuple(self._top_modules or ()),
+            target_module=target_module,
+            bit_bridge=self._bit_bridge_mode(),
+            cache_schema=CACHE_VERSION,
+        )
 
-        return (f"{base}-cv{CACHE_VERSION}-t{target_module or 'all'}"
-                f"-bb{self._bit_bridge_mode()}")
+    def _graph_cache_key(self, target_module: str | None) -> str | None:
+        identity = self._build_identity(target_module)
+        return identity.key() if identity is not None else None
 
     def _graph_project_key(self) -> str | None:
         """[iter_287 / PLAN P3.2] 工程身份（只看路径）—— 供缓存按工程过期。"""
@@ -344,7 +346,8 @@ class UnifiedTracer:
         self._build_error = None
         try:
             # 尝试从缓存加载
-            cache_key = self._graph_cache_key(target_module) if use_cache else None
+            identity = self._build_identity(target_module) if use_cache else None
+            cache_key = identity.key() if identity is not None else None
             project_key = self._graph_project_key() if use_cache else None
             if use_cache and cache_key:
                 from sv_query.trace.core.cache import get_cache
@@ -352,12 +355,18 @@ class UnifiedTracer:
                 cache = get_cache()
                 cached = cache.get_by_key(cache_key, force=force, project_key=project_key)
                 payload = (cached or {}).get("data") or {}
-                if payload.get("graph_data"):
+                manifest = payload.get("manifest") or {}
+                capabilities = set(manifest.get("capabilities") or ())
+                if "graph" in capabilities and payload.get("graph_data"):
                     _main_logger.info(f"Loading graph from cache (key={cache_key[:8]}...)")
                     self._graph = SignalGraph.from_dict(payload["graph_data"])
                     self._init_tracers()
                     self._build_phase = "hydrated"
                     return self._graph
+                if payload:
+                    _main_logger.debug(
+                        "Graph cache entry lacks graph capability; rebuilding (key=%s)",
+                        cache_key[:8])
 
             from .core.pipeline import Pipeline, PipelineStep
 
@@ -394,8 +403,12 @@ class UnifiedTracer:
             try:
                 from sv_query.trace.core.cache import get_cache
 
-                get_cache().put_by_key(cache_key, {"graph_data": self._graph.to_dict()},
-                                       project_key=project_key)
+                get_cache().put_by_key(
+                    cache_key,
+                    {"graph_data": self._graph.to_dict(),
+                     "manifest": identity.manifest()},
+                    project_key=project_key,
+                )
             except Exception as exc:
                 logger.warning("graph cache write failed (build remains ready): %s", exc)
         return self._graph

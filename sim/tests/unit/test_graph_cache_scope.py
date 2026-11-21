@@ -17,8 +17,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 SRC = str(PROJECT_ROOT / "src")
 if SRC not in sys.path:
@@ -44,8 +42,9 @@ class TestCacheKey:
         t = UnifiedTracer(filelist=str(FILELIST), log_level="ERROR")
         assert not t._sources, "该模式应没有 sources"
         key = t._graph_cache_key(None)
-        # [iter_302 / P13.1] key 末尾带位桥模式段（-bbone / -bbfull）
-        assert key and key.endswith("-tall-bbone")
+        # [P194.2a] key is an opaque BuildIdentity hash; mode is in identity.
+        assert key and len(key) == 16
+        assert t._build_identity(None).target_module is None
 
 
 class TestCacheHit:

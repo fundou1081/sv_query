@@ -65,6 +65,7 @@
 | C-42 | installed runtime has no network/telemetry imports; cache/snapshot are local-only | tool/test | `test_p193_8_privacy.py` | `verified`（static） |
 | C-43 | external beta contract page defines stable/no-promise/evidence/cold-start expectations | doc/test | `test_p193_9_beta_contract.py` | `verified` |
 | C-44 | 安装/运行路径无作者 home、entry 无 sys.path bootstrap、无重复 safe_str import | static/test | `test_p194_1_cleanup.py` | `verified` |
+| C-45 | graph cache key from single BuildIdentity; payload declares graph-only capability; no manifest => miss | code/test | `test_p194_2a_build_identity.py` | `verified` |
 
 ---
 
