@@ -139,6 +139,9 @@ for d in tracer.trace_fanin_detailed("top.y"):
 
 ## 9. Read next
 
+- [Beta contract](BETA_CONTRACT.md) — stable / no-promise / evidence grades
+
+
 - [README](../README.md)
 - [CLI surface](CLI_SURFACE.md)
 - [JSON contract](architecture/json_contract_2026-10-31.md)

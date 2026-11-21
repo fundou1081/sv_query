@@ -24,6 +24,8 @@
 
 > **Found a wrong query answer?** [Report a miss without sharing proprietary RTL](docs/MISS_REPORT_GUIDE.md).
 >
+> **Beta contract**: stable vs no-promise surface, evidence grades, cold-start expectations — [read](docs/BETA_CONTRACT.md).
+>
 > **Privacy**: no telemetry / no RTL upload by default; [details](docs/PRIVACY.md).
 >
 > **English docs**: [User guide](docs/USER_GUIDE_EN.md) · [Known limitations](docs/KNOWN_LIMITATIONS_EN.md)

@@ -63,6 +63,7 @@
 | C-40 | English USER_GUIDE + KNOWN_LIMITATIONS available; README links them; Chinese full docs remain canonical | doc/test | `test_p193_6_english_docs.py` | `verified` |
 | C-41 | Miss report template + guide require desensitized fixture / structural-only fallback; no proprietary RTL | template/doc/test | `test_p193_7_miss_report.py` | `verified` |
 | C-42 | installed runtime has no network/telemetry imports; cache/snapshot are local-only | tool/test | `test_p193_8_privacy.py` | `verified`（static） |
+| C-43 | external beta contract page defines stable/no-promise/evidence/cold-start expectations | doc/test | `test_p193_9_beta_contract.py` | `verified` |
 
 ---
 
