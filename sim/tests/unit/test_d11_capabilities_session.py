@@ -32,7 +32,7 @@ SESSION_PY = SRC / "sv_query" / "session.py"
 
 #: D11 pre-change file, archived as a fixture so clean clones do not need old git history.
 BASELINE_COMMIT = "129035bd"
-BASELINE_FILE = PROJECT_ROOT / "sim/tests/fixtures/baseline/d11_capabilities.py"
+BASELINE_FILE = PROJECT_ROOT / "sim/tests/fixtures/baseline/d11_capabilities.py.txt"
 CAPABILITIES_REL = "cli/core/locate/capabilities.py"
 
 sys.path.insert(0, str(SRC))
