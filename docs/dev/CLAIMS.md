@@ -60,6 +60,7 @@
 | C-37 | 公开仓库无私人开发资产/作者绝对路径；privacy + repo-hygiene gate 绿 | tool | `test_p193_2_privacy.py` | `verified` |
 | C-38 | 安装后顶层包只有 `sv_query`；CLI 位于 `sv_query.cli`，entry `sv_query.cli._entry:main` | wheel / test | `test_packaging_rename.py` | `verified` |
 | C-39 | 核心查询路径无静默宽 except；`check_core_except.py` 进 gate | tool | `test_p193_4_core_except.py` | `verified`（核心 5 文件） |
+| C-40 | English USER_GUIDE + KNOWN_LIMITATIONS available; README links them; Chinese full docs remain canonical | doc/test | `test_p193_6_english_docs.py` | `verified` |
 
 ---
 
