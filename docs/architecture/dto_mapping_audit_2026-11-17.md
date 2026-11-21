@@ -24,7 +24,7 @@
    - **不同域**（MIG/architecture/聚合结果）→ 不在 canonical node/edge DTO 范围。
 4. 用独立 oracle 锁定字段集：
    - `dataclasses.fields(TraceNode/TraceEdge)`；
-   - `cli._registry.JSON_CONTRACT`（`capabilities --json` 的同一来源）。
+   - `sv_query.cli._registry.JSON_CONTRACT`（`capabilities --json` 的同一来源）。
 
 ---
 
@@ -66,7 +66,7 @@ function_return, is_function_call, source, extra
 | 层 | 位置 | 增加的键 |
 |---|---|---|
 | `graph.to_dict()` | `graph/models.py` | `version, created_at, node_count, edge_count, nodes, edges, dynamic_nodes, function_nodes, runtime_system_nodes, expr_trees, const_map, func_info` |
-| `snapshot save` | `src/cli/core/state/snapshot.py:123` | `module_graph, elaboration_errors, failed_files, strict_mode` |
+| `snapshot save` | `src/sv_query/cli/core/state/snapshot.py:123` | `module_graph, elaboration_errors, failed_files, strict_mode` |
 | `SnapshotManager.save` | `snapshot_manager.py:143` | `version(默认), tag, git_commit, files, created_at`；原子写 |
 
 **读路径**：`SnapshotManager.load` 返回原始 dict → `SignalGraph.from_dict` +
@@ -81,7 +81,7 @@ function_return, is_function_call, source, extra
 
 ### 2.3 CLI trace：`_node_to_dict`
 
-位置：`src/cli/core/semantic/trace_common.py:745`
+位置：`src/sv_query/cli/core/semantic/trace_common.py:745`
 
 字段（24）：
 
@@ -101,7 +101,7 @@ condition_analysis_incomplete
 
 ### 2.4 CLI minimal：`node_dict`
 
-位置：`src/cli/core/semantic/_common.py:30`
+位置：`src/sv_query/cli/core/semantic/_common.py:30`
 
 字段（5）：
 
@@ -140,7 +140,7 @@ CLI 测试 `test_graph_subgraph_contract`。
 
 ### 2.6 CLI edge evidence：`edge_evidence_dict`
 
-位置：`src/cli/core/semantic/trace_common.py:488`
+位置：`src/sv_query/cli/core/semantic/trace_common.py:488`
 
 字段（6）：
 
@@ -156,7 +156,7 @@ kind, assign_type, condition, expression, file, line
 
 ### 2.7 CLI graph listing：`graph nodes` / `graph edges`
 
-位置：`src/cli/core/locate/graph.py`
+位置：`src/sv_query/cli/core/locate/graph.py`
 
 | 投影 | 字段 |
 |---|---|

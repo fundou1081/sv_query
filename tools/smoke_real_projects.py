@@ -78,7 +78,7 @@ def _svq_cmd() -> list[str]:
     exe = shutil.which("sv_query")
     if exe:
         return [exe]
-    return [sys.executable, "-m", "cli.main"]
+    return [sys.executable, "-m", "sv_query.cli.main"]
 
 
 def _run_query(kind: str, path: Path, query: dict) -> dict:

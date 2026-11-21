@@ -62,8 +62,8 @@ core/
 
 | 文件 | 改动 |
 |---|---|
-| `core/graph_traversal.py` | `from sv_query.sv_query.trace.core.graph_models` → `from sv_query.sv_query.trace.core.graph.models` |
-| `core/query/load.py` | `from sv_query.sv_query.trace.core.graph_models` → `from sv_query.sv_query.trace.core.graph.models` |
+| `core/graph_traversal.py` | `from sv_query.trace.core.graph_models` → `from sv_query.trace.core.graph.models` |
+| `core/query/load.py` | `from sv_query.trace.core.graph_models` → `from sv_query.trace.core.graph.models` |
 | `core/bit_select_handler.py` | 4 处 `sv_query.trace.core.graph_models` → `sv_query.trace.core.graph.models` |
 | `core/class_graph_builder.py` | `from .graph_models` → `from .graph.models` |
 | `core/unified_tracer.py` | `from .core.query_signal` → `from .core.query.signal` 等 4 处 |

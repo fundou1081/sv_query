@@ -81,7 +81,7 @@ def test_pruned_build_falls_back_to_full_filelist(tmp_path):
     fl.write_text("\n".join(str(tmp_path / n) for n in
                             ("top.sv", "child.sv", "defs.svh")) + "\n")
 
-    from cli._common import _build_pruned_tracer
+    from sv_query.cli._common import _build_pruned_tracer
     tr = _build_pruned_tracer(str(fl), "top", log_level="ERROR")
     info = tr._svq_prune_info
     assert info["fallback"] is True

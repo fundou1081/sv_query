@@ -32,7 +32,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(_REPO_ROOT / 'src') not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT / 'src'))
 
-from cli._viz_common import build_viz_tracer  # noqa: E402
+from sv_query.cli._viz_common import build_viz_tracer  # noqa: E402
 from sv_query.trace.core.graph.analyzer.signal_classifier import classify_graph  # noqa: E402
 from sv_query.trace.core.graph.viz import VizBuildOptions, build_viz_data  # noqa: E402
 from sv_query.trace.core.graph.viz.checker import check_viz_render  # noqa: E402
@@ -212,7 +212,7 @@ def _cli(argv: list[str] | None = None) -> int:
             return 1
         fixes = sorted(args.dir.glob('golden_dataflow_*.sv'))
     if not fixes:
-        print(f'ERROR: 没找到 fixture (检查 --dir 或 --files)', file=sys.stderr)
+        print('ERROR: 没找到 fixture (检查 --dir 或 --files)', file=sys.stderr)
         return 1
 
     passed = 0

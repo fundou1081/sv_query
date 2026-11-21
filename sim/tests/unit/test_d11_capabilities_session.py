@@ -7,7 +7,7 @@
 2. 默认 `Session()` / 未注入 op → `E_UNSUPPORTED_OP`（不静默成功）；
 3. handler 抛异常或返回非 mapping → 结构化 `E_HANDLER_FAILED`，无裸异常；
 4. `version` 是 Session 内置 op，不可被 handler 覆盖（构造时显式报错）；
-5. CLI `capabilities` 经 `Session.execute` 走 `cli._registry.to_json` 单一数据源，
+5. CLI `capabilities` 经 `Session.execute` 走 `sv_query.cli._registry.to_json` 单一数据源，
    失败路径走 `cli._output.fail`；
 6. CLI A/B（subprocess，fixture 中 D11 baseline `capabilities.py` vs 当前实现）
    六个 case 的 stdout / stderr / 退出码逐字节一致。
@@ -33,7 +33,7 @@ SESSION_PY = SRC / "sv_query" / "session.py"
 #: D11 pre-change file, archived as a fixture so clean clones do not need old git history.
 BASELINE_COMMIT = "129035bd"
 BASELINE_FILE = PROJECT_ROOT / "sim/tests/fixtures/baseline/d11_capabilities.py.txt"
-CAPABILITIES_REL = "cli/core/locate/capabilities.py"
+CAPABILITIES_REL = "sv_query/cli/core/locate/capabilities.py"
 
 sys.path.insert(0, str(SRC))
 
@@ -252,7 +252,7 @@ def test_session_source_imports_no_cli_or_process_globals():
 # 6. CLI 接线（进程内）：Session.execute 是唯一入口，to_json 是唯一数据源
 # ---------------------------------------------------------------------------
 def test_cli_capabilities_routes_through_session_once(monkeypatch, capsys):
-    from cli.core.locate import capabilities as mod
+    from sv_query.cli.core.locate import capabilities as mod
 
     recorded: dict[str, object] = {}
 
@@ -289,7 +289,7 @@ def test_cli_capabilities_routes_through_session_once(monkeypatch, capsys):
 def test_cli_capabilities_provider_failure_is_structured(monkeypatch, capsys):
     import typer
 
-    from cli.core.locate import capabilities as mod
+    from sv_query.cli.core.locate import capabilities as mod
 
     def boom(**kwargs):
         raise RuntimeError("registry down")
@@ -309,7 +309,7 @@ def test_cli_capabilities_provider_failure_is_structured(monkeypatch, capsys):
 
 
 def test_cli_capabilities_provider_rejects_non_bool_options():
-    from cli.core.locate import capabilities as mod
+    from sv_query.cli.core.locate import capabilities as mod
 
     assert mod._capabilities_provider({"recommended": True, "include_exp": True})[
         "schema_version"
@@ -335,7 +335,7 @@ _RUNNER = (
     "import sys\n"
     "sys.path.insert(0, sys.argv[1])\n"
     "cli_args = sys.argv[2:]\n"
-    "from cli.main import run\n"
+    "from sv_query.cli.main import run\n"
     "sys.argv = ['sv_query', *cli_args]\n"
     "run()\n"
 )

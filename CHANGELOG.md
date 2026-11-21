@@ -164,7 +164,7 @@
 ### visualize 命令重构 (Phase B 2026-07-17)
 
 - **Phase 1A** (commit `e759e87`): 提取共享 viz CLI plumbing
-  - 新建 `src/cli/_viz_common.py`:
+  - 新建 `src/sv_query/cli/_viz_common.py`:
     - `FILE_OPTION`, `FILELIST_OPTION`, `INCLUDE_OPTION`, `STRICT_OPTION` —共享 typer option 常量 (单点修改, 5 子命令同步生效)
     - `build_viz_tracer(file, filelist, include, strict, ...)` —统一 tracer build + 错误处理 (替换 5 份重复 ~12 行 try/except)
     - `get_viz_sources(tracer, file, filelist)` —统一 SVA/Covergroup 提取器取源码逻辑
@@ -209,7 +209,7 @@
 
 - 修复 `pip install -e .` 报 `tool.setuptools must not contain {'package_dir'} properties` 错误
 - 用 `[tool.setuptools.packages.find]` 替代手写 `packages + package_dir`
-- 加 `src/__init__.py` + `src/cli/_entry.py` 让 `sv_query` console script 工作
+- 加 `src/__init__.py` + `src/sv_query/cli/_entry.py` 让 `sv_query` console script 工作
 - 修复 `import trace` 跟 Python stdlib `trace` 冲突 (用 sys.path.insert 绕开)
 - README 安装步骤 3 段式 (最简/完整/graphviz)
 

@@ -20,8 +20,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-import pytest
-
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 # [iter_239 1b] 快照默认目录已在缓存目录 → 测试隔离 (否则写用户 home / 受限环境失败)
@@ -55,8 +53,9 @@ class TestRegistryMatchesCli:
     def test_every_leaf_is_canonical_or_declared_alias(self):
         """每个 CLI 叶子命令都必须登记 (规范名或已声明别名) —— 防止命令偷偷平铺增加。"""
         import typer
-        from cli._registry import ALIASES, COMMANDS
-        from cli.main import app
+
+        from sv_query.cli._registry import ALIASES, COMMANDS
+        from sv_query.cli.main import app
 
         root = typer.main.get_command(app)
         leaves: list[str] = []
@@ -76,7 +75,7 @@ class TestRegistryMatchesCli:
 
     def test_aliases_resolve_to_registered_commands(self):
         """别名必须指向已登记的规范名 (防改名后留下悬空别名)。"""
-        from cli._registry import ALIASES, COMMANDS
+        from sv_query.cli._registry import ALIASES, COMMANDS
 
         keys = {c.key for c in COMMANDS}
         for alias, canon in ALIASES.items():
@@ -84,7 +83,7 @@ class TestRegistryMatchesCli:
 
     def test_drivers_loads_are_top_level(self):
         """规范入口在顶层 (方豆选的方案 a: 关系名而非方向名)。"""
-        from cli._registry import canonical
+        from sv_query.cli._registry import canonical
 
         assert canonical("trace fanin") == "drivers"
         assert canonical("trace fanout") == "loads"
@@ -127,7 +126,7 @@ class TestCapabilities:
 
     def test_exp_default_hidden(self):
         """[iter_327] 低完成度能力 (audit/diagnose/view) 降级 exp, 默认不提供。"""
-        from cli._registry import COMMANDS
+        from sv_query.cli._registry import COMMANDS
         exp_keys = {c.key for c in COMMANDS if c.layer == "exp"}
         assert {"audit", "diagnose", "trace overview", "trace impact"} <= exp_keys
         default = _json("capabilities", "--json")
@@ -187,7 +186,7 @@ class TestNoBuiltinShadowing:
 
         names = set(dir(builtins))
         offenders: list[str] = []
-        for path in sorted((PROJECT_ROOT / "src" / "cli").rglob("*.py")):
+        for path in sorted((PROJECT_ROOT / "src" / "sv_query" / "cli").rglob("*.py")):
             if "__pycache__" in str(path):
                 continue
             tree = ast.parse(path.read_text())
@@ -277,7 +276,7 @@ class TestCheckerSelfTest:
         assert chk.local_output_helpers(good) == []
 
     def test_r9_passes_on_real_tree(self):
-        """R9: 当前 src/cli 树必须零违规。"""
+        """R9: 当前 src/sv_query/cli 树必须零违规。"""
         chk = self._load_checker()
         offenders = []
         for path in chk.iter_cli_py():

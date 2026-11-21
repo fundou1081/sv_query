@@ -9,7 +9,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import check_envelope_schema as schema_tool  # noqa: E402
 
-from cli._registry import JSON_CONTRACT  # noqa: E402
+from sv_query.cli._registry import JSON_CONTRACT  # noqa: E402
 
 
 def test_result_schema_uses_contract_required_keys():

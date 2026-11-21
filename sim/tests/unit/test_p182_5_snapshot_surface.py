@@ -36,10 +36,8 @@ def test_session_has_only_version_builtin():
 def test_cache_defaults_are_explicit():
     import inspect
 
-    from cli._common import _build_pruned_tracer
+    from sv_query.cli._common import _build_pruned_tracer, _build_tracer
     from sv_query.trace.unified_tracer import UnifiedTracer
-
-    from cli._common import _build_tracer
 
     assert "use_cache" not in inspect.signature(_build_tracer).parameters
     assert inspect.signature(_build_pruned_tracer).parameters["use_cache"].default is True

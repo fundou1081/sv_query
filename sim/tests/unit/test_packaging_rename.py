@@ -1,4 +1,4 @@
-"""P165.2: packaging rename guard (no top-level trace package)."""
+"""P165.2/P193.3: packaging guard (no top-level trace or cli package)."""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -15,5 +15,7 @@ def test_pyproject_installs_sv_query_package():
     assert '"sv_query.trace" = ["py.typed"]' in text
     assert (ROOT / "src/sv_query/trace/py.typed").is_file()
     section = text.split("[tool.setuptools.packages.find]", 1)[1].split("[tool.setuptools.package-data]", 1)[0]
-    assert "sv_query*" in section and "cli*" in section
+    assert "sv_query*" in section and "cli*" not in section
     assert "trace*" not in section
+    assert not (ROOT / "src/cli").exists()
+    assert (ROOT / "src/sv_query/cli/__init__.py").is_file()

@@ -296,9 +296,9 @@ finding 面板 → 局部图 → 点击节点展开一跳 → evidence 面板
 
 | 资产 | 当前状态 | 初判 |
 |---|---|---|
-| `src/cli/view/visualize*.py` 7 命令 | hidden/exp | 全设计图命令冻结/归档 |
-| `src/cli/view/arch.py` | hidden/exp | `summary` 可评估保留；图形模式归档 |
-| `src/cli/view/design.py` | hidden/exp | 归档（覆盖少，与 review 目标不符） |
+| `src/sv_query/cli/view/visualize*.py` 7 命令 | hidden/exp | 全设计图命令冻结/归档 |
+| `src/sv_query/cli/view/arch.py` | hidden/exp | `summary` 可评估保留；图形模式归档 |
+| `src/sv_query/cli/view/design.py` | hidden/exp | 归档（覆盖少，与 review 目标不符） |
 | `src/sv_query/trace/core/graph/viz/` | VizData/ELK | 仅保留局部 review 需要部分 |
 | `src/sv_query/trace/core/graph/analyzer/*viz*` | 旧 DOT | 评估后删除/归档 |
 | `trace fanin/fanout --format dot` | legacy 输出 | 盘点后决定保留/移除 |

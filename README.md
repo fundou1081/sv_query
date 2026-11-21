@@ -255,7 +255,7 @@ sv_query/
 │   │   ├── driver_extractor.py
 │   │   ├── graph_builder.py
 │   │   └── visitors/
-├── src/cli/                # CLI (core/exp)
+├── src/sv_query/cli/                # CLI (core/exp)
 ├── sim/tests/              # 测试
 ├── examples/               # 可复现 walkthrough（反幻觉 CDC）
 ├── docs/                   # 文档 / 性能数据

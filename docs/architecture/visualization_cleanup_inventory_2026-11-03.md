@@ -42,15 +42,15 @@
 
 | 文件/目录 | 约行数 | 说明 |
 |---|---:|---|
-| `src/cli/view/visualize.py` | 67 | 命令注册 |
-| `src/cli/view/visualize_plots.py` | 397 | graph/dataflow/pipeline/datapath |
-| `src/cli/view/visualize_chain.py` | 793 | chain |
-| `src/cli/view/visualize_module.py` | 294 | module |
-| `src/cli/view/visualize_teach.py` | 427 | teach |
-| `src/cli/view/visualize_common.py` | 419 | 旧渲染共享 |
-| `src/cli/view/arch.py` | 966 | arch show |
-| `src/cli/view/design.py` | 485 | design show |
-| `src/cli/_viz_common.py` | — | visualize 共享 |
+| `src/sv_query/cli/view/visualize.py` | 67 | 命令注册 |
+| `src/sv_query/cli/view/visualize_plots.py` | 397 | graph/dataflow/pipeline/datapath |
+| `src/sv_query/cli/view/visualize_chain.py` | 793 | chain |
+| `src/sv_query/cli/view/visualize_module.py` | 294 | module |
+| `src/sv_query/cli/view/visualize_teach.py` | 427 | teach |
+| `src/sv_query/cli/view/visualize_common.py` | 419 | 旧渲染共享 |
+| `src/sv_query/cli/view/arch.py` | 966 | arch show |
+| `src/sv_query/cli/view/design.py` | 485 | design show |
+| `src/sv_query/cli/_viz_common.py` | — | visualize 共享 |
 | `src/sv_query/trace/core/graph/viz/` | ~5k | VizData/ELK/checker/engine/expression tree |
 | `src/sv_query/trace/core/graph/analyzer/dataflow_viz.py` | 206 | 旧 dataflow DOT |
 | `src/sv_query/trace/core/graph/analyzer/viz_legend.py` | 174 | 旧图例 |
@@ -64,8 +64,8 @@
 | `src/sv_query/trace/core/graph/analyzer/pipeline_viz.py` | **拆分**：保留 `detect_pipeline`；删除 DOT 渲染函数 |
 | `src/sv_query/trace/core/graph/analyzer/signal_classifier.py` | 保留（core 分类） |
 | `src/sv_query/trace/core/graph/dataflow.py` | 保留（只保留 `detect_pipeline` 调用） |
-| `src/cli/core/semantic/trace_common.py` | 保留 `_generate_trace_dot`（过渡局部图） |
-| `src/cli/core/semantic/trace_overview.py` | 保留 |
+| `src/sv_query/cli/core/semantic/trace_common.py` | 保留 `_generate_trace_dot`（过渡局部图） |
+| `src/sv_query/cli/core/semantic/trace_overview.py` | 保留 |
 
 > 删除前必须确认 `pipeline_viz` 中除 `detect_pipeline` 外的函数无生产调用方；
 > 有调用方则先迁移到 core，再删。
@@ -116,14 +116,14 @@
 | `docs/KNOWN_LIMITATIONS.md` | 删除/改写旧可视化条目 |
 | `docs/ARCHITECTURE.md` | 移除可视化层描述或标注退役 |
 | `docs/INDEX.md` | 移除旧文档入口，加入归档说明 |
-| `src/cli/_registry.py` | 删除 `view` 命令与 `view` LayerSpec（或标 reserved） |
-| `src/cli/main.py` | 删除 `vis_app` / `arch_app` / `design_app` 注册 |
+| `src/sv_query/cli/_registry.py` | 删除 `view` 命令与 `view` LayerSpec（或标 reserved） |
+| `src/sv_query/cli/main.py` | 删除 `vis_app` / `arch_app` / `design_app` 注册 |
 
 ---
 
 ## 6. 冻结规则（P59.1 生效）
 
-- 不再向旧 `src/cli/view`、`src/sv_query/trace/core/graph/viz` 添加功能；
+- 不再向旧 `src/sv_query/cli/view`、`src/sv_query/trace/core/graph/viz` 添加功能；
 - 不再修旧全图渲染 bug（除阻塞清理的导入错误）；
 - 旧命令仍隐藏，等待 P59.2 删除；
 - 新开发只允许 P60 `graph subgraph` core / P61 findings。
@@ -133,7 +133,7 @@
 ## 7. P59.2 执行顺序
 
 1. 删除 CLI 注册与 `_registry` 条目；
-2. 删除 `src/cli/view` + `_viz_common`；
+2. 删除 `src/sv_query/cli/view` + `_viz_common`；
 3. 删除 `src/sv_query/trace/core/graph/viz` + 旧 analyzer 渲染；
 4. 拆分 `pipeline_viz`，保留 `detect_pipeline`；
 5. 删除/改写测试；

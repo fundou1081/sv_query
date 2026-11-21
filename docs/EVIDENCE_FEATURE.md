@@ -256,7 +256,7 @@ Evidence 最初只在 `trace evidence` 命令上可用。用户问:
 1. **可选项 (--evidence flag)**: 默认关闭,不破坏现有输出
 2. **共享 graph**: 命令入口 `make_resolver(graph, adapter)` 一次,后续 evidence 解析共享同一 graph,避免重复 build
 3. **JSON + text 双格式**: JSON 加 `evidence` 字段,text 模式贴 1 行 summary (└─ file:line: source)
-4. **公共 helper**: `src/cli/_evidence_helpers.py` 集中 build_resolver / evidence_to_dict / summary_line,避免复制
+4. **公共 helper**: `src/sv_query/cli/_evidence_helpers.py` 集中 build_resolver / evidence_to_dict / summary_line,避免复制
 
 ### 命令集成
 
@@ -272,7 +272,7 @@ Evidence 最初只在 `trace evidence` 命令上可用。用户问:
 
 ### 实施变更
 
-**1. 抽公共 helper** (`src/cli/_evidence_helpers.py`, 124 行)
+**1. 抽公共 helper** (`src/sv_query/cli/_evidence_helpers.py`, 124 行)
 
 ```python
 def build_resolver(file, log_level="ERROR") -> tuple: ...  # 统一 build graph + adapter + resolver

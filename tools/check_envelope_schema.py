@@ -25,7 +25,7 @@ ensure_src_first()
 import check_envelope_contract as envelope  # noqa: E402
 import jsonschema  # noqa: E402
 
-from cli._registry import JSON_CONTRACT  # noqa: E402
+from sv_query.cli._registry import JSON_CONTRACT  # noqa: E402
 
 
 def standard_success_schema() -> dict:

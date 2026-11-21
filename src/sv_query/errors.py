@@ -6,7 +6,7 @@ imports at all, so it can be consumed by the library, the CLI, or an external
 transport without dragging in the CLI, Typer, the engine, or process globals.
 
 Consumers must reference these constants instead of re-writing the string
-literals; ``cli.errors.ErrorCode`` mirrors them by value and a contract test
+literals; ``sv_query.cli.errors.ErrorCode`` mirrors them by value and a contract test
 (``test_d12_error_envelope.py``) locks the agreement.
 
 Response shape emitted by ``Session`` (library layer) uses ``error`` as a

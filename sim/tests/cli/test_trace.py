@@ -16,7 +16,7 @@ class TestTraceCLI(unittest.TestCase):
         # From sim/tests/cli/test_trace.py:
         # sim/tests/cli/ -> sim/tests/ -> sim/ -> project root -> src/
         src_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "src")
-        cmd = ["python", "-m", "cli.main"] + args
+        cmd = ["python", "-m", "sv_query.cli.main"] + args
         result = subprocess.run(
             cmd,
             cwd=src_dir,
@@ -159,7 +159,7 @@ class TestTraceFaninDotOutput(unittest.TestCase):
         """Run svq and return result."""
         import subprocess
         src_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "src")
-        cmd = ["python", "-m", "cli.main"] + args
+        cmd = ["python", "-m", "sv_query.cli.main"] + args
         result = subprocess.run(cmd, cwd=src_dir, capture_output=True, text=True)
         return result
 

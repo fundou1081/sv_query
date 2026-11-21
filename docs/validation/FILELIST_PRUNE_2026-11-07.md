@@ -4,7 +4,7 @@
 **状态**: A 原型完成
 **代码**:
 - [src/sv_query/trace/core/top_prune.py](../../src/sv_query/trace/core/top_prune.py)
-- [src/cli/core/locate/filelist_cmd.py](../../src/cli/core/locate/filelist_cmd.py)
+- [src/sv_query/cli/core/locate/filelist_cmd.py](../../src/sv_query/cli/core/locate/filelist_cmd.py)
 
 ---
 

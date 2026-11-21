@@ -73,7 +73,7 @@ def _paths_argv(task: dict, snapshot: str) -> list[str]:
     src, dst = task.get("from"), task.get("to")
     if not isinstance(src, str) or not isinstance(dst, str) or not src or not dst:
         raise TaskError("kind=directed_path requires non-empty 'from' and 'to'")
-    # `paths` has three output modes (src/cli/core/semantic/paths.py):
+    # `paths` has three output modes (src/sv_query/cli/core/semantic/paths.py):
     #   default   -> {found, hop_count, path}
     #   --all     -> {count, all_paths}
     #   --canonical -> {found, hop_count, path, candidate_count}

@@ -1,0 +1,301 @@
+r"""
+fix_imports.py - 自动找 UndeclaredIdentifier / UnknownModule 的源文件
+
+[ADD 2026-06-12] 'fix imports' 通过诊断 + 扫项目, 推荐补 filelist 的文件.
+
+设计目标 ('使用更方便' = minimal user input, smart defaults):
+- 一行命令: python run_cli.py fix imports --filelist project.f
+- 自动扫项目根目录 (filelist 同级), 找含缺失标识符定义的 .sv 文件
+- 生成新 filelist (e.g. project_fixed.f) 加进原 filelist 即可
+- **只读**: 只报告; 写新 filelist 见 tools/fix_imports.py --write
+- 显示每个缺失 identifier 推荐的 fix 来源 (e.g. 'service_message_t 可能在 npu_message_service_defines.sv')
+
+Algorithm:
+1. 跑 fix report 拿所有 UndeclaredIdentifier / UnknownModule / UnknownClassOrPackage 错
+2. 每个 identifier, 扫项目 .sv/.svh 文件 (含 typedef/module/package/define)
+3. 找匹配, 推荐文件
+4. 输出 'add these files to filelist' 报告 + 生成新 filelist
+
+不适用场景:
+- identifier 是 system task (e.g. $clog2, $readmemh) — pyslang 自己处理
+- identifier 是宏 (e.g. \`DCACHE_WAY) — 不能用 typedef/module 找
+- identifier 是 NaplesPU 自身缺定义 (e.g. service_message_t) — 扫遍项目也找不到
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import re
+from collections import defaultdict
+from pathlib import Path
+
+import typer
+
+from sv_query.cli._common import collect_elaboration_diagnostics
+
+logger = logging.getLogger(__name__)
+
+# ----------------------------------------------------------------------------
+# 核心算法: 扫项目找含 identifier 定义的文件
+# ----------------------------------------------------------------------------
+
+# 模式: module X / typedef X / package X / define X
+DEFINE_PATTERNS = [
+    re.compile(r"^\s*module\s+(?:static\s+)?(?:automatic\s+)?(\w+)", re.MULTILINE),  # module foo
+    re.compile(r"^\s*typedef\s+[^;]+?\b(\w+)\s*(?:\[|$|\s*[;=])", re.MULTILINE),  # typedef foo (a-zA-Z0-9_ chars)
+    re.compile(r"^\s*package\s+(\w+)", re.MULTILINE),  # package foo
+    re.compile(r"^\s*interface\s+(\w+)", re.MULTILINE),  # interface foo
+    re.compile(r"^\s*class\s+(\w+)", re.MULTILINE),  # class foo
+    re.compile(r"^\s*program\s+(\w+)", re.MULTILINE),  # program foo
+    re.compile(r"`define\s+(\w+)\b"),  # `define FOO
+]
+
+
+def _extract_definitions_from_file(filepath: Path) -> set[str]:
+    """从单个 .sv/.svh 文件抽所有定义名 (typedef/module/package/define/class/interface/program)"""
+    try:
+        content = filepath.read_text(encoding="utf-8", errors="replace")
+    except (OSError, UnicodeDecodeError):
+        return set()
+
+    names: set[str] = set()
+    for pat in DEFINE_PATTERNS:
+        for m in pat.finditer(content):
+            name = m.group(1)
+            if name and not name.startswith("_"):
+                names.add(name)
+    return names
+
+
+def _scan_project_for_identifier(
+    project_root: Path,
+    identifier: str,
+    exclude_files: set[Path] | None = None,
+) -> Path | None:
+    """扫项目找含 identifier 定义的文件
+
+    Returns:
+        第一个含该 identifier 定义的文件 (按文件名字母序, 优先 .svh 然后 .sv)
+    """
+    if not project_root.exists() or not project_root.is_dir():
+        return None
+
+    exclude_files = exclude_files or set()
+    candidates: list[Path] = []
+
+    # 扫 .sv 和 .svh
+    for ext in ("*.svh", "*.sv"):
+        for fp in project_root.rglob(ext):
+            if fp in exclude_files:
+                continue
+            try:
+                fp.read_text(encoding="utf-8", errors="replace")
+            except (OSError, UnicodeDecodeError):
+                continue
+            # 简单匹配: identifier 出现在定义行
+            # 精确一点: 用 _extract_definitions_from_file (跟其他 algorithm 一致)
+            if identifier in _extract_definitions_from_file(fp):
+                candidates.append(fp)
+
+    if not candidates:
+        return None
+    # 排序: .svh 优先, 然后 .sv, 然后按路径
+    candidates.sort(key=lambda p: (0 if p.suffix == ".svh" else 1, str(p)))
+    return candidates[0]
+
+
+# ----------------------------------------------------------------------------
+# 报告构建
+# ----------------------------------------------------------------------------
+
+def _build_suggestions(
+    elaboration_errors: list[dict],
+    project_root: Path,
+    existing_files: set[Path],
+) -> dict:
+    """为每个缺失 identifier 找 fix 来源"""
+    # 收集所有 unique identifier
+    identifiers: dict[str, list[dict]] = defaultdict(list)  # identifier -> [errors引用]
+    for err in elaboration_errors:
+        code = err.get("code", "")
+        if code not in ("UndeclaredIdentifier", "UnknownClassOrPackage", "UnknownModule"):
+            continue
+        ident = err.get("identifier")
+        if ident:
+            identifiers[ident].append(err)
+
+    suggestions: list[dict] = []
+    for ident, errs in identifiers.items():
+        # 找 fix 来源
+        source_file = _scan_project_for_identifier(
+            project_root, ident, exclude_files=existing_files
+        )
+        suggestions.append({
+            "identifier": ident,
+            "count": len(errs),
+            "sample_files": sorted({e.get("file", "?") for e in errs if e.get("file")})[:3],
+            "found_in": str(source_file) if source_file else None,
+            "fixable": source_file is not None,
+        })
+    return {
+        "identifiers": suggestions,
+        "fixable_count": sum(1 for s in suggestions if s["fixable"]),
+        "unfixable_count": sum(1 for s in suggestions if not s["fixable"]),
+    }
+
+
+
+
+# ----------------------------------------------------------------------------
+# [iter_234 P2] 可复用的分析步骤 (CLI 只读命令 与 tools/fix_imports.py 共用)
+# 注意: 这里全部是**纯读**逻辑; 写文件的能力只在 tools/fix_imports.py
+# ----------------------------------------------------------------------------
+
+def resolve_project_root(fl_path: Path, explicit: str | None = None) -> Path:
+    """默认 project_root: 从 filelist 第一个 .sv 向上找含 src/ 的目录, 回退 filelist 同级。"""
+    if explicit:
+        return Path(explicit).resolve()
+    first_sv = None
+    try:
+        for line in fl_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith(("//", "#", "+", "-")):
+                continue
+            if line.endswith((".sv", ".svh")):
+                first_sv = Path(line).resolve()
+                break
+    except Exception as e:
+        logger.warning("%s: 忽略 Exception: %s", __name__, e)
+    if first_sv:
+        current = first_sv.parent
+        for _ in range(5):
+            if (current / "src").is_dir():
+                return (current / "src").resolve()
+            if current.parent == current:
+                break
+            current = current.parent
+    fl_dir = fl_path.parent
+    candidate = fl_dir / "src"
+    return (candidate if candidate.exists() else fl_dir).resolve()
+
+
+def load_existing_files(fl_path: Path) -> set:
+    """读 filelist 里已列出的文件 (跳过我指令/注释)。"""
+    existing = set()
+    for line in fl_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith(("//", "#", "+", "-")):
+            continue
+        existing.add(Path(line).resolve())
+    return existing
+
+
+# ----------------------------------------------------------------------------
+# CLI 命令
+# ----------------------------------------------------------------------------
+
+def imports_cmd(
+    filelist: str = typer.Option(..., "--filelist", help="Path to filelist (.f/.fl)"),
+    project_root: str = typer.Option(
+        None, "--project-root", help="要扫描的目录 (默认: filelist 所在目录的 src/)"
+    ),
+    log_level: str = typer.Option("ERROR", "--log-level", help="Compiler log level"),
+    json_output: bool = typer.Option(False, "--json", "-j", help="Output as JSON"),
+    pretty: bool = typer.Option(False, "--pretty", "-p", help="[JSON] Pretty-print"),
+    top: int = typer.Option(20, "--top", "-n", help="[Text] 最多显示 N 个 identifier 建议"),
+):
+    r"""[ADD 2026-06-12] 自动找 UndeclaredIdentifier 错误的 fix 来源
+
+    工作流:
+    1. 跑 fix report 拿所有 UndeclaredIdentifier 错 (含 identifier 名字)
+    2. 扫 --project-root 找含该 identifier 定义的文件
+    3. 推荐 fix: 'add path/to/x.sv to your filelist'
+    4. **只读**: 只打印建议 (写文件 = tools/fix_imports.py --write)
+
+    Examples:
+        # 找 fix 源
+        python run_cli.py fix imports --filelist project.f
+
+        # 指定扫描目录
+        python run_cli.py fix imports --filelist project.f --project-root /path/to/project/src
+
+        # 生成新 filelist
+        python run_cli.py diagnose imports --filelist project.f
+
+    Note: 不能 fix:
+    - 标识符是 system task ($clog2 等)
+    - 标识符是宏 (\`FOO)
+    - 标识符是项目本身缺定义 (扫不到)
+    """
+    fl_path = Path(filelist)
+    if not fl_path.exists():
+        typer.echo(f"Error: filelist not found: {filelist}", err=True)
+        raise typer.Exit(code=1)
+
+    # [iter_234 P2] 默认 project_root + 现有 filelist: 用共享 helper (与 tools/fix_imports.py 同一实现)
+    project_root = resolve_project_root(fl_path, project_root)
+    if not project_root.exists():
+        typer.echo(f"Error: project_root not found: {project_root}", err=True)
+        raise typer.Exit(code=1)
+
+    try:
+        existing_files = load_existing_files(fl_path)
+    except Exception as e:
+        typer.echo(f"Error: read filelist failed: {e}", err=True)
+        raise typer.Exit(code=1) from e
+
+
+    # 拿 elaboration errors (fix 的输入就是有错的项目, 见 helper 契约)
+    diag = collect_elaboration_diagnostics(filelist=filelist, log_level=log_level)
+    if diag.compile_failed and not diag.errors:
+        typer.echo(f"Error: {diag.failure}", err=True)
+        raise typer.Exit(code=1)
+    elaboration_errors = diag.errors
+
+    # 收集
+    result = _build_suggestions(elaboration_errors, project_root, existing_files)
+
+    if json_output:
+        indent = 2 if pretty else None
+        typer.echo(json.dumps(result, indent=indent, ensure_ascii=False))
+        return
+
+    # 文本输出
+    typer.echo("=== Fix Imports Report ===\n")
+    typer.echo(f"Project root: {project_root}")
+    typer.echo(f"Filelist: {filelist}")
+    typer.echo(f"Existing files: {len(existing_files)}\n")
+
+    if not result["identifiers"]:
+        typer.echo("✅ No UndeclaredIdentifier / UnknownModule errors found.")
+        return
+
+    typer.echo("=== Identifiers Needing Fix ===\n")
+    for sug in result["identifiers"][:top]:
+        icon = "🟢" if sug["fixable"] else "🔴"
+        typer.echo(f"{icon} {sug['identifier']} ({sug['count']} error(s))")
+        if sug["sample_files"]:
+            sample_str = ", ".join(sug["sample_files"][:2])
+            if len(sug["sample_files"]) > 2:
+                sample_str += f" (+{len(sug['sample_files']) - 2} more)"
+            typer.echo(f"    Used in: {sample_str}")
+        if sug["fixable"]:
+            rel = Path(sug["found_in"]).relative_to(project_root) if Path(sug["found_in"]).is_relative_to(project_root) else sug["found_in"]
+            typer.echo(f"    Found in: {rel}")
+        else:
+            typer.echo("    Found in: (not in project — NaplesPU 自身缺定义或宏/系统函数)")
+
+    if len(result["identifiers"]) > top:
+        typer.echo(f"\n... ({len(result['identifiers']) - top} more not shown, use --top to increase)")
+
+    typer.echo("\n=== Summary ===")
+    typer.echo(f"  🟢 Fixable: {result['fixable_count']} identifier(s)  (扫到了定义文件)")
+    typer.echo(f"  🔴 Not in project: {result['unfixable_count']} identifier(s)  (项目本身缺定义 / 宏 / 系统函数)")
+
+    # [iter_234 P2] 只读: 本命令不再提供 --write (方豆决定: sv_query 不写项目文件)。
+    # 生成新 filelist 的动作在 tools/fix_imports.py --write, 见本文件 docstring。
+    fixable = [s for s in result["identifiers"] if s["fixable"]]
+    if fixable:
+        typer.echo("\n要自动生成修好的 filelist: "
+                   "python tools/fix_imports.py --filelist <f> --write project_fixed.f")

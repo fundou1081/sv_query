@@ -519,10 +519,10 @@ endmodule
 """)
         filelist = tmp_path / "test.f"
         filelist.write_text(str(sv) + "\n")
-        from cli._common import _build_tracer
+        from sv_query.cli._common import _build_tracer
         tracer = _build_tracer(
             filelist=str(filelist),
-            
+
             log_level="ERROR",
         )
         tracer.build_graph()  # 不应 raise

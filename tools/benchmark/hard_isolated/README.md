@@ -8,7 +8,7 @@ not just a prompt that says "don't use sv_query".
 - `source.sb`: allow default, deny read of the sv_query repo and the old
   `/tmp/lr_pilot` workspace, deny exec of the `sv_query` binary.
 - `t2.sb`: allow default, deny read of `/tmp/lr_pilot`; treatment agents may
-  use the repo (editable install needs `src/cli`) and `sv_query`.
+  use the repo (editable install needs `src/sv_query/cli`) and `sv_query`.
 
 ## Run
 

@@ -10,7 +10,7 @@
 `tools/benchmark/hard_isolated/{source,t2}.sb`：
 
 - `source.sb`：`allow default` + deny repo / `/tmp/lr_pilot` + deny exec `sv_query`；
-- `t2.sb`：deny `/tmp/lr_pilot`，但允许 repo（editable install 的 `src/cli` 依赖）；
+- `t2.sb`：deny `/tmp/lr_pilot`，但允许 repo（editable install 的 `src/sv_query/cli` 依赖）；
 - 外部 `sandbox-exec` 负责边界；设置 `DSH_PERMISSION_MODE=danger-full-access`
   避免 DSH 内部 bash sandbox 与本机后端冲突。
 

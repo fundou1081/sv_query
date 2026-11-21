@@ -9,12 +9,12 @@ check_cli_layers.py — [iter_230 P0] CLI 分层的机械保障
 规则 (R1~R9):
   R1 每个叶子命令必须登记在 cli/_registry.py (不允许"忘了分层")
   R2 层间依赖方向: core ⊥ view/exp/dev;  view ⊥ exp/dev;  exp ⊥ dev
-  R3 src/cli/** 内禁止任何文件写操作 (只读硬约束)
+  R3 src/sv_query/cli/** 内禁止任何文件写操作 (只读硬约束)
   R4 core 层命令必须支持 --json (agent 契约)
   R5 exp 层命令名不得出现在 core/view 的帮助文本里 (防止误导 agent)
   R6 exp 不得出现在 capabilities 默认输出 (须 --include-exp)
   R7 模块级不得定义与 builtin 同名的函数/类 (会劫持同模块的 builtin 调用)
-  R8 不得用 __file__ 做路径深度运算 (搬目录即错位) —— 一律用 cli/_paths.py 锚点
+  R8 不得用 __file__ 做路径深度运算 (搬目录即错位) —— 一律用 sv_query/cli/_paths.py 锚点
   R9 JSON/失败输出必须用 cli/_output.py (禁止各命令再定义 output_json/emit_json/fail)
 
 INFO (不算违规, 但列出来当待办):
@@ -36,7 +36,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
-CLI = SRC / "cli"
+CLI = SRC / "sv_query" / "cli"
 sys.path.insert(0, str(SRC))
 
 # ---- 写操作 API 清单 (有意具体: 宁可漏报可评审, 不要模糊匹配) ----
@@ -198,7 +198,7 @@ def file_depth_math(path: Path) -> list[tuple[int, str]]:
     实例 (iter_232 实测): `commands/coverage.py` 搬到 `exp/verif/` 后,
     `Path(__file__).resolve().parents[3] / "tools"` 由 `<repo>/tools` 变成 `src/tools`
     → `import coverage_gen_demo` ImportError (16 个测试红)。
-    规则: 一律用 `cli/_paths.py` 的 PROJECT_ROOT / SRC_DIR / TOOLS_DIR。
+    规则: 一律用 `sv_query/cli/_paths.py` 的 PROJECT_ROOT / SRC_DIR / TOOLS_DIR。
     """
     out: list[tuple[int, str]] = []
     try:
@@ -285,7 +285,7 @@ def main() -> int:
     ap.add_argument("--json", action="store_true", help="机器可读输出")
     args = ap.parse_args()
 
-    from cli._registry import ALIASES, COMMANDS, LAYERS, canonical, spec_for  # noqa: E402
+    from sv_query.cli._registry import ALIASES, COMMANDS, LAYERS, canonical, spec_for  # noqa: E402
 
     errors: list[str] = []
     infos: list[str] = []
@@ -294,7 +294,7 @@ def main() -> int:
     import click  # noqa: E402
     import typer  # noqa: E402
 
-    from cli.main import app  # noqa: E402
+    from sv_query.cli.main import app  # noqa: E402
 
     root = typer.main.get_command(app)
     leaves: dict[str, click.Command] = {}
@@ -368,7 +368,7 @@ def main() -> int:
             continue
         for lineno, seg in file_depth_math(path):
             errors.append(f"R8 __file__ 深度运算: {path.relative_to(ROOT)}:{lineno} {seg} "
-                          f"—— 改用 cli/_paths.py 锚点")
+                          f"—— 改用 sv_query/cli/_paths.py 锚点")
 
     # ---- R9: 禁止本地输出 helper (统一走 cli/_output.py) ----
     for path in iter_cli_py():

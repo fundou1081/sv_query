@@ -648,7 +648,7 @@
 ## 3. Schema 契约规则
 
 ### 3.1 标准信封 `ok/command/result/errors`
-- 标准形状（`src/cli/_registry.py` 的 `JSON_CONTRACT.top_level`）：
+- 标准形状（`src/sv_query/cli/_registry.py` 的 `JSON_CONTRACT.top_level`）：
   `{ok:boolean, command:string, params:object, result:object, errors:array}`。
   `ok:false` 当任一分信号/子项有错误；`ok:true` 时 `errors` 为空。
 - `command` 是 snake_case 的命令名，**不保证等于命令 key**：
@@ -684,7 +684,7 @@
 - `unresolved_endpoint`：端点解析失败（`not_found` 类）。
   `unverifiable`：端点存在但证据不足以判定（如 bit claim 只有父总线）。
 - `verified` / `contradicted` **不输出** `machine`，不要假设它恒在。
-  依据：`src/cli/core/semantic/verify.py`、
+  依据：`src/sv_query/cli/core/semantic/verify.py`、
   `docs/validation/P136_UNKNOWN_FLAG_2026-11-09.md`。
 
 ### 3.4 显式边界 `proven:false`（P140）
@@ -709,7 +709,7 @@
   proof"`。它**不**说明：约束可满足、求解顺序、dist 权重生效、
   求解器会选这条链。
 - `trace constraints` 的 `solve_before` / `dist` 是结构事实，不是
-  solver 行为证明。依据：`src/cli/core/semantic/constraints.py`、
+  solver 行为证明。依据：`src/sv_query/cli/core/semantic/constraints.py`、
   `sim/tests/regression/test_constraint_chain.py`。
 
 ### 3.6 不做项目特定自动推断
@@ -744,9 +744,9 @@ Worker 原始盘点列出了 9 个三方不一致；现在都已在 registry/con
 
 | # | 原歧义 | 现在的事实/合同 | 位置 |
 |---|---|---|---|
-| U1 | `trace constraint-chain` mode 漂移 | `_TRACE_KEYS` 已包含，`mode:"trace"` | `src/cli/_registry.py` |
+| U1 | `trace constraint-chain` mode 漂移 | `_TRACE_KEYS` 已包含，`mode:"trace"` | `src/sv_query/cli/_registry.py` |
 | U2 | snapshot list/compare/search 无标准 envelope | 不强行改历史形状；`capabilities.commands[].envelope="direct"` 明确例外，`json_contract.envelope_policy` 给出规则 | `JSON_CONTRACT` |
-| U3 | `connections` note 说支持模块 | note 改为“仅实例路径”；模块类型仍显式报错 | `src/cli/_registry.py` |
+| U3 | `connections` note 说支持模块 | note 改为“仅实例路径”；模块类型仍显式报错 | `src/sv_query/cli/_registry.py` |
 | U4 | 可选键省略 vs null | `nullable_policy`：已知空值用 null；不适用可选字段可省略，但必须由命令 schema 标注；缺失不等于 false/zero | `JSON_CONTRACT` |
 | U5 | `errors[]` 形状不统一 | `errors_policy`：允许 string 或 `error_entry`；error_entry 必有 `error`，trace 额外字段固定 | `JSON_CONTRACT` |
 | U6 | `trace constraints` 用 block，contract 用 id | 输出同时有 canonical `id` 和兼容 alias `block`；`constraint_block` 两者都登记 | `constraints.py` |
@@ -764,29 +764,29 @@ Worker 原始盘点列出了 9 个三方不一致；现在都已在 registry/con
 ## 5. 来源（schema 事实的出处）
 
 **注册表 / 契约（唯一真相源）**
-- `src/cli/_registry.py` — `LAYERS`、`COMMANDS`、`mode_of()`、
+- `src/sv_query/cli/_registry.py` — `LAYERS`、`COMMANDS`、`mode_of()`、
   `JSON_CONTRACT`、`BIT_PRECISION`、`to_json()`（capabilities payload）。
 - `docs/CLI_SURFACE.md` — 由 `tools/gen_cli_surface.py` 从注册表生成，
   用于核对 39 个 core 命令与别名。
-- `src/cli/errors.py` — 稳定 `E_*` error code（如
+- `src/sv_query/cli/errors.py` — 稳定 `E_*` error code（如
   `E_SIGNAL_NOT_FOUND`、`E_SIGNAL_AMBIGUOUS`）。
-- `src/cli/_output.py` — 失败信封与 `--json` 输出纪律。
+- `src/sv_query/cli/_output.py` — 失败信封与 `--json` 输出纪律。
 - `docs/architecture/json_contract_2026-10-31.md` — envelope / signal /
   node 字段说明。
 
 **命令实现（按工作流）**
-- scope/inventory: `src/cli/core/semantic/scope.py`、`instances.py`、
+- scope/inventory: `src/sv_query/cli/core/semantic/scope.py`、`instances.py`、
   `ports.py`、`params.py`、`classes.py`、`paths.py`；
-  `src/cli/core/locate/capabilities.py`。
-- trace/causality: `src/cli/core/semantic/frontier.py`、`trace.py`、
+  `src/sv_query/cli/core/locate/capabilities.py`。
+- trace/causality: `src/sv_query/cli/core/semantic/frontier.py`、`trace.py`、
   `trace_evidence.py`、`trace_profile.py`、`trace_lookup.py`、
   `trace_manifest.py`、`dataflow.py`、`controlflow.py`。
-- verify: `src/cli/core/semantic/verify.py`、
+- verify: `src/sv_query/cli/core/semantic/verify.py`、
   `condition_analysis.py`。
-- constraint/random: `src/cli/core/semantic/constraints.py`、
+- constraint/random: `src/sv_query/cli/core/semantic/constraints.py`、
   `covergroups.py`、`tb_join.py`。
-- state: `src/cli/core/state/snapshot.py`、`diff.py`。
-- locate: `src/cli/core/locate/graph.py`、`search.py`、
+- state: `src/sv_query/cli/core/state/snapshot.py`、`diff.py`。
+- locate: `src/sv_query/cli/core/locate/graph.py`、`search.py`、
   `filelist_cmd.py`。
 
 **行为与边界文档**

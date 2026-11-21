@@ -24,7 +24,7 @@ import json
 
 import typer
 
-from cli._registry import LAYERS, counts, to_json
+from sv_query.cli._registry import LAYERS, counts, to_json
 
 def capabilities(
     json_output: bool = typer.Option(False, "--json", "-j", help="输出 JSON (agent 用)"),

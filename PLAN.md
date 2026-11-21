@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P193.3 migrate bare cli package to sv_query.cli（独立 PR） <进行中>
+current item : P193.4 audit wide-except on core query paths（unknown/partial 显式） <待做>
 
 ## 计划树
 
@@ -586,7 +586,7 @@ P192 blind external value validation (P2) <已完成>
 P193 external trial readiness (2026-11-21 review) <待做>
 -- P193.1 fix sim/tests/config absolute symlink + clone hygiene <已完成>
 -- P193.2 strip private development assets + privacy scan <已完成>
--- P193.3 migrate bare cli package to sv_query.cli（独立 PR） <进行中>
+-- P193.3 migrate bare cli package to sv_query.cli（独立 PR） <已完成>
 -- P193.4 audit wide-except on core query paths（unknown/partial 显式） <待做>
 -- P193.5 regenerate/archive ARCHITECTURE.md <待做>
 -- P193.6 English USER_GUIDE + KNOWN_LIMITATIONS <待做>

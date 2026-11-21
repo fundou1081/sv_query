@@ -74,17 +74,21 @@ def test_reset_branch_falls_back_to_functional_assignment():
 
 def test_snapshot_evidence_uses_lhs_assignment(tmp_path):
     import os
-    env = dict(os.environ, SVQ_SNAPSHOT_DIR=str(tmp_path))
+    env = dict(
+        os.environ,
+        SVQ_SNAPSHOT_DIR=str(tmp_path),
+        SVQ_CACHE_DIR=str(tmp_path / "cache"),
+    )
     save = subprocess.run(
         ["sv_query", "snapshot", "save",
-         "sim/tests/integration/dataflow_fixtures/sync_fifo.sv",
+         str(PROJECT_ROOT / "sim/tests/integration/dataflow_fixtures/sync_fifo.sv"),
          "--tag", "review", "--no-preprocess", "--json", "-q"],
         capture_output=True, text=True, timeout=120, cwd=str(PROJECT_ROOT), env=env)
     assert save.returncode == 0, save.stderr[-500:]
     r = subprocess.run(
         ["sv_query", "trace", "evidence", "sync_fifo.reg_stage1",
          "--from-snapshot", "review", "--json", "-q"],
-        capture_output=True, text=True, timeout=120, cwd=str(tmp_path), env=env)
+        capture_output=True, text=True, timeout=120, cwd=str(PROJECT_ROOT), env=env)
     assert r.returncode == 0, r.stderr[-500:]
     ev = json.loads(r.stdout)["result"]["signals"][0]["evidence"]
     assert ev["source_location"]["line_start"] == 32

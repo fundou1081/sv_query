@@ -50,7 +50,7 @@ from _bootstrap import ensure_src_first  # noqa: E402
 
 ensure_src_first()
 
-from cli._registry import ALIASES, COMMANDS, JSON_CONTRACT  # noqa: E402
+from sv_query.cli._registry import ALIASES, COMMANDS, JSON_CONTRACT  # noqa: E402
 
 
 def _contract(key: str) -> dict | None:

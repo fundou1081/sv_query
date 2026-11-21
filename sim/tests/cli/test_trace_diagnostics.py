@@ -13,7 +13,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from cli.core.semantic.trace_common import detect_cycles  # noqa: E402
+from sv_query.cli.core.semantic.trace_common import detect_cycles  # noqa: E402
 
 
 def _run(cmd: str, sig: str, src: str, tmp_path: Path, *extra: str) -> dict:

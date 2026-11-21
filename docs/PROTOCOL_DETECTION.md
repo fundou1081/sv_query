@@ -292,7 +292,7 @@ class ProtocolTemplate:
 **目标**: `sv_query protocol detect` 命令可用
 
 **新增文件**:
-- `src/cli/exp/bus/protocol.py` (~150 行)
+- `src/sv_query/cli/exp/bus/protocol.py` (~150 行)
 - `sim/tests/unit/test_protocol_cli.py` (~10 测试)
 
 **CLI 接口**:

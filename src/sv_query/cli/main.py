@@ -1,0 +1,487 @@
+# ==============================================================================
+# main.py - CLI entry point
+# ==============================================================================
+"""
+Usage:
+  python -m sv_query.cli.main dataflow --help
+  python src/sv_query/cli/main.py dataflow --help
+"""
+
+import sys
+from pathlib import Path
+
+# 设置 sys.path - 允许直接运行或作为模块运行
+# 找到 src/ 目录的父目录并添加到 path
+from sv_query.cli._paths import PROJECT_ROOT, SRC_DIR, ensure_on_path  # noqa: E402
+
+ensure_on_path(SRC_DIR, PROJECT_ROOT)
+
+# [A3 2026-06-28] Global --quiet support for LLM consumers.
+# 在 Typer 启动前检查 sys.argv, 如果有 --quiet / -q / SVQ_QUIET env,
+# 则调用 sv_query.trace.core.compiler.set_quiet(True) 抑制所有 stderr 输出 (SWAP warning, INFO log, 等).
+# 同时从 sys.argv 中移除 --quiet / -q 避免 Typer 报 unknown option.
+# 这样 LLM 收到的 stdout 只有合法 JSON, 不会被警告污染.
+def _apply_quiet_flag() -> None:
+    """[A3 2026-06-28] Detect --quiet in argv or env, call set_quiet(True)."""
+    quiet_signals = {"--quiet", "-q"}
+    env_quiet = os.environ.get("SVQ_QUIET", "").lower() in ("1", "true", "yes")
+    if env_quiet or any(arg in quiet_signals for arg in sys.argv[1:]):
+        try:
+            from sv_query.trace.core.compiler import set_quiet
+            set_quiet(True)
+        except ImportError as e:
+            logger.debug("%s: 忽略 ImportError: %s", __name__, e)
+        # 从 argv 中移除 --quiet / -q (Typer 不识别全局 flag)
+        sys.argv[:] = [a for a in sys.argv if a not in quiet_signals]
+
+import os  # noqa: E402  (needed for env var check above)
+
+_apply_quiet_flag()
+
+import logging
+
+import typer
+
+# [C-Flaky-3b 2026-06-27 disabled] 经验证 CLI 入口 reclaim 让 subprocess 更慢
+# 甚至更不稳定 (4GB 分配 + 父进程已有 reclaim 时累积). 只依赖 conftest.py
+# 在 pytest session 开始时跑一次, subprocess 不重复 reclaim.
+# reclaim_memory_if_needed() 函数仍保留供未来需要时调用.
+from sv_query.cli._common import (
+    _build_tracer,
+    handle_compilation_error,
+    json_requested,
+)
+
+# [iter_248 T2] 诊断: 4 个子命令合并为 1 个 `diagnose <check>` (fix 老路径已删除)
+from sv_query.cli.core.diagnose.dispatch import diagnose_cmd
+from sv_query.cli.core.locate.capabilities import capabilities
+from sv_query.cli.core.locate.filelist_cmd import filelist_app
+from sv_query.cli.core.locate.graph import graph_app
+from sv_query.cli.core.locate.search import search
+from sv_query.cli.core.locate.session_cmd import session_cmd
+from sv_query.cli.core.semantic.audit import audit_cmd  # [iter_288] 设计审计 (P3.3)
+from sv_query.cli.core.semantic.classes import class_cmd  # [iter_237, iter_247 合并 classes]
+from sv_query.cli.core.semantic.controlflow import controlflow_app
+from sv_query.cli.core.semantic.dataflow import dataflow_app
+from sv_query.cli.core.semantic.instances import (  # [iter_236 1a]
+    connections_cmd,
+    hierarchy_cmd,
+    instances_cmd,
+)
+from sv_query.cli.core.semantic.params import params_cmd  # [iter_237]
+from sv_query.cli.core.semantic.paths import paths_cmd  # [iter_237]
+from sv_query.cli.core.semantic.ports import ports_cmd  # [iter_237]
+from sv_query.cli.core.semantic.scope import scope_cmd
+from sv_query.cli.core.semantic.trace import fanin as _fanin_cmd
+from sv_query.cli.core.semantic.trace import fanout as _fanout_cmd
+from sv_query.cli.core.semantic.trace import trace_app
+from sv_query.cli.core.semantic.verify import verify_app
+from sv_query.cli.core.state.snapshot import snapshot_app
+from sv_query.cli.view.architecture import architecture_app  # [P133] module/instance architecture
+from sv_query.cli.view.review import review_app  # [iter_364 P62] 局部 review artifact
+
+logger = logging.getLogger(__name__)
+
+app = typer.Typer(
+    name="sv_query",
+    help="SystemVerilog signal tracer and graph diff tool",
+    add_completion=False,
+)
+
+# 注册子命令组
+app.add_typer(trace_app, name="trace")
+
+# [iter_231 P1] 语义 core 的规范入口 (顶层): 关系名而非方向名 —— agent 更易选对。
+# 老名 `trace fanin` / `trace fanout` 保留为兼容别名 (同一实现)。
+# [iter_236 1a] 实例/层级查询 (agent 理解架构的第一步; 只读 + JSON)
+app.command("instances", help="[规范入口] 列出实例; 给实例路径 → 详情 (类型/父/子/端口)")(instances_cmd)
+app.command("connections", help="[规范入口] 连接: 实例端口↔内部信号 (只接受实例路径)")(connections_cmd)
+app.command("hierarchy", help="[规范入口] 实例层级树 (机器可读版 arch show)")(hierarchy_cmd)
+# [iter_237] 语义查询补全 (参数 override / 端口总览 / 跨模块路径 / class)
+app.command("params", help="[规范入口] 实例的生效参数值 (含是否被 override)")(params_cmd)
+app.command("ports", help="[规范入口] 模块端口总览 (方向/位宽/驱动数/负载数)")(ports_cmd)
+app.command("paths", help="[规范入口] 图上路径 (跨模块端口可跳转; --all 枚举全部)")(paths_cmd)
+app.command("scope", help="[规范入口] 一个 scope 的类型/父/子/端口/参数（不做因果追踪）")(scope_cmd)
+app.command("class", help="[规范入口] 不给 class 名→列出所有 class; 给了→成员(类型级)+实例(实例级); --member 查成员实例")(class_cmd)
+app.command("audit", hidden=True, help="[exp] 设计审计 (实验性; 默认隐藏)")(audit_cmd)
+
+app.command("drivers", help="[规范入口] 谁驱动这个信号 (上游); 不给 --module 时跨模块追, 给了则限定模块内")(_fanin_cmd)
+app.command("loads", help="[规范入口] 这个信号被谁使用 (下游); 不给 --module 时跨模块追, 给了则限定模块内")(_fanout_cmd)
+app.add_typer(snapshot_app, name="snapshot")
+app.add_typer(dataflow_app, name="dataflow")
+app.add_typer(verify_app, name="verify")
+app.add_typer(controlflow_app, name="controlflow")
+
+# ---- 兼容别名 (老路径) ----
+# [iter_259] 10 个历史顶层组已**删除** (iter_251 先隐藏, 本次彻底移除):
+# 规范入口只有 `sv_query exp <组> <子>`。测试调用点已同步改写 (~151 处)。
+# 如需恢复, 见 git 历史与 docs/EXP_NAMESPACE.md。
+# [iter_361 / PLAN P59.2] 全设计图可视化退役；旧 visualize/arch/design 已删除。
+# [iter_364 / P62] 局部 finding review artifact（不是全图）:
+app.add_typer(review_app, name="review", hidden=True)
+app.add_typer(architecture_app, name="architecture", hidden=True)
+
+# [iter_252] 删除 `expression` (dev 层 3 命令): 内部调试用, 0 测试, `--file` 路径未实现;
+# 模块已归档到 docs/archive/2026-10-19-src-archived/cli_dev/。构造 expression 节点请用
+# Python API `sv_query.trace.core.builder.expression_builder.ExpressionBuilder`。
+
+# [FIX 2026-07-06] graph 是早期写但从未注册的 Typer app (dump/nodes/edges/find 4 commands)
+# 修 dump 的 TraceNode attribute bug 之后, 重新启用
+app.add_typer(graph_app, name="graph")
+app.add_typer(filelist_app, name="filelist")
+
+# [iter_230] 能力清单 (agent 的工具面真相源; 只读 + JSON)。普通顶层命令
+app.command("capabilities")(capabilities)
+app.command("session", hidden=True)(session_cmd)
+
+# [iter_248 T2] 诊断: 单一入口 `diagnose <check>` (imports|report|timescale|widths)
+# 不传 help= → 用 docstring (里面写清了 4 项检查与两个写入工具)
+app.command("diagnose", hidden=True)(diagnose_cmd)
+
+# stats 是单独命令，不需要子 Typer
+# 动态导入避免循环依赖
+
+
+def stats_callback(
+    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
+    log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
+    json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
+    pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
+    fanout_rank: bool = typer.Option(False, "--fanout-rank", help="Show fanout ranking"),
+    top_n: int = typer.Option(20, "--top", "-n", help="Number of top signals to show"),
+) -> None:
+    """Show graph statistics
+
+    [ADD 2026-06-11 Req-9] 支持 --filelist 跑多文件项目.
+    [ADD 2026-06-11 任务3] elaboration error 统一 catch, 错误信息干净.
+    """
+    from sv_query.trace.core.compiler import CompilationError
+
+    if not file and not filelist:
+        typer.echo("Error: --file or --filelist is required", err=True)
+        raise typer.Exit(code=1)
+
+    try:
+        tracer = _build_tracer(
+            file=Path(file) if file else None,
+            filelist=filelist,
+
+            log_level=log_level,
+        )
+        graph = tracer.build_graph()
+
+        nodes_count = {}
+        for n in graph.nodes():
+            node = graph.get_node(n)
+            if node:
+                kind = node.kind.name if hasattr(node.kind, "name") else str(node.kind)
+                nodes_count[kind] = nodes_count.get(kind, 0) + 1
+
+        edges_count = {}
+        for src, dst in graph.edges():
+            edge = graph.get_edge(src, dst)
+            if edge:
+                kind = edge.kind.name if hasattr(edge.kind, "name") else str(edge.kind)
+                edges_count[kind] = edges_count.get(kind, 0) + 1
+
+        # [iter_347 / PLAN P46.1] graph 没有 modules 属性；从实例 module_type +
+        # 顶层 module 名构造真实清单，避免 stats.modules 永远为空。
+        modules = set()
+        try:
+            for inst in tracer.get_instances():
+                mt = getattr(inst, "module_type", None)
+                if mt:
+                    modules.add(str(mt))
+            for top in getattr(getattr(tracer._get_adapter(), "_root", None),
+                               "topInstances", []):
+                name = getattr(top, "name", None)
+                if name:
+                    modules.add(str(name))
+        except Exception:
+            modules = set()
+        modules = sorted(modules)
+
+        data = {
+            "ok": True,
+            "command": "stats",
+            "params": {
+                "file": file,
+                "filelist": filelist,
+                "fanout_rank": fanout_rank,
+                "top_n": top_n,
+            },
+            "result": {
+                "total_nodes": len(graph.nodes()),
+                "total_edges": len(graph.edges()),
+                "nodes": nodes_count,
+                "edges": edges_count,
+                "modules": modules,
+                # [ADD 2026-06-11 Req-14] elaboration errors 让用户知道是 partial result
+                "elaboration_errors": tracer.get_elaboration_errors(),
+            },
+            "errors": [],
+        }
+
+        # 扇出排行榜计算
+        if fanout_rank:
+            fanout_data = _compute_fanout_rank(graph)
+            data["result"].update(fanout_data)
+
+        if json_output:
+            import json as json_mod
+
+            indent = 2 if pretty else None
+            print(json_mod.dumps(data, indent=indent, ensure_ascii=False))
+        else:
+            if fanout_rank:
+                _output_fanout_rank(data, top_n)
+            else:
+                print("=== Graph Statistics ===")
+                print(f"  Total nodes: {len(graph.nodes())}")
+                print(f"  Total edges: {len(graph.edges())}")
+                # [ADD 2026-06-11 Req-14] elaboration error 计数 + partial result 提示
+                elaboration_errors = data["result"].get("elaboration_errors", [])
+                if elaboration_errors:
+                    print(f"\n  [WARNING] {len(elaboration_errors)} elaboration error(s), partial graph shown")
+                    for e in elaboration_errors[:5]:
+                        file_short = e.get("file", "?")
+                        if "/" in file_short:
+                            file_short = file_short.split("/")[-1]
+                        print(f"    - {file_short}:{e.get('line', '?')}: {e.get('code', '?')}")
+                    if len(elaboration_errors) > 5:
+                        print(f"    ... and {len(elaboration_errors) - 5} more")
+                print("\n  Node kinds:")
+                for kind, count in nodes_count.items():
+                    print(f"    {kind}: {count}")
+                print("\n  Edge kinds:")
+                for kind, count in edges_count.items():
+                    print(f"    {kind}: {count}")
+                print(f"\n  Modules ({len(modules)}):")
+                for m in modules[:10]:
+                    print(f"    - {m}")
+    except CompilationError as e:
+        # [P182.3] JSON mode must not emit a bare human error: agents need a
+        # structured failure with no partial result.
+        if json_output:
+            import json as json_mod
+
+            from sv_query.cli.errors import code_for_exception, make_error
+
+            payload = make_error(
+                code_for_exception(e), str(e), command="stats",
+                elaboration_errors=e.errors,
+            )
+            print(json_mod.dumps(payload, indent=2 if pretty else None,
+                                 ensure_ascii=False))
+            raise typer.Exit(code=1) from None
+        # [ADD 2026-06-11 任务3] 统一 catch, 不暴露 Python traceback
+        handle_compilation_error(e)
+
+
+def _compute_fanout_rank(graph) -> dict:
+    """计算扇出排行榜
+
+    注意：过滤掉 CONST 节点（字面量），因为它们不是真正的驱动源
+    """
+    from sv_query.trace.core.graph.models import EdgeKind, NodeKind
+
+    # 计算每个信号的扇出（下游 DRIVER 负载数）
+    fanout_map = {}  # signal_id -> {"count": int, "kind": str, "loads": []}
+
+    for src, dst in graph.edges():
+        edge = graph.get_edge(src, dst)
+        if edge and edge.kind == EdgeKind.DRIVER:
+            # 跳过 CONST 节点（字面量如 1'b0, 4'b1 等）
+            node = graph.get_node(src)
+            if node and node.kind == NodeKind.CONST:
+                continue
+
+            if src not in fanout_map:
+                fanout_map[src] = {"count": 0, "kind": "", "loads": [], "is_clock": False, "is_reset": False}
+            fanout_map[src]["count"] += 1
+            fanout_map[src]["loads"].append(dst)
+
+    # 获取节点类型信息
+    for signal_id in fanout_map:
+        node = graph.get_node(signal_id)
+        if node:
+            fanout_map[signal_id]["kind"] = node.kind.name if hasattr(node.kind, "name") else str(node.kind)
+            fanout_map[signal_id]["is_clock"] = getattr(node, "is_clock", False)
+            fanout_map[signal_id]["is_reset"] = getattr(node, "is_reset", False)
+
+    # 生成排行榜
+    fanout_list = []
+    clock_fanout = 0
+    reset_fanout = 0
+
+    for signal_id, info in fanout_map.items():
+        fanout = info["count"]
+        kind = info["kind"]
+
+        # 统计时钟/复位扇出
+        if info.get("is_clock", False):
+            clock_fanout = max(clock_fanout, fanout)
+        if info.get("is_reset", False):
+            reset_fanout = max(reset_fanout, fanout)
+
+        # 生成建议
+        suggestion = _generate_suggestion(signal_id, fanout, kind, info)
+
+        fanout_list.append(
+            {
+                "signal": signal_id,
+                "fanout": fanout,
+                "kind": kind,
+                "suggestion": suggestion,
+                "loads": info["loads"],
+            }
+        )
+
+    # 按扇出数排序
+    fanout_list.sort(key=lambda x: x["fanout"], reverse=True)
+
+    return {
+        "fanout_rank": fanout_list,
+        "clock_fanout": clock_fanout,
+        "reset_fanout": reset_fanout,
+    }
+
+
+def _generate_suggestion(signal_id: str, fanout: int, kind: str, info: dict) -> str:
+    """生成扇出建议"""
+    signal_name = signal_id.split(".")[-1] if "." in signal_id else signal_id
+
+    # 时钟信号
+    if info.get("is_clock", False) or "clk" in signal_name.lower():
+        if fanout > 100:
+            return "🔴 时钟网络过重，建议 clock gating"
+        elif fanout > 50:
+            return "🟠 时钟扇出较大，考虑优化"
+
+    # 复位信号
+    if info.get("is_reset", False) or "rst" in signal_name.lower() or "reset" in signal_name.lower():
+        if fanout > 100:
+            return "🔴 复位网络过重，建议分模块复位"
+        elif fanout > 50:
+            return "🟠 复位扇出较大，考虑分时复位"
+
+    # 高扇出数据信号
+    if fanout > 50:
+        return "🟠 高扇出信号，检查是否需要拆分"
+
+    # 使能/有效信号
+    if "en" in signal_name.lower() or "valid" in signal_name.lower() or "ready" in signal_name.lower():
+        if fanout > 20:
+            return "🟡 使能信号扇出较大"
+
+    return ""
+
+
+def _output_fanout_rank(data: dict, top_n: int = 20) -> None:
+    """扇出排行榜输出"""
+    result = data.get("result", {})
+    fanout_list = result.get("fanout_rank", [])
+    clock_fanout = result.get("clock_fanout", 0)
+    reset_fanout = result.get("reset_fanout", 0)
+
+    print("=== Fanout Statistics ===")
+    print(f"  Clock fanout: {clock_fanout} (建议 > 50 考虑 clock gating)")
+    print(f"  Reset fanout: {reset_fanout} (建议 > 50 考虑分时复位)")
+
+    print(f"\n  High Fanout Signals (TOP {top_n}):")
+    print(f"  {'Rank':<6} {'Fanout':<8} {'Signal':<40} {'Kind':<12} {'Suggestion'}")
+    print(f"  {'-' * 6} {'-' * 8} {'-' * 40} {'-' * 12} {'-' * 20}")
+
+    for i, entry in enumerate(fanout_list[:top_n], 1):
+        signal = entry.get("signal", "")
+        fanout = entry.get("fanout", 0)
+        kind = entry.get("kind", "")
+        suggestion = entry.get("suggestion", "")
+
+        # 截断过长的信号名
+        if len(signal) > 38:
+            signal = signal[:35] + "..."
+
+        print(f"  {i:<6} {fanout:<8} {signal:<40} {kind:<12} {suggestion}")
+
+    print(f"\n  总计 {len(fanout_list)} 个信号有下游负载")
+
+
+# 注册 stats 为独立命令
+app.command(name="stats", help="Show graph statistics")(stats_callback)
+app.command(name="search", help="Grep-like keyword search across .sv/.v files")(search)
+
+
+@app.callback(invoke_without_command=True)
+def main(ctx: typer.Context) -> None:
+    """SystemVerilog signal tracer and graph diff tool"""
+    if ctx.invoked_subcommand is None:
+        typer.echo(ctx.get_help())
+
+
+# ==============================================================================
+# [iter_191] CLI 入口统一错误格式化 — 输入错误只给一行提示, 不甩 traceback
+# ==============================================================================
+# 背景: 用户给垃圾/错误输入时 (路径不存在 / 目录当文件 / 二进制当源码 / filelist
+# 无有效条目), 各子命令会抛出**合理**的异常 (FileNotFoundError /
+# IsADirectoryError / PermissionError / UnicodeDecodeError / CompilationError),
+# 但没人接 → Python 打印原始 traceback (rc=1, 满屏内部栈帧, 对用户零价值)。
+#
+# 与 AGENTS "禁止静默 fallback" 不冲突: 这里只**格式化**, 不吞错 —
+#   - 只处理输入/环境类异常; 其他异常照旧抛 (真 bug 必须留 traceback);
+#   - stderr 一行 `sv_query: error: <原因>` + 退出码 1;
+#   - `SVQ_DEBUG=1` 时 re-raise, 保留完整 traceback 供开发定位。
+# [P183.1/D2 2026-11-17] 未预期异常:
+#   - `--json` 请求了机器可读输出 → 必须给结构化信封 (E_INTERNAL / 映射码), 不能空 stdout;
+#   - 未请求 `--json` → 保持原样上抛 (开发期 traceback);
+#   - `SVQ_DEBUG=1` → 先输出 JSON (如有) 再 re-raise, 与输入错误分支同规则。
+#   - 命令内 `fail()` / `handle_compilation_error()` 抛的 `typer.Exit` 是**受控退出**,
+#     已各自产出信封/消息, 必须原样穿透 (typer.Exit 是 RuntimeError 子类)。
+def _debug_enabled() -> bool:
+    return os.environ.get("SVQ_DEBUG", "").lower() in ("1", "true", "yes")
+
+
+def _command_label() -> str:
+    """从 argv 提取前两个非选项 token 作为信封里的命令名 (保持既有格式)。"""
+    tokens = [a for a in sys.argv[1:] if not a.startswith("-")]
+    return " ".join(tokens[:2]) or "sv_query"
+
+
+def run() -> None:
+    """CLI 统一入口 (console script `sv_query` 与 `run_cli.py` 共用)。"""
+    from sv_query.trace.core.compiler import CompilationError  # 延迟 import: 入口期不加载分析栈
+
+    try:
+        app()
+    except (CompilationError, OSError, UnicodeDecodeError) as e:
+        # [iter_201 F1] 请求了 --json 却逃到顶层的错误 (文件不存在/编码/编译失败)
+        # 也必须给出**结构化错误信封** (过去 stdout 为空, 消费者拿不到 JSON)。
+        if json_requested():
+            from sv_query.cli._common import emit_json_error
+            emit_json_error(_command_label(), e)
+        if _debug_enabled():
+            raise
+        msg = str(e).strip() or type(e).__name__
+        lines = msg.splitlines()          # elaboration 报告常是多行: 只留前 5 行
+        head = "\n".join(lines[:5])
+        if len(lines) > 5:
+            head += f"\n  ... (共 {len(lines)} 行; 完整内容: SVQ_DEBUG=1)"
+        print(f"sv_query: error: {head}", file=sys.stderr)
+        raise SystemExit(1) from None
+    except typer.Exit:
+        # 受控退出 (fail()/handle_compilation_error()): 信封/消息已输出, 不重复包装。
+        raise
+    except Exception as e:
+        # 未分类/未预期异常。--json 下 stdout 不能为空; 非 --json 保留 traceback。
+        if json_requested():
+            from sv_query.cli._common import emit_json_error
+            emit_json_error(_command_label(), e)
+            if _debug_enabled():
+                raise
+            raise SystemExit(1) from None
+        raise
+
+
+if __name__ == "__main__":
+    run()

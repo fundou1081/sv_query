@@ -6,12 +6,13 @@ Root cause: typer maps `-f` short flag to `--file` (not `--filelist`). When user
 passes `-f picorv32.f` (a filelist), typer routes the value to `file`, and pyslang
 tries to parse the filelist as Verilog source, causing a C-level crash.
 
-Fix: `_build_tracer()` in src/cli/_common.py auto-detects .f/.fl/.filelist
+Fix: `_build_tracer()` in src/sv_query/cli/_common.py auto-detects .f/.fl/.filelist
 extension in the `file` param and promotes it to filelist path.
 """
 
 import os
 from pathlib import Path
+
 import pytest
 
 # [P158.12] 外部 corpus 根: 环境变量可覆盖, 缺失时显式 skip (不假失败)

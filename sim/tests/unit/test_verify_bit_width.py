@@ -5,7 +5,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from cli.core.semantic.verify import _check_bit_mapping  # noqa: E402
+from sv_query.cli.core.semantic.verify import _check_bit_mapping  # noqa: E402
 from sv_query.trace.core.graph.models import NodeKind, SignalGraph, TraceNode  # noqa: E402
 
 

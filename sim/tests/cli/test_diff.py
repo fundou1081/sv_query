@@ -17,7 +17,7 @@ class TestDiffCLI(unittest.TestCase):
         # From sim/tests/cli/test_diff.py:
         # sim/tests/cli/ -> sim/tests/ -> sim/ -> project root -> src/
         src_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "src")
-        cmd = ["python", "-m", "cli.main"] + args
+        cmd = ["python", "-m", "sv_query.cli.main"] + args
         result = subprocess.run(
             cmd,
             cwd=src_dir,

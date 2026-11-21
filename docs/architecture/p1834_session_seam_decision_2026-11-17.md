@@ -77,7 +77,7 @@ D10–D14 已交付的内容：
 | 项 | 处置 |
 |---|---|
 | `request_id` 在 hidden session 成功响应中被丢弃 | 若 future transport 需要关联，补 `run_session`/response 透传；不属于 D15 |
-| hidden dev 命令物理位于 `src/cli/core/locate/`，但登记为 dev | 分层工具的目录判定与 registry 语义不一致；D15 记录，未来整理 CLI 目录时处理 |
+| hidden dev 命令物理位于 `src/sv_query/cli/core/locate/`，但登记为 dev | 分层工具的目录判定与 registry 语义不一致；D15 记录，未来整理 CLI 目录时处理 |
 | `Session` 第二个构造点（capabilities 与 session_cmd） | D15 保留；抽出 `build_session()` 可减少重复 |
 | `run_session` 的 Session Protocol / 畸形响应裸 TypeError | D15 记录；未来 transport 扩展时统一 |
 | 全量 38 条 core 命令的 Session 查询面 | 未支付；只有出现 serve/MCP/常驻调用需求时才立项 |
@@ -95,5 +95,5 @@ D10–D14 已交付的内容：
 
 - `docs/dev/CLAIMS.md` C-23/C-24/C-25；
 - `agents/review-minimax/reviews/R-D10.md` … `R-D14.md`；
-- `src/sv_query/session.py`、`src/cli/_session_runner.py`、`src/cli/core/locate/session_cmd.py`；
+- `src/sv_query/session.py`、`src/sv_query/cli/_session_runner.py`、`src/sv_query/cli/core/locate/session_cmd.py`；
 - canonical 3015 (current) passed（D14 收口）。

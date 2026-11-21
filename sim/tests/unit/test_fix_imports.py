@@ -76,7 +76,7 @@ def test_extract_definitions_finds_typedef():
     """_extract_definitions_from_file 应识别 typedef / module / package / define"""
     import tempfile
 
-    from cli.core.diagnose.imports import _extract_definitions_from_file
+    from sv_query.cli.core.diagnose.imports import _extract_definitions_from_file
     with tempfile.NamedTemporaryFile(suffix=".sv", mode="w", delete=False) as f:
         f.write("`timescale 1ns/1ps\nmodule foo (input wire clk); endmodule\ntypedef logic [7:0] my_typedef_t;\npackage my_pkg; endpackage\n`define MY_MACRO 1\n")
         f_path = f.name
@@ -93,7 +93,7 @@ def test_extract_definitions_finds_typedef():
 
 def test_scan_project_finds_identifier():
     """_scan_project_for_identifier 应找到含 identifier 定义的文件"""
-    from cli.core.diagnose.imports import _scan_project_for_identifier
+    from sv_query.cli.core.diagnose.imports import _scan_project_for_identifier
     tmpdir, fl, proj = _setup_project_with_missing_typedef()
     found = _scan_project_for_identifier(Path(proj), "my_typedef_t")
     assert found is not None, "应找到 my_typedef_t 定义, got None"
@@ -103,7 +103,7 @@ def test_scan_project_finds_identifier():
 
 def test_scan_project_returns_none_for_missing():
     """_scan_project_for_identifier 找不到时返回 None"""
-    from cli.core.diagnose.imports import _scan_project_for_identifier
+    from sv_query.cli.core.diagnose.imports import _scan_project_for_identifier
     tmpdir, fl, proj = _setup_project_with_missing_typedef()
     found = _scan_project_for_identifier(Path(proj), "totally_undefined_xyz")
     assert found is None
@@ -216,7 +216,6 @@ if __name__ == "__main__":
         test_fix_imports_lists_undefined_identifiers,
         test_fix_imports_explicit_project_root,
         test_fix_imports_json_output,
-        test_fix_imports_write_new_filelist,
         test_fix_imports_help_documented,
     ]
     for t in tests:

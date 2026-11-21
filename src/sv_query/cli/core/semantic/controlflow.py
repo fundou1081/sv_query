@@ -1,0 +1,289 @@
+# ==============================================================================
+# controlflow.py - controlflow analysis subcommand
+# ==============================================================================
+
+import sys
+from pathlib import Path
+
+import typer
+
+from sv_query.cli._common import _build_tracer, display_path, handle_compilation_error  # [ADD 2026-06-11 Req-9]
+from sv_query.cli._paths import PROJECT_ROOT, ensure_on_path  # noqa: E402
+from sv_query.trace.core.compiler import CompilationError  # [ADD 2026-06-11 任务3]
+
+ensure_on_path(PROJECT_ROOT)
+
+from sv_query.cli._evidence_helpers import (
+    evidence_summary_indented,
+    evidence_to_dict,
+)
+from sv_query.cli._evidence_helpers import (
+    format_controlflow_human as _format_controlflow_human,
+)
+
+# [Stage 5] evidence helper (可选 --evidence flag)
+from sv_query.cli._evidence_helpers import (  # noqa: E402
+    make_resolver as _make_evidence_resolver,
+)
+from sv_query.cli._output import emit_json
+from sv_query.trace.core.graph.analyzer.controlflow_analyzer import (
+    ControlFlowAnalyzer,
+)
+from sv_query.trace.core.graph_builder import GraphBuilder
+
+
+def _is_constant(src: str) -> bool:
+    """检查是否为常量（字面量）"""
+    if not src:
+        return False
+    return not src[0].isalpha() and not src.startswith("_")
+
+def output_text(data: dict, human: bool = False, tree: bool = False) -> None:
+    """纯文本输出
+
+    Args:
+        data: 命令返回的 dict
+        human: True 时用人类友好箭头格式 (--human flag)
+    """
+    command = data.get("command", "")
+    result = data.get("result", {})
+
+    if command == "controlflow":
+        if human:
+            print(_format_controlflow_human(
+                result.get("signal", ""),
+                result.get("conditioned_drivers", []),
+                tree=tree,
+            ))
+            return
+        signal = result.get("signal", "")
+        conditioned_drivers = result.get("conditioned_drivers", [])
+        warnings = result.get("warnings", [])
+
+        print(f"ControlFlow Analysis: {signal}")
+
+        if not conditioned_drivers:
+            print("  (no conditional drivers found)")
+        else:
+            for cd in conditioned_drivers:
+                print("\n  Conditional Drivers:")
+                for cond in cd.get("conditions", []):
+                    expr = cond.get("expr", "")
+                    edge = cond.get("edge", {})
+                    src = edge.get("src", "")
+                    to = edge.get("dst", "")
+                    # 标注常量
+                    if _is_constant(src):
+                        src = f"CONST {src}"
+                    print(f"    when {expr}: {src} → {to}")
+                    # [Stage 5] 可选 evidence 1 行摘要 (条件后缩进显示)
+                    if data.get("params", {}).get("evidence"):
+                        summary = evidence_summary_indented(cond.get("evidence"))
+                        if summary:
+                            print(f"      {summary.lstrip()}")
+
+        if warnings:
+            print("\n  Warnings:")
+            for w in warnings:
+                print(f"    ⚠️  {w}")
+
+controlflow_app = typer.Typer(help="Analyze control flow conditions for signals")
+
+@controlflow_app.command("analyze")
+def analyze(
+    signal: str = typer.Argument(..., help="Signal to analyze (e.g., top.q)"),
+    file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
+    preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments. Use --no-preprocess 退回 pyslang 内置处理 (供不跨文件 define 的小项目用)"),
+
+    log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
+    json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
+    pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
+    evidence: bool = typer.Option(False, "--evidence", "-e", help="Include source evidence for each condition (optional)"),
+    human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
+    tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
+    conditions_only: bool = typer.Option(False, "--conditions-only",
+                                        help="[iter_261] 只列条件的扁平列表 (原 `controlflow conditions` 视图)"),
+) -> None:
+    """Analyze control flow conditions for a signal.
+
+    [iter_261] 合并原 `controlflow conditions` (2 → 1): 该命令的 `conditions` 是
+    本命令 `conditioned_drivers[].conditions[]` 的**扁平子视图** —— 同一输入、同一分析器,
+    只是输出形状更窄。用 `--conditions-only` 取子视图。
+    """
+    if not file and not filelist:
+        typer.echo("Error: --file or --filelist is required", err=True)
+        raise typer.Exit(code=1)
+
+    try:
+        tracer = _build_tracer(
+            file=file,
+            filelist=filelist,
+
+            log_level=log_level,
+            preprocess_macros=preprocess_macros,
+        )
+        graph = tracer.build_graph()
+        sources = tracer._sources
+    except CompilationError as e:
+        handle_compilation_error(e)
+        return
+
+    # Build GraphBuilder for analyzer
+    from sv_query.trace.core.compiler import SVCompiler
+    from sv_query.trace.core.semantic_adapter import SemanticAdapter
+
+    compiler = SVCompiler(sources)
+    semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
+
+    graph_builder = GraphBuilder(semantic_adapter)
+    graph_builder.graph = graph
+    graph_builder._module_graph = tracer._module_graph
+
+    analyzer = ControlFlowAnalyzer(graph_builder)
+    if signal not in graph.nodes():
+        msg = f"signal not found: {signal!r}"
+        data = {"ok": False, "command": "controlflow", "error": msg,
+                "errors": [msg]}
+        if json_output:
+            emit_json(data, pretty)
+        else:
+            print(f"Error: {msg}", file=sys.stderr)
+        raise typer.Exit(code=1)
+
+    # [iter_261] 子视图: 只输出扁平条件列表 (原 `controlflow conditions`)
+    if conditions_only:
+        conditions = analyzer.get_conditions_for_signal(signal)
+        params_file = display_path(file, sources, filelist)
+        data = {
+            "ok": True, "command": "controlflow", "subcommand": "conditions",
+            "params": {"signal": signal, "file": str(params_file)},
+            "result": {"signal": signal, "conditions": conditions, "count": len(conditions)},
+            "errors": [],
+        }
+        if json_output:
+            emit_json(data, pretty)
+        else:
+            print(f"Conditions for {signal} ({len(conditions)}):")
+            for cond in conditions:
+                print(f"  - {cond}")
+        return
+
+    result = analyzer.analyze(signal)
+
+    # [Stage 5] (可选) evidence 召回 - 每个 condition 的 to_node 独立解析
+    evidence_resolver = None
+    if evidence:
+        evidence_resolver = _make_evidence_resolver(graph, tracer._get_adapter())
+
+    # Build output data
+    drivers_data = []
+    for cd in result.conditioned_drivers:
+        conds_data = []
+        for cond in cd.conditions:
+            cond_dict = {
+                "expr": cond.expr,
+                "edge": {
+                    "src": cond.edge.src,
+                    "dst": cond.edge.dst,
+                    "kind": cond.edge.kind.name if hasattr(cond.edge.kind, "name") else str(cond.edge.kind),
+                    "condition": cond.edge.condition,
+                },
+            }
+            if evidence_resolver is not None:
+                cond_dict["evidence"] = evidence_to_dict(evidence_resolver.resolve(cond.edge.dst))
+            conds_data.append(cond_dict)
+        drivers_data.append(
+            {
+                "to_node": cd.to_node,
+                "conditions": conds_data,
+            }
+        )
+
+    # [ADD 2026-06-11 Req-9] 统一 file/filelist 模式 params 输出
+    params_file = display_path(file, sources, filelist)  # [iter_206]
+    data = {
+        "ok": True,
+        "command": "controlflow",
+        "params": {
+            "signal": signal,
+            "file": str(params_file),
+            "evidence": evidence,
+        },
+        "result": {
+            "signal": result.signal,
+            "conditioned_drivers": drivers_data,
+            "condition_status": result.condition_status,
+            "warnings": result.warnings,
+        },
+        "errors": [],
+    }
+
+    if json_output:
+        emit_json(data, pretty)
+    else:
+        output_text(data, human=human, tree=tree)
+
+@controlflow_app.command("list-conditioned")
+def list_conditioned(
+    file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
+
+    preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments. Use --no-preprocess 退回 pyslang 内置处理"),
+    log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
+    json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
+    pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
+) -> None:
+    """List all signals with conditional drivers"""
+    if not file and not filelist:
+        typer.echo("Error: --file or --filelist is required", err=True)
+        raise typer.Exit(code=1)
+
+    try:
+        tracer = _build_tracer(
+            file=file,
+            filelist=filelist,
+
+            log_level=log_level,
+            preprocess_macros=preprocess_macros,
+        )
+        graph = tracer.build_graph()
+        sources = tracer._sources
+    except CompilationError as e:
+        handle_compilation_error(e)
+        return
+
+    from sv_query.trace.core.compiler import SVCompiler
+    from sv_query.trace.core.semantic_adapter import SemanticAdapter
+
+    compiler = SVCompiler(sources)
+    semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
+
+    graph_builder = GraphBuilder(semantic_adapter)
+    graph_builder.graph = graph
+    graph_builder._module_graph = tracer._module_graph
+
+    analyzer = ControlFlowAnalyzer(graph_builder)
+    signals = analyzer.find_conditioned_signals()
+
+    # [ADD 2026-06-11 Req-9] 统一 file/filelist 模式 params 输出
+    params_file = display_path(file, sources, filelist)  # [iter_206]
+    data = {
+        "ok": True,
+        "command": "controlflow",
+        "subcommand": "list-conditioned",
+        "params": {"file": str(params_file)},
+        "result": {
+            "signals": signals,
+            "count": len(signals),
+        },
+        "errors": [],
+    }
+
+    if json_output:
+        emit_json(data, pretty)
+    else:
+        print(f"Signals with conditional drivers ({len(signals)}):")
+        for sig in signals:
+            print(f"  - {sig}")
+

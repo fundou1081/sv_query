@@ -13,8 +13,8 @@ sys.path.insert(0, str(ROOT / "src"))
 import click  # noqa: E402
 import typer  # noqa: E402
 
-from cli._registry import COMMANDS  # noqa: E402
-from cli.main import app  # noqa: E402
+from sv_query.cli._registry import COMMANDS  # noqa: E402
+from sv_query.cli.main import app  # noqa: E402
 
 
 def _leaves() -> dict[str, click.Command]:

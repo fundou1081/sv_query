@@ -1,6 +1,6 @@
 # Agent capabilities (generated — do not edit)
 
-> Source: `sv_query capabilities --json` / `cli._registry.to_json()`
+> Source: `sv_query capabilities --json` / `sv_query.cli._registry.to_json()`
 > Regenerate: `python3 tools/gen_agent_skill.py`  
 > Check: `python3 tools/gen_agent_skill.py --check`
 > Generated: 2026-11-19

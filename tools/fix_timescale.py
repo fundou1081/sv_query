@@ -51,8 +51,9 @@ def _insert_timescale(content: str, timescale: str) -> tuple[str, int]:
 
 def find_files_needing_fix(filelist_path: str, include_headers: bool = False):
     """用 sv_query 检测 filelist 里的 MissingTimeScale 错, 返回待修文件列表"""
-    from cli._common import _build_tracer
     from collections import defaultdict
+
+    from sv_query.cli._common import _build_tracer
 
     tracer = _build_tracer(filelist=filelist_path, log_level="ERROR")
     _ = tracer.build_graph()
@@ -132,7 +133,7 @@ def main():
             lines = sorted({e["line"] for e in errs})
             print(f"  {fpath}")
             print(f"    lines with error: {lines[:5]}{'...' if len(lines) > 5 else ''}")
-        print(f"\nRun with --apply to actually modify these files.")
+        print("\nRun with --apply to actually modify these files.")
         sys.exit(0)
 
     # 真改 (逻辑抽成 apply_timescale_to_files, 便于直接单测 —— 见 iter_234 记录)

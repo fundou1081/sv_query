@@ -6,7 +6,7 @@ fix_imports.py — [iter_234 P2] 生成"修好的 filelist" (会写文件的动�
 CLI 的 `diagnose imports` 只报告 (哪些 undeclared identifier、定义在哪个文件);
 **写新 filelist 的能力搬到本工具**, 与 `tools/fix_timescale.py` 同一模式。
 
-复用 CLI 的分析逻辑 (不复制): `cli.core.diagnose.imports` 里的扫描/建议函数。
+复用 CLI 的分析逻辑 (不复制): `sv_query.cli.core.diagnose.imports` 里的扫描/建议函数。
 
 用法:
     # 只报告 (等价于 CLI 的 diagnose imports)
@@ -26,12 +26,12 @@ from pathlib import Path
 
 # [iter_234 P2] 统一路径引导 (无条件插到最前; 见 tools/_bootstrap.py)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _bootstrap import ensure_src_first, REPO_ROOT  # noqa: E402
+from _bootstrap import ensure_src_first  # noqa: E402
 
 ensure_src_first()
 
-from cli._common import collect_elaboration_diagnostics  # noqa: E402
-from cli.core.diagnose.imports import (  # noqa: E402
+from sv_query.cli._common import collect_elaboration_diagnostics  # noqa: E402
+from sv_query.cli.core.diagnose.imports import (  # noqa: E402
     _build_suggestions,
     load_existing_files,
     resolve_project_root,
@@ -62,7 +62,7 @@ def main() -> int:
     result = _build_suggestions(errors, project_root, existing_files)
 
     fixable = [s for s in result["identifiers"] if s["fixable"]]
-    print(f"=== fix imports (writer) ===")
+    print("=== fix imports (writer) ===")
     print(f"filelist: {fl_path} | project root: {project_root}")
     print(f"errors: {len(errors)} | fixable identifier(s): {len(fixable)}\n")
     for s in fixable[: args.top]:

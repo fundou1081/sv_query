@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from cli._common import _read_filelist
+from sv_query.cli._common import _read_filelist
 from sv_query.trace.core.compiler import SVCompiler
 from sv_query.trace.core.filelist import parse_filelist
 

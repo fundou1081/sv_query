@@ -16,7 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from cli._registry import ALIASES, COMMANDS, to_json  # noqa: E402
+from sv_query.cli._registry import ALIASES, COMMANDS, to_json  # noqa: E402
 
 BASELINE = ROOT / "tools" / "command_surface_baseline.json"
 SCHEMA = "sv_query.command_surface.v1"

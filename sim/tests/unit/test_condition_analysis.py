@@ -1,7 +1,7 @@
 """[iter_349 / PLAN P48] 条件 L1 化简（原始保留/4-state 安全）。"""
 from __future__ import annotations
 
-from cli.core.semantic.condition_analysis import analyze_condition
+from sv_query.cli.core.semantic.condition_analysis import analyze_condition
 
 
 def test_boolean_identities():
@@ -36,8 +36,9 @@ def test_atoms_with_comparisons_are_preserved():
 
 
 def test_syntactic_mutex_and_conflict():
-    from cli.core.semantic.condition_analysis import (
-        conditions_mutex, driver_conflict_analysis,
+    from sv_query.cli.core.semantic.condition_analysis import (
+        conditions_mutex,
+        driver_conflict_analysis,
     )
     assert conditions_mutex("sel", "!sel")["mutex"] is True
     assert conditions_mutex("sel", "en")["mutex"] is False
@@ -48,7 +49,7 @@ def test_syntactic_mutex_and_conflict():
 
 
 def test_bit_mapping_detects_out_of_bounds():
-    from cli.core.semantic.verify import _check_bit_mapping
+    from sv_query.cli.core.semantic.verify import _check_bit_mapping
     from sv_query.trace.core.graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
 
     g = SignalGraph()

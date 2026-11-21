@@ -48,7 +48,7 @@ json_contract.schema_version: "1"
   `instances, connections, hierarchy, params, ports, class, search,
    capabilities, snapshot save, snapshot list, snapshot compare, snapshot delete`。
 
-`src/cli/_registry.py`（1575 行）中的 `JSON_CONTRACT`：
+`src/sv_query/cli/_registry.py`（1575 行）中的 `JSON_CONTRACT`：
 
 - 是 Python dict + 描述性 `"type": "string|null"`；
 - 没有 `required` / `properties` / `$ref`；
@@ -85,7 +85,7 @@ search  --json (无参数)  -> rc=2, 不输出 JSON
 
 ### 2.3 `stats.ok` 与图完整性
 
-属实。`src/cli/main.py` 中 `stats` 直接写：
+属实。`src/sv_query/cli/main.py` 中 `stats` 直接写：
 
 ```python
 "ok": True,
@@ -208,13 +208,13 @@ P182.6 governance/claims/structural cleanup
 git rev-parse --short HEAD
 sv_query capabilities --json | jq '.json_contract.schema_version, (.commands|length)'
 sv_query capabilities --json | jq '[.commands[]|select(.envelope=="direct")]|length'
-grep -n 'JSON_CONTRACT' src/cli/_registry.py | head
+grep -n 'JSON_CONTRACT' src/sv_query/cli/_registry.py | head
 python3 - <<'PY'
 import json
 d=json.load(open('tools/llm_schema.json'))
 print(d['version'], list(d['commands']))
 PY
-grep -RIn 'build_graph(' src/cli | wc -l
+grep -RIn 'build_graph(' src/sv_query/cli | wc -l
 grep -RIn 'use_cache' src/sv_query/trace/unified_tracer.py | head
 python3 tools/check_docs.py --strict
 python3 tools/check_plan.py

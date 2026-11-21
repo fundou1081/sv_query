@@ -121,7 +121,7 @@ class TestTreeOutput:
         import sys
         sys.path.insert(0, sys_path)
         try:
-            from cli._evidence_helpers import _AUTO_TREE_THRESHOLD, should_use_tree
+            from sv_query.cli._evidence_helpers import _AUTO_TREE_THRESHOLD, should_use_tree
         except ImportError:
             pytest.skip("cli._evidence_helpers not importable")
         assert _AUTO_TREE_THRESHOLD == 6  # 当前阈值

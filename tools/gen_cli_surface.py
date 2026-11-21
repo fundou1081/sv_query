@@ -36,8 +36,8 @@ def collect() -> dict:
     import click
     import typer
 
-    from cli._registry import ALIASES, COMMANDS, LAYERS, NEW_PLANNED, aliases_of, counts
-    from cli.main import app
+    from sv_query.cli._registry import ALIASES, COMMANDS, LAYERS, NEW_PLANNED, aliases_of, counts
+    from sv_query.cli.main import app
 
     root = typer.main.get_command(app)
     leaves: dict[str, click.Command] = {}
@@ -97,7 +97,7 @@ def render(data: dict) -> str:
     L.append("# CLI 能力清单 (生成物 — 请勿手改)")
     L.append("")
     L.append("> **生成方式**: `python3 tools/gen_cli_surface.py`  "
-             "(数据源: `src/cli/_registry.py` + typer introspection)")
+             "(数据源: `src/sv_query/cli/_registry.py` + typer introspection)")
     L.append(f"> **生成日期**: {data['generated_at']}  |  "
              f"**漂移校验**: `python3 tools/gen_cli_surface.py --check`")
     L.append("> **分层检查**: `python3 tools/check_cli_layers.py` (R1~R9)")

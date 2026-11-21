@@ -16,12 +16,12 @@
 RTL/filelist/snapshot
   -> pyslang v11 semantic AST          (src/sv_query/trace/core)
   -> SignalGraph / ModuleInstanceGraph (graph, verification, queries)
-  -> CLI/JSON or Python Session        (src/cli, src/sv_query/session.py)
+  -> CLI/JSON or Python Session        (src/sv_query/cli, src/sv_query/session.py)
 ```
 
 - Python 3.11+ / pyslang v11 / NetworkX / Typer / Rich。
 - `src/sv_query/`: 查询引擎、图模型、编译、语义适配、cache/snapshot。
-- `src/cli/`: agent 查询面、JSON envelopes、分层 registry、capabilities。
+- `src/sv_query/cli/`: agent 查询面、JSON envelopes、分层 registry、capabilities。
 - `sim/tests/`: canonical 测试与 fixture；`docs/`: 契约、限制、验证报告。
 - `tools/`: 门禁、扫描器、生成器。
 

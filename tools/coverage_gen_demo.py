@@ -47,7 +47,7 @@ from pathlib import Path
 # 支持 -F 嵌套, +incdir+, ${VAR} 展开等
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 try:
-    from cli._common import _read_filelist
+    from sv_query.cli._common import _read_filelist
     _HAS_FILELIST = True
 except ImportError:
     _HAS_FILELIST = False
@@ -72,7 +72,7 @@ def read_all_sources(
     include_dirs = []
     if filelist:
         if not _HAS_FILELIST:
-            raise RuntimeError("filelist support requires src/cli/_common.py (run from project root)")
+            raise RuntimeError("filelist support requires src/sv_query/cli/_common.py (run from project root)")
         base = Path.cwd()
         # 解析 filelist 拿 +incdir+ (sv_query._read_filelist 不解析这些)
         include_dirs = _parse_filelist_incdirs(filelist, base)
@@ -313,7 +313,7 @@ def _resolve_to_canonical_type(
     用于 packed struct/union 字段提取. 返回 None 如果拿不到.
     """
     try:
-        from cli._common import _build_tracer
+        from sv_query.cli._common import _build_tracer
     except ImportError:
         return None
     try:
@@ -321,7 +321,7 @@ def _resolve_to_canonical_type(
         tracer = _build_tracer(
             file=P(file) if file else None,
             filelist=filelist,
-            
+
             include_dirs=include_dirs,
             log_level="NONE",  # 不重复输出 WARNING 到 stdout (避免重复 warnings)
         )
@@ -412,7 +412,7 @@ def parse_width_from_pyslang(
       - "u_middle.u_sub.data_o" → nested
     """
     try:
-        from cli._common import _build_tracer
+        from sv_query.cli._common import _build_tracer
     except ImportError:
         return None
     try:
@@ -420,7 +420,7 @@ def parse_width_from_pyslang(
         tracer = _build_tracer(
             file=P(file) if file else None,
             filelist=filelist,
-            
+
             include_dirs=include_dirs,
         )
         tracer.build_graph()
@@ -525,7 +525,7 @@ def parse_is_input_port(sig_name: str, file_or_paths) -> bool:
     # 检查 output 声明 (output reg xxx 或 output logic xxx) — 排除
     if re.search(rf"output\s+(?:reg|logic|wire)\s+(?:\w+\s+)*(?:\w+\s+)*{re.escape(sig_name)}\b", combined_src):
         return False
-    if re.search(rf"output\s+(?:reg|logic|wire)\s*\[", combined_src) and re.search(rf"output\s+(?:reg|logic|wire)\s*\[[^\]]+\]\s+(?:\w+\s+)*{re.escape(sig_name)}\b", combined_src):
+    if re.search(r"output\s+(?:reg|logic|wire)\s*\[", combined_src) and re.search(rf"output\s+(?:reg|logic|wire)\s*\[[^\]]+\]\s+(?:\w+\s+)*{re.escape(sig_name)}\b", combined_src):
         return False
     # 检查 input 声明
     if re.search(rf"input\s+(?:logic\s+)?(?:\w+\s+)?(?:\w+\s+)?{re.escape(sig_name)}\b", combined_src):
@@ -636,24 +636,24 @@ def gen_bins_data(name: str, width: int) -> str:
     slang 把这些关键字解析成 type modifier, 后续 bins 失败.
     """
     if width == 32:
-        return f"""    // DATA bins: 32-bit range partition
-    bins zero  = {{32'h0}};
-    bins b1    = {{[32'h1:32'hFF]}};          // 1-byte values
-    bins b2    = {{[32'h100:32'hFFFF]}};       // 2-byte values
-    bins b3    = {{[32'h10000:32'hFFFFFF]}};   // 3-byte values
-    bins max   = {{32'hFFFF_FFFF}};"""
+        return """    // DATA bins: 32-bit range partition
+    bins zero  = {32'h0};
+    bins b1    = {[32'h1:32'hFF]};          // 1-byte values
+    bins b2    = {[32'h100:32'hFFFF]};       // 2-byte values
+    bins b3    = {[32'h10000:32'hFFFFFF]};   // 3-byte values
+    bins max   = {32'hFFFF_FFFF};"""
     if width == 16:
-        return f"""    // DATA bins: 16-bit range partition
-    bins zero = {{16'h0}};
-    bins low  = {{[16'h1:16'hFF]}};
-    bins mid  = {{[16'h100:16'h7FFF]}};
-    bins high = {{[16'h8000:16'hFFFF]}};"""
+        return """    // DATA bins: 16-bit range partition
+    bins zero = {16'h0};
+    bins low  = {[16'h1:16'hFF]};
+    bins mid  = {[16'h100:16'h7FFF]};
+    bins high = {[16'h8000:16'hFFFF]};"""
     if width == 8:
-        return f"""    // DATA bins: 8-bit range partition
-    bins zero = {{8'h0}};
-    bins low  = {{[8'h1:8'h7F]}};
-    bins high = {{[8'h80:8'hFE]}};
-    bins max  = {{8'hFF}};"""
+        return """    // DATA bins: 8-bit range partition
+    bins zero = {8'h0};
+    bins low  = {[8'h1:8'h7F]};
+    bins high = {[8'h80:8'hFE]};
+    bins max  = {8'hFF};"""
     # generic
     return f"    bins auto = {{[0:{(1 << width) - 1}]}};  // width={width}"
 
@@ -836,7 +836,7 @@ def generate_covergroup(
 
     # sv_query risk analyze: 用 filelist (如果给) 否则用 file
     risk = query_risk_json(
-        file=file, filelist=filelist, include_dirs=include_dirs, 
+        file=file, filelist=filelist, include_dirs=include_dirs,
     )
     # 多 module 文件: 只看指定 module (或第一个 module)
     if module_name:
@@ -890,19 +890,19 @@ def generate_covergroup(
     risk_level = sig_info.get("func_level", "MEDIUM") if sig_info else "MEDIUM"
 
     lines = []
-    lines.append(f"// ======================================================================")
+    lines.append("// ======================================================================")
     lines.append(f"// Auto-generated covergroup for: {target_signal}")
     lines.append(f"//   class:     {sig_class}")
     lines.append(f"//   width:     {width} bits  (RTL: [{hi}:{lo}])")
     lines.append(f"//   risk:      {risk_score:.1f} ({risk_level})  fan_in={sig_info['fan_in'] if sig_info else '?'} fan_out={sig_info['fan_out'] if sig_info else '?'}")
-    lines.append(f"//   generator: tools/coverage_gen_demo.py (Phase 1 POC)")
-    lines.append(f"// ======================================================================")
+    lines.append("//   generator: tools/coverage_gen_demo.py (Phase 1 POC)")
+    lines.append("// ======================================================================")
     _sig_id = target_signal.replace(".", "_")
     lines.append(f"covergroup cg_{_sig_id} {sample_evt};")
-    lines.append(f"  option.per_instance = 1;")
+    lines.append("  option.per_instance = 1;")
     lines.append(f"  option.comment = \"{target_signal} ({sig_class}, {width}-bit, risk={risk_score:.1f})\";")
-    lines.append(f"")
-    lines.append(f"  // ---- Primary coverpoint ----")
+    lines.append("")
+    lines.append("  // ---- Primary coverpoint ----")
     lines.append(f"  cp_{_sig_id}: coverpoint {target_signal} {{")
 
     if sig_class == "DATA":
@@ -917,16 +917,16 @@ def generate_covergroup(
     if canonical and "struct packed" in canonical and "union packed" not in canonical:
         struct_fields = _parse_packed_struct_fields(canonical)
         if struct_fields:
-            lines.append(f"    // ---- Packed struct fields (Phase 2 #6) ----")
+            lines.append("    // ---- Packed struct fields (Phase 2 #6) ----")
             for f_name, f_w, f_hi, f_lo in struct_fields:
                 # SV bins 范围引用: signal[hi:lo]
                 lines.append(f"    bins {f_name} = {target_signal}[{f_hi}:{f_lo}];")
-    lines.append(f"  }}")
-    lines.append(f"")
+    lines.append("  }")
+    lines.append("")
 
     # ---- Cross coverpoints ----
     if cross_sigs:
-        lines.append(f"  // ---- Cross coverpoints (related control signals) ----")
+        lines.append("  // ---- Cross coverpoints (related control signals) ----")
         for i, cs in enumerate(cross_sigs):
             cs_width, cs_hi, cs_lo = parse_width_from_rtl(cs, paths)
             cs_class = classify(cs, cs_width)
@@ -935,12 +935,12 @@ def generate_covergroup(
                 lines.append(gen_bins_control(cs, cs_width, enums, None))
             else:
                 lines.append(gen_bins_data(cs, cs_width))
-            lines.append(f"  }}")
-        lines.append(f"")
-        lines.append(f"  // ---- Cross combinations ----")
+            lines.append("  }")
+        lines.append("")
+        lines.append("  // ---- Cross combinations ----")
         for cs in cross_sigs:
             lines.append(f"  cx_{_sig_id}_x_{cs}: cross cp_{_sig_id}, cp_{cs}_for_{_sig_id};")
-        lines.append(f"")
+        lines.append("")
 
     # ---- Sample 条件注解 ----
     lines.append(f"  // ---- Sample event: {sample_evt} ----")
@@ -1003,7 +1003,7 @@ def main():
         related_signals=related,
         filelist=filelist,
         module_name=module_name,
-        
+
     )
     print(cg)
 

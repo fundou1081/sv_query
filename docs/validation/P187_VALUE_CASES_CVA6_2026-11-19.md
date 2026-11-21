@@ -292,7 +292,7 @@ python3 run_cli.py controlflow analyze \
 - 新增：本文件。
 - 新增：`agents/dev-deepseek/iterations/iter_039_P187.md`、
   `agents/dev-deepseek/handoff/P187_handoff.md`。
-- 未改：`src/`、`src/cli/`、`PLAN.md`、`CURRENT_TODO.md`、`CLAIMS.md`、外部仓库；
+- 未改：`src/`、`src/sv_query/cli/`、`PLAN.md`、`CURRENT_TODO.md`、`CLAIMS.md`、外部仓库；
   无 commit / push。
 
 

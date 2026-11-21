@@ -64,12 +64,12 @@ all = [
 # [FIX 2026-07-02] 修复 pip install -e . 后 sv_query 命不能用的 bug.
 #   之前试过 4 种方式都失败:
 #   - "run_cli:main": run_cli.py 在仓库根, py-modules 装不出
-#   - "src.cli.main:app": src/ 不被 packages.find 装
-#   - "cli.main:app": src/ 在 sys.path 里, import trace 冲突
-#   - "src.cli.main:app" with src/__init__.py: 跟 import 路径冲突
-#   修复: 改用 "cli._entry:main" (在 cli 包内, 一定装得上, .pth 自动含 src/).
-#   详见 src/cli/_entry.py 顶部的 docstring.
-sv_query = "cli._entry:main"
+#   - "sv_query.cli.main:app": src/ 不被 packages.find 装
+#   - "sv_query.cli.main:app": src/ 在 sys.path 里, import trace 冲突
+#   - "sv_query.cli.main:app" with src/__init__.py: 跟 import 路径冲突
+#   修复: 改用 "sv_query.cli._entry:main" (在 cli 包内, 一定装得上, .pth 自动含 src/).
+#   详见 src/sv_query/cli/_entry.py 顶部的 docstring.
+sv_query = "sv_query.cli._entry:main"
 
 [project.urls]
 Homepage = "https://github.com/fundou1081/sv_query"
@@ -99,7 +99,7 @@ Changelog = "https://github.com/fundou1081/sv_query/blob/main/CHANGELOG.md"
 #   editable/legacy import root and is intentionally not shipped.
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["sv_query*", "cli*"]
+include = ["sv_query*"]
 namespaces = true
 
 [tool.setuptools.package-data]
@@ -171,25 +171,35 @@ ignore = [
 ]
 "scripts/*" = ["N802", "N806"]
 "docs/*" = ["N802", "N806"]
+"tools/coverage_gen_demo.py" = ["B007", "N817"]
 "examples/*" = ["N802", "N806"]
 "sim/tests/*" = ["B011", "N802", "N806"]
 # CLI 命令文件需要 sys.path 调整后才能 import 业务代码
-"src/cli/commands/*.py" = [
+"src/sv_query/cli/commands/*.py" = [
     "E402",  # module-import-not-at-top-of-file
 ]
-"src/cli/main.py" = [
+"src/sv_query/cli/main.py" = [
     "E402",  # module-import-not-at-top-of-file
 ]
-"src/cli/core/semantic/trace.py" = [
+"run_cli.py" = ["E402"]
+"src/sv_query/cli/core/semantic/trace.py" = [
     "E402",  # module-import-not-at-top-of-file (sys.path bootstrap)
 ]
-"src/cli/core/semantic/dataflow.py" = [
+"src/sv_query/cli/core/semantic/dataflow.py" = [
     "E402",  # module-import-not-at-top-of-file (sys.path bootstrap)
 ]
+"src/sv_query/cli/core/semantic/condition_analysis.py" = ["E702"]
+"src/sv_query/cli/core/semantic/controlflow.py" = ["E402"]
+"src/sv_query/cli/core/semantic/trace_lookup.py" = ["E402"]
+"src/sv_query/cli/core/state/diff.py" = ["E402"]
+"src/sv_query/cli/core/state/snapshot.py" = ["E402"]
+"src/sv_query/cli/core/semantic/paths.py" = ["B905"]
+"src/sv_query/cli/view/review.py" = ["B905"]
+"src/sv_query/cli/core/semantic/trace_common.py" = ["E731"]
 # BaseVisitor 是抽象基类，空方法是设计意图
 "src/sv_query/trace/core/visitors/base_visitor.py" = [
     "B027",  # empty-method-without-abstract-decorator
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["trace", "cli"]
+known-first-party = ["sv_query"]

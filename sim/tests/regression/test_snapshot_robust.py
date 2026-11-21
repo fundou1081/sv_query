@@ -102,8 +102,9 @@ class TestSnapshotRobust(unittest.TestCase):
             data = json.load(open(os.path.join(td, 'mig.json')))
             self.assertIn('module_ports', data['module_graph'])
             sys.path.insert(0, os.path.join(_ROOT, 'src'))
-            from cli.core.semantic.trace_common import _load_tracer_from_snapshot
             from unittest import mock
+
+            from sv_query.cli.core.semantic.trace_common import _load_tracer_from_snapshot
             with mock.patch.dict(os.environ, {'SVQ_SNAPSHOT_DIR': td}):
                 tracer = _load_tracer_from_snapshot('mig')
             self.assertIsNotNone(tracer.get_module_graph())

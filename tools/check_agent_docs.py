@@ -22,7 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _bootstrap  # noqa: F401,E402
 
-from cli import _registry  # noqa: E402
+from sv_query.cli import _registry  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
 DOC_PATHS = (Path("AGENTS.md"), Path("README.md"), Path("docs/USER_GUIDE.md"))

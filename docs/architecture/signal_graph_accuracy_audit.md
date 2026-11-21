@@ -102,13 +102,13 @@
 - `src/sv_query/trace/core/driver_extractor.py:1287` — `if self._instance_paths:` 为假 →
   else 旧路径按模块类型名提取 (generate 内实例从不作为 (path,module) 处理)
 **触发**: CLI `visualize dataflow` 不传 `--module` (默认 None,
-`src/cli/view/visualize.py:260`)、或任何 API 调用不设 target。
+`src/sv_query/cli/view/visualize.py:260`)、或任何 API 调用不设 target。
 **修复 (2026-09-04 定稿)**: 库 API 默认**不**自动 target — 无 target 类型级
 多模块图是既有契约 (cross_module_tracking/boundary/module_synth/stats 等 8+
 测试锁定 mixed-namespace: `top.u_tb.clk` 实例端口 + `tb.clk_out` 类型级并存)。
 改为:
 - `unified_tracer.build_graph(..., auto_target_single_top=False)` 新参数, 默认关
-- CLI 用户入口 `build_viz_tracer` (src/cli/_viz_common.py) 在无 `--module` 时传
+- CLI 用户入口 `build_viz_tracer` (src/sv_query/cli/_viz_common.py) 在无 `--module` 时传
   `auto_target_single_top=True` — 单 top 设计自动聚焦, 多 top 库保持全图
 - iter_113-120 已让**直接** generate 实例 (leaf 在 top 内 generate-for) 在无
   target 下也有实例路径; flag 补齐的是**嵌套实例内部真实 assign** (cordic 型)

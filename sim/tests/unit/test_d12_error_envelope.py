@@ -3,7 +3,7 @@
 锁定五件事（R-D10 N1 / R-D11 N-3）：
 
 1. `sv_query.errors` 是 Session 三个错误码 / `error.type` 的**唯一来源**；
-   `cli.errors.ErrorCode` 逐值接纳同一组码（CLI 不再发出词表外 code）。
+   `sv_query.cli.errors.ErrorCode` 逐值接纳同一组码（CLI 不再发出词表外 code）。
 2. CLI 只有一个 adapter（`cli._session_adapter.fail_from_session`）把
    Session 失败响应映射到既有 `cli._output.fail`：
    - message 取 `error.message`（缺失/非法 → 显式 fallback）；
@@ -29,7 +29,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 SRC = PROJECT_ROOT / "src"
 SESSION_PY = SRC / "sv_query" / "session.py"
 ERRORS_PY = SRC / "sv_query" / "errors.py"
-CAPABILITIES_REL = "cli/core/locate/capabilities.py"
+CAPABILITIES_REL = "sv_query/cli/core/locate/capabilities.py"
+BASELINE_CAPABILITIES_REL = "cli/core/locate/capabilities.py"
 
 #: D12 pre-change source, archived as a fixture so clean clones do not need old git history.
 BASELINE_COMMIT = "3642e64d"
@@ -38,8 +39,8 @@ BASELINE_ARCHIVE = PROJECT_ROOT / "sim/tests/fixtures/baseline/d12_src.tar.gz"
 sys.path.insert(0, str(SRC))
 
 import sv_query.errors as session_errors  # noqa: E402
-from cli import _session_adapter  # noqa: E402
-from cli.errors import ErrorCode  # noqa: E402
+from sv_query.cli import _session_adapter  # noqa: E402
+from sv_query.cli.errors import ErrorCode  # noqa: E402
 from sv_query.errors import (  # noqa: E402
     E_HANDLER_FAILED,
     E_INVALID_REQUEST,
@@ -50,7 +51,7 @@ from sv_query.session import Session  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
-# 1. 词表一致：sv_query.errors ↔ cli.errors.ErrorCode
+# 1. 词表一致：sv_query.errors ↔ sv_query.cli.errors.ErrorCode
 # ---------------------------------------------------------------------------
 def test_session_error_codes_are_exactly_the_three_used_by_session():
     assert SESSION_ERROR_CODES == {
@@ -203,7 +204,7 @@ def test_non_mapping_response_is_rejected():
 def test_capabilities_provider_failure_goes_through_the_adapter(monkeypatch):
     import typer
 
-    from cli.core.locate import capabilities as mod
+    from sv_query.cli.core.locate import capabilities as mod
 
     def boom(**kwargs):
         raise RuntimeError("registry down")
@@ -234,7 +235,7 @@ def test_capabilities_provider_failure_goes_through_the_adapter(monkeypatch):
 def test_capabilities_provider_failure_is_structured(monkeypatch, capsys):
     import typer
 
-    from cli.core.locate import capabilities as mod
+    from sv_query.cli.core.locate import capabilities as mod
 
     def boom(**kwargs):
         raise RuntimeError("registry down")
@@ -260,7 +261,7 @@ def test_capabilities_provider_failure_is_structured(monkeypatch, capsys):
 def test_capabilities_provider_failure_human_path(monkeypatch, capsys):
     import typer
 
-    from cli.core.locate import capabilities as mod
+    from sv_query.cli.core.locate import capabilities as mod
 
     def boom(**kwargs):
         raise RuntimeError("registry down")
@@ -294,7 +295,10 @@ _RUNNER = (
     "import sys\n"
     "sys.path.insert(0, sys.argv[1])\n"
     "cli_args = sys.argv[2:]\n"
-    "from cli.main import run\n"
+    "try:\n"
+    "    from sv_query.cli.main import run\n"
+    "except ImportError:\n"
+    "    from cli.main import run\n"
     "sys.argv = ['sv_query', *cli_args]\n"
     "run()\n"
 )
@@ -309,7 +313,7 @@ def baseline_src(tmp_path_factory) -> Path:
     with tarfile.open(BASELINE_ARCHIVE) as archive:
         archive.extractall(root)
     src_root = root / "src"
-    assert (src_root / CAPABILITIES_REL).is_file()
+    assert (src_root / BASELINE_CAPABILITIES_REL).is_file()
     return src_root
 
 
@@ -324,10 +328,10 @@ def _run_with_src(src_root: Path, args: tuple[str, ...]) -> subprocess.Completed
 
 
 def test_baseline_snapshot_really_differs_from_current_implementation(baseline_src):
-    before = (baseline_src / CAPABILITIES_REL).read_text(encoding="utf-8")
+    before = (baseline_src / BASELINE_CAPABILITIES_REL).read_text(encoding="utf-8")
     after = (SRC / CAPABILITIES_REL).read_text(encoding="utf-8")
     assert before != after, "A/B 的两侧必须是不同实现，否则断言无区分力"
-    assert not (baseline_src / "cli" / "_session_adapter.py").exists()
+    assert not (baseline_src / "sv_query" / "cli" / "_session_adapter.py").exists()
 
 
 def _normalise_intentional_paths_metadata(stdout: str) -> dict:
@@ -455,7 +459,7 @@ def test_importing_errors_does_not_pull_cli_typer_or_engine():
 
 def test_cli_error_code_references_session_names_not_literal_only():
     """N-3: CLI must reference sv_query.errors names, not duplicate literals."""
-    cli_errors = (SRC / "cli" / "errors.py").read_text(encoding="utf-8")
+    cli_errors = (SRC / "sv_query" / "cli" / "errors.py").read_text(encoding="utf-8")
     for name in ("E_INVALID_REQUEST", "E_UNSUPPORTED_OP", "E_HANDLER_FAILED"):
         assert f'"{name}"' not in cli_errors
     assert ErrorCode.E_HANDLER_FAILED.value == session_errors.E_HANDLER_FAILED

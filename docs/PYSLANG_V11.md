@@ -73,7 +73,7 @@ _pyslang.__getattr__ = _pyslang_getattr
 - `is_syntax_list(node)`: `isinstance(node, list)` 或 `kind` 含 `SeparatedList` / `SyntaxList`
 - `iter_syntax_list(node)`: 直接 `list(node)`
 
-调用方 (`semantic_adapter.py` 8 处 + `base.py` 2 处) 改 `from sv_query.sv_query.trace.core.ast_utils import is_syntax_list, iter_syntax_list`。
+调用方 (`semantic_adapter.py` 8 处 + `base.py` 2 处) 改 `from sv_query.trace.core.ast_utils import is_syntax_list, iter_syntax_list`。
 
 ## 5. 测试覆盖
 

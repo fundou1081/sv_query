@@ -25,7 +25,7 @@ warnings.filterwarnings("ignore")
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 RUN_CLI_PATH = str(REPO_ROOT / "run_cli.py")
-# 让 `from cli.core.diagnose.timescale import ...` 能工作
+# 让 `from sv_query.cli.core.diagnose.timescale import ...` 能工作
 SRC_DIR = str(REPO_ROOT / "src")
 if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)
@@ -47,7 +47,7 @@ def _run(*args):
 
 def test_has_timescale_detects_backtick_timescale():
     """_has_timescale 应识别 `timescale directive"""
-    from cli.core.diagnose.timescale import _has_timescale
+    from sv_query.cli.core.diagnose.timescale import _has_timescale
     assert _has_timescale("`timescale 1ns/1ps\nmodule top; endmodule\n")
     assert _has_timescale("\n`timescale 1ps/1ps\n")
     assert not _has_timescale("module top; endmodule\n")
@@ -55,7 +55,7 @@ def test_has_timescale_detects_backtick_timescale():
 
 def test_has_timescale_variations():
     """_has_timescale 应识别多种格式"""
-    from cli.core.diagnose.timescale import _has_timescale
+    from sv_query.cli.core.diagnose.timescale import _has_timescale
     # 带空格的
     assert _has_timescale("  `timescale  1ns/1ps\nmodule m; endmodule\n")
     # 大写
@@ -69,7 +69,7 @@ def test_has_timescale_variations():
 
 def test_has_timescale_false_positives():
     """_has_timescale 不应对普通文本误判"""
-    from cli.core.diagnose.timescale import _has_timescale
+    from sv_query.cli.core.diagnose.timescale import _has_timescale
     assert not _has_timescale("module top; endmodule\n")
     assert not _has_timescale("// timescale comment\nmodule m; endmodule\n")
     assert not _has_timescale("/* timescale in block comment */\nmodule m; endmodule\n")
@@ -78,7 +78,7 @@ def test_has_timescale_false_positives():
 
 def test_insert_timescale_idempotent():
     """_insert_timescale 已有 timescale 应不动"""
-    from cli.core.diagnose.timescale import _has_timescale, _insert_timescale
+    from sv_query.cli.core.diagnose.timescale import _has_timescale, _insert_timescale
     content = "`timescale 1ns/1ps\nmodule top; endmodule\n"
     assert _has_timescale(content)
     # 调用也不该改
@@ -89,7 +89,7 @@ def test_insert_timescale_idempotent():
 
 def test_insert_timescale_at_top():
     """_insert_timescale 应插在文件最开头 (line 1)"""
-    from cli.core.diagnose.timescale import _insert_timescale
+    from sv_query.cli.core.diagnose.timescale import _insert_timescale
     content = "// copyright\n\nmodule top;\nendmodule\n"
     new, line_no = _insert_timescale(content, "1ns/1ps")
     assert line_no == 1
@@ -98,7 +98,7 @@ def test_insert_timescale_at_top():
 
 def test_insert_timescale_preserves_content():
     """_insert_timescale 应保留原文件内容"""
-    from cli.core.diagnose.timescale import _insert_timescale
+    from sv_query.cli.core.diagnose.timescale import _insert_timescale
     original = "// copyright\nmodule top;\nendmodule\n"
     new, line_no = _insert_timescale(original, "1ns/1ps")
     assert "// copyright" in new
@@ -107,7 +107,7 @@ def test_insert_timescale_preserves_content():
 
 def test_insert_timescale_custom_timescale():
     """_insert_timescale 支持自定义 timescale 值"""
-    from cli.core.diagnose.timescale import _insert_timescale
+    from sv_query.cli.core.diagnose.timescale import _insert_timescale
     original = "module m; endmodule\n"
     new, line_no = _insert_timescale(original, "1ps/1ps")
     assert "`timescale 1ps/1ps" in new
@@ -115,7 +115,7 @@ def test_insert_timescale_custom_timescale():
 
 def test_insert_timescale_on_empty_content():
     """_insert_timescale 对空内容也应正常返回"""
-    from cli.core.diagnose.timescale import _insert_timescale
+    from sv_query.cli.core.diagnose.timescale import _insert_timescale
     new, line_no = _insert_timescale("", "1ns/1ps")
     assert new == "`timescale 1ns/1ps\n"
     assert line_no == 1
@@ -123,7 +123,7 @@ def test_insert_timescale_on_empty_content():
 
 def test_insert_timescale_with_only_whitespace():
     """_insert_timescale 对纯空白内容也应正常"""
-    from cli.core.diagnose.timescale import _insert_timescale
+    from sv_query.cli.core.diagnose.timescale import _insert_timescale
     new, line_no = _insert_timescale("   \n\n", "1ns/1ps")
     assert "`timescale 1ns/1ps" in new
 

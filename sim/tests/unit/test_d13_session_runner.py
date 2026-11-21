@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 import typer
 
-from cli._session_runner import SessionRenderOptions, emit_json_result, run_session
+from sv_query.cli._session_runner import SessionRenderOptions, emit_json_result, run_session
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -79,7 +79,7 @@ def test_capabilities_still_uses_runner_path_and_keeps_json_shape():
 
 
 def test_capabilities_calls_runner_once(monkeypatch, capsys):
-    import cli.core.locate.capabilities as mod
+    import sv_query.cli.core.locate.capabilities as mod
 
     calls = []
 

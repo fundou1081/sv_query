@@ -6,12 +6,12 @@
 本测试锁定三件事：
   A. snapshot 投影 = 全保真（TraceNode 全字段；TraceEdge 除声明不持久化的
      `effective_condition` / `condition_ast`）；
-  B. CLI/core 投影字段集与 `cli._registry.JSON_CONTRACT` 一致；
+  B. CLI/core 投影字段集与 `sv_query.cli._registry.JSON_CONTRACT` 一致；
   C. 各上下文投影互不相等 —— 未来若把它们合并成单一 DTO，这里会红。
 
 独立 oracle（不是手抄字段清单）:
   - `dataclasses.fields(TraceNode/TraceEdge)`；
-  - `cli._registry.JSON_CONTRACT`（`capabilities --json` 的同一来源）。
+  - `sv_query.cli._registry.JSON_CONTRACT`（`capabilities --json` 的同一来源）。
 """
 from __future__ import annotations
 
@@ -24,9 +24,9 @@ SRC = str(PROJECT_ROOT / "src")
 if SRC not in sys.path:
     sys.path.insert(0, SRC)
 
-from cli._registry import JSON_CONTRACT  # noqa: E402
-from cli.core.semantic._common import node_dict  # noqa: E402
-from cli.core.semantic.trace_common import (  # noqa: E402
+from sv_query.cli._registry import JSON_CONTRACT  # noqa: E402
+from sv_query.cli.core.semantic._common import node_dict  # noqa: E402
+from sv_query.cli.core.semantic.trace_common import (  # noqa: E402
     _node_to_dict,
     edge_evidence_dict,
 )

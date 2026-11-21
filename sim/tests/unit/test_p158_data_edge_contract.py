@@ -128,8 +128,8 @@ class TestEdgeContract:
 
         offenders = []
         pattern = re.compile(r"""["']DRIVER["']\s*,\s*["']CONNECTION["']""")
-        for rel in ("src/cli/core/semantic/paths.py",
-                    "src/cli/core/semantic/verify.py",
+        for rel in ("src/sv_query/cli/core/semantic/paths.py",
+                    "src/sv_query/cli/core/semantic/verify.py",
                     "src/sv_query/trace/core/graph/dataflow.py",
                     "src/sv_query/trace/core/module_instance_graph.py"):
             text = (PROJECT_ROOT / rel).read_text()

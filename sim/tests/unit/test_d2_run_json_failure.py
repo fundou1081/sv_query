@@ -5,7 +5,7 @@
 1. `--json` 下**未预期异常**必须输出结构化错误信封（`ok:false` + `error_code`），
    stdout 不为空，rc=1；未分类异常映射 `E_INTERNAL`。
 2. 非 `--json` 时未预期异常保持既有开发期行为：原样上抛，由解释器打印 traceback。
-3. `src/cli/main.py` 的 `__main__` 走 `run()`（否则直接执行脚本会绕过统一错误格式化）。
+3. `src/sv_query/cli/main.py` 的 `__main__` 走 `run()`（否则直接执行脚本会绕过统一错误格式化）。
 4. `snapshot compare --json` 遇损坏快照（未知/缺失 EdgeKind、坏 JSON）输出 JSON + rc=1，
    不输出 Rich traceback；同时证明 D1 的 “未知 EdgeKind 显式失败” 没有被回退成 DRIVER。
 
@@ -24,7 +24,7 @@ import pytest
 REPO = Path(__file__).resolve().parents[3]
 SRC = REPO / "src"
 RUN_CLI = REPO / "run_cli.py"
-MAIN_PY = SRC / "cli" / "main.py"
+MAIN_PY = SRC / "sv_query" / "cli" / "main.py"
 MISSING_SV = REPO / "sim" / "tests" / "fixtures" / "hostile_input" / "no_such_file.sv"
 
 
@@ -66,7 +66,7 @@ def _assert_no_rich_traceback(result: subprocess.CompletedProcess) -> None:
 # ---------------------------------------------------------------------------
 def test_unexpected_exception_json_emits_e_internal(monkeypatch, capsys):
     """未预期异常在 --json 下 → E_INTERNAL JSON 信封 + rc=1，stdout 不为空。"""
-    from cli import main as cli_main
+    from sv_query.cli import main as cli_main
 
     def boom() -> None:
         raise RuntimeError("injected boom")
@@ -91,7 +91,7 @@ def test_unexpected_exception_json_emits_e_internal(monkeypatch, capsys):
 
 def test_unexpected_exception_with_json_short_flag(monkeypatch, capsys):
     """`-j` 与 `--json` 等价（不能只认长选项）。"""
-    from cli import main as cli_main
+    from sv_query.cli import main as cli_main
 
     def boom() -> None:
         raise ValueError("short flag")
@@ -116,7 +116,7 @@ def test_unexpected_exception_non_json_keeps_traceback():
     """非 --json 的未预期异常：上抛并打印 traceback，stdout 不产出 JSON。"""
     code = (
         "import sys\n"
-        "from cli import main\n"
+        "from sv_query.cli import main\n"
         "def boom():\n"
         "    raise RuntimeError('injected boom')\n"
         "main.app = boom\n"
@@ -146,7 +146,7 @@ def test_controlled_typer_exit_is_not_relabelled_internal(tmp_path):
 # 3. __main__ 走 run()
 # ---------------------------------------------------------------------------
 def test_main_module_entry_uses_run():
-    """直接执行 `src/cli/main.py` 也必须走统一错误格式化。"""
+    """直接执行 `src/sv_query/cli/main.py` 也必须走统一错误格式化。"""
     result = subprocess.run(
         [sys.executable, str(MAIN_PY), "stats", "-f", str(MISSING_SV), "--json"],
         cwd=str(REPO), capture_output=True, text=True, timeout=180, env=_env(),
@@ -164,7 +164,11 @@ def test_main_module_entry_uses_run():
 # ---------------------------------------------------------------------------
 def _graph_dict(tag: str) -> dict:
     from sv_query.trace.core.graph.models import (
-        EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode,
+        EdgeKind,
+        NodeKind,
+        SignalGraph,
+        TraceEdge,
+        TraceNode,
     )
 
     graph = SignalGraph()
@@ -234,7 +238,7 @@ def test_unexpected_exception_json_svq_debug_keeps_traceback():
     """SVQ_DEBUG=1: 仍先输出 JSON 信封，再 re-raise 供开发定位。"""
     code = (
         "import sys\n"
-        "from cli import main\n"
+        "from sv_query.cli import main\n"
         "def boom():\n"
         "    raise RuntimeError('injected boom')\n"
         "main.app = boom\n"

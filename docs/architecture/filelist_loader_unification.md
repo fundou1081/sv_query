@@ -13,7 +13,7 @@
 | 加载器 | 用途 | 相对路径基准 | 嵌套 `-f` 基准 |
 |---|---|---|---|
 | `src/sv_query/trace/core/compiler.py::SVCompiler.add_filelist` | 真正编译入口 | filelist 所在目录 | **cwd** |
-| `src/cli/_common.py::_read_filelist` | CLI 辅助 (供 SVA/coverage 等要 sources 的命令) | base_dir (cwd/项目根) | filelist 所在目录 |
+| `src/sv_query/cli/_common.py::_read_filelist` | CLI 辅助 (供 SVA/coverage 等要 sources 的命令) | base_dir (cwd/项目根) | filelist 所在目录 |
 
 实测症状 (iter_190 发现): `cwd=/` 而 filelist 在 `/tmp/flprobe/fl_rel.f` (内容 `sub/m.sv`)
 → CLI 侧 0 个文件 + **对实际存在的文件误报"条目不存在"**; tracer 侧 1 个文件。

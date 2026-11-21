@@ -112,7 +112,7 @@ CLI (`arch` / `visualize` / `trace`)。
 | **10** | 死 API 清理 (33 零调用中确认可删者) + 文档 (ARCHITECTURE/INDEX/overview) | 全量 + check_docs | 1h |
 
 **命名约定**: 新包 `src/sv_query/trace/core/semantic/` (facade `adapter.py` + `mixins_*.py`),
-对外 **import 路径不变** (`from sv_query.sv_query.trace.core.semantic_adapter import SemanticAdapter` 保留为再导出)。
+对外 **import 路径不变** (`from sv_query.trace.core.semantic_adapter import SemanticAdapter` 保留为再导出)。
 
 ---
 

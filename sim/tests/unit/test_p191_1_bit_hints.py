@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 
-from cli.core.semantic._bit_hints import (  # noqa: E402
+from sv_query.cli.core.semantic._bit_hints import (  # noqa: E402
     bit_hint_payload,
     descendant_bit_nodes,
     split_bit_range,

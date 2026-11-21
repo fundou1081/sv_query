@@ -9,7 +9,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from cli._registry import to_json  # noqa: E402
+from sv_query.cli._registry import to_json  # noqa: E402
 
 
 class TestBitPrecisionContract:

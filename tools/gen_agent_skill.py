@@ -30,7 +30,7 @@ def _render(data: dict) -> str:
     lines = [
         "# Agent capabilities (generated — do not edit)",
         "",
-        "> Source: `sv_query capabilities --json` / `cli._registry.to_json()`",
+        "> Source: `sv_query capabilities --json` / `sv_query.cli._registry.to_json()`",
         "> Regenerate: `python3 tools/gen_agent_skill.py`  ",
         "> Check: `python3 tools/gen_agent_skill.py --check`",
         f"> Generated: {date.today().isoformat()}",
@@ -91,7 +91,7 @@ def _strip_volatile(text: str) -> str:
 
 
 def generate() -> tuple[str, str]:
-    from cli._registry import to_json
+    from sv_query.cli._registry import to_json
 
     return _render(to_json()), _render(to_json())
 

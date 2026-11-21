@@ -2,10 +2,10 @@
 """
 find_module_refs.py — 搬模块前/后的引用扫描 (P1b 目录分层专用)
 
-[iter_232 2026-09-09] 起因: 把 `src/cli/commands/*.py` 搬到 `src/cli/exp/**` 时,
+[iter_232 2026-09-09] 起因: 把 `src/sv_query/cli/commands/*.py` 搬到 `src/sv_query/cli/exp/**` 时,
 两轮 `grep` 都漏了引用形式, 结果全量门禁抓到 17 个红:
-  ① `from src.cli.commands import coverage`  ← `from X import Y` 形式 (不是 X.Y)
-  ② `open(src/cli/commands/handshake.py)`    ← 测试直接**按路径读源码**做断言
+  ① `from sv_query.cli.commands import coverage`  ← `from X import Y` 形式 (不是 X.Y)
+  ② `open(src/sv_query/cli/commands/handshake.py)`    ← 测试直接**按路径读源码**做断言
   ③ `Path(__file__).parents[3] / "tools"`     ← 文件里的 __file__ 深度运算 (搬一层即错位)
 本工具把这三类一次性扫出来, 作为搬目录的**搬前检查单**。
 
@@ -68,11 +68,11 @@ def scan(module: str, file_path: str | None) -> list[tuple[str, str, int, str]]:
                 text = p.read_text(errors="ignore")
             except OSError:
                 continue
-            is_cli = str(p.relative_to(ROOT)).startswith("src/cli")
+            is_cli = str(p.relative_to(ROOT)).startswith("src/sv_query/cli")
             for lineno, line in enumerate(text.splitlines(), 1):
                 for kind, pat in pats:
                     if kind == "__file__-depth" and not is_cli:
-                        continue        # 只与 R8 的范围一致 (src/cli/**)
+                        continue        # 只与 R8 的范围一致 (src/sv_query/cli/**)
                     if pat.search(line):
                         hits.append((kind, str(p.relative_to(ROOT)), lineno, line.strip()[:100]))
                         break
@@ -115,7 +115,7 @@ def main() -> int:
         if len(items) > 30:
             print(f"   ... 还有 {len(items) - 30} 处")
     print("\n提示: `import-from` / `path-string` / `doc` 三类最容易被普通 grep 漏掉;")
-    print("      `__file__-depth` 出现即意味着该文件搬一层就会错位 (见 cli/_paths.py, R8)。")
+    print("      `__file__-depth` 出现即意味着该文件搬一层就会错位 (见 sv_query/cli/_paths.py, R8)。")
     return 1 if hits else 0
 
 

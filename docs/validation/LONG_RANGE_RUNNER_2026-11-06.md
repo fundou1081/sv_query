@@ -30,7 +30,7 @@ T2：
 - 新 `t2_long.sb`；
 - deny `/tmp/lr_pilot`；
 - deny repo `tools/benchmark`（task JSON/runner）和 `docs/validation`（答案文档）；
-- 允许 repo `src/cli`（editable install 需要）和 `sv_query`。
+- 允许 repo `src/sv_query/cli`（editable install 需要）和 `sv_query`。
 
 实测：
 

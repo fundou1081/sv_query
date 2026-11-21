@@ -31,7 +31,7 @@ def test_generated_reference_and_skill_reference_are_identical():
 
 
 def test_generated_rows_match_core_command_count():
-    from cli._registry import to_json
+    from sv_query.cli._registry import to_json
 
     data = to_json()
     text = gen.DOC.read_text(encoding="utf-8")

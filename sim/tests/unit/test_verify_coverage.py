@@ -1,7 +1,7 @@
 """Hermetic coverage_complete state machine."""
 import json
 
-from cli.core.semantic.verify import _coverage_complete
+from sv_query.cli.core.semantic.verify import _coverage_complete
 
 
 def test_unknown_check_is_not_complete():
@@ -20,7 +20,7 @@ def test_all_known_and_untruncated_is_complete():
 
 
 def test_consistency_command_wires_unknown_to_coverage(monkeypatch, capsys):
-    from cli.core.semantic import verify
+    from sv_query.cli.core.semantic import verify
 
     class Tracer:
         def get_graph(self):
