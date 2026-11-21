@@ -17,7 +17,7 @@ body:
     id: version
     attributes:
       label: sv_query version
-      placeholder: "0.3.2 / commit"
+      placeholder: "0.3.3 / commit"
     validations:
       required: true
 

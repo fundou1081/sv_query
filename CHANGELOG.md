@@ -3,6 +3,18 @@
 > 完整历史 changelog. README 短版只展示"为什么用 sv_query" + 5 分钟上手.
 > 详细 release notes 看这里.
 
+## 2026-11-21 (0.3.3 beta — CLI namespace + external trial readiness)
+
+- CLI moved from top-level `cli` to `sv_query.cli`; console entry
+  `sv_query.cli._entry:main`; wheels install only `sv_query`.
+- Core query paths audited for silent wide-except; new `check_core_except` gate.
+- Public tree cleaned: private development assets/history moved to
+  `sv_query_private`; absolute test symlink removed; privacy + repo hygiene gates.
+- Architecture page refreshed (no expired snapshot banner).
+- English USER_GUIDE / KNOWN_LIMITATIONS added.
+- Miss-report workflow, privacy/no-telemetry statement, and beta contract page.
+- Canonical 3148 passed / 0 failed / 123 deferred.
+
 ## 2026-11-20 (0.3.2 beta — MissingTimeScale diagnostic fix)
 
 - `diagnose timescale` now disables timescale injection for its own compile path;

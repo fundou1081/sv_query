@@ -29,7 +29,7 @@ def test_runtime_dependencies_are_ranges_not_exact_pins():
 
 def test_metadata_and_release_surfaces():
     project = _pyproject()["project"]
-    assert project["version"] == "0.3.2"
+    assert project["version"] == "0.3.3"
     assert "Development Status :: 4 - Beta" in project["classifiers"]
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "pip install sv_query" in readme
