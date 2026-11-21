@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P190.1 reproduce MissingTimeScale conditions + fix or retire claim <已完成>
+current item : P193.1 fix sim/tests/config absolute symlink + clone hygiene <进行中>
 
 ## 计划树
 
@@ -582,6 +582,18 @@ P191 bit-select discoverability + dual hints (P187 P0) <已完成>
 P192 blind external value validation (P2) <已完成>
 -- P192.1 issue #3404 symptom-only protocol（不给 fix diff） <已完成>
 -- P192.2 source-only vs sv_query blind comparison <已完成>
+
+P193 external trial readiness (2026-11-21 review) <待做>
+-- P193.1 fix sim/tests/config absolute symlink + clone hygiene <进行中>
+-- P193.2 strip personal dev assets + privacy scan（agents/memory/task_tree/sessions） <待做>
+-- P193.3 migrate bare cli package to sv_query.cli（独立 PR） <待做>
+-- P193.4 audit wide-except on core query paths（unknown/partial 显式） <待做>
+-- P193.5 regenerate/archive ARCHITECTURE.md <待做>
+-- P193.6 English USER_GUIDE + KNOWN_LIMITATIONS <待做>
+-- P193.7 desensitized miss-report template + local redaction guide <待做>
+-- P193.8 local-only logs + no-telemetry statement <待做>
+-- P193.9 external beta contract page（稳定/不承诺/冷启动预期） <待做>
+-- P193.10 first 2–3 heterogeneous trial users + feedback loop <待做>
 
 P190 diagnose timescale trigger investigation (2026-11-18 review) <已完成>
 -- P190.1 reproduce MissingTimeScale conditions + fix or retire claim <已完成>

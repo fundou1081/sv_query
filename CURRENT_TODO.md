@@ -9,12 +9,12 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P190.1 reproduce MissingTimeScale conditions + fix or retire claim** `<已完成>`
+- **当前 item**: **P193.1 fix sim/tests/config absolute symlink + clone hygiene** `<进行中>`
   - P182 组全部完成：envelope / schema / stats / agent entry / snapshot eval / governance
   - P188 release readiness 完成；发布动作见 [RELEASE.md](RELEASE.md)
   - P189.1 docs 自洽 gate 完成
   - P182.5 结论：不扩 source-dependent snapshot、不做 serve、不改 cache 默认
-  - P190.1 完成；P190 收口，PLAN 当前无未完成项
+  - P190.1 完成；新增 P193 外部试用准备，当前 P193.1
 
 
 ## 📌 当前真实基线
