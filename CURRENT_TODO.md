@@ -9,7 +9,7 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P193.2 strip personal dev assets + privacy scan（agents/memory/task_tree/sessions）** `<待做>`
+- **当前 item**: **P193.2 strip personal dev assets + privacy scan（agents/memory/task_tree/sessions）** `<进行中>`
   - P182 组全部完成：envelope / schema / stats / agent entry / snapshot eval / governance
   - P188 release readiness 完成；发布动作见 [RELEASE.md](RELEASE.md)
   - P189.1 docs 自洽 gate 完成
