@@ -19,6 +19,9 @@
 
 ---
 
+> **开发位置**: 本仓库是唯一开发主线。私有仓库 `sv_query_private` 只做旧历史归档，不继续开发。
+> 详见 [docs/dev/REPOSITORY_LAYOUT.md](docs/dev/REPOSITORY_LAYOUT.md)。
+
 ## Install
 
 ```bash

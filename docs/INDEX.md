@@ -47,6 +47,7 @@
 | [dev/SNAPSHOT_SURFACE.md](dev/SNAPSHOT_SURFACE.md) | **快照能力面矩阵 (P158.9.2)**: 字段级保真 / 命令级支持面 / 显式不保证清单 |
 | [dev/CLAIMS.md](dev/CLAIMS.md) | **claim 台账**: 公开能力的证据与状态 |
 | [dev/CODING_STYLE.md](dev/CODING_STYLE.md) | 编码风格与设计决策: 先探索后决策 / 单一实现 / 修根因 / 函数职责 / 结构化数据 / 影响面 / 协作规则 |
+| [dev/REPOSITORY_LAYOUT.md](dev/REPOSITORY_LAYOUT.md) | **开发位置规则**: public 是唯一开发主线；private 是冻结归档 |
 | [dev/P193_ASSET_INVENTORY.md](dev/P193_ASSET_INVENTORY.md) | **P193.2**: 私有资产清单、迁移规则、git 历史策略待确认 |
 | [dev/REPO_HYGIENE.md](dev/REPO_HYGIENE.md) | **P193.1**: 禁止 tracked absolute-path symlink；clone/Windows 安全 |
 | [dev/BIT_SELECT_HINTS.md](dev/BIT_SELECT_HINTS.md) | **P191**: drivers/loads + dataflow 双向 bit-select hint 契约；false/empty 语义不变 |

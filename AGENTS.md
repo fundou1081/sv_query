@@ -1,5 +1,9 @@
 # AGENTS.md — sv_query contributor / agent entry
 
+> **开发位置**: 本仓库 `fundou1081/sv_query`（public）是**唯一开发主线**。
+> 私有仓库 `fundou1081/sv_query_private` 只保存旧历史/开发资产，是**冻结归档，只读**；
+> 不要在那里继续开发产品代码。详见 [REPOSITORY_LAYOUT](docs/dev/REPOSITORY_LAYOUT.md)。
+
 > **产品方向**: [Agent RTL 查询 + 客观校验层](docs/architecture/product_direction_2026-10-31.md)。
 > 本文件只做入口、路由和硬边界；细节用链接渐进披露。
 
