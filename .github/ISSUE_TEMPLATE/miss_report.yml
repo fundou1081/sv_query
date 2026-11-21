@@ -1,0 +1,83 @@
+name: Miss report (wrong or missing query answer)
+description: Report a wrong/missing answer without sharing proprietary RTL
+title: "[miss] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **RTL is often confidential. Do not paste proprietary RTL, module names,
+        customer names, file paths, or parameter values into this issue.**
+
+        Read the [miss-report guide](https://github.com/fundou1081/sv_query/blob/main/docs/MISS_REPORT_GUIDE.md)
+        first. Prefer a minimal, renamed, structure-preserving fixture. If that is
+        not possible, submit the query shape and the wrong result only.
+
+  - type: input
+    id: version
+    attributes:
+      label: sv_query version
+      placeholder: "0.3.2 / commit"
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Query / command
+      description: Exact command and relevant flags, with local paths removed.
+      placeholder: |
+        sv_query drivers top.u.valid --filelist design.f --json
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected conclusion
+      description: What should sv_query have returned or verified?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      description: Include rc, ok, error_code, and the relevant JSON fields.
+    validations:
+      required: true
+
+  - type: textarea
+    id: fixture
+    attributes:
+      label: Minimal reproducer
+      description: |
+        Renamed, structure-preserving fixture + filelist. Keep widths,
+        hierarchy, operators, always/assign/case shape; remove comments,
+        proprietary names and unrelated logic.
+    validations:
+      required: false
+
+  - type: textarea
+    id: structural
+    attributes:
+      label: Structural-only description (if fixture cannot be shared)
+      description: |
+        Module hierarchy shape, signal directions/widths, operator/always pattern,
+        and why the result is wrong. No proprietary source text.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Disclosure and scope checks
+      options:
+        - label: I did not include proprietary RTL, customer names, credentials, or absolute local paths.
+          required: true
+        - label: I checked KNOWN_LIMITATIONS_EN and this is not a documented limitation.
+          required: true
+        - label: I have the right to share the attached minimal fixture under the project license (MIT OR Apache-2.0).
+          required: false
+        - label: I cannot share a fixture; this report intentionally contains only query shape and result.
+          required: false

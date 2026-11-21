@@ -61,6 +61,7 @@
 | C-38 | 安装后顶层包只有 `sv_query`；CLI 位于 `sv_query.cli`，entry `sv_query.cli._entry:main` | wheel / test | `test_packaging_rename.py` | `verified` |
 | C-39 | 核心查询路径无静默宽 except；`check_core_except.py` 进 gate | tool | `test_p193_4_core_except.py` | `verified`（核心 5 文件） |
 | C-40 | English USER_GUIDE + KNOWN_LIMITATIONS available; README links them; Chinese full docs remain canonical | doc/test | `test_p193_6_english_docs.py` | `verified` |
+| C-41 | Miss report template + guide require desensitized fixture / structural-only fallback; no proprietary RTL | template/doc/test | `test_p193_7_miss_report.py` | `verified` |
 
 ---
 

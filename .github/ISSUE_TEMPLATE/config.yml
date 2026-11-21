@@ -3,3 +3,6 @@ contact_links:
   - name: Known limitations
     url: https://github.com/fundou1081/sv_query/blob/main/docs/KNOWN_LIMITATIONS.md
     about: Check documented semantic and platform limitations before filing.
+  - name: Report a miss / desensitize a fixture
+    url: https://github.com/fundou1081/sv_query/blob/main/docs/MISS_REPORT_GUIDE.md
+    about: How to report a wrong answer without sharing proprietary RTL.

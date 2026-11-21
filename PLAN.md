@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P193.7 desensitized miss-report template + local redaction guide <待做>
+current item : P193.8 local-only logs + no-telemetry statement <待做>
 
 ## 计划树
 
@@ -590,7 +590,7 @@ P193 external trial readiness (2026-11-21 review) <待做>
 -- P193.4 audit wide-except on core query paths（unknown/partial 显式） <已完成>
 -- P193.5 regenerate/archive ARCHITECTURE.md <已完成>
 -- P193.6 English USER_GUIDE + KNOWN_LIMITATIONS <已完成>
--- P193.7 desensitized miss-report template + local redaction guide <待做>
+-- P193.7 desensitized miss-report template + local redaction guide <已完成>
 -- P193.8 local-only logs + no-telemetry statement <待做>
 -- P193.9 external beta contract page（稳定/不承诺/冷启动预期） <待做>
 -- P193.10 first 2–3 heterogeneous trial users + feedback loop <待做>
