@@ -9,12 +9,12 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P193.10 first 2–3 heterogeneous trial users + feedback loop** `<待做>`
+- **当前 item**: **P194.1 remove sys.path bootstrap + personal pyslang path + duplicate imports** `<待做>`
   - P182 组全部完成：envelope / schema / stats / agent entry / snapshot eval / governance
   - P188 release readiness 完成；发布动作见 [RELEASE.md](RELEASE.md)
   - P189.1 docs 自洽 gate 完成
   - P182.5 结论：不扩 source-dependent snapshot、不做 serve、不改 cache 默认
-  - P193.1 clone hygiene 完成；下一步 P193.2 资产剥离
+  - P193.1–P193.9 完成；新增 P194 评审 follow-up，当前 P194.1
 
 
 ## 📌 当前真实基线

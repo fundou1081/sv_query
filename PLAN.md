@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P193.10 first 2–3 heterogeneous trial users + feedback loop <待做>
+current item : P194.1 remove sys.path bootstrap + personal pyslang path + duplicate imports <待做>
 
 ## 计划树
 
@@ -582,6 +582,15 @@ P191 bit-select discoverability + dual hints (P187 P0) <已完成>
 P192 blind external value validation (P2) <已完成>
 -- P192.1 issue #3404 symptom-only protocol（不给 fix diff） <已完成>
 -- P192.2 source-only vs sv_query blind comparison <已完成>
+
+P194 external review follow-up (2026-11-21) <待做>
+-- P194.1 remove sys.path bootstrap + personal pyslang path + duplicate imports <待做>
+-- P194.2 cold-start graph cache / session server design + benchmark <待做>
+-- P194.3 API facade + deprecation policy <待做>
+-- P194.4 split 500+ line extractor functions <待做>
+-- P194.5 external benchmark + token cost validation <待做>
+-- P194.6 pyright/mypy + generated JSON schema <待做>
+-- P194.7 docs slimming + human onboarding <待做>
 
 P193 external trial readiness (2026-11-21 review) <待做>
 -- P193.1 fix sim/tests/config absolute symlink + clone hygiene <已完成>
