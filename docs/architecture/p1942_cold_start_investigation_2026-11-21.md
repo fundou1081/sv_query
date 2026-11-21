@@ -156,3 +156,17 @@ faster graph builder.
 - no large-design/EDA regression suite;
 - no session/server prototype yet;
 - no claim that 26 s from older docs is current (current run ~45 s).
+
+## 6. Decision (2026-11-21)
+
+Based on the review discussion:
+
+- **P194.2a (now)**: correctness contract only — `BuildIdentity`, versioned
+  key, payload capability manifest, mutation/parity tests; keep cache default off.
+- **P194.2b (next)**: enable graph-only commands, measure cold/warm hit rates.
+- **P194.2c (terminal path)**: local session/server holds one graph; snapshot is
+  cross-process persistence, not the multi-turn main path.
+- **A-full** (unified framework for all commands) is deferred until measurement.
+
+The cache-key omission is treated as a correctness bug, not a performance
+optimization.
