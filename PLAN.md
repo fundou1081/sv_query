@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P195.9 maintenance cleanup: dead cache APIs, except gate coverage, claims freshness <待做>
+current item : P194.2f session coverage for verify/scope/instances <待做>
 
 ## 计划树
 
@@ -598,7 +598,7 @@ P194.2c local session/server reuse + snapshot persistence <待做>
 -- P194.6 pyright/mypy + generated JSON schema <待做>
 -- P194.7 docs slimming + human onboarding <待做>
 
-P195 external user + maintainer review follow-up (2026-11-22) <待做>
+P195 external user + maintainer review follow-up (2026-11-22) <已完成>
 -- P195.1 cache closure correctness: hash resolved files + +define+ + +incdir+ headers; unreadable => explicit miss <已完成>
 -- P195.2 capability enforcement: required graph/mig capabilities; graph-only entry must not satisfy MIG ops <已完成>
 -- P195.3 scalar width normalization: 1-bit signal must not report width=[1,0]/width=2 <已完成>
@@ -607,7 +607,7 @@ P195 external user + maintainer review follow-up (2026-11-22) <待做>
 -- P195.6 stdio lifecycle: try/finally, BrokenPipeError, context manager, closed-state guard <已完成>
 -- P195.7 single-source version: BuildIdentity uses PACKAGE_VERSION; release check <已完成>
 -- P195.8 user docs: --version, --quiet, cache controls, error_code/envelope semantics <已完成>
--- P195.9 maintenance cleanup: dead cache APIs, except gate coverage, claims freshness <待做>
+-- P195.9 maintenance cleanup: dead cache APIs, except gate coverage, claims freshness <已完成>
 
 P193 external trial readiness (2026-11-21 review) <待做>
 -- P193.1 fix sim/tests/config absolute symlink + clone hygiene <已完成>

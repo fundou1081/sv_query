@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""P193.4: core query paths must not swallow exceptions into empty results.
+"""P193.4: core query/library paths must not swallow exceptions.
 
-Scans the five core query modules. A broad ``except Exception`` (or bare
+Scans core CLI query modules plus the tracer/cache/session library. A broad ``except Exception`` (or bare
 ``except``) is acceptable only when its body makes failure explicit:
 unknown/partial/error/errors/raise/logger/fail/make_error/violations.
 """
@@ -18,6 +18,11 @@ CORE_FILES = (
     "src/sv_query/cli/core/semantic/verify.py",
     "src/sv_query/cli/core/semantic/dataflow.py",
     "src/sv_query/cli/core/semantic/trace_evidence.py",
+    "src/sv_query/trace/unified_tracer.py",
+    "src/sv_query/graph_session.py",
+    "src/sv_query/cli/core/locate/session_cmd.py",
+    "src/sv_query/trace/core/cache/ast_cache.py",
+    "src/sv_query/trace/core/cache/build_identity.py",
 )
 MARKERS = (
     "unknown", "partial", "error", "errors", "raise", "logger",

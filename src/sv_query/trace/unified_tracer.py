@@ -1076,7 +1076,8 @@ class UnifiedTracer:
             for cls in adapter.get_classes():
                 try:
                     n = cls.name
-                except Exception:
+                except Exception as e:
+                    _main_logger.debug("class name extraction failed: %s", e)
                     continue
                 if n:
                     names.append(str(n))
@@ -1249,10 +1250,12 @@ class UnifiedTracer:
                     if isinstance(n, bytes):
                         try:
                             return n.decode("utf-8", errors="replace")
-                        except Exception:
+                        except Exception as e:
+                            _main_logger.debug("symbol name decode failed: %s", e)
                             return ""
                     return str(n)
-                except Exception:
+                except Exception as e:
+                    _main_logger.debug("symbol name extraction failed: %s", e)
                     return ""
 
             # Iterate every module's semantic body. PortSymbol / NetSymbol /
@@ -1298,7 +1301,8 @@ class UnifiedTracer:
                         updated += 1
                         break
             return updated
-        except Exception:
+        except Exception as e:
+            _main_logger.warning("source-location backfill failed: %s", e)
             return 0
 
     # =========================================================================

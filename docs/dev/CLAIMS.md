@@ -2,7 +2,7 @@
 
 > **公开 claim 的唯一登记处。** 纪律依据: [SEMANTIC_CONTRACTS.md](SEMANTIC_CONTRACTS.md) §8。
 > 没有 gate 的 claim = `unverified`；已知反例 = `known-broken`；不得写成“已支持”。
-> **最后更新**: 2026-11-22 (C-27 D12 Session 错误码单一来源 + CLI 失败 adapter)
+> **最后更新**: 2026-11-22 (P195.9 maintenance cleanup: except gate + claims)
 
 ---
 
@@ -59,7 +59,7 @@
 | C-36 | tracked symlink 不得指向绝对路径；`check_repo_hygiene.py` 进 gate | tool | `test_p193_1_repo_hygiene.py` | `verified` |
 | C-37 | 公开仓库无私人开发资产/作者绝对路径；privacy + repo-hygiene gate 绿 | tool | `test_p193_2_privacy.py` | `verified` |
 | C-38 | 安装后顶层包只有 `sv_query`；CLI 位于 `sv_query.cli`，entry `sv_query.cli._entry:main` | wheel / test | `test_packaging_rename.py` | `verified` |
-| C-39 | 核心查询路径无静默宽 except；`check_core_except.py` 进 gate | tool | `test_p193_4_core_except.py` | `verified`（核心 5 文件） |
+| C-39 | 核心查询/库/session 路径无静默宽 except；`check_core_except.py` 进 gate | tool | `test_p193_4_core_except.py` | `verified`（10 文件） |
 | C-40 | English USER_GUIDE + KNOWN_LIMITATIONS available; README links them; Chinese full docs remain canonical | doc/test | `test_p193_6_english_docs.py` | `verified` |
 | C-41 | Miss report template + guide require desensitized fixture / structural-only fallback; no proprietary RTL | template/doc/test | `test_p193_7_miss_report.py` | `verified` |
 | C-42 | installed runtime has no network/telemetry imports; cache/snapshot are local-only | tool/test | `test_p193_8_privacy.py` | `verified`（static） |
@@ -67,7 +67,7 @@
 | C-44 | 安装/运行路径无作者 home、entry 无 sys.path bootstrap、无重复 safe_str import | static/test | `test_p194_1_cleanup.py` | `verified` |
 | C-45 | graph cache key from single BuildIdentity; payload declares graph-only capability; no manifest => miss; closure includes defines/files/headers (P195.1) | code/test | `test_p194_2a_build_identity.py`, `test_p195_1_cache_closure.py` | `verified` |
 | C-46 | graph nodes/edges/subgraph opt into graph cache with hit/miss/disabled status and --no-cache | code/test | `test_p194_2b_graph_cache.py` | `verified` |
-| C-47 | GraphSession reuses one graph; stdio session serves graph nodes/edges; snapshot hydrate works | code/test | `test_p194_2c_graph_session.py` | `verified`（graph-only） |
+| C-47 | GraphSession reuses one graph; stdio session serves supported graph/query ops; snapshot hydrate works | code/test | `test_p194_2c_graph_session.py` | `verified` |
 | C-48 | GraphSession exposes drivers/loads/paths/dataflow and refresh; stdio server reuses one graph; MIG-required callers cannot hydrate a graph-only entry (P195.2) | code/test | `test_p194_2c_graph_session.py`, `test_p195_2_capability_enforcement.py` | `verified`（session scope） |
 | C-49 | scalar port/variable width is `(0,0)` / width 1; `[1:0]` remains width 2; profile matches type | code/test | `test_p195_3_scalar_width.py` | `verified` |
 | C-50 | PyPI publish is blocked by tests + version/tag gate | code/test | `test_p195_4_release_gate.py` | `verified` |
@@ -75,6 +75,7 @@
 | C-52 | GraphSession context/close/idempotence and stdio BrokenPipe cleanup | code/test | `test_p195_6_session_lifecycle.py` | `verified` |
 | C-53 | BuildIdentity version is sourced from PACKAGE_VERSION; release check compares pyproject/session/identity/tag | code/test | `test_p195_4_release_gate.py` | `verified` |
 | C-54 | --version/--quiet discoverable; cache controls and error_code locations documented | code/test | `test_p195_8_user_surface.py` | `verified` |
+| C-55 | dead ASTCache get/put removed; except gate covers library/session; claims headers refreshed | code/test | `test_p193_4_core_except.py` | `verified` |
 
 ---
 

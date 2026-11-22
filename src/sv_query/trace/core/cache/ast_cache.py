@@ -471,15 +471,6 @@ class ASTCache:
         # [iter_271] 写盘后检查总量上限, 按 mtime LRU 淘汰旧条目
         self._enforce_size_limit()
 
-    def get(self, source_file: str, force: bool = False) -> dict | None:
-        """[Legacy] 通过文件路径获取缓存（已废弃，仅保留兼容）"""
-        # 这个方法不再使用，仅保留兼容
-        return None
-
-    def put(self, source_file: str, data: dict) -> str:
-        """[Legacy] 通过文件路径保存缓存（已废弃，仅保留兼容）"""
-        return ""
-
     def invalidate(self, cache_key: str | None = None) -> None:
         """[Golden] 清除缓存
 
