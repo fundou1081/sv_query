@@ -120,8 +120,8 @@ Independent review reproduced:
 
 - legacy snapshot without MIG is now rejected explicitly for MIG queries
   (`SnapshotCapabilityError`, P196.1); the graph is not emptied;
-- `GraphSession(file=...)` refresh still does not re-read disk (P196.3).
+- file-mode refresh now re-reads disk and increments `generation` (P196.3);
+- all stdio parse/startup/refresh errors use the structured Session failure
+  envelope (P196.2).
 
-All stdio parse/startup/refresh errors now use the structured Session failure
-envelope (P196.2). Do not claim full snapshot/session correctness until P196.3
-is done.
+Legacy snapshots without MIG still reject MIG queries explicitly (P196.1).

@@ -75,7 +75,12 @@ class GraphSession:
         self._ensure_open()
         if self._from_snapshot:
             return None
-        identity = self.tracer._build_identity(None)
+        if self._file:
+            source = Path(self._file).read_text(encoding="utf-8")
+            identity = self.tracer._build_identity(
+                None, sources_override={str(Path(self._file).resolve()): source})
+        else:
+            identity = self.tracer._build_identity(None)
         return identity.key() if identity is not None else None
 
     def refresh(self) -> bool:

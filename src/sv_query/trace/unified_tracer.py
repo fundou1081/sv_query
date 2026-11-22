@@ -213,7 +213,7 @@ class UnifiedTracer:
         mode = (_os.environ.get("SVQ_BIT_BRIDGE") or "one").strip().lower()
         return mode if mode in ("one", "full") else "one"
 
-    def _build_identity(self, target_module: str | None):
+    def _build_identity(self, target_module: str | None, sources_override=None):
         """[P194.2a] single typed cache identity; no hand-built keys."""
         from sv_query.trace.core.cache import get_cache
         from sv_query.trace.core.cache.ast_cache import CACHE_VERSION
@@ -221,8 +221,9 @@ class UnifiedTracer:
 
         cache = get_cache()
         try:
-            if self._sources:
-                source_hash = cache.compute_sources_hash(self._sources, self._include_dirs)
+            source_map = self._sources if sources_override is None else sources_override
+            if source_map:
+                source_hash = cache.compute_sources_hash(source_map, self._include_dirs)
             elif self._filelist:
                 source_hash = cache.compute_filelist_hash(
                     self._filelist, self._include_dirs)

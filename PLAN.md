@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P196.3 P1 file-mode GraphSession.refresh reads disk content; regression test <待做>
+current item : P196.4 P1 remaining packed/fallback scalar width normalization; C-49 scope <待做>
 
 ## 计划树
 
@@ -612,7 +612,7 @@ P195 external user + maintainer review follow-up (2026-11-22) <已完成>
 P196 independent review follow-up (2026-11-22) <待做>
 -- P196.1 P0 legacy snapshot must not rebuild from empty sources; explicit unsupported/MIG result <已完成>
 -- P196.2 P1 stdio error envelopes for parse/startup/refresh; contract tests <已完成>
--- P196.3 P1 file-mode GraphSession.refresh reads disk content; regression test <待做>
+-- P196.3 P1 file-mode GraphSession.refresh reads disk content; regression test <已完成>
 -- P196.4 P1 remaining packed/fallback scalar width normalization; C-49 scope <待做>
 -- P196.5 claims/docs/test reconciliation: downgrade C-47/C-48/C-49/C-51; CURRENT_TODO <待做>
 

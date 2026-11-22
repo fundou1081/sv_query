@@ -68,7 +68,7 @@
 | C-45 | graph cache key from single BuildIdentity; payload declares graph-only capability; no manifest => miss; closure includes defines/files/headers (P195.1) | code/test | `test_p194_2a_build_identity.py`, `test_p195_1_cache_closure.py` | `verified` |
 | C-46 | graph nodes/edges/subgraph opt into graph cache with hit/miss/disabled status and --no-cache | code/test | `test_p194_2b_graph_cache.py` | `verified` |
 | C-47 | GraphSession reuses one graph; stdio session serves supported graph/query ops; legacy no-MIG snapshot fails explicitly instead of emptying the graph (P196.1) | code/test | `test_p194_2c_graph_session.py`, `test_p196_1_snapshot_capability.py` | `verified` |
-| C-48 | GraphSession exposes drivers/loads/paths/dataflow and refresh; stdio server reuses one graph; MIG-required callers cannot hydrate a graph-only entry; **known-broken: file-mode refresh is a no-op (P196.3)** | code/test | `test_p194_2c_graph_session.py`, `test_p195_2_capability_enforcement.py` | `known-broken` |
+| C-48 | GraphSession exposes drivers/loads/paths/dataflow; file-mode refresh re-reads disk; MIG-required callers cannot hydrate a graph-only entry (P195.2/P196.3) | code/test | `test_p194_2c_graph_session.py`, `test_p195_2_capability_enforcement.py`, `test_p196_3_file_refresh.py` | `verified` |
 | C-49 | scalar port/variable width is `(0,0)` / width 1; `[1:0]` remains width 2; profile matches type; **scoped: packed members/fallbacks still `(1,0)` (P196.4)** | code/test | `test_p195_3_scalar_width.py` | `scoped` |
 | C-50 | PyPI publish is blocked by tests + version/tag gate | code/test | `test_p195_4_release_gate.py` | `verified` |
 | C-51 | session protocol ops/envelope/unsupported are documented and machine-readable; all stdio error paths use the structured failure envelope (P196.2) | code/test | `test_p195_5_session_contract.py`, `test_p196_2_stdio_envelopes.py` | `verified` |
@@ -77,6 +77,7 @@
 | C-54 | --version/--quiet discoverable; cache controls and error_code locations documented | code/test | `test_p195_8_user_surface.py` | `verified` |
 | C-55 | dead ASTCache get/put removed; except gate covers library/session; claims headers refreshed | code/test | `test_p193_4_core_except.py` | `verified` |
 | C-56 | hydrated snapshot without required MIG raises explicit SnapshotCapabilityError and preserves graph | code/test | `test_p196_1_snapshot_capability.py` | `verified` |
+| C-57 | file-mode GraphSession.refresh detects on-disk changes and increments generation | code/test | `test_p196_3_file_refresh.py` | `verified` |
 
 ---
 
