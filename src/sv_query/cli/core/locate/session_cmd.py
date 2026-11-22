@@ -20,6 +20,7 @@ from sv_query import Session
 from sv_query.cli._output import fail
 from sv_query.cli._session_runner import SessionRenderOptions, emit_json_result, run_session
 from sv_query.cli.errors import ErrorCode
+from sv_query.session import E_HANDLER_FAILED, E_INVALID_REQUEST, error_response
 
 
 def _capabilities_handler(request):
@@ -28,6 +29,26 @@ def _capabilities_handler(request):
     from sv_query.cli.core.locate.capabilities import _capabilities_provider
 
     return _capabilities_provider(request)
+
+
+def _serve_line(raw: str, gs, session) -> dict:
+    """Parse and execute one line; every failure is a structured envelope."""
+    try:
+        request = _json.loads(raw)
+    except (TypeError, ValueError) as exc:
+        return error_response(None, E_INVALID_REQUEST,
+                              f"invalid request JSON: {exc}")
+    if not isinstance(request, dict):
+        return error_response(None, E_INVALID_REQUEST,
+                              "request root must be an object")
+    op = request.get("op") if isinstance(request.get("op"), str) else None
+    rid = request.get("request_id") if isinstance(
+        request.get("request_id"), str) else None
+    try:
+        gs.refresh()
+    except Exception as exc:
+        return error_response(op, E_HANDLER_FAILED, f"refresh failed: {exc}", rid)
+    return session.execute(request)
 
 
 def _serve(filelist: str | None, from_snapshot: str | None, file: str | None) -> None:
@@ -41,7 +62,8 @@ def _serve(filelist: str | None, from_snapshot: str | None, file: str | None) ->
         )
     except Exception as exc:
         try:
-            print(_json.dumps({"ok": False, "error": str(exc)}), flush=True)
+            print(_json.dumps(error_response(None, E_INVALID_REQUEST, str(exc))),
+                  flush=True)
         except BrokenPipeError:
             return
         raise typer.Exit(code=1) from None
@@ -54,19 +76,8 @@ def _serve(filelist: str | None, from_snapshot: str | None, file: str | None) ->
                 if not raw:
                     continue
                 try:
-                    request = _json.loads(raw)
-                except (TypeError, ValueError) as exc:
-                    response = {"ok": False, "error": f"invalid request JSON: {exc}"}
-                else:
-                    try:
-                        gs.refresh()
-                    except Exception as exc:
-                        response = {"ok": False, "error": f"refresh failed: {exc}"}
-                    else:
-                        response = session.execute(request) if isinstance(request, dict) else {
-                            "ok": False, "error": "request root must be an object"}
-                try:
-                    print(_json.dumps(response, ensure_ascii=False), flush=True)
+                    print(_json.dumps(_serve_line(raw, gs, session),
+                                      ensure_ascii=False), flush=True)
                 except BrokenPipeError:
                     break
     except BrokenPipeError:

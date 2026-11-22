@@ -9,7 +9,7 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P196.2 P1 stdio error envelopes for parse/startup/refresh; contract tests** `<待做>`
+- **当前 item**: **P196.3 P1 file-mode GraphSession.refresh reads disk content; regression test** `<待做>`
   - P195 全部完成；0.3.5 已发布（release-check -> build -> publish）
   - P194.2f 暂停：由 P196.1/P196.2 阻塞
   - 独立复核报告: `/tmp/p195_final_review.md`
@@ -19,7 +19,7 @@
 ## 📌 当前真实基线
 
 ```text
-canonical:  3190 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  3193 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 

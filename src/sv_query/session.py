@@ -224,6 +224,17 @@ def _success(op: str, request_id: object, result: dict[str, object]) -> dict[str
     return response
 
 
+def error_response(
+    op: str | None,
+    error_code: str,
+    message: str,
+    request_id: str | None = None,
+) -> dict[str, object]:
+    """Build the public failure envelope (same shape as Session.execute)."""
+    rid = _MISSING if request_id is None else request_id
+    return _failure(op, rid, error_code, message)
+
+
 def _failure(
     op: str | None,
     request_id: object,

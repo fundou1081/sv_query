@@ -71,7 +71,7 @@
 | C-48 | GraphSession exposes drivers/loads/paths/dataflow and refresh; stdio server reuses one graph; MIG-required callers cannot hydrate a graph-only entry; **known-broken: file-mode refresh is a no-op (P196.3)** | code/test | `test_p194_2c_graph_session.py`, `test_p195_2_capability_enforcement.py` | `known-broken` |
 | C-49 | scalar port/variable width is `(0,0)` / width 1; `[1:0]` remains width 2; profile matches type; **scoped: packed members/fallbacks still `(1,0)` (P196.4)** | code/test | `test_p195_3_scalar_width.py` | `scoped` |
 | C-50 | PyPI publish is blocked by tests + version/tag gate | code/test | `test_p195_4_release_gate.py` | `verified` |
-| C-51 | session protocol ops/envelope/unsupported are documented and machine-readable in capabilities.json_contract; **scoped: parse/startup/refresh errors bypass envelope (P196.2)** | code/test | `test_p195_5_session_contract.py` | `scoped` |
+| C-51 | session protocol ops/envelope/unsupported are documented and machine-readable; all stdio error paths use the structured failure envelope (P196.2) | code/test | `test_p195_5_session_contract.py`, `test_p196_2_stdio_envelopes.py` | `verified` |
 | C-52 | GraphSession context/close/idempotence and stdio BrokenPipe cleanup | code/test | `test_p195_6_session_lifecycle.py` | `verified` |
 | C-53 | BuildIdentity version is sourced from PACKAGE_VERSION; release check compares pyproject/session/identity/tag | code/test | `test_p195_4_release_gate.py` | `verified` |
 | C-54 | --version/--quiet discoverable; cache controls and error_code locations documented | code/test | `test_p195_8_user_surface.py` | `verified` |
