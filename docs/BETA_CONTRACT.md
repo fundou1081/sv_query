@@ -90,7 +90,11 @@ explicitly (`E_SNAPSHOT_NO_MIG`).
 - hybrid business failures for unknown targets in `drivers` / `loads` /
   `trace evidence` / `trace profile` → `rc=0`, `ok=false`,
   `error_code=E_SIGNAL_NOT_FOUND`;
-- look at both `ok` and `error_code`; exit code alone is not the contract.
+- look at both `ok` and `error_code`; exit code alone is not the contract;
+- `error_code` location is envelope-dependent: trace/hybrid errors put it in
+  `errors[].error_code`; operational failures use a top-level `error_code`;
+  some standard failures expose only `error` + `errors[]`;
+- `unknown` / `partial` remain distinct from `contradicted` / false.
 
 Command surface is ratcheted:
 

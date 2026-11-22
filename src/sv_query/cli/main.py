@@ -13,6 +13,7 @@ from pathlib import Path
 # 设置 sys.path - 允许直接运行或作为模块运行
 # 找到 src/ 目录的父目录并添加到 path
 from sv_query.cli._paths import PROJECT_ROOT, SRC_DIR, ensure_on_path  # noqa: E402
+from sv_query.session import PACKAGE_VERSION  # noqa: E402
 
 ensure_on_path(SRC_DIR, PROJECT_ROOT)
 
@@ -87,6 +88,7 @@ app = typer.Typer(
     help="SystemVerilog signal tracer and graph diff tool",
     add_completion=False,
 )
+
 
 # 注册子命令组
 app.add_typer(trace_app, name="trace")
@@ -414,8 +416,21 @@ app.command(name="search", help="Grep-like keyword search across .sv/.v files")(
 
 
 @app.callback(invoke_without_command=True)
-def main(ctx: typer.Context) -> None:
+def main(
+    ctx: typer.Context,
+    version: bool = typer.Option(
+        False, "--version", help="Print sv_query version and exit", is_eager=True),
+    quiet: bool = typer.Option(
+        False, "--quiet", "-q",
+        help="Suppress compiler/log diagnostics on stderr", is_eager=True),
+) -> None:
     """SystemVerilog signal tracer and graph diff tool"""
+    if version:
+        typer.echo(PACKAGE_VERSION)
+        raise typer.Exit()
+    if quiet:
+        from sv_query.trace.core.compiler import set_quiet
+        set_quiet(True)
     if ctx.invoked_subcommand is None:
         typer.echo(ctx.get_help())
 

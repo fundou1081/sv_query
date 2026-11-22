@@ -74,6 +74,7 @@
 | C-51 | session protocol ops/envelope/unsupported are documented and machine-readable in capabilities.json_contract | code/test | `test_p195_5_session_contract.py` | `verified` |
 | C-52 | GraphSession context/close/idempotence and stdio BrokenPipe cleanup | code/test | `test_p195_6_session_lifecycle.py` | `verified` |
 | C-53 | BuildIdentity version is sourced from PACKAGE_VERSION; release check compares pyproject/session/identity/tag | code/test | `test_p195_4_release_gate.py` | `verified` |
+| C-54 | --version/--quiet discoverable; cache controls and error_code locations documented | code/test | `test_p195_8_user_surface.py` | `verified` |
 
 ---
 

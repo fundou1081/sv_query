@@ -381,6 +381,9 @@ def test_capabilities_success_output_matches_baseline_except_paths_metadata(
             "elaboration_errors"]["type"] == "array<object>"
         assert _normalise_intentional_paths_metadata(before.stdout) == \
             _normalise_intentional_paths_metadata(after.stdout)
+    elif name == "help":
+        # P195.8 deliberately adds global --version/--quiet help.
+        assert "--version" in after.stdout and "--quiet" in after.stdout
     else:
         assert before.stdout == after.stdout, f"{name}: stdout changed"
     assert before.stderr == after.stderr, f"{name}: stderr changed"

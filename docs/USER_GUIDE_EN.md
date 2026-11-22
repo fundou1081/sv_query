@@ -34,6 +34,47 @@ pip install -e ".[dev]"
 Core queries are read-only and JSON-first. Check `ok` in the payload, not only
 the process exit code.
 
+## 1b. Version and diagnostics
+
+```bash
+sv_query --version
+sv_query --help
+```
+
+`--quiet` / `SVQ_QUIET=1` suppresses compiler/log diagnostics on stderr. It can
+appear before or after the subcommand:
+
+```bash
+sv_query drivers top.y --filelist rtl.f --json --quiet
+SVQ_QUIET=1 sv_query drivers top.y --filelist rtl.f --json
+```
+
+Use `--quiet` when a wrapper parses stdout and does not want cold-build
+diagnostics mixed into stderr.
+
+## 1c. Cache and snapshot controls
+
+Cache is optional and content-addressed; it never changes query semantics.
+
+```text
+SVQ_CACHE_DIR                       cache root (default ~/.svq/cache)
+SVQ_CACHE_MAX_MB                    total cache size limit
+SVQ_CACHE_MAX_AGE_DAYS              age limit
+SVQ_CACHE_MAX_ENTRIES_PER_PROJECT   per-project version limit
+SVQ_SNAPSHOT_DIR                    snapshot root
+SVQ_SNAPSHOT_MAX_MB                 snapshot size limit
+```
+
+`--no-cache` is available on trace and graph commands. When a command exposes
+cache metadata, it appears as `params.cache`:
+
+```json
+{"status": "miss|hit|disabled", "capabilities": ["graph", "mig"]}
+```
+
+A `hit` is an optimization, not a correctness claim. If a command needs MIG and
+the entry is graph-only, sv_query rebuilds instead of using a partial graph.
+
 ## 2. First queries
 
 ```bash
@@ -92,6 +133,27 @@ sv_query capabilities --json
 ```
 
 This is a local stdio process; it does not listen on a network port.
+
+## 2c. JSON envelopes and error_code
+
+Two envelope families are documented by `capabilities --json`:
+
+- **standard**: `ok` / `command` / `params` / `result` / `errors`;
+- **direct**: command-specific top-level shape; may omit `result`.
+
+`error_code` location is not uniform:
+
+```text
+trace/hybrid unknown signal -> errors[].error_code (e.g. E_SIGNAL_NOT_FOUND)
+operational failure          -> top-level error_code
+some standard failures       -> error text + errors[], no top-level code
+session failure              -> error_code + error object
+```
+
+Consumers must inspect `ok` first, then the relevant `error_code`, and must
+treat `unknown`/`partial` as distinct from false. The authoritative per-command
+envelope and field list is `capabilities --json`
+(`json_contract.envelope_policy` and `json_contract.commands`).
 
 ## 3. Objective verification
 
