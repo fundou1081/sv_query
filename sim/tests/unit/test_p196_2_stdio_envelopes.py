@@ -31,6 +31,7 @@ def test_parse_and_non_object_errors_are_structured():
         assert isinstance(line["error"], dict)
         assert line["error"]["type"] == "InvalidRequest"
         assert "message" in line["error"]
+        assert "op" not in line
 
 
 def test_startup_failure_is_structured():
@@ -40,6 +41,7 @@ def test_startup_failure_is_structured():
     assert line["ok"] is False
     assert line["error_code"] == "E_INVALID_REQUEST"
     assert line["error"]["type"] == "InvalidRequest"
+    assert "op" not in line
 
 
 def test_refresh_failure_preserves_op_and_request_id(monkeypatch, tmp_path, capsys):

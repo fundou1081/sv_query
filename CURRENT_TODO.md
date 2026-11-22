@@ -2,30 +2,29 @@
 
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
-> **状态**: P196.1 独立复核 P0 修复（legacy snapshot/session）。
-> **最后更新**: 2026-11-22 (P196 independent review follow-up)
+> **状态**: P194.2f session verify/scope/instances（P196 已完成）。
+> **最后更新**: 2026-11-23 (P196.5 reconciliation)
 
 ---
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P196.5 claims/docs/test reconciliation: downgrade C-47/C-48/C-49/C-51; CURRENT_TODO** `<待做>`
+- **当前 item**: **P194.2f session coverage for verify/scope/instances** `<待做>`
   - P195 全部完成；0.3.5 已发布（release-check -> build -> publish）
   - P194.2f 已解除阻塞（P196.1/P196.2 已完成）
   - 独立复核报告: `/tmp/p195_final_review.md`
-  - 未完成叶子：P196.1–P196.5、P194.2f、P194.3–P194.7、P193.10
+  - 未完成叶子：P194.2f、P194.3–P194.7、P193.10
 
 
 ## 📌 当前真实基线
 
 ```text
-canonical:  3196 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  3203 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 
 - 123 deferred = opensource suite（112 passed + 11 skipped），不是 123 unexecuted；
 - 11 skip 中 2 个是 SPI snapshot 外部 fixture 缺失；
-- 1 pre-existing failed = `test_real_plan_file_passes`：PLAN.md baseline 的
 
 - 计数真相源：[docs/INDEX.md](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里)。
 

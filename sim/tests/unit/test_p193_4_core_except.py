@@ -39,4 +39,4 @@ def test_gate_covers_library_and_session():
     assert "src/sv_query/trace/unified_tracer.py" in tool.CORE_FILES
     assert "src/sv_query/graph_session.py" in tool.CORE_FILES
     assert "src/sv_query/cli/core/locate/session_cmd.py" in tool.CORE_FILES
-    assert len(tool.CORE_FILES) >= 10
+    assert len(tool.CORE_FILES) >= 11

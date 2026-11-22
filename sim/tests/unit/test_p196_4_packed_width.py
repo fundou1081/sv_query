@@ -26,3 +26,28 @@ def test_packed_struct_scalar_member_is_one_bit(tmp_path):
     widths = {n["id"]: n["width"] for n in json.loads(proc.stdout)["result"]["nodes"]}
     assert widths["top.s.a"] == [0, 0]
     assert widths["top.s.b"] == [1, 0]
+
+
+class _Width:
+    value = 1
+
+
+class _FixedFalse:
+    hasFixedRange = False
+
+
+class _DeclaredType:
+    type = _FixedFalse()
+    width = _Width()
+
+
+class _Decl:
+    declaredType = _DeclaredType()
+
+
+def test_declared_width_scalar_and_default_fallback():
+    from sv_query.trace.core.semantic.exprs_drivers import ExprsDriversMixin
+
+    mixin = ExprsDriversMixin()
+    assert mixin.extract_data_width(_Decl()) == (0, 0)
+    assert mixin.extract_data_width(type("Empty", (), {})) == (0, 0)

@@ -29,6 +29,7 @@ or an attempt to override the built-in ``version`` op) raise ``TypeError`` /
 """
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable, Mapping
 
 from . import errors as _errors
@@ -46,6 +47,8 @@ E_INVALID_REQUEST = _errors.E_INVALID_REQUEST
 E_UNSUPPORTED_OP = _errors.E_UNSUPPORTED_OP
 E_HANDLER_FAILED = _errors.E_HANDLER_FAILED
 _ERROR_TYPES = _errors.ERROR_TYPES
+
+logger = logging.getLogger(__name__)
 
 _BUILTIN_OPS = frozenset({"version"})
 
@@ -74,7 +77,7 @@ SESSION_CONTRACT = {
     "success": {"ok": True, "op": "string", "result": "object"},
     "failure": {
         "ok": False,
-        "op": "string",
+        "op": "string when known; omitted when the request cannot be parsed",
         "error_code": "E_INVALID_REQUEST|E_UNSUPPORTED_OP|E_HANDLER_FAILED",
         "error": {"type": "string", "message": "string"},
     },
@@ -151,6 +154,7 @@ def _parse_request(
     except Exception as exc:
         # A hostile Mapping must not escape as a bare exception: the
         # contract promises a structured E_INVALID_REQUEST response.
+        logger.debug("request mapping access failed: %s", exc)
         return (
             _failure(
                 None, _MISSING, E_INVALID_REQUEST,
@@ -207,6 +211,7 @@ def _run_handler(
     try:
         result = dict(raw_result)
     except Exception as exc:
+        logger.debug("handler result copy failed for %r: %s", op, exc)
         return _failure(
             op, request_id, E_HANDLER_FAILED,
             f"handler for op {op!r} result could not be copied: "

@@ -20,6 +20,7 @@ CORE_FILES = (
     "src/sv_query/cli/core/semantic/trace_evidence.py",
     "src/sv_query/trace/unified_tracer.py",
     "src/sv_query/graph_session.py",
+    "src/sv_query/session.py",
     "src/sv_query/cli/core/locate/session_cmd.py",
     "src/sv_query/trace/core/cache/ast_cache.py",
     "src/sv_query/trace/core/cache/build_identity.py",

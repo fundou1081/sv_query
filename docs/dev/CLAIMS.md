@@ -2,7 +2,7 @@
 
 > **公开 claim 的唯一登记处。** 纪律依据: [SEMANTIC_CONTRACTS.md](SEMANTIC_CONTRACTS.md) §8。
 > 没有 gate 的 claim = `unverified`；已知反例 = `known-broken`；不得写成“已支持”。
-> **最后更新**: 2026-11-22 (P196 independent review: session/snapshot caveats)
+> **最后更新**: 2026-11-23 (P196.5 claims/docs/test reconciliation)
 
 ---
 
@@ -59,7 +59,7 @@
 | C-36 | tracked symlink 不得指向绝对路径；`check_repo_hygiene.py` 进 gate | tool | `test_p193_1_repo_hygiene.py` | `verified` |
 | C-37 | 公开仓库无私人开发资产/作者绝对路径；privacy + repo-hygiene gate 绿 | tool | `test_p193_2_privacy.py` | `verified` |
 | C-38 | 安装后顶层包只有 `sv_query`；CLI 位于 `sv_query.cli`，entry `sv_query.cli._entry:main` | wheel / test | `test_packaging_rename.py` | `verified` |
-| C-39 | 核心查询/库/session 路径无静默宽 except；`check_core_except.py` 进 gate | tool | `test_p193_4_core_except.py` | `verified`（10 文件） |
+| C-39 | 核心查询/库/session 路径无静默宽 except；`check_core_except.py` 进 gate | tool | `test_p193_4_core_except.py` | `verified`（11 文件） |
 | C-40 | English USER_GUIDE + KNOWN_LIMITATIONS available; README links them; Chinese full docs remain canonical | doc/test | `test_p193_6_english_docs.py` | `verified` |
 | C-41 | Miss report template + guide require desensitized fixture / structural-only fallback; no proprietary RTL | template/doc/test | `test_p193_7_miss_report.py` | `verified` |
 | C-42 | installed runtime has no network/telemetry imports; cache/snapshot are local-only | tool/test | `test_p193_8_privacy.py` | `verified`（static） |
@@ -69,9 +69,9 @@
 | C-46 | graph nodes/edges/subgraph opt into graph cache with hit/miss/disabled status and --no-cache | code/test | `test_p194_2b_graph_cache.py` | `verified` |
 | C-47 | GraphSession reuses one graph; stdio session serves supported graph/query ops; legacy no-MIG snapshot fails explicitly instead of emptying the graph (P196.1) | code/test | `test_p194_2c_graph_session.py`, `test_p196_1_snapshot_capability.py` | `verified` |
 | C-48 | GraphSession exposes drivers/loads/paths/dataflow; file-mode refresh re-reads disk; MIG-required callers cannot hydrate a graph-only entry (P195.2/P196.3) | code/test | `test_p194_2c_graph_session.py`, `test_p195_2_capability_enforcement.py`, `test_p196_3_file_refresh.py` | `verified` |
-| C-49 | scalar port/variable width is `(0,0)` / width 1; `[1:0]` remains width 2; profile matches type; **scoped: packed members/fallbacks still `(1,0)` (P196.4)** | code/test | `test_p195_3_scalar_width.py` | `scoped` |
+| C-49 | scalar port/variable/profile and packed-struct 1-bit members are `(0,0)` / width 1; `[1:0]` remains width 2; **scoped: lazy extractor defaults, bit_select/ports_ifaces fallbacks, and explicitly-unknown connection widths may use `(1,0)`** | code/test | `test_p195_3_scalar_width.py`, `test_p196_4_packed_width.py` | `scoped` |
 | C-50 | PyPI publish is blocked by tests + version/tag gate | code/test | `test_p195_4_release_gate.py` | `verified` |
-| C-51 | session protocol ops/envelope/unsupported are documented and machine-readable; all stdio error paths use the structured failure envelope (P196.2) | code/test | `test_p195_5_session_contract.py`, `test_p196_2_stdio_envelopes.py` | `verified` |
+| C-51 | session protocol ops/envelope/unsupported are documented and machine-readable; all stdio error paths use the structured failure envelope (op omitted only when unparseable) | code/test | `test_p195_5_session_contract.py`, `test_p196_2_stdio_envelopes.py` | `verified` |
 | C-52 | GraphSession context/close/idempotence and stdio BrokenPipe cleanup | code/test | `test_p195_6_session_lifecycle.py` | `verified` |
 | C-53 | BuildIdentity version is sourced from PACKAGE_VERSION; release check compares pyproject/session/identity/tag | code/test | `test_p195_4_release_gate.py` | `verified` |
 | C-54 | --version/--quiet discoverable; cache controls and error_code locations documented | code/test | `test_p195_8_user_surface.py` | `verified` |

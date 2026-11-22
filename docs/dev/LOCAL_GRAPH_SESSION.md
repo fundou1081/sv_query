@@ -89,8 +89,10 @@ ops and the success/failure envelope.
  "error": {"type": "UnsupportedOperation", "message": "unsupported op: verify_claim"}}
 ```
 
-`request_id`, when supplied, is echoed. One graph is built/hydrated per process;
-`refresh()` checks source identity per request.
+`request_id`, when supplied, is echoed. `op` is omitted only when the request
+cannot be parsed (parse/startup errors); refresh/handler failures echo it. One
+graph is built/hydrated per process; `refresh()` checks source identity per
+request.
 
 ## 5. Invalidation and lifecycle
 
@@ -124,4 +126,3 @@ Independent review reproduced:
 - all stdio parse/startup/refresh errors use the structured Session failure
   envelope (P196.2).
 
-Legacy snapshots without MIG still reject MIG queries explicitly (P196.1).
