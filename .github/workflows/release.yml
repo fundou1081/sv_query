@@ -12,6 +12,11 @@ jobs:
   release-check:
     name: Release gate (tests + version)
     runs-on: ubuntu-latest
+    env:
+      COLUMNS: "120"
+      # Same help-rendering fallback as tests.yml: Rich on Ubuntu CI can emit
+      # an empty options table in captured subprocess output.
+      TYPER_USE_RICH: "0"
     steps:
       - uses: actions/checkout@v4
         with:
