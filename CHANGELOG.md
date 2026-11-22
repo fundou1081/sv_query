@@ -3,6 +3,19 @@
 > 完整历史 changelog. README 短版只展示"为什么用 sv_query" + 5 分钟上手.
 > 详细 release notes 看这里.
 
+## 2026-11-23 (0.3.6 beta — P196 snapshot/session correctness)
+
+- P196.1: legacy snapshot without MIG raises `SnapshotCapabilityError`; MIG
+  queries never rebuild from empty sources or empty the graph.
+- P196.2: all stdio parse/startup/refresh errors use the structured Session
+  failure envelope; `op` is omitted only when the request is unparseable.
+- P196.3: file-mode `GraphSession.refresh()` re-reads disk content and increments
+  generation; missing files fail explicitly.
+- P196.4: packed-struct scalar members and declared/default extraction fallbacks
+  use canonical `(0,0)` / width 1.
+- P196.5: claims/docs/test reconciliation; C-39 gate covers 11 files.
+- Canonical 3203 passed / 0 failed / 123 deferred.
+
 ## 2026-11-22 (0.3.5 beta — P195 review hardening)
 
 - P195.1: cache key hashes resolved filelist closure, `+define+`, `+incdir+`
