@@ -3,6 +3,21 @@
 > 完整历史 changelog. README 短版只展示"为什么用 sv_query" + 5 分钟上手.
 > 详细 release notes 看这里.
 
+## 2026-11-22 (0.3.5 beta — P195 review hardening)
+
+- P195.1: cache key hashes resolved filelist closure, `+define+`, `+incdir+`
+  headers; missing/unreadable closure is an explicit miss.
+- P195.2: `graph` vs `graph+mig` capabilities enforced; graph-only cache no longer
+  satisfies trace/GraphSession MIG queries.
+- P195.3: scalar widths normalized to `(0,0)`/width 1; `[1:0]` remains width 2.
+- P195.4: release workflow blocks publish on tests + tag/version consistency.
+- P195.5: session ops/envelope/unsupported published in `capabilities.json_contract`.
+- P195.6: GraphSession context/close lifecycle; stdio BrokenPipe cleanup.
+- P195.7: BuildIdentity version single-sourced from `PACKAGE_VERSION`.
+- P195.8: `--version`, discoverable `--quiet`, cache/error-code user docs.
+- P195.9: dead cache stubs removed; except gate covers 10 core/library files.
+- Canonical 3188 passed / 0 failed / 123 deferred.
+
 ## 2026-11-22 (0.3.4 beta — cache correctness + local graph session)
 
 - P194.1: remove CLI entry sys.path bootstrap, author pyslang/UVM paths,

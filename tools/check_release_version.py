@@ -2,7 +2,7 @@
 """P195.4 — fail unless pyproject/session/tag versions agree.
 
 Used by .github/workflows/release.yml before build/publish. Locally:
-    python3 tools/check_release_version.py --tag v0.3.4
+    python3 tools/check_release_version.py --tag v0.3.5
 """
 from __future__ import annotations
 

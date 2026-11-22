@@ -38,7 +38,7 @@ SESSION_CONTRACT_VERSION = "1.0"
 # Explicit runtime constant, deliberately not read from installation metadata
 # or the environment so `version` stays deterministic.  Kept in sync with
 # ``pyproject.toml [project].version`` by a contract test.
-PACKAGE_VERSION = "0.3.4"
+PACKAGE_VERSION = "0.3.5"
 
 # Re-exported for the D10/D11 import path (`from sv_query.session import E_*`);
 # the values themselves are single-sourced from :mod:`sv_query.errors`.

@@ -20,7 +20,7 @@ def test_session_version_json():
     proc = _run("session", "--request", '{"op": "version"}', "--json")
     assert proc.returncode == 0
     assert json.loads(proc.stdout) == {
-        "schema_version": "1.0", "package_version": "0.3.4",
+        "schema_version": "1.0", "package_version": "0.3.5",
     }
     assert proc.stderr == ""
 
