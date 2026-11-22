@@ -1440,7 +1440,7 @@ class GraphBuilder:
                         id=node_id, name=item["name"],
                         module=getattr(parent_node, "module", "") if parent_node else "",
                         kind=NodeKind.SIGNAL,
-                        width=(w - 1, 0) if w > 1 else (1, 0),
+                        width=(w - 1, 0) if w > 1 else (0, 0),
                         bit_range=br,
                         is_signed=item["signed"],
                         parent=parent_id,
@@ -1451,7 +1451,7 @@ class GraphBuilder:
                     self.graph.add_trace_node(node)
                     created += 1
                 else:
-                    node.width = (w - 1, 0) if w > 1 else (1, 0)
+                    node.width = (w - 1, 0) if w > 1 else (0, 0)
                     node.is_signed = item["signed"]
                     node.parent = parent_id
                     node.parent_bit_start = off + w - 1

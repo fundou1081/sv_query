@@ -876,7 +876,8 @@ class ExprsDriversMixin:
             if hasattr(declared_type, "width"):
                 w = declared_type.width
                 if hasattr(w, "value"):
-                    return (int(w.value), 0)
+                    _wv = int(w.value)
+                    return (0, 0) if _wv == 1 else (_wv - 1, 0)
             # [iter_307 / PLAN P13.6] unpacked array：节点宽度 = 元素宽度
             dtt0 = getattr(declared_type, "type", None)
             if dtt0 is not None and bool(getattr(dtt0, "isUnpackedArray", False)):
@@ -961,8 +962,8 @@ class ExprsDriversMixin:
             if kw in widths:
                 return (widths[kw] - 1, 0)
 
-        # 默认 1 位
-        return (1, 0)
+        # Default one bit: canonical scalar representation.
+        return (0, 0)
 
     def get_packed_member_layout(self, var_symbol) -> list[dict] | None:
         """[iter_299 / PLAN P11.2] packed struct/union 的成员布局。
