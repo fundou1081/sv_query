@@ -60,7 +60,7 @@ class QueryClient:
         self._closed = True
         self._graph_session.close()
 
-    def __enter__(self) -> "QueryClient":
+    def __enter__(self) -> QueryClient:
         if self._closed:
             raise RuntimeError("QueryClient is closed")
         return self

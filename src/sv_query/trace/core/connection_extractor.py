@@ -171,590 +171,403 @@ class ConnectionExtractor:
         self._warnings.append(
             f"Unresolved module ports: {inst_module_name} (instance: {inst_name})")
 
-    def extract(self) -> ExtractorResult:
-        result = ExtractorResult()
-
-        # [FIX Issue 20] 初始化 warnings 列表
-        self._warnings = []
-
-        # [FIX Issue 19] 动态获取根模块名而非硬编码 "top"
-        # 优先从 trees 的键中获取根模块名(trees 包含当前处理的文件),
-        # 如果没有则使用第一个模块
-        if self.root_module_name is None:
-            trees = getattr(self.adapter.parser, "trees", {})
-            if trees:
-                # trees 的键是 tree 文件的键,不一定等于实际模块名
-                # 需要验证该键是否对应实际模块,否则使用实际模块名
-                tree_key = list(trees.keys())[0]
-                actual_modules = [self.adapter.get_module_name(m) for m in self.adapter.get_modules()]
-                if tree_key in actual_modules:
-                    self.root_module_name = tree_key
-                else:
-                    # tree key 与实际模块名不匹配,查找包含实例的模块
-                    # 找到没有被其他模块实例化的模块(顶层模块)
-                    instances = self.adapter.get_module_instances()
-                    # [iter_120] 不再叠加 legacy get_generate_instances 族:
-                    # iter_117 修了 indexed 族 get_path 的 gen_block 去重后,
-                    # legacy 族 (iter_113 曾因路径加倍而保留) 已非必需 — 且 legacy
-                    # 对嵌套模块取父路径丢 root ('u_m2.G2[0]' 缺 'top') → 同 key
-                    # 覆盖正确 indexed 路径 → 实例连接整条消失 (iter_119 观察).
-                    # 移除后 generate 实例只走 indexed 族 (hp 全路径, iter_109/117)
-
-                    # 收集所有被实例化的模块名
-                    instantiated_modules = set()
-                    for inst in instances:
-                        if hasattr(inst, "type") and hasattr(safe_attr(inst, "type", None), "value"):
-                            instantiated_modules.add(safe_attr(inst, "type", None).value.strip())
-
-                    # 找到没有被实例化的模块(顶层模块)
-                    for mod in self.adapter.get_modules():
-                        mod_name = self.adapter.get_module_name(mod)
-                        if mod_name not in instantiated_modules:
-                            self.root_module_name = mod_name
-                            break
-
-                    # 如果没找到,使用第一个实际模块
-                    if self.root_module_name is None:
-                        self.root_module_name = actual_modules[0] if actual_modules else tree_key
-            else:
-                for mod in self.adapter.get_modules():
-                    self.root_module_name = self.adapter.get_module_name(mod)
-                    break
-
+    def _ensure_root_module(self) -> None:
+        if self.root_module_name is not None:
+            return
         trees = getattr(self.adapter.parser, "trees", {})
-        instances = self.adapter.get_module_instances()
-        # [iter_120] legacy 族移除 (见上; iter_117 后非必需且嵌套时丢 root)
+        if trees:
+            tree_key = list(trees.keys())[0]
+            actual_modules = [self.adapter.get_module_name(m) for m in self.adapter.get_modules()]
+            if tree_key in actual_modules:
+                self.root_module_name = tree_key
+                return
+            instances = self.adapter.get_module_instances()
+            instantiated_modules = set()
+            for inst in instances:
+                typ = safe_attr(inst, "type", None)
+                if hasattr(typ, "value"):
+                    instantiated_modules.add(safe_attr(inst, "type", None).value.strip())
+            for mod in self.adapter.get_modules():
+                mod_name = self.adapter.get_module_name(mod)
+                if mod_name not in instantiated_modules:
+                    self.root_module_name = mod_name
+                    return
+            self.root_module_name = actual_modules[0] if actual_modules else tree_key
+            return
+        for mod in self.adapter.get_modules():
+            self.root_module_name = self.adapter.get_module_name(mod)
+            return
 
-        # 收集所有模块的端口定义 (方向和位宽)
+    @staticmethod
+    def _width_tuple(width):
+        if not isinstance(width, dict):
+            return width
+        msb = width.get("msb_eval", width.get("msb_raw", 0))
+        lsb = width.get("lsb_eval", width.get("lsb_raw", 0))
+        try:
+            msb = int(msb) if msb is not None else 0
+        except (ValueError, TypeError):
+            msb = 0
+        try:
+            lsb = int(lsb) if lsb is not None else 0
+        except (ValueError, TypeError):
+            lsb = 0
+        return (msb, lsb)
+
+    def _interface_for_port(self, port):
+        idef = getattr(port, "interfaceDef", None)
+        if idef is None:
+            return None
+        try:
+            iface_name = str(getattr(idef, "name", "")) or ""
+            members = self.adapter.get_interface_members(port)
+            return (iface_name, list(members)) if iface_name and members else None
+        except Exception as exc:
+            logger.debug("interface 端口收集失败: %s", exc)
+            return None
+
+    def _collect_one_module(self, module):
+        module_name = self.adapter.get_module_name(module)
+        port_dirs = {}
+        port_widths = {}
+        iface_ports = {}
+        for port in self.adapter.get_port_declarations(module):
+            name, direction = self.adapter.get_port_name_and_direction(port)
+            port_dirs[name] = direction.strip()
+            iface = self._interface_for_port(port)
+            if iface is not None:
+                iface_ports[name] = iface
+            port_widths[name] = self._width_tuple(
+                self.adapter.extract_port_width(port, scope=module))
+        return module_name, port_dirs, port_widths, iface_ports
+
+    def _collect_module_metadata(self):
         all_module_ports = {}
         all_module_widths = {}
-        # [iter_129] interface 类型端口: module_name → {port_name: (interface_def_name, members)}
-        all_interface_ports: dict[str, dict[str, tuple[str, list[str]]]] = {}
+        all_interface_ports = {}
         for module in self.adapter.get_modules():
-            module_name = self.adapter.get_module_name(module)
-            port_dirs = {}
-            port_widths = {}
-            iface_ports: dict[str, tuple[str, list[str]]] = {}
-            for port in self.adapter.get_port_declarations(module):
-                name, direction = self.adapter.get_port_name_and_direction(port)
-                port_dirs[name] = direction.strip()
-                # [iter_129] InterfacePortSymbol (kind=SymbolKind.InterfacePort,
-                # 有 interfaceDef): 收集接口名 + 成员信号, 供实例层成员桥
-                _idef = getattr(port, "interfaceDef", None)
-                if _idef is not None:
-                    try:
-                        iface_name = str(getattr(_idef, "name", "")) or ""
-                        members = self.adapter.get_interface_members(port)
-                        if iface_name and members:
-                            iface_ports[name] = (iface_name, list(members))
-                    except Exception as _e:
-                        logger.debug("interface 端口收集失败: %s", _e)
-                # 获取位宽 (传入 module 作为 scope 以解析参数)
-                width = self.adapter.extract_port_width(port, scope=module)
-                # extract_port_width with scope returns dict, convert to tuple for compatibility
-                if isinstance(width, dict):
-                    msb = width.get("msb_eval", width.get("msb_raw", 0))
-                    lsb = width.get("lsb_eval", width.get("lsb_raw", 0))
-                    try:
-                        msb = int(msb) if msb is not None else 0
-                    except (ValueError, TypeError):
-                        msb = 0
-                    try:
-                        lsb = int(lsb) if lsb is not None else 0
-                    except (ValueError, TypeError):
-                        lsb = 0
-                    width = (msb, lsb)
-                port_widths[name] = width
-            all_module_ports[module_name] = port_dirs
-            all_module_widths[module_name] = port_widths
-            if iface_ports:
-                all_interface_ports[module_name] = iface_ports
+            name, ports, widths, ifaces = self._collect_one_module(module)
+            all_module_ports[name] = ports
+            all_module_widths[name] = widths
+            if ifaces:
+                all_interface_ports[name] = ifaces
+        return all_module_ports, all_module_widths, all_interface_ports
 
-        # [FIX] 第一阶段:收集所有实例信息
-        instances_info = []  # [(inst_module_name, inst_name, parent_module)]
+    def _module_name_for_instance(self, inst) -> str:
+        typ = safe_attr(inst, "type", None)
+        inst_type_value = typ.value.strip() if hasattr(typ, "value") and typ.value else ""
+        _def_name = ""
+        try:
+            _def = getattr(inst, "definition", None)
+            if _def is not None:
+                _def_name = _safe_str(getattr(_def, "name", ""))
+        except Exception as e:
+            logger.debug("def_name 提取失败: %s", e)
+        if _def_name:
+            return _def_name
+        if inst_type_value:
+            return inst_type_value
+        return self._get_parent_module_name(inst)
 
+    def _collect_instances_info(self, instances) -> list[dict]:
+        infos = []
         for inst in instances:
-            inst_name = _instance_decl_name(inst)
+            infos.append({
+                "inst_module_name": self._module_name_for_instance(inst),
+                "inst_name": _instance_decl_name(inst),
+                "parent_module": self._get_parent_module_name(inst),
+                "gen_block": self._get_generate_block_name(inst),
+            })
+        return infos
 
-            inst_type_value = safe_attr(inst, "type", None).value.strip() if hasattr(safe_attr(inst, "type", None), "value") and safe_attr(inst, "type", None).value else ""
-            # [PR1 2026-06-14] 优先用 inst.definition.name (真实 def_name)
-            _def_name = ""
-            try:
-                _def = getattr(inst, "definition", None)
-                if _def is not None:
-                    _def_name = _safe_str(getattr(_def, "name", ""))
-            except Exception as e:
-                logger.debug("def_name 提取失败: %s", e)
-            if _def_name:
-                # [iter_113] 去掉 '!= inst_name' 守卫: 实例名 == 模块类型名是惯用法
-                # (cell4 cell4(...)), def_name 权威, 直接采用
-                inst_module_name = _def_name
-            elif inst_type_value:
-                # type token (native wrapper 存 definition.name) = 模块类型, 权威 —
-                # 即使 == inst_name 也直接采用 (旧守卫在 inst==type 时错误回落
-                # parent_module → inst_module_name==parent → get_path 自环递归,
-                # CLA cell4 cell4 复现, 同 iter_112 原语根因型)
-                inst_module_name = inst_type_value
-            else:
-                inst_module_name = self._get_parent_module_name(inst)
-            parent_module = self._get_parent_module_name(inst)
+    @staticmethod
+    def _prefixed(prefix: str, gen_block: str | None, name: str) -> str:
+        return f"{prefix}.{gen_block}.{name}" if gen_block else f"{prefix}.{name}"
 
-            gen_block = self._get_generate_block_name(inst)
-            instances_info.append(
-                {
-                    "inst_module_name": inst_module_name,
-                    "inst_name": inst_name,
-                    "parent_module": parent_module,
-                    "gen_block": gen_block,
-                }
-            )
-
-        # [FIX] 第二阶段:构建模块 -> 实例路径的映射
-        module_to_path = {}  # (inst_module_name, inst_name) -> full_path
-
-        # 递归确定路径
-        def get_path(info: dict, depth: int = 0) -> str:
-            """递归获取实例的完整路径"""
-            if depth > 20:
-                return f"{self.root_module_name}.{info['inst_name']}"
-            parent_mod = info["parent_module"]
-            gen_block = info.get("gen_block")
-
-            # [iter_117] 父路径已含 generate 索引段 → gen_block 已在 parent 里,
-            # 置 None 防二次拼接 (iter_116 摸底: aes U_SUB.ROM[4].ROM[4] ×84 /
-            # dblclockfft ...GENSTAGES[0].GENSTAGES[0] ×63 — 实例在 generate-for
-            # entry 内, 其 hp 父路径 '...GENSTAGES[0]' 已带索引, _get_generate_block_name
-            # 的 hp 正则又取一次 'GENSTAGES[0]' → get_path 拼成双段假节点).
-            # genfor/CLA 没炸是 legacy get_generate_instances 族同 key 覆盖掩盖;
-            # 无 legacy 族 (generate 在嵌套实例内) 即暴露 — 此处去重是根因修。
-            if gen_block and parent_mod and re.search(r"\[\d+\]$", parent_mod):
-                gen_block = None
-
-            # Handle '__root__' specially - instance is at top level
-            if parent_mod == "__root__":
-                if gen_block:
-                    return f"{self.root_module_name}.{gen_block}.{info['inst_name']}"
-                # Special case: if inst_module_name is also '__root__',
-                # this instance IS the root module (not a sub-instance)
-                if info["inst_module_name"] == "__root__":
-                    return info["inst_name"]
-                return f"{self.root_module_name}.{info['inst_name']}"
-            elif parent_mod == "top":
-                if gen_block:
-                    return f"{self.root_module_name}.{gen_block}.{info['inst_name']}"
-                return f"{self.root_module_name}.{info['inst_name']}"
-            else:
-                # parent_mod is not in instances_info
-                # Determine if it's a top-level module (use parent_mod as prefix)
-                # or a submodule of root (use root_module_name as prefix)
-                #
-                # Heuristic: if parent_mod appears as inst_module_name in instances_info,
-                # then it's a submodule (instances of it exist elsewhere), use root_module_name.
-                # Otherwise, it's a top-level module, use parent_mod as prefix.
-                parent_is_submodule_of_root = any(
-                    info["inst_module_name"] == parent_mod for info in instances_info
-                )
-                if not parent_is_submodule_of_root:
-                    # parent_mod is a top-level module, not in instances_info
-                    # Use parent_mod as the path prefix (this fixes wrong root_module_name fallback)
-                    if gen_block:
-                        return f"{parent_mod}.{gen_block}.{info['inst_name']}"
-                    return f"{parent_mod}.{info['inst_name']}"
-                # parent_mod is a submodule of root, use root_module_name fallback
-                # [iter_112] 防自环: 跳过 other_info is info (自身). 根因是门级原语
-                # inst_module_name 回落成 parent_module → parent 匹配到它自己 →
-                # 无限递归被 depth>20 截断成 `top.and0.and0...` ×21 假节点.
-                # 原语现在在 adapter 层被过滤 (非模块实例), 此 guard 兜底同类
-                # "实例的模块名 == 其父路径" 的自匹配, 保证任何输入不递归自环。
-                for other_info in instances_info:
-                    if other_info is info:
-                        continue
-                    if other_info["inst_module_name"] == parent_mod:
-                        parent_path = get_path(other_info, depth + 1)
-                        if gen_block:
-                            return f"{parent_path}.{gen_block}.{info['inst_name']}"
-                        return f"{parent_path}.{info['inst_name']}"
-                # Fallback (should not reach here if parent_is_submodule_of_root check works)
-                if gen_block:
-                    return f"{self.root_module_name}.{gen_block}.{info['inst_name']}"
-                return f"{self.root_module_name}.{info['inst_name']}"
-
-        for info in instances_info:
-            path = get_path(info)
-            gen_block = info.get("gen_block")
-            if gen_block:
-                key = (info["inst_module_name"], info["inst_name"], gen_block)
-            else:
-                key = (info["inst_module_name"], info["inst_name"])
-            module_to_path[key] = path
-        # [iter_120] path_by_info: 与 instances_info 对齐的逐实例路径 —
-        # module_to_path 的 key (module, name, gen) 不含**父实例路径**, 同一模块
-        # 多实例 (如 G1[0]/G1[1] 各含 m2, m2 内同名 G2 entry) 会 key 碰撞 →
-        # 后写覆盖 → 部分实例的连接丢失/错挂 (iter_119 观察 G2[0] 归属).
-        # 第三阶段用同序索引直接取逐实例路径, 不再查碰撞 key.
-        paths_by_info = [get_path(info) for info in instances_info]
-
-        # [FIX] 第三阶段:使用正确路径创建节点和边
-        for _idx, inst in enumerate(instances):
-            inst_name = _instance_decl_name(inst)
-
-            inst_type_value = safe_attr(inst, "type", None).value.strip() if hasattr(safe_attr(inst, "type", None), "value") and safe_attr(inst, "type", None).value else ""
-            # [PR1 2026-06-14] 优先用 inst.definition.name (真实 def_name)
-            _def_name = ""
-            try:
-                _def = getattr(inst, "definition", None)
-                if _def is not None:
-                    _def_name = _safe_str(getattr(_def, "name", ""))
-            except Exception as e:
-                logger.debug("def_name 提取失败: %s", e)
-            if _def_name:
-                # [iter_113] def_name 权威, 直接采用 (实例名==类型名是惯用法)
-                inst_module_name = _def_name
-            elif inst_type_value:
-                # [iter_113] type token (native wrapper 存 definition.name) = 模块类型,
-                # 权威 — 即使 == inst_name 也采用; 旧守卫 inst==type 时回落 parent →
-                # inst_module_name==parent → get_path 自环递归 (CLA cell4 cell4)
-                inst_module_name = inst_type_value
-            else:
-                inst_module_name = self._get_parent_module_name(inst)
-
-            gen_block = self._get_generate_block_name(inst)
-            if gen_block:
-                key = (inst_module_name, inst_name, gen_block)
-                inst_path = module_to_path.get(key, f"{self.root_module_name}.{gen_block}.{inst_name}")
-            else:
-                key = (inst_module_name, inst_name)
-                inst_path = module_to_path.get(key, f"{self.root_module_name}.{inst_name}")
-
-            # [iter_120] 逐实例路径优先 (paths_by_info 与 instances 同序, 无 key 碰撞)
-            if _idx < len(paths_by_info):
-                inst_path = paths_by_info[_idx]
-
-            # [iter_109/110] 连接信号作用域 = 实例的宿主模块路径:
-            # inst_path 去掉末尾实例名 + 所有尾部 "[N]" generate 段.
-            # top.g[2].U → top (信号 top.arr[2]); 嵌套 cordic.g[0].U.g[0].x_shifter
-            # → cordic.g[0].U (rotator 宿主模块, 信号取 rotator 作用域).
-            # (原 iter_109 只剥第一个 generate 段 → 嵌套实例错落到根模块作用域,
-            #  rotator 的 x_i 误连到顶层 x_i)
-            _sig_scope = None
-            _segs = inst_path.split(".")
-            if len(_segs) >= 2:
-                _mod_segs = _segs[:-1]           # 去掉实例名
-                while _mod_segs and "[" in _mod_segs[-1]:
-                    _mod_segs.pop()               # 去掉尾部 generate 段 ([N])
-                if _mod_segs:
-                    _sig_scope = ".".join(_mod_segs)
-
-            module_ports = all_module_ports.get(inst_module_name, {})
-            conns = self.adapter.get_instance_connection(inst)
-
-            # [FIX Issue 20] 检测可能缺少文件的情况
-            if not module_ports and conns and not self._module_source_known(inst_module_name):
-                # 实例有连接但模块没有端口定义, 且源文件里确实找不到 module
-                self._missing_module_warning(inst_module_name, inst_name)
-
-            named_conns = {}
-            positional_conns = []
-
-            for port_key, signal_name in conns:
-                if port_key.startswith("_pos_"):
-                    idx = int(port_key.replace("_pos_", ""))
-                    positional_conns.append((idx, signal_name))
-                else:
-                    named_conns[port_key] = signal_name
-
-            positional_conns.sort(key=lambda x: x[0])
-            port_names = list(module_ports.keys())
-
-            for idx, signal_name in positional_conns:
-                if idx < len(port_names):
-                    port_name = port_names[idx]
-                    named_conns[port_name] = signal_name
-
-            # [iter_274] generate 块内的**局部**信号必须带块路径 (top.G[0].local_wire)。
-            # `_sig_scope` 会去掉 generate 段 (为修 case26 的 rotator 误连), 但那对
-            # 块内局部声明是错的: 每轮同名 wire 会塌缩到模块作用域。
-            _parent_path = inst_path.rsplit(".", 1)[0] if "." in inst_path else ""
-            _gen_parent_path = _parent_path
-            _gen_local_names: set[str] = set()
-            if _gen_parent_path:
-                _index = getattr(self, "_gen_locals_index", None)
-                if _index is None:
-                    _get_index = getattr(self.adapter, "get_generate_locals_index", None)
-                    _index = _get_index() if callable(_get_index) else {}
-                    self._gen_locals_index = _index
-                _gen_local_names = _index.get(_gen_parent_path, set())
-
-            # 如果在 generate block 中,创建 generate block 容器节点
-            if gen_block:
-                gen_path = inst_path.rsplit(".", 1)[0]  # e.g., top.GEN from top.GEN.g
-                gen_module = (
-                    ".".join(gen_path.rsplit(".", 1)[:-1]) or gen_path.rsplit(".", 1)[0]
-                )  # e.g., top from top.GEN
-                # 检查是否已经存在
-                if not any(n.id == gen_path for n in result.nodes):
-                    result.nodes.append(
-                        TraceNode(
-                            id=gen_path,
-                            name=gen_block,
-                            module=gen_module,
-                            kind=NodeKind.GENERATE_BLOCK
-                            if hasattr(NodeKind, "GENERATE_BLOCK")
-                            else NodeKind.INSTANTIATED_MODULE,
-                            width=(1, 0),
-                            is_port=False,
-                        )
-                    )
-
-            # 创建实例父节点
-            result.nodes.append(
-                TraceNode(
-                    id=inst_path,
-                    name=inst_name,
-                    module=inst_module_name,  # [PR1 2026-06-14] fix: was inst_path.rsplit — use actual def_name
-                    kind=NodeKind.INSTANTIATED_MODULE,
-                    width=(1, 0),
-                    is_port=False,
-                )
-            )
-
-            # 为每个端口创建节点和边
-            for port_name, signal_name in named_conns.items():
-                port_name = self.adapter.clean_name(port_name)
-                signal_name = self.adapter.clean_name(signal_name)
-
-                direction = module_ports.get(port_name, "unknown").strip()
-                # [iter_129] interface 类型端口 (模块端口声明 bus_if b):
-                # 收集成员级连接信息 (inst_path, port_name, iface, members,
-                # parent 前缀), 供 graph_builder 后处理建成员桥。节点仍创建
-                # (PORT_IN kind, 兼容既有查询), 但跳过普通 input/output/inout
-                # 方向边 — interface 是共享总线, 方向由实例内部是否驱动成员
-                # 决定 (后处理检测 incoming DRIVER)。
-                _iface_info = (all_interface_ports.get(inst_module_name, {})
-                               .get(port_name))
-                if _iface_info is not None:
-                    _iface_name, _iface_members = _iface_info
-                    _iface_parent_scope = _sig_scope if _sig_scope else _parent_path
-                    result.interface_links.append(
-                        (inst_path, port_name, _iface_name,
-                         list(_iface_members),
-                         f"{_iface_parent_scope}.{signal_name}")
-                    )
-
-                inst_port_id = f"{inst_path}.{port_name}"
-                # [FIX 2026-08-27 18:56] Bug #2: 端口方向未识别不再静默 fallback
-                # 区分两种情况: (a) 端口在 module_ports 缺失 (ref port / 拼写错 / 模块定义不全)
-                #             (b) direction 是 'unknown' 字符串 (get_port_name_and_direction 返默认值)
-                # 之前两者都静默落 PORT_IN, 违反 AGENTS.md §2 禁止 silent fallback.
-                # 现在: 未识别时 logger.warning + extra 记实际 direction, 行为仍取 PORT_IN (兼容).
-                if port_name not in module_ports:
-                    logger.warning(
-                        "[connection_extractor] port '%s' not in module_ports for %s; "
-                        "falling back to PORT_IN (likely ref port or missing module def)",
-                        port_name, inst_module_name,
-                    )
-                    port_extra = {"direction": "missing", "fallback": "PORT_IN"}
-                elif direction == "unknown":
-                    logger.warning(
-                        "[connection_extractor] port '%s' direction unknown for %s; "
-                        "falling back to PORT_IN (likely ref port or unparsed direction)",
-                        port_name, inst_module_name,
-                    )
-                    port_extra = {"direction": "unknown", "fallback": "PORT_IN"}
-                else:
-                    port_extra = {"direction": direction.lower()}
-
-                if "inout" in direction.lower():
-                    kind = NodeKind.PORT_INOUT
-                elif "output" in direction.lower():
-                    kind = NodeKind.PORT_OUT
-                else:
-                    kind = NodeKind.PORT_IN
-                # 获取端口位宽
-                port_widths = all_module_widths.get(inst_module_name, {})
-                width = port_widths.get(port_name)
-
-                # A missing entry is unknown; (0,0) is now the canonical scalar width.
-                if width is None:
-                    logger.warning(
-                        "[connection_extractor] port '%s' width missing for %s; "
-                        "falling back to (1,0)", port_name, inst_module_name)
-                    width = (1, 0)
-
-                # [NEW] 如果位宽为 (0,0),尝试从父模块的信号宽度推断
-                if width == (0, 0) and signal_name:
-                    parent_path = inst_path.rsplit(".", 1)[0] if "." in inst_path else "top"
-                    parent_widths = all_module_widths.get(parent_path, {})
-                    if signal_name in parent_widths:
-                        width = parent_widths[signal_name]
-
-                # [FIX 2026-08-27 18:56] Bug #3: 位宽 (0,0) 静默兜底为 (1,0) 加 warning
-                # 之前 line 407 静默 fallback if width == (0,0) -> (1,0),
-                # 违反 AGENTS.md §2. 现在: 兜底仍保留 (兼容), 但 logger.warning + extra 记实际 width.
-                width_extra = {"width": width}
-                final_width = width
-                # 合并 port_extra + width_extra 到 TraceNode.extra
-                merged_extra = {**port_extra, **width_extra}
-
-                _lower = port_name.lower()
-                result.nodes.append(
-                    TraceNode(
-                        id=inst_port_id,
-                        name=port_name,
-                        module=inst_path,
-                        kind=kind,
-                        width=final_width,
-                        is_port=True,
-                        # [iter_276] 原 LoadExtractor/ClockDomainExtractor 只做"为
-                        # 模块定义建端口节点 + 打 clock/reset 标记"; 删除它们后标记
-                        # 收敛到实例端口节点 (这里), 不再有模块定义端口节点。
-                        is_clock=("clk" in _lower),
-                        is_reset=("rst" in _lower),
-                        extra=merged_extra,
-                    )
-                )
-
-                direction_clean = direction.strip()
-                parent_path = inst_path.rsplit(".", 1)[0] if "." in inst_path else "top"
-
-                # [iter_129] interface 端口跳过普通方向建模 (节点已建, link 已收集)
-                if _iface_info is not None:
-                    continue
-
-                if direction_clean == "input":
-                    # [iter_109] generate 内实例: 信号作用域取模块路径 (去掉 generate 段)
-                    # [iter_274] 但块内**局部声明**必须保留块路径, 否则跨轮塌缩。
-                    if signal_name in _gen_local_names and _gen_parent_path:
-                        _sig_parent = _gen_parent_path
-                    else:
-                        _sig_parent = _sig_scope if _sig_scope else parent_path
-                    parent_sig = f"{_sig_parent}.{signal_name}"
-                    # [FIX 2026-08-13] 跳过 SELFLOOP (SELFLOOP 边不画)。
-                    # 当 parent_sig 路径与 inst_path 路径冲突时 (e.g. case26 中
-                    # level2_scale u_scale (.din(data_in)) — parent_sig = "golden_hier_top.u_scale.din"
-                    # 而 inst_path = "golden_hier_top.u_scale" + 拼 ".din" 之后两个 ID 完全一样)
-                    # 会出现 self-loop: src == dst.
-                    # 决策: D2 (只给 CROSS_TOP 画红线 + SELFLOOP 删)
-                    if parent_sig != inst_port_id:
-                        result.edges.append(
-                            TraceEdge(
-                                src=parent_sig,
-                                dst=inst_port_id,
-                                kind=EdgeKind.CONNECTION,
-                                assign_type="connection",
-                            )
-                        )
-                    # [FIX 2026-07-08] 用 inst_path (完整 hierarchy) 替代 inst_module_name (短名)
-                    # 之前: bitreverse.i_clk (flatten, 多 instance 合并, 冲突)
-                    # 现在: openofdm_tx.dot11_tx.ifft64.revstage.i_clk (hierarchy 完整)
-                    # 这样多 instance 区分, graph 不再 merge.
-                    child_signal_id = f"{inst_path}.{port_name}"
-                    # [FIX 2026-08-13] 同样跳过 SELFLOOP (inst_port_id == child_signal_id)
-                    if child_signal_id != inst_port_id:
-                        result.edges.append(
-                            TraceEdge(
-                                src=inst_port_id, dst=child_signal_id, kind=EdgeKind.CONNECTION, assign_type="internal"
-                            )
-                        )
-                    # 让 trace 跨 module boundary 仍能找 leaf module 内部 signal
-                elif direction_clean == "output":
-                    # 输出端口: 子模块输出端口驱动实例端口
-                    # 连接关系: child.data (child output) -> top.u_driver.data (instance port) -> top.data (parent wire)
-                    # 边1: child output -> instance port (DRIVER)
-                    # 边2: instance port -> parent wire (CONNECTION)
-                    # [FIX 2026-07-08] 同上, child_signal_id 用 inst_path
-                    child_signal_id = f"{inst_path}.{port_name}"
-                    # [iter_109]/[iter_274] 同上: 局部声明保留块路径
-                    if signal_name in _gen_local_names and _gen_parent_path:
-                        _sig_parent2 = _gen_parent_path
-                    else:
-                        _sig_parent2 = _sig_scope if _sig_scope else parent_path
-                    parent_signal = f"{_sig_parent2}.{signal_name}"
-                    # 边1: child output -> instance port (DRIVER)
-                    # [P158.12 / R-026 2026-11-12] child_signal_id 与 inst_port_id
-                    # 同为 f"{inst_path}.{port_name}" — 这条边**恒为自环**且
-                    # expression 为空, 是纯污染 (大图 408 条)。真实自依赖
-                    # (assign a = a + 1) 来自 assign/always extractor, 带 expression,
-                    # 不受影响。原"模块内部驱动实例输出"标记依赖的断言已随
-                    # 2026-08-13 的 test_cross_module_tracking 更新移除。
-                    if child_signal_id != inst_port_id:
-                        result.edges.append(
-                            TraceEdge(src=child_signal_id, dst=inst_port_id, kind=EdgeKind.DRIVER, assign_type="internal")
-                        )
-                    # 边2: instance port -> parent wire (CONNECTION)
-                    # [FIX 2026-08-13] 跳过 SELFLOOP (同样防御 case26 中 parent_signal == inst_port_id)
-                    if parent_signal != inst_port_id:
-                        result.edges.append(
-                            TraceEdge(
-                                src=inst_port_id, dst=parent_signal, kind=EdgeKind.CONNECTION, assign_type="connection"
-                            )
-                        )
-                elif "inout" in direction_clean:
-                    # [iter_129 候选1] inout 双向端口: 父信号与实例端口是**同一根线**
-                    # (物理连接, 无方向归属 — 谁驱动取决于上下文: 外部拉 or 实例
-                    # 内部三态驱动)。此前完全无 inout 分支 → 无任何边 → 跨模块
-                    # fanin 空答 (top.sda ← u_io.sda 断)。
-                    # 建模: 建 output 式 CONNECTION inst_port → parent_signal,
-                    # fanin(父线) 沿它穿透到实例端口, 再追实例内部驱动链
-                    # (三态 assign 的 DRIVER/BRANCH 边)。不建 input 式
-                    # (parent → inst_port), 避免双向边让 fanin 把"外部线"当
-                    # 实例端口驱动源 (i2c 开漏多驱动归属 = 更深语义, 待专项)。
-                    _inout_scope = (
-                        _gen_parent_path if (signal_name in _gen_local_names and _gen_parent_path)
-                        else (_sig_scope if _sig_scope else parent_path)
-                    )
-                    _inout_parent = f"{_inout_scope}.{signal_name}"
-                    if _inout_parent != inst_port_id:
-                        result.edges.append(
-                            TraceEdge(
-                                src=inst_port_id,
-                                dst=_inout_parent,
-                                kind=EdgeKind.CONNECTION,
-                                assign_type="connection",
-                            )
-                        )
-                    # 端口与内部同 id (实例级命名空间): 不再维护单独的映射
-
-        # [FIX] 后处理:修复实例端口的位宽
-        # 如果实例端口位宽为默认值(1,0),尝试从连接推断实际位宽
-        for edge in result.edges:
-            if edge.kind != EdgeKind.CONNECTION:
+    def _path_for_nonroot(self, info, instances_info, parent_mod, gen_block, depth):
+        is_submodule = any(
+            other["inst_module_name"] == parent_mod for other in instances_info)
+        if not is_submodule:
+            return self._prefixed(parent_mod, gen_block, info["inst_name"])
+        for other_info in instances_info:
+            if other_info is info or other_info["inst_module_name"] != parent_mod:
                 continue
+            parent_path = self._path_for_instance(other_info, instances_info, depth + 1)
+            return self._prefixed(parent_path, gen_block, info["inst_name"])
+        return self._prefixed(self.root_module_name, gen_block, info["inst_name"])
 
-            # 找 src 是外部信号,dst 是实例端口的情况
-            src_node = None
-            dst_node = None
-            for node in result.nodes:
-                if node.id == edge.src:
-                    src_node = node
-                if node.id == edge.dst:
-                    dst_node = node
+    def _path_for_instance(self, info, instances_info, depth: int = 0) -> str:
+        if depth > 20:
+            return f"{self.root_module_name}.{info['inst_name']}"
+        parent_mod = info["parent_module"]
+        gen_block = info.get("gen_block")
+        if gen_block and parent_mod and re.search(r"\[\d+\]$", parent_mod):
+            gen_block = None
+        if parent_mod == "__root__":
+            if info["inst_module_name"] == "__root__" and not gen_block:
+                return info["inst_name"]
+            return self._prefixed(self.root_module_name, gen_block, info["inst_name"])
+        if parent_mod == "top":
+            return self._prefixed(self.root_module_name, gen_block, info["inst_name"])
+        return self._path_for_nonroot(info, instances_info, parent_mod, gen_block, depth)
 
-            if src_node and dst_node:
-                # dst 是实例端口吗?
-                # 实例端口格式: path.inst.port
-                parts = dst_node.id.split(".")
-                if len(parts) >= 3 and dst_node.kind.name.startswith("PORT_"):
-                    # 如果 dst 的位宽是默认值(1,0)且 src 有有效位宽,使用 src 的位宽
-                    if dst_node.width == (1, 0) and src_node.width != (0, 0):
-                        # 找到 dst_node 并更新
-                        for i, n in enumerate(result.nodes):
-                            if n.id == dst_node.id:
-                                # 创建新的 TraceNode with correct width
-                                result.nodes[i] = TraceNode(
-                                    id=n.id,
-                                    name=n.name,
-                                    module=n.module,
-                                    kind=n.kind,
-                                    width=src_node.width,
-                                    is_port=n.is_port,
-                                )
-                                break
+    def _resolve_instance_paths(self, instances_info: list[dict]) -> list[str]:
+        return [self._path_for_instance(info, instances_info) for info in instances_info]
 
-        # [FIX Issue 20] 将警告信息添加到 result
-        if hasattr(self, "_warnings") and self._warnings:
+    @staticmethod
+    def _instance_signal_scope(inst_path: str) -> str | None:
+        segs = inst_path.split(".")
+        if len(segs) < 2:
+            return None
+        mod_segs = segs[:-1]
+        while mod_segs and "[" in mod_segs[-1]:
+            mod_segs.pop()
+        return ".".join(mod_segs) if mod_segs else None
+
+    @staticmethod
+    def _normalise_connections(module_ports: dict, conns) -> dict:
+        named = {}
+        positional = []
+        for port_key, signal_name in conns:
+            if port_key.startswith("_pos_"):
+                positional.append((int(port_key.replace("_pos_", "")), signal_name))
+            else:
+                named[port_key] = signal_name
+        positional.sort(key=lambda item: item[0])
+        port_names = list(module_ports.keys())
+        for idx, signal_name in positional:
+            if idx < len(port_names):
+                named[port_names[idx]] = signal_name
+        return named
+
+    def _gen_local_names(self, parent_path: str) -> set[str]:
+        if not parent_path:
+            return set()
+        index = getattr(self, "_gen_locals_index", None)
+        if index is None:
+            getter = getattr(self.adapter, "get_generate_locals_index", None)
+            index = getter() if callable(getter) else {}
+            self._gen_locals_index = index
+        return index.get(parent_path, set())
+
+    def _add_generate_node(self, result, gen_path: str, gen_block: str) -> None:
+        if any(node.id == gen_path for node in result.nodes):
+            return
+        gen_module = ".".join(gen_path.rsplit(".", 1)[:-1]) or gen_path.rsplit(".", 1)[0]
+        result.nodes.append(TraceNode(
+            id=gen_path, name=gen_block, module=gen_module,
+            kind=NodeKind.GENERATE_BLOCK
+            if hasattr(NodeKind, "GENERATE_BLOCK") else NodeKind.INSTANTIATED_MODULE,
+            width=(1, 0), is_port=False))
+
+    def _add_instance_node(self, result, inst_path: str, inst_name: str,
+                           inst_module_name: str) -> None:
+        result.nodes.append(TraceNode(
+            id=inst_path, name=inst_name, module=inst_module_name,
+            kind=NodeKind.INSTANTIATED_MODULE, width=(1, 0), is_port=False))
+
+    @staticmethod
+    def _port_kind(direction: str):
+        if "inout" in direction.lower():
+            return NodeKind.PORT_INOUT
+        if "output" in direction.lower():
+            return NodeKind.PORT_OUT
+        return NodeKind.PORT_IN
+
+    @staticmethod
+    def _port_extra(port_name: str, module_ports: dict, direction: str,
+                    inst_module_name: str) -> dict:
+        if port_name not in module_ports:
+            logger.warning(
+                "[connection_extractor] port '%s' not in module_ports for %s; "
+                "falling back to PORT_IN (likely ref port or missing module def)",
+                port_name, inst_module_name)
+            return {"direction": "missing", "fallback": "PORT_IN"}
+        if direction == "unknown":
+            logger.warning(
+                "[connection_extractor] port '%s' direction unknown for %s; "
+                "falling back to PORT_IN (likely ref port or unparsed direction)",
+                port_name, inst_module_name)
+            return {"direction": "unknown", "fallback": "PORT_IN"}
+        return {"direction": direction.lower()}
+
+    @staticmethod
+    def _port_width(all_module_widths: dict, inst_module_name: str,
+                    port_name: str, signal_name: str, inst_path: str) -> tuple:
+        width = all_module_widths.get(inst_module_name, {}).get(port_name)
+        if width is None:
+            logger.warning(
+                "[connection_extractor] port '%s' width missing for %s; "
+                "falling back to (1,0)", port_name, inst_module_name)
+            width = (1, 0)
+        if width == (0, 0) and signal_name:
+            parent_path = inst_path.rsplit(".", 1)[0] if "." in inst_path else "top"
+            parent_widths = all_module_widths.get(parent_path, {})
+            if signal_name in parent_widths:
+                width = parent_widths[signal_name]
+        return width
+
+    def _connect_input(self, result, inst_path: str, inst_port_id: str,
+                       port_name: str, signal_name: str, parent_path: str,
+                       gen_parent_path: str, gen_locals: set[str],
+                       sig_scope: str | None) -> None:
+        if signal_name in gen_locals and gen_parent_path:
+            sig_parent = gen_parent_path
+        else:
+            sig_parent = sig_scope if sig_scope else parent_path
+        parent_sig = f"{sig_parent}.{signal_name}"
+        if parent_sig != inst_port_id:
+            result.edges.append(TraceEdge(
+                src=parent_sig, dst=inst_port_id,
+                kind=EdgeKind.CONNECTION, assign_type="connection"))
+        child_signal_id = f"{inst_path}.{port_name}"
+        if child_signal_id != inst_port_id:
+            result.edges.append(TraceEdge(
+                src=inst_port_id, dst=child_signal_id,
+                kind=EdgeKind.CONNECTION, assign_type="internal"))
+
+    def _connect_output(self, result, inst_path: str, inst_port_id: str,
+                        port_name: str, signal_name: str, parent_path: str,
+                        gen_parent_path: str, gen_locals: set[str],
+                        sig_scope: str | None) -> None:
+        child_signal_id = f"{inst_path}.{port_name}"
+        if signal_name in gen_locals and gen_parent_path:
+            sig_parent = gen_parent_path
+        else:
+            sig_parent = sig_scope if sig_scope else parent_path
+        parent_signal = f"{sig_parent}.{signal_name}"
+        if child_signal_id != inst_port_id:
+            result.edges.append(TraceEdge(
+                src=child_signal_id, dst=inst_port_id,
+                kind=EdgeKind.DRIVER, assign_type="internal"))
+        if parent_signal != inst_port_id:
+            result.edges.append(TraceEdge(
+                src=inst_port_id, dst=parent_signal,
+                kind=EdgeKind.CONNECTION, assign_type="connection"))
+
+    def _connect_inout(self, result, inst_port_id: str, signal_name: str,
+                       parent_path: str, gen_parent_path: str,
+                       gen_locals: set[str], sig_scope: str | None) -> None:
+        if signal_name in gen_locals and gen_parent_path:
+            scope = gen_parent_path
+        else:
+            scope = sig_scope if sig_scope else parent_path
+        parent = f"{scope}.{signal_name}"
+        if parent != inst_port_id:
+            result.edges.append(TraceEdge(
+                src=inst_port_id, dst=parent,
+                kind=EdgeKind.CONNECTION, assign_type="connection"))
+
+    def _extract_port(self, result, inst_path: str, inst_module_name: str,
+                      signal_name: str, port_name: str, direction: str,
+                      module_ports: dict, all_widths: dict,
+                      iface_info, parent_path: str, gen_parent_path: str,
+                      gen_locals: set[str], sig_scope: str | None) -> None:
+        port_name = self.adapter.clean_name(port_name)
+        signal_name = self.adapter.clean_name(signal_name)
+        direction = module_ports.get(port_name, "unknown").strip()
+        iface = (iface_info or {}).get(port_name)
+        if iface is not None:
+            iface_name, iface_members = iface
+            iface_scope = sig_scope if sig_scope else parent_path
+            result.interface_links.append(
+                (inst_path, port_name, iface_name, list(iface_members),
+                 f"{iface_scope}.{signal_name}"))
+        kind = self._port_kind(direction)
+        extra = self._port_extra(port_name, module_ports, direction, inst_module_name)
+        width = self._port_width(all_widths, inst_module_name, port_name,
+                                 signal_name, inst_path)
+        inst_port_id = f"{inst_path}.{port_name}"
+        lower = port_name.lower()
+        result.nodes.append(TraceNode(
+            id=inst_port_id, name=port_name, module=inst_path, kind=kind,
+            width=width, is_port=True,
+            is_clock=("clk" in lower), is_reset=("rst" in lower),
+            extra={**extra, "width": width}))
+        if iface is not None:
+            return
+        direction_clean = direction.strip()
+        parent_path = inst_path.rsplit(".", 1)[0] if "." in inst_path else "top"
+        if direction_clean == "input":
+            self._connect_input(result, inst_path, inst_port_id, port_name,
+                                signal_name, parent_path, gen_parent_path,
+                                gen_locals, sig_scope)
+        elif direction_clean == "output":
+            self._connect_output(result, inst_path, inst_port_id, port_name,
+                                 signal_name, parent_path, gen_parent_path,
+                                 gen_locals, sig_scope)
+        elif "inout" in direction_clean:
+            self._connect_inout(result, inst_port_id, signal_name, parent_path,
+                                gen_parent_path, gen_locals, sig_scope)
+
+    def _extract_connections(self, instances, infos, paths, all_ports,
+                             all_widths, all_iface, result) -> None:
+        for idx, inst in enumerate(instances):
+            info = infos[idx]
+            inst_name = info["inst_name"]
+            inst_module_name = info["inst_module_name"]
+            inst_path = paths[idx]
+            gen_block = info.get("gen_block")
+            sig_scope = self._instance_signal_scope(inst_path)
+            module_ports = all_ports.get(inst_module_name, {})
+            conns = self.adapter.get_instance_connection(inst)
+            if not module_ports and conns and not self._module_source_known(inst_module_name):
+                self._missing_module_warning(inst_module_name, inst_name)
+            named_conns = self._normalise_connections(module_ports, conns)
+            parent_path = inst_path.rsplit(".", 1)[0] if "." in inst_path else ""
+            gen_parent_path = parent_path
+            gen_locals = self._gen_local_names(gen_parent_path)
+            if gen_block:
+                self._add_generate_node(result, inst_path.rsplit(".", 1)[0], gen_block)
+            self._add_instance_node(result, inst_path, inst_name, inst_module_name)
+            iface_info = all_iface.get(inst_module_name, {})
+            for port_name, signal_name in named_conns.items():
+                self._extract_port(
+                    result, inst_path, inst_module_name, signal_name, port_name,
+                    module_ports.get(port_name, "unknown"), module_ports,
+                    all_widths, iface_info, parent_path, gen_parent_path,
+                    gen_locals, sig_scope)
+
+    @staticmethod
+    def _find_node(nodes, node_id: str):
+        return next((node for node in nodes if node.id == node_id), None)
+
+    @classmethod
+    def _backfill_one_edge(cls, result, edge) -> None:
+        if edge.kind != EdgeKind.CONNECTION:
+            return
+        src_node = cls._find_node(result.nodes, edge.src)
+        dst_node = cls._find_node(result.nodes, edge.dst)
+        if not src_node or not dst_node:
+            return
+        parts = dst_node.id.split(".")
+        if len(parts) < 3 or not dst_node.kind.name.startswith("PORT_"):
+            return
+        if dst_node.width != (1, 0) or src_node.width == (0, 0):
+            return
+        result.nodes = [
+            TraceNode(id=n.id, name=n.name, module=n.module, kind=n.kind,
+                      width=src_node.width, is_port=n.is_port)
+            if n.id == dst_node.id else n
+            for n in result.nodes
+        ]
+
+    @classmethod
+    def _backfill_connection_widths(cls, result) -> None:
+        for edge in result.edges:
+            cls._backfill_one_edge(result, edge)
+
+    def extract(self) -> ExtractorResult:
+        result = ExtractorResult()
+        self._warnings = []
+        self._ensure_root_module()
+        instances = self.adapter.get_module_instances()
+        all_ports, all_widths, all_iface = self._collect_module_metadata()
+        infos = self._collect_instances_info(instances)
+        paths = self._resolve_instance_paths(infos)
+        self._extract_connections(instances, infos, paths, all_ports,
+                                  all_widths, all_iface, result)
+        self._backfill_connection_widths(result)
+        if self._warnings:
             result.warnings = self._warnings
-
         return result
-
-

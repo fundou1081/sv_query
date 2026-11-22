@@ -80,6 +80,7 @@
 | C-57 | file-mode GraphSession.refresh detects on-disk changes and increments generation | code/test | `test_p196_3_file_refresh.py` | `verified` |
 | C-58 | stdio/GraphSession serve instances/scope/verify_claim/verify_consistency | code/test | `test_p194_2f_session_queries.py` | `verified`（connection check scoped） |
 | C-59 | stable QueryClient/open_query facade; lazy package exports; deprecation policy documented | code/test | `test_p194_3_api_facade.py` | `verified` |
+| C-60 | ConnectionExtractor.extract split under 500 lines; behavior preserved by graph baselines | code/test | `test_graph_baseline.py` | `verified` |
 
 ---
 

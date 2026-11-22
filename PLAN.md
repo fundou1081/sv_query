@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P194.4 split 500+ line extractor functions <待做>
+current item : P194.5 external benchmark + token cost validation <待做>
 
 ## 计划树
 
@@ -593,7 +593,7 @@ P194.2c local session/server reuse + snapshot persistence <待做>
 -- P194.2e expose remaining core query ops + invalidation <已完成>
 -- P194.2f session coverage for verify/scope/instances <已完成>
 -- P194.3 API facade + deprecation policy <已完成>
--- P194.4 split 500+ line extractor functions <待做>
+-- P194.4 split 500+ line extractor functions <已完成>
 -- P194.5 external benchmark + token cost validation <待做>
 -- P194.6 pyright/mypy + generated JSON schema <待做>
 -- P194.7 docs slimming + human onboarding <待做>
