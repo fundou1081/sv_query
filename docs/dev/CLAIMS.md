@@ -70,6 +70,7 @@
 | C-47 | GraphSession reuses one graph; stdio session serves graph nodes/edges; snapshot hydrate works | code/test | `test_p194_2c_graph_session.py` | `verified`（graph-only） |
 | C-48 | GraphSession exposes drivers/loads/paths/dataflow and refresh; stdio server reuses one graph; MIG-required callers cannot hydrate a graph-only entry (P195.2) | code/test | `test_p194_2c_graph_session.py`, `test_p195_2_capability_enforcement.py` | `verified`（session scope） |
 | C-49 | scalar port/variable width is `(0,0)` / width 1; `[1:0]` remains width 2; profile matches type | code/test | `test_p195_3_scalar_width.py` | `verified` |
+| C-50 | PyPI publish is blocked by tests + version/tag gate | code/test | `test_p195_4_release_gate.py` | `verified` |
 
 ---
 

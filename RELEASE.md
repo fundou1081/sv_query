@@ -15,11 +15,18 @@
 ## 2. Local verification
 
 ```bash
+python3 tools/check_release_version.py --tag vX.Y.Z
 python3 -m pytest sim/tests/ -m "not opensource" -q -p no:randomly
 bash tools/run_gates.sh
 python3 -m build
 python3 -m twine check dist/*
 ```
+
+GitHub release workflow now has a blocking `release-check` job:
+- validates pyproject/session/tag versions;
+- runs the canonical gates;
+- `build` needs `release-check`, and `publish` needs `build`.
+A tag cannot publish if the gate or version check fails.
 
 Install the built wheel into a clean venv and smoke it:
 
