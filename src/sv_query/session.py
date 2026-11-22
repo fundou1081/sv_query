@@ -49,6 +49,42 @@ _ERROR_TYPES = _errors.ERROR_TYPES
 
 _BUILTIN_OPS = frozenset({"version"})
 
+#: Query ops exposed by GraphSession / `session --serve` (P194.2e).
+SESSION_QUERY_OPS = frozenset({
+    "graph_nodes", "graph_edges", "drivers", "loads", "paths", "dataflow",
+})
+
+#: CLI capabilities that the local session deliberately does not expose yet.
+SESSION_UNSUPPORTED_OPS = frozenset({
+    "verify_claim", "verify_consistency", "scope", "instances", "stats",
+})
+
+#: Machine-readable protocol contract; surfaced through capabilities.json_contract.
+SESSION_CONTRACT = {
+    "transport": "stdio-json-lines",
+    "entrypoint": "sv_query session --serve --filelist PATH [--no-cache]",
+    "ops": sorted(SESSION_QUERY_OPS),
+    "builtin_ops": sorted(_BUILTIN_OPS),
+    "unsupported_ops": sorted(SESSION_UNSUPPORTED_OPS),
+    "request": {
+        "op": "graph_nodes|graph_edges|drivers|loads|paths|dataflow|version",
+        "request_id": "optional string, echoed on success/failure",
+        "arguments": "op-specific fields; see sv_query capabilities --json",
+    },
+    "success": {"ok": True, "op": "string", "result": "object"},
+    "failure": {
+        "ok": False,
+        "op": "string",
+        "error_code": "E_INVALID_REQUEST|E_UNSUPPORTED_OP|E_HANDLER_FAILED",
+        "error": {"type": "string", "message": "string"},
+    },
+    "notes": [
+        "one graph per process; refresh checks source identity per request",
+        "snapshot sessions are immutable",
+        "verify/scope/instances are not supported and return E_UNSUPPORTED_OP",
+    ],
+}
+
 #: Injected handler: request mapping in, result mapping out.
 Handler = Callable[[Mapping[str, object]], Mapping[str, object]]
 

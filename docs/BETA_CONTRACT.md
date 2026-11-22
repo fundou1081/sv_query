@@ -63,6 +63,21 @@ seconds to tens of seconds depending on design size; a large design can be much
 slower. Do not use a warm number as a cold-start expectation. Use snapshots where
 supported for repeated work.
 
+## 5b. Local session (preview)
+
+`sv_query session --serve` is a local JSON-lines preview for repeated queries.
+It supports graph/query ops only:
+
+```text
+graph_nodes graph_edges drivers loads paths dataflow
+```
+
+It does **not** support `verify_claim`, `verify_consistency`, `scope`,
+`instances`, or `stats`; those return `E_UNSUPPORTED_OP`. The success/failure
+envelope and exact op list are machine-readable in
+`capabilities --json` under `json_contract.session`. No network listener is
+started.
+
 ## 6. Snapshot surface
 
 Only a subset of core commands support `--from-snapshot`. Snapshots store derived

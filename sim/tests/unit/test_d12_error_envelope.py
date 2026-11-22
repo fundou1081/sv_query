@@ -335,8 +335,9 @@ def test_baseline_snapshot_really_differs_from_current_implementation(baseline_s
 
 
 def _normalise_intentional_paths_metadata(stdout: str) -> dict:
-    """P182.1c deliberately reclassifies paths as direct; compare the rest."""
+    """P182.1c paths-direct + P195.5 additive session contract are intentional."""
     data = json.loads(stdout)
+    data["json_contract"].pop("session", None)
     for command in data["commands"]:
         if command["name"] == "paths":
             command["envelope"] = "<P182.1c: direct>"

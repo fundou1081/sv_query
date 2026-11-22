@@ -59,6 +59,40 @@ sv_query trace evidence top.y --filelist rtl.f --json
 `--filelist` is required for multi-file projects. Do not pass a filelist through
 `-f/--file`; use `--filelist`.
 
+## 2b. Local session (stdio preview)
+
+For repeated queries on one design, use the local JSON-lines session:
+
+```bash
+sv_query session --serve --filelist rtl.f
+```
+
+One request per line; one response per line:
+
+```json
+{"op":"graph_nodes","match":"valid"}
+{"op":"drivers","signal":"top.y","depth":1}
+{"op":"paths","src":"top.a","dst":"top.y"}
+{"op":"dataflow","src":"top.a","dst":"top.y"}
+```
+
+Supported ops:
+
+```text
+graph_nodes graph_edges drivers loads paths dataflow version
+```
+
+`verify_claim`, `verify_consistency`, `scope`, `instances`, and `stats` are
+**not** supported in the session and return `E_UNSUPPORTED_OP`. The
+machine-readable contract is in:
+
+```bash
+sv_query capabilities --json
+# json_contract.session
+```
+
+This is a local stdio process; it does not listen on a network port.
+
 ## 3. Objective verification
 
 ```bash

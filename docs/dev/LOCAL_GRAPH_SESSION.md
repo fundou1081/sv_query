@@ -1,6 +1,6 @@
-# Local GraphSession — P194.2d
+# Local GraphSession — P194.2d / P195.5
 
-> **Status**: local/stdio prototype for graph-only queries.
+> **Status**: local/stdio query session; verify/scope/instances explicitly unsupported.
 > **Entry**: Python `GraphSession`, hidden `sv_query session --serve`.
 > **Date**: 2026-11-21
 
@@ -51,20 +51,48 @@ is the in-process reuse path.
 ## 4. Current coverage
 
 ```text
-graph nodes
-graph edges
+graph_nodes
+graph_edges
+drivers
+loads
+paths
+dataflow
+version (builtin)
 ```
 
-Only graph-only ops are exposed in P194.2d. Drivers/loads/paths/dataflow/verify
-still need the full command/session integration; that is P194.2e.
+Deliberately unsupported (return `E_UNSUPPORTED_OP`):
 
-## 4b. Invalidation
+```text
+verify_claim
+verify_consistency
+scope
+instances
+stats
+```
+
+The machine-readable version is
+`capabilities --json` → `json_contract.session`. It is the source of truth for
+ops and the success/failure envelope.
+
+### Session envelope
+
+```json
+{"ok": true, "op": "drivers", "result": {...}}
+{"ok": false, "op": "verify_claim",
+ "error_code": "E_UNSUPPORTED_OP",
+ "error": {"type": "UnsupportedOperation", "message": "unsupported op: verify_claim"}}
+```
+
+`request_id`, when supplied, is echoed. One graph is built/hydrated per process;
+`refresh()` checks source identity per request.
+
+## 5. Invalidation
 
 `GraphSession.refresh()` checks the current BuildIdentity. If source content
 changed, it creates a fresh tracer and rebuilds; the stdio server calls this
 before every request. Snapshot sessions are immutable and skip refresh.
 
-## 5. Cache policy
+## 6. Cache policy
 
 - GraphSession defaults to `use_cache=True`;
 - cache hit/miss/snapshot is exposed via `cache_info()`;

@@ -27,6 +27,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from sv_query.session import SESSION_CONTRACT
+
 
 # ---------------------------------------------------------------------------
 # 1. 层规范 (承诺等级 + 消费者)
@@ -391,6 +393,7 @@ JSON_CONTRACT = {
         "rule": "consumers must accept strings and objects; error is always present "
                 "on an error_entry; error_code is optional outside trace commands",
     },
+    "session": SESSION_CONTRACT,
     "write_scope_policy": {
         "none": "no disk writes",
         "cache": "writes only the sv_query cache/snapshot directory",
