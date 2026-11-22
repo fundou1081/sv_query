@@ -120,12 +120,13 @@ One request per line; one response per line:
 Supported ops:
 
 ```text
-graph_nodes graph_edges drivers loads paths dataflow version
+graph_nodes graph_edges drivers loads paths dataflow
+instances scope verify_claim verify_consistency version
 ```
 
-`verify_claim`, `verify_consistency`, `scope`, `instances`, and `stats` are
-**not** supported in the session and return `E_UNSUPPORTED_OP`. The
-machine-readable contract is in:
+`stats` is not exposed in the session. `verify_consistency` currently
+implements the `connection` check; unsupported checks return `unknown`, not a
+false `verified`. The machine-readable contract is in:
 
 ```bash
 sv_query capabilities --json

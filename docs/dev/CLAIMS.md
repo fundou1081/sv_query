@@ -78,6 +78,7 @@
 | C-55 | dead ASTCache get/put removed; except gate covers library/session; claims headers refreshed | code/test | `test_p193_4_core_except.py` | `verified` |
 | C-56 | hydrated snapshot without required MIG raises explicit SnapshotCapabilityError and preserves graph | code/test | `test_p196_1_snapshot_capability.py` | `verified` |
 | C-57 | file-mode GraphSession.refresh detects on-disk changes and increments generation | code/test | `test_p196_3_file_refresh.py` | `verified` |
+| C-58 | stdio/GraphSession serve instances/scope/verify_claim/verify_consistency | code/test | `test_p194_2f_session_queries.py` | `verified`（connection check scoped） |
 
 ---
 

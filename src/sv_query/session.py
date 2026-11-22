@@ -55,12 +55,11 @@ _BUILTIN_OPS = frozenset({"version"})
 #: Query ops exposed by GraphSession / `session --serve` (P194.2e).
 SESSION_QUERY_OPS = frozenset({
     "graph_nodes", "graph_edges", "drivers", "loads", "paths", "dataflow",
+    "instances", "scope", "verify_claim", "verify_consistency",
 })
 
 #: CLI capabilities that the local session deliberately does not expose yet.
-SESSION_UNSUPPORTED_OPS = frozenset({
-    "verify_claim", "verify_consistency", "scope", "instances", "stats",
-})
+SESSION_UNSUPPORTED_OPS = frozenset({"stats"})
 
 #: Machine-readable protocol contract; surfaced through capabilities.json_contract.
 SESSION_CONTRACT = {
@@ -84,7 +83,7 @@ SESSION_CONTRACT = {
     "notes": [
         "one graph per process; refresh checks source identity per request",
         "snapshot sessions are immutable",
-        "verify/scope/instances are not supported and return E_UNSUPPORTED_OP",
+        "signals/scope/instances/verify ops use the same one graph",
     ],
 }
 

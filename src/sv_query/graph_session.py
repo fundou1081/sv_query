@@ -10,6 +10,7 @@ from pathlib import Path
 
 from .trace._safe import safe_attr
 from .trace.core.graph.dataflow import DataFlowGraph
+from .trace.core.query import session_ops
 from .trace.core.snapshot_manager import SnapshotManager
 from .trace.unified_tracer import SnapshotCapabilityError, UnifiedTracer
 
@@ -245,9 +246,33 @@ class GraphSession:
                       for p in result.paths],
         }
 
+    def instances(self, *, path: str | None = None, module: str | None = None,
+                  depth: int | None = None) -> dict:
+        self._ensure_open()
+        self._require_mig()
+        return session_ops.instances(self.tracer, path=path, module=module, depth=depth)
+
+    def scope(self, path: str) -> dict:
+        self._ensure_open()
+        self._require_mig()
+        return session_ops.scope(self.tracer, path)
+
+    def verify_claim(self, claim: object) -> dict:
+        self._ensure_open()
+        self._require_mig()
+        return session_ops.verify_claim(self.tracer, claim)
+
+    def verify_consistency(self, *, checks=("connection",), signal=None,
+                           max_nodes: int = 200, full: bool = False) -> dict:
+        self._ensure_open()
+        self._require_mig()
+        return session_ops.verify_consistency(
+            self.tracer, checks=checks, signal=signal, max_nodes=max_nodes, full=full)
+
     def handlers(self) -> dict:
         """Session op handlers backed by this one graph."""
         self._ensure_open()
+
 
         def nodes(request):
             return self.graph_nodes(
@@ -276,9 +301,31 @@ class GraphSession:
             return self.dataflow(request.get("src"), request.get("dst"),
                                  max_paths=int(request.get("max_paths", 100)))
 
+        def instances(request):
+            return self.instances(path=request.get("path"),
+                                  module=request.get("module"),
+                                  depth=request.get("depth"))
+
+        def scope(request):
+            return self.scope(request.get("path"))
+
+        def verify_claim(request):
+            return self.verify_claim(request.get("claim"))
+
+        def verify_consistency(request):
+            return self.verify_consistency(
+                checks=request.get("checks") or ("connection",),
+                signal=request.get("signal"),
+                max_nodes=int(request.get("max_nodes", 200)),
+                full=bool(request.get("full")),
+            )
+
         return {"graph_nodes": nodes, "graph_edges": edges,
                 "drivers": drivers, "loads": loads,
-                "paths": paths, "dataflow": dataflow}
+                "paths": paths, "dataflow": dataflow,
+                "instances": instances, "scope": scope,
+                "verify_claim": verify_claim,
+                "verify_consistency": verify_consistency}
 
     def __enter__(self) -> GraphSession:
         self._ensure_open()
