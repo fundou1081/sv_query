@@ -20,7 +20,7 @@ BuildIdentity(
     cache_schema,         # CACHE_VERSION
     graph_semantics,     # GRAPH_SEMANTICS_VERSION
     pyslang_version,
-    sv_query_version,
+    sv_query_version,  # PACKAGE_VERSION (single source)
 )
 ```
 

@@ -10,6 +10,8 @@ import json
 from dataclasses import dataclass, field
 from importlib import metadata
 
+from sv_query.session import PACKAGE_VERSION
+
 GRAPH_SEMANTICS_VERSION = "1"
 GRAPH_CAPABILITY = "graph"
 
@@ -35,7 +37,7 @@ class BuildIdentity:
     cache_schema: str = ""
     graph_semantics: str = GRAPH_SEMANTICS_VERSION
     pyslang_version: str = field(default_factory=lambda: _version("pyslang"))
-    sv_query_version: str = field(default_factory=lambda: _version("sv-query"))
+    sv_query_version: str = field(default_factory=lambda: PACKAGE_VERSION)
 
     def canonical(self) -> dict:
         return {

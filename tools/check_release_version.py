@@ -24,14 +24,25 @@ def _session_version(root: Path) -> str:
     return PACKAGE_VERSION
 
 
+def _identity_version(root: Path) -> str:
+    sys.path.insert(0, str(root / "src"))
+    try:
+        from sv_query.trace.core.cache.build_identity import BuildIdentity
+    finally:
+        sys.path.pop(0)
+    return BuildIdentity(source_hash="release-check").sv_query_version
+
+
 def check_versions(root: Path = ROOT, tag: str | None = None) -> tuple[str, str]:
     """Return (pyproject_version, tag) after validating all identities."""
     with open(root / "pyproject.toml", "rb") as fh:
         pyproject = tomllib.load(fh)["project"]["version"]
     session = _session_version(root)
-    if pyproject != session:
+    identity = _identity_version(root)
+    if pyproject != session or pyproject != identity:
         raise ValueError(
-            f"version mismatch: pyproject={pyproject!r} session={session!r}")
+            f"version mismatch: pyproject={pyproject!r} session={session!r} "
+            f"BuildIdentity={identity!r}")
     if tag is None:
         tag = os.environ.get("GITHUB_REF_NAME")
     if tag and tag.startswith("v"):

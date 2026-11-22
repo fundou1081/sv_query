@@ -6,6 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -53,3 +54,17 @@ def test_version_checker_cli_fails_mismatched_tag():
     )
     assert proc.returncode == 1
     assert "version mismatch" in proc.stderr
+
+
+def test_build_identity_version_is_single_sourced():
+    from sv_query.session import PACKAGE_VERSION
+    from sv_query.trace.core.cache.build_identity import BuildIdentity
+
+    assert BuildIdentity(source_hash="x").sv_query_version == PACKAGE_VERSION
+
+
+def test_release_checker_compares_build_identity(monkeypatch):
+    checker = _load_checker()
+    monkeypatch.setattr(checker, "_identity_version", lambda _root: "9.9.9")
+    with pytest.raises(ValueError, match="BuildIdentity"):
+        checker.check_versions(ROOT, "v0.3.4")
