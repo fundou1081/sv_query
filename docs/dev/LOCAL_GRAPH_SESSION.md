@@ -118,10 +118,10 @@ idempotent, and use-after-close raises `RuntimeError` rather than
 
 Independent review reproduced:
 
-- a legacy snapshot without MIG can be replaced by an empty graph on a MIG
-  query (P196.1, P0) — snapshot sessions are **not** safe for MIG ops until fixed;
-- `GraphSession(file=...)` refresh does not re-read disk (P196.3);
+- legacy snapshot without MIG is now rejected explicitly for MIG queries
+  (`SnapshotCapabilityError`, P196.1); the graph is not emptied;
+- `GraphSession(file=...)` refresh still does not re-read disk (P196.3);
 - malformed/startup/refresh stdio errors do not use the structured envelope
   (P196.2).
 
-Do not claim full snapshot/session correctness until P196.1–P196.3 are done.
+Do not claim full snapshot/session correctness until P196.2–P196.3 are done.

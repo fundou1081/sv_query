@@ -11,7 +11,7 @@ from pathlib import Path
 from .trace._safe import safe_attr
 from .trace.core.graph.dataflow import DataFlowGraph
 from .trace.core.snapshot_manager import SnapshotManager
-from .trace.unified_tracer import UnifiedTracer
+from .trace.unified_tracer import SnapshotCapabilityError, UnifiedTracer
 
 
 class GraphSession:
@@ -107,10 +107,17 @@ class GraphSession:
         self._generation += 1
         return True
 
+    def _require_mig(self) -> None:
+        self._ensure_open()
+        caps = self.tracer.get_built_capabilities()
+        if "mig" not in caps:
+            raise SnapshotCapabilityError(frozenset({"graph", "mig"}), caps)
+
     def cache_info(self) -> dict:
         self._ensure_open()
         if self._from_snapshot:
-            return {"status": "snapshot", "key": None, "capabilities": ["graph", "mig"]}
+            return {"status": "snapshot", "key": None,
+                    "capabilities": sorted(self.tracer.get_built_capabilities())}
         return self.tracer.cache_info()
 
     def _node_row(self, nid: str, node, detail: bool) -> dict:
@@ -171,6 +178,7 @@ class GraphSession:
     def drivers(self, signal: str, *, depth: int | None = None,
                 module: str | None = None) -> dict:
         self._ensure_open()
+        self._require_mig()
         rows = self.tracer.trace_fanin_detailed(signal, module=module, depth=depth)
         return {
             "signal": signal,
@@ -189,6 +197,7 @@ class GraphSession:
     def loads(self, signal: str, *, depth: int | None = None,
               module: str | None = None) -> dict:
         self._ensure_open()
+        self._require_mig()
         rows = self.tracer.trace_fanout(signal, module=module, depth=depth)
         return {
             "signal": signal,
@@ -202,6 +211,7 @@ class GraphSession:
 
     def paths(self, src: str, dst: str, *, directed: bool = False) -> dict:
         self._ensure_open()
+        self._require_mig()
         resolver = self.tracer.get_path_resolver()
         if resolver is None:
             raise ValueError("path resolver unavailable")
@@ -213,6 +223,7 @@ class GraphSession:
 
     def dataflow(self, src: str, dst: str, *, max_paths: int = 100) -> dict:
         self._ensure_open()
+        self._require_mig()
         graph = self.graph
         if src not in graph.nodes() or dst not in graph.nodes():
             raise ValueError("signal id not found in graph")

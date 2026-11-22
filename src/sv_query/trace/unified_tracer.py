@@ -130,7 +130,21 @@ class InstanceInfo:
 # ==============================================================================
 # UnifiedTracer
 # ==============================================================================
+class SnapshotCapabilityError(RuntimeError):
+    """A hydrated snapshot cannot satisfy a requested graph capability."""
+
+    def __init__(self, required: frozenset[str], available: frozenset[str]):
+        missing = sorted(required - available)
+        super().__init__(
+            "hydrated snapshot lacks required capabilities "
+            f"{missing}; available={sorted(available)}; "
+            "rebuild from sources or use a complete snapshot")
+        self.required = required
+        self.available = available
+
+
 class UnifiedTracer:
+
     """统一追踪入口"""
 
     def __init__(
@@ -183,6 +197,7 @@ class UnifiedTracer:
         self._cache_status = "disabled"  # disabled|miss|hit
         self._cache_key: str | None = None
         self._built_capabilities: frozenset[str] = frozenset()
+        self._hydrated_without_sources = False
         self._preprocessed = False  # 标记是否已 preprocess
         self._top_modules = list(top_modules) if top_modules else None  # [iter_145]
 
@@ -361,6 +376,12 @@ class UnifiedTracer:
             if self._build_phase in ("empty", "ready", "hydrated"):
                 if required <= self._built_capabilities:
                     return self._graph
+        if self._build_phase == "hydrated" and self._hydrated_without_sources:
+            missing = required - self._built_capabilities
+            if missing:
+                # Never rebuild a snapshot from empty sources: it would replace
+                # a valid graph with an empty one and return false negatives.
+                raise SnapshotCapabilityError(required, self._built_capabilities)
         self._build_phase = "building"
         self._build_error = None
         try:
@@ -386,6 +407,7 @@ class UnifiedTracer:
                     self._path_resolver = PathResolver(
                         self._graph, getattr(self, "_module_graph", None))
                     self._build_phase = "hydrated"
+                    self._hydrated_without_sources = False
                     self._cache_status = "hit"
                     self._built_capabilities = frozenset(capabilities)
                     return self._graph
@@ -522,6 +544,7 @@ class UnifiedTracer:
         self._graph = graph
         self._init_tracers()
         self._built_capabilities = frozenset({"graph"})
+        self._hydrated_without_sources = True
         self._build_phase = "ready"
         self._build_error = None
 
@@ -553,11 +576,15 @@ class UnifiedTracer:
         self._path_resolver = PathResolver(graph, mig)
         self._built_capabilities = frozenset(
             {"graph"} | ({"mig"} if mig is not None else set()))
+        self._hydrated_without_sources = True
         self._build_phase = "hydrated"
         self._build_error = None
 
     def get_graph(self) -> SignalGraph | None:
         return self._graph
+
+    def get_built_capabilities(self) -> frozenset[str]:
+        return frozenset(self._built_capabilities)
 
     def get_path_resolver(self):
         """[iter_237] 公开访问 PathResolver (跨模块路径查询)。
