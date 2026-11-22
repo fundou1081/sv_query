@@ -72,6 +72,7 @@
 | C-49 | scalar port/variable width is `(0,0)` / width 1; `[1:0]` remains width 2; profile matches type | code/test | `test_p195_3_scalar_width.py` | `verified` |
 | C-50 | PyPI publish is blocked by tests + version/tag gate | code/test | `test_p195_4_release_gate.py` | `verified` |
 | C-51 | session protocol ops/envelope/unsupported are documented and machine-readable in capabilities.json_contract | code/test | `test_p195_5_session_contract.py` | `verified` |
+| C-52 | GraphSession context/close/idempotence and stdio BrokenPipe cleanup | code/test | `test_p195_6_session_lifecycle.py` | `verified` |
 
 ---
 

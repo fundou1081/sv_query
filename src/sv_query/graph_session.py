@@ -32,6 +32,8 @@ class GraphSession:
         self._cache_key = None
         self._log_level = log_level
         self._use_cache = use_cache
+        self._closed = False
+        self._generation = 0
         if from_snapshot:
             if file or filelist:
                 raise ValueError("from_snapshot is mutually exclusive with file/filelist")
@@ -54,18 +56,36 @@ class GraphSession:
             self.tracer.build_graph(use_cache=use_cache, required_capabilities={"graph", "mig"})
         self._cache_key = self._current_cache_key()
 
+    def _ensure_open(self) -> None:
+        if self._closed:
+            raise RuntimeError("GraphSession is closed")
+
     @property
     def graph(self):
+        self._ensure_open()
         return self.tracer.get_graph()
 
+    @property
+    def generation(self) -> int:
+        """Increments on refresh; callers must re-fetch gs.graph after it changes."""
+        self._ensure_open()
+        return self._generation
+
     def _current_cache_key(self) -> str | None:
+        self._ensure_open()
         if self._from_snapshot:
             return None
         identity = self.tracer._build_identity(None)
         return identity.key() if identity is not None else None
 
     def refresh(self) -> bool:
-        """Rebuild when source content changed; return whether a rebuild happened."""
+        """Rebuild when source content changed; return whether a rebuild happened.
+
+        A rebuild increments ``generation`` and replaces the tracer graph. External
+        references to the previous graph are not mutated; callers must re-fetch
+        ``gs.graph`` / re-run queries after refresh.
+        """
+        self._ensure_open()
         if self._from_snapshot:
             return False
         current = self._current_cache_key()
@@ -84,9 +104,11 @@ class GraphSession:
         tracer.build_graph(use_cache=self._use_cache, required_capabilities={"graph", "mig"})
         self.tracer = tracer
         self._cache_key = current
+        self._generation += 1
         return True
 
     def cache_info(self) -> dict:
+        self._ensure_open()
         if self._from_snapshot:
             return {"status": "snapshot", "key": None, "capabilities": ["graph", "mig"]}
         return self.tracer.cache_info()
@@ -111,6 +133,7 @@ class GraphSession:
 
     def graph_nodes(self, *, kind: str | None = None, module: str | None = None,
                     match: str | None = None, detail: bool = False) -> dict:
+        self._ensure_open()
         rows = []
         for nid in self.graph.nodes():
             node = self.graph.get_node(nid)
@@ -128,6 +151,7 @@ class GraphSession:
 
     def graph_edges(self, *, kind: str | None = None, src: str | None = None,
                     dst: str | None = None) -> dict:
+        self._ensure_open()
         graph = self.graph
         rows = []
         for e_src, e_dst in graph.edges():
@@ -146,6 +170,7 @@ class GraphSession:
 
     def drivers(self, signal: str, *, depth: int | None = None,
                 module: str | None = None) -> dict:
+        self._ensure_open()
         rows = self.tracer.trace_fanin_detailed(signal, module=module, depth=depth)
         return {
             "signal": signal,
@@ -163,6 +188,7 @@ class GraphSession:
 
     def loads(self, signal: str, *, depth: int | None = None,
               module: str | None = None) -> dict:
+        self._ensure_open()
         rows = self.tracer.trace_fanout(signal, module=module, depth=depth)
         return {
             "signal": signal,
@@ -175,6 +201,7 @@ class GraphSession:
         }
 
     def paths(self, src: str, dst: str, *, directed: bool = False) -> dict:
+        self._ensure_open()
         resolver = self.tracer.get_path_resolver()
         if resolver is None:
             raise ValueError("path resolver unavailable")
@@ -185,6 +212,7 @@ class GraphSession:
                 "path": path}
 
     def dataflow(self, src: str, dst: str, *, max_paths: int = 100) -> dict:
+        self._ensure_open()
         graph = self.graph
         if src not in graph.nodes() or dst not in graph.nodes():
             raise ValueError("signal id not found in graph")
@@ -203,6 +231,7 @@ class GraphSession:
 
     def handlers(self) -> dict:
         """Session op handlers backed by this one graph."""
+        self._ensure_open()
 
         def nodes(request):
             return self.graph_nodes(
@@ -235,5 +264,15 @@ class GraphSession:
                 "drivers": drivers, "loads": loads,
                 "paths": paths, "dataflow": dataflow}
 
+    def __enter__(self) -> GraphSession:
+        self._ensure_open()
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
+
     def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
         self.tracer = None

@@ -23,7 +23,13 @@ Snapshot hydration:
 gs = GraphSession(from_snapshot="perf")
 ```
 
-GraphSession does not import CLI/Typer.
+GraphSession does not import CLI/Typer. Use it as a context manager:
+
+```python
+with GraphSession(filelist="design.f") as gs:
+    gs.graph_nodes()
+# close is idempotent; later calls raise RuntimeError("GraphSession is closed")
+```
 
 ## 2. Stdio server
 
@@ -86,11 +92,20 @@ ops and the success/failure envelope.
 `request_id`, when supplied, is echoed. One graph is built/hydrated per process;
 `refresh()` checks source identity per request.
 
-## 5. Invalidation
+## 5. Invalidation and lifecycle
 
 `GraphSession.refresh()` checks the current BuildIdentity. If source content
-changed, it creates a fresh tracer and rebuilds; the stdio server calls this
-before every request. Snapshot sessions are immutable and skip refresh.
+changed, it creates a fresh tracer and rebuilds; `generation` increments and the
+stdio server calls refresh before every request. Snapshot sessions are immutable
+and skip refresh.
+
+Old graph objects are not mutated (Python references cannot be invalidated);
+callers must re-fetch `gs.graph` / re-run queries after `generation` changes.
+
+The stdio loop uses `with GraphSession(...)` and `try/finally`; a client closing
+stdout is handled as `BrokenPipeError` without a traceback. `close()` is
+idempotent, and use-after-close raises `RuntimeError` rather than
+`AttributeError`.
 
 ## 6. Cache policy
 

@@ -40,27 +40,37 @@ def _serve(filelist: str | None, from_snapshot: str | None, file: str | None) ->
             file=file, filelist=filelist, from_snapshot=from_snapshot,
         )
     except Exception as exc:
-        print(_json.dumps({"ok": False, "error": str(exc)}), flush=True)
-        raise typer.Exit(code=1) from None
-    session = Session(handlers=gs.handlers())
-    for raw in sys.stdin:
-        raw = raw.strip()
-        if not raw:
-            continue
         try:
-            request = _json.loads(raw)
-        except (TypeError, ValueError) as exc:
-            response = {"ok": False, "error": f"invalid request JSON: {exc}"}
-        else:
-            try:
-                gs.refresh()
-            except Exception as exc:
-                response = {"ok": False, "error": f"refresh failed: {exc}"}
-            else:
-                response = session.execute(request) if isinstance(request, dict) else {
-                    "ok": False, "error": "request root must be an object"}
-        print(_json.dumps(response, ensure_ascii=False), flush=True)
-    gs.close()
+            print(_json.dumps({"ok": False, "error": str(exc)}), flush=True)
+        except BrokenPipeError:
+            return
+        raise typer.Exit(code=1) from None
+
+    try:
+        with gs:
+            session = Session(handlers=gs.handlers())
+            for raw in sys.stdin:
+                raw = raw.strip()
+                if not raw:
+                    continue
+                try:
+                    request = _json.loads(raw)
+                except (TypeError, ValueError) as exc:
+                    response = {"ok": False, "error": f"invalid request JSON: {exc}"}
+                else:
+                    try:
+                        gs.refresh()
+                    except Exception as exc:
+                        response = {"ok": False, "error": f"refresh failed: {exc}"}
+                    else:
+                        response = session.execute(request) if isinstance(request, dict) else {
+                            "ok": False, "error": "request root must be an object"}
+                try:
+                    print(_json.dumps(response, ensure_ascii=False), flush=True)
+                except BrokenPipeError:
+                    break
+    except BrokenPipeError:
+        return
 
 
 def session_cmd(
