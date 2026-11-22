@@ -61,7 +61,7 @@ def resolve_cache_dir(explicit: str | os.PathLike | None = None) -> Path:
 CACHE_DIR = resolve_cache_dir()
 
 # 缓存版本
-CACHE_VERSION = "3.0"  # [P194.2a] graph cache manifest schema; bump for format/semantics
+CACHE_VERSION = "3.1"  # [P195.1] closure hash + graph cache manifest; bump for format/semantics
 
 # [iter_271] 缓存文件: gzip 压缩 + 总量上限 (LRU 淘汰)
 # 单工程图 JSON 可达 20MB, 压缩后通常 3~5MB。上限默认 1GB, 可用 SVQ_CACHE_MAX_MB 覆盖。
@@ -79,7 +79,43 @@ ENV_CACHE_MAX_AGE_DAYS = "SVQ_CACHE_MAX_AGE_DAYS"
 PROJECT_INFIX = ".p"
 
 
+class CacheKeyError(ValueError):
+    """The cache key cannot be computed safely (explicit miss, never a skip)."""
+
+
+_HDL_EXTS = {".sv", ".svh", ".v", ".vh", ".inc"}
+
+
+def _read_for_key(path: Path) -> bytes:
+    try:
+        return path.read_bytes()
+    except OSError as exc:
+        raise CacheKeyError(f"cache key input unreadable: {path}: {exc}") from exc
+
+
+def _hash_file(hasher, path: Path) -> None:
+    hasher.update(str(path.resolve()).encode())
+    hasher.update(_read_for_key(path))
+
+
+def _hash_header_dirs(hasher, dirs, base: Path) -> None:
+    for raw in dirs:
+        for one in str(raw).split(","):
+            one = one.strip()
+            if not one:
+                continue
+            inc = Path(one)
+            if not inc.is_absolute():
+                inc = base / inc
+            if not inc.is_dir():
+                raise CacheKeyError(f"cache key include dir missing: {inc}")
+            for hf in sorted(inc.rglob("*")):
+                if hf.suffix in _HDL_EXTS and hf.is_file():
+                    _hash_file(hasher, hf)
+
+
 class ASTCache:
+
     """AST 解析缓存管理器
 
     不可写时自动降级为内存缓存 (见模块 docstring "失败降级")。
@@ -99,60 +135,42 @@ class ASTCache:
                 self.cache_dir, e, ENV_CACHE_DIR,
             )
 
-    def compute_sources_hash(self, sources: dict[str, str]) -> str:
-        """计算 sources 内容的一致性 hash（用于缓存 key）"""
+    def compute_sources_hash(self, sources: dict[str, str], include_dirs=()) -> str:
+        """Hash source text plus all HDL headers under explicit include dirs."""
         hasher = hashlib.sha256()
         for fname in sorted(sources.keys()):
-            hasher.update(fname.encode())
+            hasher.update(str(Path(fname).resolve()).encode())
             hasher.update(sources[fname].encode())
+        _hash_header_dirs(hasher, include_dirs, Path.cwd())
         return hasher.hexdigest()[:16]
 
     def compute_filelist_hash(self, filelist: str, include_dirs=()) -> str:
-        """[iter_270] filelist 模式的内容 hash (filelist + 它引用的所有文件内容)。
+        """Hash the resolved build closure: filelists, sources, defines, headers.
 
-        为什么不用 mtime: 判断"图是否还成立"必须看内容, mtime 在 checkout /
-        复制 / touch 后会产生假失效或假命中。文件数通常几十~几百, 读取开销远小于
-        一次图构建 (verilog-axi: 126 文件 ≈ 几十 ms vs 16~26s)。
+        This deliberately reuses the production filelist parser instead of a
+        second ad-hoc reader. Missing/unreadable closure members raise
+        CacheKeyError; a cache key must never be computed from a partial closure.
         """
+        from ..filelist import parse_filelist
+
         fl = Path(filelist)
         if not fl.exists():
             raise FileNotFoundError(f"filelist 不存在: {filelist}")
-        base = fl.parent
-        hasher = hashlib.sha256()
-        hasher.update(fl.name.encode())
-        for raw in fl.read_text(errors="replace").splitlines():
-            line = raw.strip()
-            if not line or line.startswith(("//", "#")):
-                continue
-            p = Path(line)
-            p = p if p.is_absolute() else (base / p)
-            if not p.is_file():
-                continue
-            hasher.update(str(p).encode())
-            try:
-                hasher.update(p.read_bytes())
-            except OSError as e:
-                logger.warning("缓存 key 计算跳过不可读文件 %s: %s", p, e)
+        spec = parse_filelist(str(fl), base_dirs=[Path.cwd()])
+        if spec.missing:
+            raise CacheKeyError(
+                "cache key filelist closure incomplete: " + ", ".join(spec.missing[:5]))
 
-        # [iter_270] 头文件也必须进 hash: `\`include` 的文件通常不在 filelist 里,
-        # 只 hash filelist 会产生"改了头文件仍命中旧图"的静默错误。
-        # 策略: 把 include 目录下所有 HDL 文件内容纳入 (目录通常几十~几百个文件,
-        # 代价远小于一次图构建)。
-        HDL_EXTS = {".sv", ".svh", ".v", ".vh", ".inc"}
-        for inc in include_dirs or ():
-            inc_dir = Path(inc)
-            if not inc_dir.is_absolute():
-                inc_dir = base / inc_dir
-            if not inc_dir.is_dir():
-                continue
-            for hf in sorted(inc_dir.rglob("*")):
-                if hf.suffix not in HDL_EXTS or not hf.is_file():
-                    continue
-                hasher.update(str(hf).encode())
-                try:
-                    hasher.update(hf.read_bytes())
-                except OSError as e:
-                    logger.warning("缓存 key 计算跳过不可读头文件 %s: %s", hf, e)
+        hasher = hashlib.sha256()
+        for fl_path in spec.filelists:
+            _hash_file(hasher, Path(fl_path))
+        for source in sorted(spec.files):
+            _hash_file(hasher, Path(source))
+        for key, value in sorted(spec.defines.items()):
+            hasher.update(f"define:{key}={value}".encode())
+        includes = list(spec.include_dirs)
+        includes.extend(str(d) for d in include_dirs or ())
+        _hash_header_dirs(hasher, includes, fl.parent)
         return hasher.hexdigest()[:16]
 
     def compute_project_key(

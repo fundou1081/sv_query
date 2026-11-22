@@ -67,7 +67,7 @@ def test_cache_write_failure_does_not_destroy_successful_build(monkeypatch):
     import sv_query.trace.core.cache as cache_module
 
     class FailingCache:
-        def compute_sources_hash(self, sources):
+        def compute_sources_hash(self, sources, include_dirs=()):
             return "fake-hash"
 
         def compute_project_key(self, **kwargs):

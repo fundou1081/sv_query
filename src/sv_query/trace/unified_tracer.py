@@ -206,13 +206,13 @@ class UnifiedTracer:
         cache = get_cache()
         try:
             if self._sources:
-                source_hash = cache.compute_sources_hash(self._sources)
+                source_hash = cache.compute_sources_hash(self._sources, self._include_dirs)
             elif self._filelist:
                 source_hash = cache.compute_filelist_hash(
                     self._filelist, self._include_dirs)
             else:
                 return None
-        except (OSError, FileNotFoundError) as e:
+        except (OSError, FileNotFoundError, ValueError) as e:
             _main_logger.debug("缓存 key 计算失败, 跳过缓存: %s", e)
             return None
         return BuildIdentity(

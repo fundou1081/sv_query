@@ -36,9 +36,11 @@ Changing any field must produce a different key:
 - cache schema or graph semantics version;
 - pyslang or sv_query version.
 
-**Known gap (2026-11-22):** `+define+` and filelist-declared `+incdir+` lines are
-currently skipped because they are not files; headers under a filelist `+incdir+`
-are not hashed. This is tracked as P195.1 and blocks the cache-correctness claim.
+`compute_filelist_hash` uses the production `parse_filelist` closure: all nested
+filelists, resolved source bytes, `+define+` values, filelist `+incdir+` dirs and
+all HDL headers under those dirs are hashed. Sources mode hashes explicit
+include-dir headers. Missing/unreadable closure members raise `CacheKeyError`
+(explicit cache miss), never skip. P195.1.
 
 ### Extractor semantics
 
@@ -54,7 +56,7 @@ Every entry self-describes:
 {
   "capabilities": ["graph"],
   "graph_semantics": "1",
-  "cache_schema": "3.0",
+  "cache_schema": "3.1",
   "build_identity": {...}
 }
 ```
@@ -66,7 +68,8 @@ not yet capability-enforced; a graph-only hit can leave MIG unset. Tracked as
 P195.2.
 
 A missing manifest or missing required capability is a **miss**, not a partial
-hit. Old entries without the manifest are rebuilt.
+hit. Old entries without the manifest are rebuilt. P195.1 covers closure hashing;
+P195.2 still covers capability enforcement (MIG).
 
 ## 3. Default policy
 

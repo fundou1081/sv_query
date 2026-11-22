@@ -9,7 +9,7 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P195.1 cache closure correctness: hash resolved files + +define+ + +incdir+ headers; unreadable => explicit miss** `<待做>`
+- **当前 item**: **P195.2 capability enforcement: required graph/mig capabilities; graph-only entry must not satisfy MIG ops** `<进行中>`
   - P182 组全部完成：envelope / schema / stats / agent entry / snapshot eval / governance
   - P188 release readiness 完成；发布动作见 [RELEASE.md](RELEASE.md)
   - P189.1 docs 自洽 gate 完成
@@ -20,7 +20,7 @@
 ## 📌 当前真实基线
 
 ```text
-canonical:  3162 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  3167 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 

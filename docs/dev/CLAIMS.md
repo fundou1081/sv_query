@@ -65,8 +65,8 @@
 | C-42 | installed runtime has no network/telemetry imports; cache/snapshot are local-only | tool/test | `test_p193_8_privacy.py` | `verified`（static） |
 | C-43 | external beta contract page defines stable/no-promise/evidence/cold-start expectations | doc/test | `test_p193_9_beta_contract.py` | `verified` |
 | C-44 | 安装/运行路径无作者 home、entry 无 sys.path bootstrap、无重复 safe_str import | static/test | `test_p194_1_cleanup.py` | `verified` |
-| C-45 | graph cache key from single BuildIdentity; payload declares graph-only capability; no manifest => miss; **known gap: +define/+incdir/header closure not hashed (P195.1)** | code/test | `test_p194_2a_build_identity.py` | `known-broken` |
-| C-46 | graph nodes/edges/subgraph opt into graph cache with hit/miss/disabled status and --no-cache; **known stale cases for define/header inputs (P195.1)** | code/test | `test_p194_2b_graph_cache.py` | `known-broken` |
+| C-45 | graph cache key from single BuildIdentity; payload declares graph-only capability; no manifest => miss; closure includes defines/files/headers (P195.1) | code/test | `test_p194_2a_build_identity.py`, `test_p195_1_cache_closure.py` | `verified` |
+| C-46 | graph nodes/edges/subgraph opt into graph cache with hit/miss/disabled status and --no-cache | code/test | `test_p194_2b_graph_cache.py` | `verified` |
 | C-47 | GraphSession reuses one graph; stdio session serves graph nodes/edges; snapshot hydrate works | code/test | `test_p194_2c_graph_session.py` | `verified`（graph-only） |
 | C-48 | GraphSession exposes drivers/loads/paths/dataflow and refresh; stdio server reuses one graph; **known gap: graph-only hit can lose MIG (P195.2)** | code/test | `test_p194_2c_graph_session.py` | `known-broken` |
 
