@@ -11,7 +11,7 @@
 
 - **当前 item**: **P196.4 P1 remaining packed/fallback scalar width normalization; C-49 scope** `<待做>`
   - P195 全部完成；0.3.5 已发布（release-check -> build -> publish）
-  - P194.2f 暂停：由 P196.1/P196.2 阻塞
+  - P194.2f 已解除阻塞（P196.1/P196.2 已完成）
   - 独立复核报告: `/tmp/p195_final_review.md`
   - 未完成叶子：P196.1–P196.5、P194.2f、P194.3–P194.7、P193.10
 
