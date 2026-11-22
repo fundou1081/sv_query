@@ -34,3 +34,7 @@ P195.3 updates scalar extraction in `ports_ifaces.py` and `exprs_drivers.py`,
 and connection-extractor handling of missing vs scalar port widths. It does not
 redesign every internal width fallback; those remain explicitly unknown until
 extracted.
+
+**Known gap (P196.4):** packed-struct scalar members and several default/fallback
+paths still emit `(1,0)` → width 2. Do not treat `(0,0)` as universal until
+P196.4 lands.

@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P194.2f session coverage for verify/scope/instances <待做>
+current item : P196.1 P0 legacy snapshot must not rebuild from empty sources; explicit unsupported/MIG result <待做>
 
 ## 计划树
 
@@ -591,7 +591,7 @@ P194.2 cold-start cache contract and session reuse <待做>
 P194.2c local session/server reuse + snapshot persistence <待做>
 -- P194.2d GraphSession + stdio graph server + snapshot hydrate <已完成>
 -- P194.2e expose remaining core query ops + invalidation <已完成>
--- P194.2f session coverage for verify/scope/instances <待做>
+-- P194.2f session coverage for verify/scope/instances (blocked by P196.1/P196.2) <阻塞>
 -- P194.3 API facade + deprecation policy <待做>
 -- P194.4 split 500+ line extractor functions <待做>
 -- P194.5 external benchmark + token cost validation <待做>
@@ -608,6 +608,13 @@ P195 external user + maintainer review follow-up (2026-11-22) <已完成>
 -- P195.7 single-source version: BuildIdentity uses PACKAGE_VERSION; release check <已完成>
 -- P195.8 user docs: --version, --quiet, cache controls, error_code/envelope semantics <已完成>
 -- P195.9 maintenance cleanup: dead cache APIs, except gate coverage, claims freshness <已完成>
+
+P196 independent review follow-up (2026-11-22) <待做>
+-- P196.1 P0 legacy snapshot must not rebuild from empty sources; explicit unsupported/MIG result <待做>
+-- P196.2 P1 stdio error envelopes for parse/startup/refresh; contract tests <待做>
+-- P196.3 P1 file-mode GraphSession.refresh reads disk content; regression test <待做>
+-- P196.4 P1 remaining packed/fallback scalar width normalization; C-49 scope <待做>
+-- P196.5 claims/docs/test reconciliation: downgrade C-47/C-48/C-49/C-51; CURRENT_TODO <待做>
 
 P193 external trial readiness (2026-11-21 review) <待做>
 -- P193.1 fix sim/tests/config absolute symlink + clone hygiene <已完成>

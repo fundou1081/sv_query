@@ -2,19 +2,18 @@
 
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
-> **状态**: 当前 P193.2 外部试用准备。
-> **最后更新**: 2026-11-19 (P182.6 governance cleanup)
+> **状态**: P196.1 独立复核 P0 修复（legacy snapshot/session）。
+> **最后更新**: 2026-11-22 (P196 independent review follow-up)
 
 ---
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P194.2f session coverage for verify/scope/instances** `<待做>`
-  - P182 组全部完成：envelope / schema / stats / agent entry / snapshot eval / governance
-  - P188 release readiness 完成；发布动作见 [RELEASE.md](RELEASE.md)
-  - P189.1 docs 自洽 gate 完成
-  - P182.5 结论：不扩 source-dependent snapshot、不做 serve、不改 cache 默认
-  - P193.1–P193.9 完成；新增 P194 评审 follow-up，当前 P194.1
+- **当前 item**: **P196.1 P0 legacy snapshot must not rebuild from empty sources; explicit unsupported/MIG result** `<待做>`
+  - P195 全部完成；0.3.5 已发布（release-check -> build -> publish）
+  - P194.2f 暂停：由 P196.1/P196.2 阻塞
+  - 独立复核报告: `/tmp/p195_final_review.md`
+  - 未完成叶子：P196.1–P196.5、P194.2f、P194.3–P194.7、P193.10
 
 
 ## 📌 当前真实基线

@@ -112,3 +112,16 @@ idempotent, and use-after-close raises `RuntimeError` rather than
 - GraphSession defaults to `use_cache=True`;
 - cache hit/miss/snapshot is exposed via `cache_info()`;
 - no network listener; RTL stays local.
+
+
+## 7. Known gaps (P196, 2026-11-22)
+
+Independent review reproduced:
+
+- a legacy snapshot without MIG can be replaced by an empty graph on a MIG
+  query (P196.1, P0) — snapshot sessions are **not** safe for MIG ops until fixed;
+- `GraphSession(file=...)` refresh does not re-read disk (P196.3);
+- malformed/startup/refresh stdio errors do not use the structured envelope
+  (P196.2).
+
+Do not claim full snapshot/session correctness until P196.1–P196.3 are done.
