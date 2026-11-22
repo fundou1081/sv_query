@@ -300,6 +300,7 @@ def _read_golden(name: str) -> dict:
             "--filelist", STRICT_UART_FILELIST,
             "--type", "REG",
             "--width-min", "2",
+            "--no-cache",
             "--json",
         )
         assert r.returncode == 0, f"baseline gen failed: {r.stderr[:200]}"
@@ -315,6 +316,7 @@ def test_golden_filter_type_and_width():
         "--filelist", STRICT_UART_FILELIST,
         "--type", "REG",
         "--width-min", "2",
+        "--no-cache",
         "--json",
     )
     assert r.returncode == 0

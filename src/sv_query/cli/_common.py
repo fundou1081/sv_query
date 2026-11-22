@@ -160,7 +160,7 @@ def _build_pruned_tracer(
 
     try:
         tracer = make(pruned.selected)
-        tracer.build_graph(use_cache=use_cache)
+        tracer.build_graph(use_cache=use_cache, required_capabilities={"graph", "mig"})
         errors = tracer.get_elaboration_errors()
         if errors:
             raise CompilationError(
@@ -170,7 +170,7 @@ def _build_pruned_tracer(
         return tracer
     except Exception as exc:
         tracer = make(list(sources))
-        tracer.build_graph(use_cache=use_cache)
+        tracer.build_graph(use_cache=use_cache, required_capabilities={"graph", "mig"})
         tracer._svq_prune_info = info(True, str(exc))
         return tracer
 

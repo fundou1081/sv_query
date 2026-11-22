@@ -62,14 +62,13 @@ Every entry self-describes:
 ```
 
 Current graph cache owns **graph only**. MIG/class/path-resolver capabilities are
-not yet cached; commands that require them must not treat this entry as complete.
-**Known gap (2026-11-22):** the current `drivers`/`loads`/GraphSession paths are
-not yet capability-enforced; a graph-only hit can leave MIG unset. Tracked as
-P195.2.
+not cached. `build_graph(required_capabilities=...)` only hydrates an entry when
+the manifest covers every requested capability; trace/GraphSession callers request
+`{"graph", "mig"}`, so a graph-only hit is a miss and rebuilds with MIG. P195.2.
 
 A missing manifest or missing required capability is a **miss**, not a partial
 hit. Old entries without the manifest are rebuilt. P195.1 covers closure hashing;
-P195.2 still covers capability enforcement (MIG).
+P195.2 covers capability enforcement (MIG).
 
 ## 3. Default policy
 

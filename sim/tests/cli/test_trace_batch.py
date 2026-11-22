@@ -67,6 +67,7 @@ def test_p2_batch_inline_multiple_signals():
         "fanin",
         "--batch", "uart_top.rx_data_o,uart_top.rx_fifo.count_q",
         "--filelist", STRICT_UART_FILELIST,
+        "--no-cache",
         "--json",
     )
     assert r.returncode == 0
@@ -283,6 +284,7 @@ def _read_golden(name: str) -> dict:
             "fanin",
             "--batch", "uart_top.rx_data_o,uart_top.rx_fifo.count_q",
             "--filelist", STRICT_UART_FILELIST,
+            "--no-cache",
             "--json",
         )
         assert r.returncode == 0, f"baseline gen failed: {r.stderr[:200]}"
@@ -297,6 +299,7 @@ def test_golden_batch_fanin_2_signals():
         "fanin",
         "--batch", "uart_top.rx_data_o,uart_top.rx_fifo.count_q",
         "--filelist", STRICT_UART_FILELIST,
+        "--no-cache",
         "--json",
     )
     assert r.returncode == 0

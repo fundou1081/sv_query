@@ -51,7 +51,7 @@ class GraphSession:
                 )
             else:
                 self.tracer = UnifiedTracer(filelist=filelist, log_level=log_level)
-            self.tracer.build_graph(use_cache=use_cache)
+            self.tracer.build_graph(use_cache=use_cache, required_capabilities={"graph", "mig"})
         self._cache_key = self._current_cache_key()
 
     @property
@@ -81,7 +81,7 @@ class GraphSession:
             )
         else:
             tracer = UnifiedTracer(filelist=self._filelist, log_level=self._log_level)
-        tracer.build_graph(use_cache=self._use_cache)
+        tracer.build_graph(use_cache=self._use_cache, required_capabilities={"graph", "mig"})
         self.tracer = tracer
         self._cache_key = current
         return True

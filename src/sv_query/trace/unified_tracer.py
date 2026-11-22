@@ -182,6 +182,7 @@ class UnifiedTracer:
         self._inject_timescale = inject_timescale  # [P190.1] 诊断路径可关闭注入
         self._cache_status = "disabled"  # disabled|miss|hit
         self._cache_key: str | None = None
+        self._built_capabilities: frozenset[str] = frozenset()
         self._preprocessed = False  # 标记是否已 preprocess
         self._top_modules = list(top_modules) if top_modules else None  # [iter_145]
 
@@ -256,11 +257,11 @@ class UnifiedTracer:
         _main_logger.setLevel(log_level_val)
 
     def cache_info(self) -> dict:
-        """[P194.2b] Observable graph-cache status for a completed build."""
+        """[P194.2b/P195.2] Observable cache status and built capabilities."""
         return {
             "status": self._cache_status,
             "key": self._cache_key,
-            "capabilities": ["graph"] if self._cache_status == "hit" else [],
+            "capabilities": sorted(self._built_capabilities),
         }
 
     def get_log_level(self) -> str:
@@ -345,13 +346,21 @@ class UnifiedTracer:
 
     def build_graph(self, force: bool = False, use_cache: bool = False,
                     target_module: str | None = None,
-                    auto_target_single_top: bool = False) -> SignalGraph:
-        """构建信号流图；失败时不暴露半成品图。"""
+                    auto_target_single_top: bool = False,
+                    required_capabilities: set[str] | frozenset[str] | None = None
+                    ) -> SignalGraph:
+        """Build a graph; cache hits require all requested capabilities.
+
+        ``required_capabilities`` defaults to graph-only for compatibility.
+        Callers that use MIG must pass ``{"graph", "mig"}``.
+        """
+        required = frozenset(required_capabilities or ("graph",))
         if self._build_phase == "building":
             raise RuntimeError("build_graph is already running")
         if self._graph is not None and not force:
             if self._build_phase in ("empty", "ready", "hydrated"):
-                return self._graph
+                if required <= self._built_capabilities:
+                    return self._graph
         self._build_phase = "building"
         self._build_error = None
         try:
@@ -369,7 +378,7 @@ class UnifiedTracer:
                 payload = (cached or {}).get("data") or {}
                 manifest = payload.get("manifest") or {}
                 capabilities = set(manifest.get("capabilities") or ())
-                if "graph" in capabilities and payload.get("graph_data"):
+                if required <= capabilities and payload.get("graph_data"):
                     _main_logger.info(f"Loading graph from cache (key={cache_key[:8]}...)")
                     self._graph = SignalGraph.from_dict(payload["graph_data"])
                     self._init_tracers()
@@ -378,6 +387,7 @@ class UnifiedTracer:
                         self._graph, getattr(self, "_module_graph", None))
                     self._build_phase = "hydrated"
                     self._cache_status = "hit"
+                    self._built_capabilities = frozenset(capabilities)
                     return self._graph
                 if payload:
                     _main_logger.debug(
@@ -414,6 +424,9 @@ class UnifiedTracer:
 
         # The graph is complete at this point. Cache is an optimization; a cache
         # write failure must not destroy a successful build.
+        self._built_capabilities = frozenset(
+            {"graph"} | ({"mig"} if getattr(self, "_module_graph", None) is not None else set())
+        )
         self._build_phase = "ready"
         if use_cache and cache_key:
             try:
@@ -508,6 +521,7 @@ class UnifiedTracer:
     def load_graph(self, graph: SignalGraph) -> None:
         self._graph = graph
         self._init_tracers()
+        self._built_capabilities = frozenset({"graph"})
         self._build_phase = "ready"
         self._build_error = None
 
@@ -537,6 +551,8 @@ class UnifiedTracer:
         self._covergroup_cgs = None
         self._init_tracers()
         self._path_resolver = PathResolver(graph, mig)
+        self._built_capabilities = frozenset(
+            {"graph"} | ({"mig"} if mig is not None else set()))
         self._build_phase = "hydrated"
         self._build_error = None
 
@@ -907,7 +923,7 @@ class UnifiedTracer:
             module: 模块名。给定 = 限定查询 (不跨模块); None = 全局查询 (跨模块)
             depth: 1=只看直接后继, N=递归 N 层, None=递归到底
         """
-        self.build_graph()
+        self.build_graph(required_capabilities={"graph", "mig"})
         return self._load_tracer.trace(signal, module, depth=depth)
 
     def trace_fanout(
@@ -925,7 +941,7 @@ class UnifiedTracer:
         当 include_conditional=True 时, trace 会穿过 OP_TERNARY/OP_CASE 节点,
         看到条件表达式 (?: / case) 的两个分支.
         """
-        self.build_graph()
+        self.build_graph(required_capabilities={"graph", "mig"})
         return self._signal_tracer.trace_fanout(
             signal, module, depth,
             include_clock=include_clock,
@@ -937,7 +953,7 @@ class UnifiedTracer:
     def trace_fanin(self, signal: str, module: str = None, depth: int | None = None,
                     include_clock: bool = False, include_reset: bool = False,
                     include_control: bool = False) -> list:
-        self.build_graph()
+        self.build_graph(required_capabilities={"graph", "mig"})
         return self._signal_tracer.trace_fanin(
             signal, module, depth,
             include_clock=include_clock,
@@ -957,7 +973,7 @@ class UnifiedTracer:
         Returns:
             DriverChain - 包含 DriverInfo 列表
         """
-        self.build_graph()
+        self.build_graph(required_capabilities={"graph", "mig"})
         return self._signal_tracer.trace_detailed(signal, module)
 
     def trace_fanin_detailed(self, signal: str, module: str = None, depth: int | None = None) -> list:
@@ -971,7 +987,7 @@ class UnifiedTracer:
         Returns:
             List[DriverInfo] - 驱动信息列表
         """
-        self.build_graph()
+        self.build_graph(required_capabilities={"graph", "mig"})
         return self._signal_tracer.trace_fanin_detailed(signal, module, depth)
 
     # =========================================================================

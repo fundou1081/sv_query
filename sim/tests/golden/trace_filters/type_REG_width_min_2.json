@@ -10,7 +10,7 @@
     "from_snapshot": null,
     "max_results": null,
     "module": null,
-    "no_cache": false,
+    "no_cache": true,
     "signals": [
       "uart_top.rx_fifo.count_q"
     ],
@@ -28,9 +28,9 @@
         "condition_truncated": false,
         "conditional_drivers": true,
         "conditions": [
+          "!rst_ni",
           "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b1",
-          "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b10",
-          "!rst_ni"
+          "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b10"
         ],
         "count": 1,
         "cycles_detected": true,

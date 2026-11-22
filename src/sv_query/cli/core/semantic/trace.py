@@ -393,7 +393,7 @@ def _build_trace_tracer(file, filelist, top, prune, from_snapshot,
             preprocess_macros=preprocess_macros,
             top_modules=[top] if top else None)
     if tracer.get_graph() is None:
-        _ = tracer.build_graph(use_cache=not no_cache)
+        _ = tracer.build_graph(use_cache=not no_cache, required_capabilities={"graph", "mig"})
     return tracer
 
 
@@ -918,7 +918,7 @@ def impact(
             tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR",
                                    preprocess_macros=preprocess_macros,
                                    top_modules=[top] if top else None)
-        graph = tracer.build_graph(use_cache=not no_cache)
+        graph = tracer.build_graph(use_cache=not no_cache, required_capabilities={"graph", "mig"})
 
         # [iter_309/P15 + iter_314/P18.3] --bits 归一化（与 signals 对齐）
         try:
