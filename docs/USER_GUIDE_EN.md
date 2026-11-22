@@ -75,6 +75,22 @@ cache metadata, it appears as `params.cache`:
 A `hit` is an optimization, not a correctness claim. If a command needs MIG and
 the entry is graph-only, sv_query rebuilds instead of using a partial graph.
 
+## 1d. Python API
+
+For a persistent local graph, use the stable facade:
+
+```python
+from sv_query import open_query
+
+with open_query(filelist="rtl.f") as client:
+    nodes = client.execute({"op": "graph_nodes"})
+    drivers = client.execute({"op": "drivers", "signal": "top.y"})
+```
+
+`QueryClient` is a thin `Session` facade over one `GraphSession`; the CLI is not
+imported. The deprecation policy is in
+[docs/dev/API_FACADE.md](dev/API_FACADE.md).
+
 ## 2. First queries
 
 ```bash

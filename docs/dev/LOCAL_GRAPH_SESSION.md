@@ -6,6 +6,18 @@
 
 ## 1. Python API
 
+Preferred stable facade:
+
+```python
+from sv_query import open_query
+
+with open_query(filelist="design.f") as client:
+    client.execute({"op": "graph_nodes"})
+    client.execute({"op": "drivers", "signal": "top.sig"})
+```
+
+Low-level graph API:
+
 ```python
 from sv_query.graph_session import GraphSession
 
