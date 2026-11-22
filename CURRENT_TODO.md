@@ -9,7 +9,7 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P195.3 scalar width normalization: 1-bit signal must not report width=[1,0]/width=2** `<待做>`
+- **当前 item**: **P195.5 session docs/envelope: document ops/envelope, add verify support or explicit unsupported** `<待做>`
   - P182 组全部完成：envelope / schema / stats / agent entry / snapshot eval / governance
   - P188 release readiness 完成；发布动作见 [RELEASE.md](RELEASE.md)
   - P189.1 docs 自洽 gate 完成

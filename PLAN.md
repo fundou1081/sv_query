@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P195.3 scalar width normalization: 1-bit signal must not report width=[1,0]/width=2 <待做>
+current item : P195.5 session docs/envelope: document ops/envelope, add verify support or explicit unsupported <待做>
 
 ## 计划树
 
@@ -601,7 +601,7 @@ P194.2c local session/server reuse + snapshot persistence <待做>
 P195 external user + maintainer review follow-up (2026-11-22) <待做>
 -- P195.1 cache closure correctness: hash resolved files + +define+ + +incdir+ headers; unreadable => explicit miss <已完成>
 -- P195.2 capability enforcement: required graph/mig capabilities; graph-only entry must not satisfy MIG ops <已完成>
--- P195.3 scalar width normalization: 1-bit signal must not report width=[1,0]/width=2 <待做>
+-- P195.3 scalar width normalization: 1-bit signal must not report width=[1,0]/width=2 <已完成>
 -- P195.4 release gating: publish only after tests + tag/version consistency check <已完成>
 -- P195.5 session docs/envelope: document ops/envelope, add verify support or explicit unsupported <待做>
 -- P195.6 stdio lifecycle: try/finally, BrokenPipeError, context manager, closed-state guard <待做>
