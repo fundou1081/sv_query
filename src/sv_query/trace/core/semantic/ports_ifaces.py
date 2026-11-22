@@ -5,11 +5,8 @@
 # _fixed_names/_genvar_context/_spec_members 等), 无独立状态。
 """ports_ifaces 域: 端口/接口/modport"""
 import logging
-from typing import Callable, Iterator
 
-import pyslang
-
-from ..._safe import _safe_attr, _safe_str, clean_name, safe_attr, safe_str
+from ..._safe import _safe_attr, _safe_str
 from ..ast_utils import is_syntax_list, iter_syntax_list
 
 logger = logging.getLogger(__name__)
@@ -208,7 +205,7 @@ class PortsIfacesMixin:
                 return (msb, lsb)
             # ScalarType -> 1 bit
             elif hasattr(port_type, "kind") and "ScalarType" in str(port_type.kind):
-                return (1, 0)
+                return (0, 0)
             # [iter_299 / PLAN P11.1] packed struct/union typedef（无 range）
             bw = getattr(port_type, "bitWidth", None)
             if bw:

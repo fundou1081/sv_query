@@ -8,11 +8,21 @@ import logging
 import re  # [iter_117] get_path 父路径索引段检测 (去重 gen_block)
 
 from .._safe import _safe_str, safe_attr
-from .semantic_adapter import SemanticAdapter
 from .extractor_models import ExtractorResult
 from .graph.models import EdgeKind, NodeKind, TraceEdge, TraceNode
+from .semantic_adapter import SemanticAdapter
 
 logger = logging.getLogger(__name__)
+
+
+def _instance_decl_name(inst) -> str:
+    """Extract the declared instance name without relying on undefined locals."""
+    instances = getattr(inst, "instances", None) or []
+    decl = getattr(instances[0], "decl", None) if instances else None
+    name = getattr(decl, "name", None)
+    if name:
+        return str(name).strip()
+    return str(inst).split("(")[0].strip()
 
 
 class ConnectionExtractor:
@@ -33,7 +43,7 @@ class ConnectionExtractor:
                 if hasattr(node, "header") and hasattr(node.header, "name"):
                     return node.header.name.rawText.strip()
                 elif hasattr(node, "name"):
-                    return safe_str(safe_attr(node, "name", "")).rawText.strip()
+                    return str(safe_attr(node, "name", "")).strip()
         # Fallback: use parent_module if it's a string (actual parent module name)
         # For top-level instances (parent_module is None), return '__root__'
         if hasattr(inst, "parent_module"):
@@ -264,13 +274,7 @@ class ConnectionExtractor:
         instances_info = []  # [(inst_module_name, inst_name, parent_module)]
 
         for inst in instances:
-            inst_name = (
-                inst.instances[0].safe_str(safe_attr(decl, "name", "")).value.strip()
-                if hasattr(inst.instances[0], "decl")
-                and hasattr(inst.instances[0].decl, "name")
-                and inst.instances[0].safe_str(safe_attr(decl, "name", "")).value
-                else str(inst).split("(")[0].strip()
-            )
+            inst_name = _instance_decl_name(inst)
 
             inst_type_value = safe_attr(inst, "type", None).value.strip() if hasattr(safe_attr(inst, "type", None), "value") and safe_attr(inst, "type", None).value else ""
             # [PR1 2026-06-14] 优先用 inst.definition.name (真实 def_name)
@@ -392,13 +396,7 @@ class ConnectionExtractor:
 
         # [FIX] 第三阶段:使用正确路径创建节点和边
         for _idx, inst in enumerate(instances):
-            inst_name = (
-                inst.instances[0].safe_str(safe_attr(decl, "name", "")).value.strip()
-                if hasattr(inst.instances[0], "decl")
-                and hasattr(inst.instances[0].decl, "name")
-                and inst.instances[0].safe_str(safe_attr(decl, "name", "")).value
-                else str(inst).split("(")[0].strip()
-            )
+            inst_name = _instance_decl_name(inst)
 
             inst_type_value = safe_attr(inst, "type", None).value.strip() if hasattr(safe_attr(inst, "type", None), "value") and safe_attr(inst, "type", None).value else ""
             # [PR1 2026-06-14] 优先用 inst.definition.name (真实 def_name)
@@ -476,7 +474,8 @@ class ConnectionExtractor:
             # [iter_274] generate 块内的**局部**信号必须带块路径 (top.G[0].local_wire)。
             # `_sig_scope` 会去掉 generate 段 (为修 case26 的 rotator 误连), 但那对
             # 块内局部声明是错的: 每轮同名 wire 会塌缩到模块作用域。
-            _gen_parent_path = inst_path.rsplit(".", 1)[0] if "." in inst_path else parent_path
+            _parent_path = inst_path.rsplit(".", 1)[0] if "." in inst_path else ""
+            _gen_parent_path = _parent_path
             _gen_local_names: set[str] = set()
             if _gen_parent_path:
                 _index = getattr(self, "_gen_locals_index", None)
@@ -535,7 +534,7 @@ class ConnectionExtractor:
                                .get(port_name))
                 if _iface_info is not None:
                     _iface_name, _iface_members = _iface_info
-                    _iface_parent_scope = _sig_scope if _sig_scope else parent_path
+                    _iface_parent_scope = _sig_scope if _sig_scope else _parent_path
                     result.interface_links.append(
                         (inst_path, port_name, _iface_name,
                          list(_iface_members),
@@ -573,7 +572,14 @@ class ConnectionExtractor:
                     kind = NodeKind.PORT_IN
                 # 获取端口位宽
                 port_widths = all_module_widths.get(inst_module_name, {})
-                width = port_widths.get(port_name, (1, 0))
+                width = port_widths.get(port_name)
+
+                # A missing entry is unknown; (0,0) is now the canonical scalar width.
+                if width is None:
+                    logger.warning(
+                        "[connection_extractor] port '%s' width missing for %s; "
+                        "falling back to (1,0)", port_name, inst_module_name)
+                    width = (1, 0)
 
                 # [NEW] 如果位宽为 (0,0),尝试从父模块的信号宽度推断
                 if width == (0, 0) and signal_name:
@@ -585,17 +591,8 @@ class ConnectionExtractor:
                 # [FIX 2026-08-27 18:56] Bug #3: 位宽 (0,0) 静默兜底为 (1,0) 加 warning
                 # 之前 line 407 静默 fallback if width == (0,0) -> (1,0),
                 # 违反 AGENTS.md §2. 现在: 兜底仍保留 (兼容), 但 logger.warning + extra 记实际 width.
-                if width == (0, 0):
-                    logger.warning(
-                        "[connection_extractor] port '%s' width (0,0) for %s; "
-                        "falling back to (1,0) (likely parameterized port or missing width)",
-                        port_name, inst_module_name,
-                    )
-                    width_extra = {"width": (0, 0), "fallback": (1, 0)}
-                    final_width = (1, 0)
-                else:
-                    width_extra = {"width": width}
-                    final_width = width
+                width_extra = {"width": width}
+                final_width = width
                 # 合并 port_extra + width_extra 到 TraceNode.extra
                 merged_extra = {**port_extra, **width_extra}
 

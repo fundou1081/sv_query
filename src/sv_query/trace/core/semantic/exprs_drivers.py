@@ -5,12 +5,8 @@
 # _fixed_names/_genvar_context/_spec_members 等), 无独立状态。
 """exprs_drivers 域: 赋值/数据声明/驱动/任务函数参数"""
 import logging
-from typing import Callable, Iterator
 
-import pyslang
-
-from ..._safe import _safe_attr, _safe_str, clean_name, safe_attr, safe_str
-from ..ast_utils import is_syntax_list, iter_syntax_list
+from ..._safe import _safe_attr, safe_attr
 
 logger = logging.getLogger(__name__)
 
@@ -873,7 +869,7 @@ class ExprsDriversMixin:
                         if _m:
                             _msb, _lsb = int(_m.group(1)), int(_m.group(2))
                             if _msb == _lsb == 0 and type(data_decl).__name__ == "VariableSymbol":
-                                return (1, 0)  # 标量变量沿用历史 (1,0) 约定
+                                return (0, 0)  # [P195.3] scalar canonical width
                             return (_msb, _lsb)
             except Exception as e:
                 logger.debug("%s: 忽略 Exception: %s", __name__, e)
@@ -888,7 +884,7 @@ class ExprsDriversMixin:
                 ebw = getattr(et, "bitWidth", None)
                 if ebw:
                     try:
-                        return (1, 0) if int(ebw) == 1 else (int(ebw) - 1, 0)
+                        return (0, 0) if int(ebw) == 1 else (int(ebw) - 1, 0)
                     except (TypeError, ValueError) as _e:
                         logger.debug("unpacked array 元素宽度提取失败: %s", _e)
             # [iter_299 / PLAN P11.1] packed struct/union 的 typedef 类型：
@@ -900,7 +896,7 @@ class ExprsDriversMixin:
                 if bw:
                     try:
                         if int(bw) == 1:
-                            return (1, 0)   # 标量沿用历史 (1,0) 约定
+                            return (0, 0)   # [P195.3] scalar canonical width
                         if int(bw) > 0:
                             return (int(bw) - 1, 0)
                     except (TypeError, ValueError) as _e:
@@ -913,7 +909,7 @@ class ExprsDriversMixin:
             ebw = getattr(et, "bitWidth", None)
             if ebw:
                 try:
-                    return (1, 0) if int(ebw) == 1 else (int(ebw) - 1, 0)
+                    return (0, 0) if int(ebw) == 1 else (int(ebw) - 1, 0)
                 except (TypeError, ValueError) as _e:
                     logger.debug("unpacked array 元素宽度提取失败: %s", _e)
 
