@@ -1224,8 +1224,19 @@ class SignalTracer:
         for dst in self.graph.successors(signal_id):
             yield signal_id, dst
 
-    def _is_dangling_bit_alias(self, signal_id: str, src: str) -> bool:
-        if not src.startswith(signal_id + "["):
+    def _is_dangling_bit_alias(self, signal_id: str, src: str, edge=None) -> bool:
+        """A full-range BIT_SELECT alias with no predecessor is structural only."""
+        if edge is not None and edge.kind != EdgeKind.BIT_SELECT:
+            return False
+        node = self.graph.get_node(src)
+        if node is None or getattr(node, "parent", None) != signal_id:
+            return False
+        parent = self.graph.get_node(signal_id)
+        if parent is None or not getattr(parent, "width", None):
+            return False
+        msb, lsb = parent.width
+        full = {f"[{msb}:{lsb}]", f"[{lsb}:{msb}]"}
+        if getattr(node, "bit_range", None) not in full:
             return False
         return not list(self.graph.predecessors(src))
 
@@ -1250,7 +1261,8 @@ class SignalTracer:
         # [iter_272] 不再注入 MIG 虚拟对端 (实例级图跨模块是普通图边)。
         for src, dst in self._incoming_pairs(signal_id):
             if dst == signal_id:
-                if self._is_dangling_bit_alias(signal_id, src):
+                _edge = self.graph.get_edge(src, dst)
+                if self._is_dangling_bit_alias(signal_id, src, _edge):
                     continue
                 # [iter_127 A3] 与 _trace_drivers_recursive 同规则: 跳过
                 # 实例输出端口 "模块内部驱动" internal 自环标记 (非真实源).
@@ -1305,8 +1317,9 @@ class SignalTracer:
                             and node.id not in {d.id for d in drivers}):
                         drivers.append(node)
         if not drivers and any(
-                self._is_dangling_bit_alias(signal_id, p)
-                for p in self.graph.predecessors(signal_id)):
+                self._is_dangling_bit_alias(
+                    signal_id, src, self.graph.get_edge(src, signal_id))
+                for src in self.graph.predecessors(signal_id)):
             # Depth 1 hit a dangling full-range alias (e.g. gray_out[31:0]).
             # Alias traversal is structural, so allow the next data level.
             return self._collect_all_drivers(
