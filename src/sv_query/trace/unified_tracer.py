@@ -136,7 +136,7 @@ class SnapshotCapabilityError(RuntimeError):
     def __init__(self, required: frozenset[str], available: frozenset[str]):
         missing = sorted(required - available)
         super().__init__(
-            "hydrated snapshot lacks required capabilities "
+            "hydrated graph/snapshot lacks required capabilities "
             f"{missing}; available={sorted(available)}; "
             "rebuild from sources or use a complete snapshot")
         self.required = required
@@ -545,7 +545,7 @@ class UnifiedTracer:
         self._graph = graph
         self._init_tracers()
         self._built_capabilities = frozenset({"graph"})
-        self._hydrated_without_sources = True
+        self._hydrated_without_sources = not bool(self._sources)
         self._build_phase = "hydrated"
         self._build_error = None
 
@@ -577,7 +577,7 @@ class UnifiedTracer:
         self._path_resolver = PathResolver(graph, mig)
         self._built_capabilities = frozenset(
             {"graph"} | ({"mig"} if mig is not None else set()))
-        self._hydrated_without_sources = True
+        self._hydrated_without_sources = not bool(self._sources)
         self._build_phase = "hydrated"
         self._build_error = None
 

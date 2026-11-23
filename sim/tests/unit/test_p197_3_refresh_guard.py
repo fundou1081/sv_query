@@ -1,9 +1,6 @@
 """P197.3 — unreadable refresh and load_graph capability guard are explicit."""
 from __future__ import annotations
 
-import os
-from pathlib import Path
-
 import pytest
 
 from sv_query.graph_session import GraphSession
@@ -32,3 +29,14 @@ def test_load_graph_requires_capabilities_instead_of_rebuilding_empty():
     assert tracer.build_graph(required_capabilities={"graph"}) is graph
     with pytest.raises(SnapshotCapabilityError):
         tracer.build_graph(required_capabilities={"graph", "mig"})
+
+
+def test_load_graph_with_sources_can_rebuild_mig(tmp_path):
+    src = tmp_path / "m.sv"
+    src.write_text("module m(input logic a, output logic y); assign y = a; endmodule\n")
+    tracer = UnifiedTracer(sources={str(src): src.read_text()}, log_level="ERROR")
+    loaded = SignalGraph()
+    tracer.load_graph(loaded)
+    rebuilt = tracer.build_graph(required_capabilities={"graph", "mig"})
+    assert rebuilt is not loaded
+    assert tracer.get_module_graph() is not None
