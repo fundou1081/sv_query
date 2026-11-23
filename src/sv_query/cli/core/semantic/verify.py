@@ -22,6 +22,7 @@ from sv_query.cli._output import emit_json
 from sv_query.cli.core.semantic.trace_common import _load_tracer_from_snapshot, resolve_signal
 from sv_query.trace.core.compiler import CompilationError
 from sv_query.trace.core.graph.contracts import STRUCTURAL_EDGE_KINDS, has_data_edge
+from sv_query.trace.core.query import verification as shared_verify
 from sv_query.trace.core.query.structural import StructuralError, symmetry_findings
 
 verify_app = typer.Typer(help="客观检查：双向一致性 + claim verification (只读, JSON-first)")
@@ -79,25 +80,16 @@ def _resolve(graph, sig: str):
     return r, (r.get("resolved") if r.get("ok") else None)
 
 
-def _claim_result(claim: dict, status: str, *, reason: str = "",
-                  evidence: list | None = None,
-                  counterevidence: list | None = None,
-                  unknown_kind: str = "") -> dict:
-    result = {
-        "claim": claim,
-        "status": status,
-        "reason": reason,
-        "evidence": evidence or [],
-        "counterevidence": counterevidence or [],
-    }
-    if status == "unknown":
-        kind = unknown_kind or "unverifiable"
-        result["machine"] = {
-            "status": "unknown",
-            "unknown_kind": kind,
-            "unresolved_endpoint": kind == "unresolved_endpoint",
-        }
-    return result
+def _cli_resolve(graph, signal: str):
+    result, resolved = _resolve(graph, signal)
+    return resolved, (result.get("status") if result else "unknown")
+
+
+def _claim_result(claim: dict, status: str, *, reason="", evidence=None,
+                  counterevidence=None, unknown_kind="") -> dict:
+    return shared_verify.claim_result(
+        claim, status, reason=reason, evidence=evidence,
+        counterevidence=counterevidence, unknown_kind=unknown_kind)
 
 
 # ----------------------------------------------------------------------------
@@ -347,41 +339,7 @@ def _check_bit_mapping(graph, signals: list[str] | None) -> dict:
 
 
 def _check_connections(tracer, graph) -> dict:
-    violations = []
-    checked = skipped = 0
-    try:
-        mig = tracer.get_module_graph()
-    except Exception as e:
-        return {"check": "connection", "status": "unknown", "checked": 0,
-                "skipped": 0, "violations": [],
-                "error": f"module instance graph unavailable: {e}"}
-    if mig is None:
-        return {"check": "connection", "status": "unknown", "checked": 0,
-                "skipped": 0, "violations": [], "error": "module instance graph missing"}
-    for inst_path, inst in sorted(mig.instances.items()):
-        for port_name, port in sorted(getattr(inst, "ports", {}).items()):
-            internal = getattr(port, "internal_signal", None)
-            if not internal:
-                skipped += 1
-                continue
-            checked += 1
-            if internal not in graph:
-                violations.append({"check": "connection", "kind": "internal_missing",
-                                   "instance": inst_path, "port": port_name,
-                                   "internal_signal": internal})
-                continue
-            port_id = f"{inst_path}.{port_name}"
-            if port_id not in graph:
-                violations.append({"check": "connection", "kind": "port_node_missing",
-                                   "instance": inst_path, "port": port_name,
-                                   "port_id": port_id, "internal_signal": internal})
-    status = _check_status(checked, violations)
-    result = {"check": "connection", "status": status,
-            "checked": checked, "skipped": skipped, "violations": violations,
-            "truncated": False}
-    if checked == 0:
-        result["error"] = "no applicable instance ports"
-    return result
+    return shared_verify.connection_check(tracer, graph)
 
 
 def _coverage_complete(results: list[dict]) -> bool:
@@ -472,137 +430,19 @@ def consistency_cmd(
 # verify claim
 # ----------------------------------------------------------------------------
 def _verify_driver(tracer, graph, claim: dict) -> dict:
-    sig = claim.get("signal")
-    drv = claim.get("driver")
-    if not sig or not drv:
-        return _claim_result(claim, "unknown", reason="claim requires signal + driver")
-    sr, sid = _resolve(graph, sig)
-    if not sid:
-        return _claim_result(claim, "unknown",
-                             reason=f"signal {sig!r} {sr['status']}",
-                             unknown_kind="unresolved_endpoint")
-    dr, did = _resolve(graph, drv)
-    if not did:
-        # 常量/字面量 driver 不在图里 → unknown，不伪造 contradicted
-        return _claim_result(claim, "unknown",
-                             reason=f"driver {drv!r} {dr['status']}",
-                             unknown_kind="unresolved_endpoint")
-    depth = None if claim.get("transitive") else 1
-    drivers = {x.id for x in tracer.trace_fanin(sid, depth=depth)}
-    if did in drivers:
-        return _claim_result(claim, "verified",
-                             evidence=[{"kind": "fanin", "signal": sid, "driver": did,
-                                        "transitive": depth is None}])
-    return _claim_result(claim, "contradicted",
-                         reason=f"{did} is not in fanin({sid}, depth={depth})",
-                         counterevidence=[{"kind": "fanin", "signal": sid,
-                                           "actual_drivers": sorted(drivers)[:50]}])
+    return shared_verify.verify_driver(tracer, graph, claim, _cli_resolve)
 
 
 def _verify_path(tracer, graph, claim: dict) -> dict:
-    src, dst, nodes = claim.get("from"), claim.get("to"), claim.get("nodes")
-    if not src or not dst:
-        return _claim_result(claim, "unknown", reason="claim requires from + to")
-    sr, sid = _resolve(graph, src)
-    dr, did = _resolve(graph, dst)
-    if not sid or not did:
-        return _claim_result(claim, "unknown",
-                             reason=f"endpoint unresolved: {src!r}/{dst!r}",
-                             unknown_kind="unresolved_endpoint")
-    if nodes:
-        resolved = []
-        for n in nodes:
-            r, rid = _resolve(graph, n)
-            if not rid:
-                return _claim_result(claim, "unknown",
-                                     reason=f"path node {n!r} {r['status']}",
-                                     unknown_kind="unresolved_endpoint")
-            resolved.append(rid)
-        if not resolved or resolved[0] != sid or resolved[-1] != did:
-            return _claim_result(claim, "contradicted",
-                                 reason="path endpoints do not match from/to")
-        missing = []
-        for a, b in zip(resolved, resolved[1:], strict=False):
-            if not _has_data_edge(graph, a, b):
-                missing.append({"from": a, "to": b})
-        if claim.get("bidirectional"):
-            for a, b in zip(reversed(resolved), list(reversed(resolved))[1:], strict=False):
-                if not _has_data_edge(graph, a, b):
-                    missing.append({"from": a, "to": b, "direction": "reverse"})
-        if missing:
-            return _claim_result(claim, "contradicted",
-                                 reason="claimed path edges missing (data edges only)",
-                                 counterevidence=missing)
-        return _claim_result(claim, "verified",
-                             evidence=[{"kind": "path", "nodes": resolved,
-                                        "edge_policy": "data_edges_only",
-                                        "bidirectional": bool(claim.get("bidirectional"))}])
-    # no explicit nodes: check reachability through the path resolver.
-    # [P158.1] `directed=True` = **数据路径** (只走 DRIVER/CONNECTION) ——
-    # 与 `paths --directed` / `dataflow analyze` 同一策略。
-    # CLOCK/RESET 边不算数据路径 → 不得 verified。
-    try:
-        resolver = tracer.get_path_resolver()
-        if resolver is None:
-            raise RuntimeError("path resolver unavailable")
-        reachable = resolver.find_path(sid, did, directed=True) is not None
-        bidirectional = bool(claim.get("bidirectional"))
-        reverse = (resolver.find_path(did, sid, directed=True) is not None
-                   if bidirectional else None)
-    except Exception as e:
-        return _claim_result(claim, "unknown", reason=f"path search failed: {e}")
-    if reachable and (reverse is None or reverse):
-        return _claim_result(claim, "verified", evidence=[{"kind": "reachable",
-                                                           "from": sid, "to": did,
-                                                           "bidirectional": bidirectional}])
-    if reverse is None:
-        reason = f"path check failed (forward={reachable})"
-    else:
-        reason = f"path check failed (forward={reachable}, reverse={reverse})"
-    return _claim_result(claim, "contradicted", reason=reason)
+    return shared_verify.verify_path(tracer, graph, claim, _cli_resolve)
 
 
 def _verify_connection(tracer, graph, claim: dict) -> dict:
-    inst_path, port_name, internal = claim.get("instance"), claim.get("port"), claim.get("internal")
-    if not inst_path or not port_name or not internal:
-        return _claim_result(claim, "unknown", reason="claim requires instance + port + internal")
-    mig = tracer.get_module_graph()
-    inst = mig.get_instance(inst_path) if mig is not None else None
-    if inst is None:
-        return _claim_result(claim, "unknown", reason=f"instance {inst_path!r} not found")
-    port = getattr(inst, "ports", {}).get(port_name)
-    if port is None:
-        return _claim_result(claim, "unknown", reason=f"port {port_name!r} not found")
-    actual = getattr(port, "internal_signal", None)
-    if actual == internal:
-        return _claim_result(claim, "verified",
-                             evidence=[{"kind": "connection", "instance": inst_path,
-                                        "port": port_name, "internal_signal": actual}])
-    return _claim_result(claim, "contradicted", reason="internal signal mismatch",
-                         counterevidence=[{"actual_internal_signal": actual}])
+    return shared_verify.verify_connection(tracer, graph, claim, _cli_resolve)
 
 
 def _verify_bit(tracer, graph, claim: dict) -> dict:
-    target, source = claim.get("target"), claim.get("source")
-    if not target or not source:
-        return _claim_result(claim, "unknown", reason="claim requires target + source")
-    tr, tid = _resolve(graph, target)
-    sr, sid = _resolve(graph, source)
-    if not tid or not sid:
-        return _claim_result(claim, "unknown",
-                             reason=f"bit endpoint unresolved: {target!r}/{source!r} "
-                                    f"({tr['status']}/{sr['status']})",
-                             unknown_kind="unresolved_endpoint")
-    if tr["status"] == "bit_base_fallback" or sr["status"] == "bit_base_fallback":
-        return _claim_result(claim, "unknown",
-                             reason="bit node missing; only parent bus exists",
-                             unknown_kind="unverifiable")
-    if graph.has_edge(sid, tid):
-        return _claim_result(claim, "verified",
-                             evidence=[{"kind": "edge", "from": sid, "to": tid}])
-    return _claim_result(claim, "contradicted",
-                         reason=f"no direct edge {sid} -> {tid}",
-                         counterevidence=[{"from": sid, "to": tid}])
+    return shared_verify.verify_bit(tracer, graph, claim, _cli_resolve)
 
 
 def claim_cmd(
