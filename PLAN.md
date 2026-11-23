@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P194.5d defensible external benchmark harness + real token measurement <待做>
+current item : P194.5e compact trace must preserve uncertainty/truncation markers <待做>
 
 ## 计划树
 
@@ -598,7 +598,11 @@ P194.2c local session/server reuse + snapshot persistence <已完成>
 -- P194.5a compact capabilities + compact result/evidence surface <已完成>
 -- P194.5b controlflow semantic labeling + claim schema discoverability <已完成>
 -- P194.5c session/CLI paths parity + JSON-mode quiet default <已完成>
--- P194.5d defensible external benchmark harness + real token measurement <待做>
+-- P194.5d defensible external benchmark harness + real token measurement (blocked by P194.5e-P194.5h) <阻塞>
+-- P194.5e compact trace must preserve uncertainty/truncation markers <待做>
+-- P194.5f controlflow mixed-driver labeling + semantic inline classification <待做>
+-- P194.5g session paths endpoint validation + failure parity <待做>
+-- P194.5h docs/claims/count reconciliation + P194.5d acceptance charter <待做>
 -- P194.6 pyright/mypy + generated JSON schema <待做>
 -- P194.7 docs slimming + human onboarding <待做>
 
