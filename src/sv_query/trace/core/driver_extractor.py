@@ -1024,6 +1024,16 @@ class DriverExtractor:
         sym = _MAP.get(op_name, op_name)
         return [sym]
 
+    @staticmethod
+    def _semantic_int_literal(expr) -> int | None:
+        """Value of a pyslang IntegerLiteral (SVInt), not its textual width."""
+        if expr is None or "IntegerLiteral" not in str(getattr(expr, "kind", "")):
+            return None
+        try:
+            return int(expr.value)
+        except (TypeError, ValueError):
+            return None
+
     def _build_signal_source(
         self,
         rhs_name: str,
@@ -1098,6 +1108,13 @@ class DriverExtractor:
         if is_binary and rhs_expr is not None:
             inner_ops = self._detect_inner_ops(rhs_expr, signal, operand_side)
 
+        shift_amount = None
+        if (op in {"LogicalShiftLeft", "LogicalShiftRight",
+                   "ArithmeticShiftLeft", "ArithmeticShiftRight"}
+                and operand_side == "left" and rhs_expr is not None):
+            shift_amount = self._semantic_int_literal(
+                getattr(rhs_expr, "right", None))
+
         is_decomposed = bool(op) or bool(casts) or is_binary
 
         return SignalSource(
@@ -1110,6 +1127,7 @@ class DriverExtractor:
             casts=casts,
             is_decomposed=is_decomposed,
             inner_ops=inner_ops,
+            shift_amount=shift_amount,
         )
 
     @staticmethod

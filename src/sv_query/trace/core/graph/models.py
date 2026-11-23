@@ -80,6 +80,9 @@ class SignalSource:
     # [V6.9 datapath] 嵌套 OP 链 — 闭式表达式分解后的附加运算符列表
     # 例: (sum_ac + 128) >>> 8 → signal=sum_ac, op=">>>", inner_ops={"+128"}
     inner_ops: list[str] = field(default_factory=list)
+    # Semantic constant shift amount (e.g. 4'd2 -> 2); None = dynamic/nonconstant.
+    # Parsed from the AST operand, never from expression text.
+    shift_amount: int | None = None
 
     @property
     def bit_slice(self) -> str:

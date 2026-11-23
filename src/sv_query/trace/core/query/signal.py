@@ -829,13 +829,10 @@ class SignalTracer:
             return [f"{base}[{b}]" for b in range(lo, top + 1)]
 
         if op in self._EXPR_SHIFT:
-            import re as _re
-
-            m = _re.search(r"(<<<|>>>|<<|>>)\s*(\d+)", getattr(edge, "expression", "") or "")
-            if not m:
+            k = getattr(src_info, "shift_amount", None)
+            if k is None:
                 return None
-            k = int(m.group(2))
-            left = "<<" in m.group(1)
+            left = op in ("LogicalShiftLeft", "ArithmeticShiftLeft")
             bit = pos - k if left else pos + k
             if bit < lo or bit > hi:
                 return []
@@ -934,13 +931,10 @@ class SignalTracer:
             return [f"{dst_id}[{b}]" for b in range(start, dst_w)]
 
         if op in self._EXPR_SHIFT:
-            import re as _re
-
-            m = _re.search(r"(<<<|>>>|<<|>>)\s*(\d+)", getattr(edge, "expression", "") or "")
-            if not m:
+            k = getattr(src_info, "shift_amount", None)
+            if k is None:
                 return None
-            k = int(m.group(2))
-            left = "<<" in m.group(1)
+            left = op in ("LogicalShiftLeft", "ArithmeticShiftLeft")
             bit = pos + k if left else pos - k
             if bit < 0 or bit >= dst_w:
                 return []
