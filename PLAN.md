@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P194.5f controlflow mixed-driver labeling + semantic inline classification <待做>
+current item : P197.1 verify consistency zero-check must return unknown, not verified <待做>
 
 ## 计划树
 
@@ -598,7 +598,7 @@ P194.2c local session/server reuse + snapshot persistence <已完成>
 -- P194.5a compact capabilities + compact result/evidence surface <已完成>
 -- P194.5b controlflow semantic labeling + claim schema discoverability <已完成>
 -- P194.5c session/CLI paths parity + JSON-mode quiet default <已完成>
--- P194.5d defensible external benchmark harness + real token measurement (blocked by P194.5e-P194.5h) <阻塞>
+-- P194.5d defensible external benchmark harness + real token measurement (blocked by P194.5e-P194.5h/P197.1-P197.3) <阻塞>
 -- P194.5e compact trace must preserve uncertainty/truncation markers <已完成>
 -- P194.5f controlflow mixed-driver labeling + semantic inline classification <待做>
 -- P194.5g session paths endpoint validation + failure parity <待做>
@@ -624,6 +624,18 @@ P196 independent review follow-up (2026-11-22) <已完成>
 -- P196.3 P1 file-mode GraphSession.refresh reads disk content; regression test <已完成>
 -- P196.4 P1 remaining packed/fallback scalar width normalization; C-49 scope <已完成>
 -- P196.5 reconcile C-49 scope + stdio envelope contract + docs/count attribution <已完成>
+
+P197 independent code-smell / robustness audit follow-up (2026-11-23) <待做>
+-- P197.1 verify consistency zero-check must return unknown, not verified <待做>
+-- P197.2 unify CLI/session verify_claim + verify_consistency semantics <待做>
+-- P197.3 filelist refresh failure + load_graph capability guard <待做>
+-- P197.4 semantic shift amount for per-bit mapping <待做>
+-- P197.5 semantic reset classification + evidence LHS verification <待做>
+-- P197.6 real dangling-alias regression fixture; restore C-64 evidence <待做>
+-- P197.7 cache capability/MIG manifest round-trip <待做>
+-- P197.8 explicit quiet context; no argv mutation/dead flags <待做>
+-- P197.9 remaining P2 heuristics + except-gate strength <待做>
+-- P197.10 claims/docs/test reconciliation for this audit <待做>
 
 P193 external trial readiness (2026-11-21 review) <待做>
 -- P193.1 fix sim/tests/config absolute symlink + clone hygiene <已完成>
