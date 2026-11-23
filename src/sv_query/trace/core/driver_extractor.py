@@ -1029,8 +1029,14 @@ class DriverExtractor:
         """Value of a pyslang IntegerLiteral (SVInt), not its textual width."""
         if expr is None or "IntegerLiteral" not in str(getattr(expr, "kind", "")):
             return None
+        value = expr.value
+        unknown = getattr(value, "hasUnknown", False)
+        if callable(unknown):
+            unknown = unknown()
+        if unknown:
+            return None
         try:
-            return int(expr.value)
+            return int(value)
         except (TypeError, ValueError):
             return None
 
@@ -1111,9 +1117,10 @@ class DriverExtractor:
         shift_amount = None
         if (op in {"LogicalShiftLeft", "LogicalShiftRight",
                    "ArithmeticShiftLeft", "ArithmeticShiftRight"}
-                and operand_side == "left" and rhs_expr is not None):
+                and rhs_expr is not None):
+            shift_expr = unwrap(rhs_expr)
             shift_amount = self._semantic_int_literal(
-                getattr(rhs_expr, "right", None))
+                getattr(shift_expr, "right", None))
 
         is_decomposed = bool(op) or bool(casts) or is_binary
 
