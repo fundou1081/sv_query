@@ -84,6 +84,7 @@
 | C-61 | compact capabilities + opt-in compact drivers/evidence surfaces; compact preserves uncertainty/truncation markers | code/test | `test_p194_5a_compact.py` | `verified` |
 | C-62 | controlflow labels inline/unmodeled conditions; claim schema published; **known-broken: mixed-driver signals can still report complete (P194.5f)** | code/test | `test_p194_5b_controlflow_claims.py` | `known-broken` |
 | C-63 | JSON mode quiet by default with --verbose escape; session paths exposes directed/mode; **known-broken: unknown endpoints return found=false instead of a structured error (P194.5g)** | code/test | `test_p194_5c_paths_quiet.py` | `known-broken` |
+| C-64 | depth=1 does not return a dangling full-range bit alias as its own driver | code/test | `test_p194_5i_depth_alias.py` | `verified` |
 
 ---
 

@@ -1224,6 +1224,11 @@ class SignalTracer:
         for dst in self.graph.successors(signal_id):
             yield signal_id, dst
 
+    def _is_dangling_bit_alias(self, signal_id: str, src: str) -> bool:
+        if not src.startswith(signal_id + "["):
+            return False
+        return not list(self.graph.predecessors(src))
+
     def _find_drivers(self, signal_id: str, allow_cross_module: bool = True,
                       scope_prefix: str | None = None) -> list[TraceNode]:
         """[兼容] 直接驱动"""
@@ -1245,6 +1250,8 @@ class SignalTracer:
         # [iter_272] 不再注入 MIG 虚拟对端 (实例级图跨模块是普通图边)。
         for src, dst in self._incoming_pairs(signal_id):
             if dst == signal_id:
+                if self._is_dangling_bit_alias(signal_id, src):
+                    continue
                 # [iter_127 A3] 与 _trace_drivers_recursive 同规则: 跳过
                 # 实例输出端口 "模块内部驱动" internal 自环标记 (非真实源).
                 if src == dst:
@@ -1297,6 +1304,14 @@ class SignalTracer:
                     if (node and self._in_scope(node.id, scope_prefix)
                             and node.id not in {d.id for d in drivers}):
                         drivers.append(node)
+        if not drivers and any(
+                self._is_dangling_bit_alias(signal_id, p)
+                for p in self.graph.predecessors(signal_id)):
+            # Depth 1 hit a dangling full-range alias (e.g. gray_out[31:0]).
+            # Alias traversal is structural, so allow the next data level.
+            return self._collect_all_drivers(
+                signal_id, max_depth=2, allow_cross_module=allow_cross_module,
+                scope_prefix=scope_prefix)
         return drivers
 
     # [PR3 2026-06-15] Binary garbage filter — 跟 L1 一致, 防止 MIG 返回 binary

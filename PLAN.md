@@ -603,6 +603,7 @@ P194.2c local session/server reuse + snapshot persistence <已完成>
 -- P194.5f controlflow mixed-driver labeling + semantic inline classification <待做>
 -- P194.5g session paths endpoint validation + failure parity <待做>
 -- P194.5h docs/claims/count reconciliation + P194.5d acceptance charter <待做>
+-- P194.5i depth=1 dangling bit-range alias semantics <已完成>
 -- P194.6 pyright/mypy + generated JSON schema <待做>
 -- P194.7 docs slimming + human onboarding <待做>
 
