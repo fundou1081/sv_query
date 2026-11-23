@@ -78,7 +78,7 @@
 | C-55 | dead ASTCache get/put removed; except gate covers library/session; claims headers refreshed | code/test | `test_p193_4_core_except.py` | `verified` |
 | C-56 | hydrated snapshot without required MIG raises explicit SnapshotCapabilityError and preserves graph | code/test | `test_p196_1_snapshot_capability.py` | `verified` |
 | C-57 | file-mode GraphSession.refresh detects on-disk changes and increments generation | code/test | `test_p196_3_file_refresh.py` | `verified` |
-| C-58 | stdio/GraphSession serve instances/scope/verify_claim/verify_consistency; **known-broken: session path claim can over-verify vs CLI (P197.2)** | code/test | `test_p194_2f_session_queries.py` | `known-broken` |
+| C-58 | stdio/GraphSession serve instances/scope/verify_claim/verify_consistency; CLI/session claim + connection semantics shared (P197.2 worker-reviewed) | code/test | `test_p197_2_verify_parity.py::test_bidirectional_path_claim_parity` / `test_p194_2f_session_queries.py::test_verify_claim_and_consistency` | `verified` |
 | C-59 | stable QueryClient/open_query facade; lazy package exports; deprecation policy documented | code/test | `test_p194_3_api_facade.py` | `verified` |
 | C-60 | ConnectionExtractor.extract split under 500 lines; behavior preserved by graph baselines | code/test | `test_graph_baseline.py` | `verified` |
 | C-61 | compact capabilities + opt-in compact drivers/evidence surfaces; compact preserves uncertainty/truncation markers | code/test | `test_p194_5a_compact.py` | `verified` |
