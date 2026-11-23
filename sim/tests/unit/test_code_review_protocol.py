@@ -21,6 +21,8 @@ def test_protocol_is_linked_from_engineering_entrypoints():
     testing = (ROOT / "TESTING.md").read_text(encoding="utf-8")
     release = (ROOT / "RELEASE.md").read_text(encoding="utf-8")
     assert "CODE_REVIEW_PROTOCOL" in agents
+    assert "14." in agents
+    assert "审核独立性" in agents
     assert "CODE_REVIEW_PROTOCOL" in testing
     assert "CODE_REVIEW_PROTOCOL" in release
 

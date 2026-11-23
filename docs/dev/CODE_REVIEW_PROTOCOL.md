@@ -2,6 +2,7 @@
 
 > **Status**: mandatory review step for correctness-sensitive changes.
 > **Audience**: implementers and independent review workers.
+> **Normative status**: AGENTS.md iron rule 14; this document is the review asset.
 > **Rule**: a reviewer must be a separate worker/session; the implementer cannot
 > review their own change and cannot edit the review verdict.
 

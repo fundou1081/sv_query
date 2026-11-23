@@ -61,6 +61,10 @@ RTL/filelist/snapshot
 11. 语义提取走 pyslang semantic AST；仅 UVM 宏允许源码 regex。
 12. 项目适配放 `examples/project_adaptations/`。
 13. CLOCK/RESET 不是数据边；sample/truncated 不得写成 verified。
+14. **审核独立性**: P0/P1 或语义/cache/session/verification 改动必须由**独立 worker 只读审查**
+    （[CODE_REVIEW_PROTOCOL](docs/dev/CODE_REVIEW_PROTOCOL.md)）；implementer 自审无效。
+    审查发现 P0/P1 必须重改并由独立 worker 复审；未关闭不得合并/发布。审查产物存
+    `docs/validation/reviews/`，原文不得改写。
 
 ## 4. 工作流程
 
