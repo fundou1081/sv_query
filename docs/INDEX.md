@@ -12,7 +12,7 @@
 |---|---|---|
 | 源码规模 | 150 文件 / 51,760 行 | `find src -name "*.py"`（2026-11-16 实测） |
 | 测试规模 | 455 测试文件 / 71,162 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **3210 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-23 P194.2f 全量复核（3210）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
+| 全量 (canonical) | **3210 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-23 P194.4 全量复核（3210）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
@@ -70,6 +70,7 @@
 | [agent/CAPABILITIES_GENERATED.md](agent/CAPABILITIES_GENERATED.md) | **P182.4**: 从 `capabilities --json` 生成的 39 core 命令索引；gate `gen_agent_skill.py --check` |
 | [agent/AGENT_FEATURE_MAP.md](agent/AGENT_FEATURE_MAP.md) | **P143 历史快照**（P182.4 起由 [CAPABILITIES_GENERATED](agent/CAPABILITIES_GENERATED.md) 取代） |
 | [agent/AGENT_TASK_CORPUS.md](agent/AGENT_TASK_CORPUS.md) | **P145**: 15 个可执行 agent 任务 + false-confident/found 指标 |
+| [validation/P1945_LOCAL_MEASURE_2026-11-23.md](validation/P1945_LOCAL_MEASURE_2026-11-23.md) | **P194.5**: local 3-corpus session/cache/token evidence; explicitly not external |
 | [validation/P145_VALIDATION_BASELINE_2026-11-10.md](validation/P145_VALIDATION_BASELINE_2026-11-10.md) | **P145**: full gate 环境 skip + agent corpus |
 | [validation/P145_WORKER_REVIEW_2026-11-10.md](validation/P145_WORKER_REVIEW_2026-11-10.md) | **P145 worker replay**: APPROVE WITH NITS；nits 已修 |
 | [validation/P146_REAL_MATRIX_2026-11-10.md](validation/P146_REAL_MATRIX_2026-11-10.md) | **P146**: UART/I2C real matrix；问题清单与修复 |

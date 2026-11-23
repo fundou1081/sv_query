@@ -2,18 +2,18 @@
 
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询 + 客观校验；动态值由外部波形工具提供。
-> **状态**: P194.5 external benchmark + token cost validation。
+> **状态**: P194.5a compact capabilities + compact result/evidence。
 > **最后更新**: 2026-11-23 (P196.5 reconciliation)
 
 ---
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P194.5 external benchmark + token cost validation** `<待做>`
+- **当前 item**: **P194.5a compact capabilities + compact result/evidence surface** `<待做>`
   - P195/P196 全部完成；0.3.6 已发布（release-check -> build -> publish）
   - P194.2f 已解除阻塞（P196.1/P196.2 已完成）
   - 独立复核报告: `/tmp/p195_final_review.md`
-  - 未完成叶子：P194.4–P194.7、P193.10
+  - 未完成叶子：P194.5a–P194.5d、P194.6、P194.7、P193.10
 
 
 ## 📌 当前真实基线
