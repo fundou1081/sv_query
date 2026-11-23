@@ -82,7 +82,12 @@ class GraphSession:
                 None, sources_override={str(Path(self._file).resolve()): source})
         else:
             identity = self.tracer._build_identity(None)
-        return identity.key() if identity is not None else None
+        if identity is None:
+            target = self._filelist or self._file or "<unknown>"
+            raise RuntimeError(
+                f"cannot compute build identity for {target!r}; "
+                "source/filelist closure is missing or unreadable")
+        return identity.key()
 
     def refresh(self) -> bool:
         """Rebuild when source content changed; return whether a rebuild happened.

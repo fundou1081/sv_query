@@ -546,7 +546,7 @@ class UnifiedTracer:
         self._init_tracers()
         self._built_capabilities = frozenset({"graph"})
         self._hydrated_without_sources = True
-        self._build_phase = "ready"
+        self._build_phase = "hydrated"
         self._build_error = None
 
     def load_snapshot(self, snapshot: dict) -> None:
