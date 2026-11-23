@@ -636,11 +636,45 @@ def _execute_trace_rows(direction, signals, tracer, tops, top_ambiguous, args):
     return rows, errors, total_count, total_pre_filter, truncated_global
 
 
+_COMPACT_ROW = (
+    "signal", "index", "count", "pre_filter_count", "truncated", "precision",
+    "coarse_fallback", "top_modules", "top_ambiguous", "bit_fallback",
+    "driver_count", "multi_driver", "driver_conflict", "conditional_drivers",
+    "resolved_signal", "resolution", "error",
+)
+_COMPACT_ITEM = (
+    "id", "kind", "module", "distance", "width_msb", "width_lsb", "width",
+    "precision", "is_signed", "parent", "bit_range", "dynamic_index",
+    "expression", "condition", "resolution", "evidence", "source_location",
+)
+
+
+def _compact_trace_data(data: dict) -> dict:
+    """P194.5a: narrow the default trace payload without changing its meaning."""
+    result = data.get("result") or {}
+    key = "drivers" if data.get("command") == "trace_fanin" else "loads"
+    compact_rows = []
+    for row in result.get("signals") or []:
+        compact = {k: row[k] for k in _COMPACT_ROW if k in row}
+        compact[key] = [
+            {k: item[k] for k in _COMPACT_ITEM if k in item}
+            for item in row.get(key, [])
+        ]
+        for extra in ("bit_nodes", "bit_node_count"):
+            if extra in row:
+                compact[extra] = row[extra]
+        compact_rows.append(compact)
+    result["signals"] = compact_rows
+    result["compact"] = True
+    return data
+
+
 def _build_trace_data(direction, signal, batch_file, batch, file, depth,
                       evidence, filelist, top, prune, include_clock,
                       include_reset, include_control, preprocess_macros,
                       max_results, type_filter, module_filter, width_min,
-                      width_max, exclude, from_snapshot, no_cache):
+                      width_max, exclude, from_snapshot, no_cache,
+                      compact=False):
     signals = _collect_signals(signal, batch_file, batch)
     tracer, tops, top_ambiguous = _prepare_trace_tracer(
         file, filelist, top, prune, from_snapshot, preprocess_macros, no_cache)
@@ -685,6 +719,9 @@ def _build_trace_data(direction, signal, batch_file, batch, file, depth,
     }
     if prune:
         data["prune"] = getattr(tracer, "_svq_prune_info", None)
+    if compact:
+        data["params"]["compact"] = True
+        return _compact_trace_data(data)
     return data
 
 
@@ -735,6 +772,7 @@ def fanin(
     depth: int | None = typer.Option(None, "--depth", "-d", help="Max trace depth (None=unlimited)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     evidence: bool = typer.Option(False, "--evidence", help="[iter_333] attach per-driver edge evidence"),
+    compact: bool = typer.Option(False, "--compact", help="[P194.5a] narrow result fields"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
@@ -781,7 +819,7 @@ def fanin(
             filelist, top, prune, include_clock, include_reset,
             include_control, preprocess_macros, max_results, type_filter,
             module_filter, width_min, width_max, exclude, from_snapshot,
-            no_cache)
+            no_cache, compact=compact)
         _emit_trace_output("fanin", data, json_output, format, pretty,
                            human, tree, output, depth)
     except Exception as e:
@@ -802,6 +840,7 @@ def fanout(
     depth: int | None = typer.Option(None, "--depth", "-d", help="Max trace depth (None=unlimited)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     evidence: bool = typer.Option(False, "--evidence", help="[iter_333] attach per-load edge evidence"),
+    compact: bool = typer.Option(False, "--compact", help="[P194.5a] narrow result fields"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
@@ -845,7 +884,7 @@ def fanout(
             filelist, top, prune, include_clock, include_reset,
             include_control, preprocess_macros, max_results, type_filter,
             module_filter, width_min, width_max, exclude, from_snapshot,
-            no_cache)
+            no_cache, compact=compact)
         _emit_trace_output("fanout", data, json_output, format, pretty,
                            human, tree, output, depth)
     except Exception as e:

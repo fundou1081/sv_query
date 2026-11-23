@@ -1512,7 +1512,8 @@ BIT_PRECISION = {
 }
 
 
-def to_json(*, include_exp: bool = False, recommended_only: bool = False) -> dict:
+def to_json(*, include_exp: bool = False, recommended_only: bool = False,
+            compact: bool = False) -> dict:
     """capabilities / 生成器共用的结构 (agent 的工具面真相源)。"""
     cmds = []
     for c in COMMANDS:
@@ -1542,6 +1543,21 @@ def to_json(*, include_exp: bool = False, recommended_only: bool = False) -> dic
             "write_scope": c.write_scope,
             "note": c.note,
         })
+    if compact:
+        return {
+            "schema_version": "1",
+            "entry_rule": "call capabilities --json --compact first; use full capabilities for schemas",
+            "counts": counts(),
+            "session": {
+                "ops": SESSION_CONTRACT["ops"],
+                "unsupported": SESSION_CONTRACT["unsupported_ops"],
+            },
+            "commands": [
+                {"name": c["name"], "group": c["group"], "envelope": c["envelope"],
+                 "recommended": c["recommended"], "json": c["json"]}
+                for c in cmds
+            ],
+        }
     return {
         "schema_version": "1",
         "layers": {

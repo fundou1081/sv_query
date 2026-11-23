@@ -221,7 +221,8 @@ def test_capabilities_provider_failure_goes_through_the_adapter(monkeypatch):
 
     with pytest.raises(typer.Exit) as excinfo:
         mod.capabilities(
-            json_output=True, pretty=False, recommended=False, include_exp=False
+            json_output=True, pretty=False, recommended=False, include_exp=False,
+            compact=False,
         )
 
     assert excinfo.value.exit_code == 1
@@ -244,7 +245,8 @@ def test_capabilities_provider_failure_is_structured(monkeypatch, capsys):
 
     with pytest.raises(typer.Exit) as excinfo:
         mod.capabilities(
-            json_output=True, pretty=False, recommended=False, include_exp=False
+            json_output=True, pretty=False, recommended=False, include_exp=False,
+            compact=False,
         )
 
     assert excinfo.value.exit_code == 1
@@ -270,7 +272,8 @@ def test_capabilities_provider_failure_human_path(monkeypatch, capsys):
 
     with pytest.raises(typer.Exit) as excinfo:
         mod.capabilities(
-            json_output=False, pretty=False, recommended=False, include_exp=False
+            json_output=False, pretty=False, recommended=False, include_exp=False,
+            compact=False,
         )
 
     assert excinfo.value.exit_code == 1

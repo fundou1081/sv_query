@@ -271,13 +271,15 @@ def test_cli_capabilities_routes_through_session_once(monkeypatch, capsys):
     monkeypatch.setattr(mod, "Session", RecordingSession)
 
     mod.capabilities(
-        json_output=True, pretty=False, recommended=True, include_exp=True
+        json_output=True, pretty=False, recommended=True, include_exp=True,
+        compact=False,
     )
 
     assert recorded["request"] == {
         "op": "capabilities",
         "recommended": True,
         "include_exp": True,
+        "compact": False,
     }
     handlers = recorded["handlers"]
     assert isinstance(handlers, dict) and set(handlers) == {"capabilities"}
@@ -298,7 +300,8 @@ def test_cli_capabilities_provider_failure_is_structured(monkeypatch, capsys):
 
     with pytest.raises(typer.Exit) as excinfo:
         mod.capabilities(
-            json_output=True, pretty=False, recommended=False, include_exp=False
+            json_output=True, pretty=False, recommended=False, include_exp=False,
+            compact=False,
         )
 
     assert excinfo.value.exit_code == 1

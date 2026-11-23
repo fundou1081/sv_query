@@ -49,6 +49,7 @@ def _capabilities_provider(request: Mapping[str, object]) -> dict:
     return to_json(
         include_exp=_option(request, "include_exp"),
         recommended_only=_option(request, "recommended"),
+        compact=_option(request, "compact"),
     )
 
 
@@ -63,6 +64,10 @@ def capabilities(
         False, "--include-exp",
         help="包含降级区 exp (bus/verif/struct: 无 schema 承诺, 只修 bug)",
     ),
+    compact: bool = typer.Option(
+        False, "--compact",
+        help="紧凑清单: name/group/envelope/recommended + session ops; 不含 schema/notes",
+    ),
 ) -> None:
     """[iter_230] 机器可读的能力清单: 分层/契约/成本/recommended (agent 首选入口)
 
@@ -75,7 +80,8 @@ def capabilities(
     )
     data = run_session(
         Session(handlers={"capabilities": _capabilities_provider}),
-        {"op": "capabilities", "recommended": recommended, "include_exp": include_exp},
+        {"op": "capabilities", "recommended": recommended,
+         "include_exp": include_exp, "compact": compact},
         options,
     )
 
@@ -83,11 +89,14 @@ def capabilities(
         emit_json_result(data, options)
         return
 
-    _render_human(data, include_exp=include_exp)
+    _render_human(data, include_exp=include_exp, compact=compact)
 
 
-def _render_human(data: dict, *, include_exp: bool) -> None:
-    """人类可读概览 (与 D11 之前的输出逐字节一致)。"""
+def _render_human(data: dict, *, include_exp: bool, compact: bool = False) -> None:
+    """人类可读概览 (compact 只列命令面，不列 schema)。"""
+    if compact:
+        _render_compact(data)
+        return
     c = data["counts"]
     typer.echo("=== sv_query capabilities ===")
     typer.echo(f"总命令数: {c['total']}  |  按层: " +
@@ -116,6 +125,13 @@ def _render_human(data: dict, *, include_exp: bool) -> None:
     typer.echo("")
     typer.echo("提示: agent 建议用 `sv_query capabilities --json --recommended` 取最小工具集;")
     typer.echo("      降级区需显式 `--include-exp`。")
+
+
+def _render_compact(data: dict) -> None:
+    for command in data["commands"]:
+        typer.echo(f"{command['name']:<28} {command['envelope']:<8} "
+                   f"group={command['group']}")
+    typer.echo(f"session ops: {', '.join(data['session']['ops'])}")
 
 
 def _render_command(command: dict) -> None:

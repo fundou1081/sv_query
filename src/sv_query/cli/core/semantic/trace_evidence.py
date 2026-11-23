@@ -204,10 +204,28 @@ def _resolve_evidence_dict(resolver, graph, signal: str, sources=None) -> dict |
         return _with_functional_line(fallback, signal, sources)
     return _with_functional_line(ev_dict, signal, sources)
 
+def _compact_evidence(entry):
+    if not isinstance(entry, dict):
+        return entry
+    keep = ("signal", "source_location", "source_text", "is_verified",
+            "credibility_score")
+    return {k: entry[k] for k in keep if k in entry}
+
+
+def _compact_evidence_result(data: dict) -> dict:
+    for entry in data.get("result", {}).get("signals", []):
+        evidence = entry.get("evidence")
+        if isinstance(evidence, list):
+            entry["evidence"] = [_compact_evidence(e) for e in evidence]
+    data.setdefault("result", {})["compact"] = True
+    return data
+
+
 def evidence(
     signal: str = typer.Argument(None, help="Signal to query (e.g., top.q). Optional when --batch or --batch-file is used."),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     chain: bool = typer.Option(False, "--chain", "-c", help="Show evidence for entire driver chain"),
+    compact: bool = typer.Option(False, "--compact", help="[P194.5a] source location/text only"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly tree output (default off)"),
@@ -298,6 +316,10 @@ def evidence(
         # [FIX 2026-07-05] single-signal backward compat: 顶级 evidence field
         if len(signals_result) == 1 and not chain:
             data["evidence"] = signals_result[0]["evidence"]
+        if compact:
+            data = _compact_evidence_result(data)
+            if len(signals_result) == 1 and not chain:
+                data["evidence"] = _compact_evidence(data["evidence"])
 
         if json_output:
             emit_json(data, pretty)

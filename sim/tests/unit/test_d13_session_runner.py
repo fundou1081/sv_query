@@ -88,10 +88,10 @@ def test_capabilities_calls_runner_once(monkeypatch, capsys):
         return {"schema_version": "1", "counts": {"total": 0}, "layers": {}}
 
     monkeypatch.setattr(mod, "run_session", fake_runner)
-    mod.capabilities(json_output=True, pretty=False, recommended=True, include_exp=False)
+    mod.capabilities(json_output=True, pretty=False, recommended=True, include_exp=False, compact=False)
     assert len(calls) == 1
     request, options = calls[0]
-    assert request == {"op": "capabilities", "recommended": True, "include_exp": False}
+    assert request == {"op": "capabilities", "recommended": True, "include_exp": False, "compact": False}
     assert options.json_output is True
     assert options.pretty is False
     assert json.loads(capsys.readouterr().out) == {

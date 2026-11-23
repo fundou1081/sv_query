@@ -9,7 +9,8 @@ sv_query is an agent-facing RTL query and objective-verification layer. The
 authoritative command surface is always:
 
 ```bash
-sv_query capabilities --json
+sv_query capabilities --json --compact   # agent first call; small command index
+sv_query capabilities --json              # full schemas/contract (only when needed)
 ```
 
 ## 1. Install and check
@@ -19,7 +20,8 @@ From PyPI (0.3.x beta):
 ```bash
 pip install sv_query
 sv_query --help
-sv_query capabilities --json
+sv_query capabilities --json --compact
+sv_query capabilities --json                 # full contract
 sv_query capabilities --json --include-exp   # 6 experimental commands
 ```
 
@@ -139,6 +141,16 @@ Supported ops:
 graph_nodes graph_edges drivers loads paths dataflow
 instances scope verify_claim verify_consistency version
 ```
+
+Compact result surfaces are opt-in:
+
+```bash
+sv_query drivers top.y --filelist rtl.f --json --compact
+sv_query trace evidence top.y --filelist rtl.f --json --compact
+```
+
+They keep the query semantics but drop repeated condition-analysis trees and
+enclosing source chains; use the default output when full evidence is needed.
 
 `stats` is not exposed in the session. `verify_consistency` currently
 implements the `connection` check; unsupported checks return `unknown`, not a
