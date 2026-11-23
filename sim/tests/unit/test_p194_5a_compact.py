@@ -51,3 +51,36 @@ def test_evidence_compact_keeps_only_source_projection(tmp_path):
     assert set(ev) == {"signal", "source_location", "source_text",
                        "is_verified", "credibility_score"}
     assert "enclosing_chain" not in ev
+
+
+def test_compact_preserves_depth_truncation_marker(tmp_path):
+    sv = tmp_path / "chain.sv"
+    sv.write_text(
+        "module top(input logic a, input logic b, input logic c, output logic y);\n"
+        "  logic m1, m2;\n"
+        "  assign m1 = a & b;\n"
+        "  assign m2 = m1 | c;\n"
+        "  assign y = m2;\n"
+        "endmodule\n")
+    proc = _run("drivers", "top.y", "--file", str(sv), "--depth", "1",
+                "--no-cache", "--compact")
+    assert proc.returncode == 0, proc.stderr[-400:]
+    row = json.loads(proc.stdout)["result"]["signals"][0]
+    assert row["truncated_by_depth"] is True
+
+
+def test_compact_preserves_function_call_unknown(tmp_path):
+    sv = tmp_path / "fn.sv"
+    sv.write_text(
+        "module top(input logic a, input logic cond, output logic y);\n"
+        "  function automatic logic f(input logic x); return ~x; endfunction\n"
+        "  always_comb begin\n"
+        "    if (cond) y = f(a);\n"
+        "    else y = 1'b0;\n"
+        "  end\n"
+        "endmodule\n")
+    proc = _run("drivers", "top.y", "--file", str(sv), "--no-cache", "--compact")
+    assert proc.returncode == 0, proc.stderr[-400:]
+    row = json.loads(proc.stdout)["result"]["signals"][0]
+    assert row["function_call"] is True
+    assert any(item.get("function_call") for item in row["drivers"])

@@ -81,7 +81,7 @@
 | C-58 | stdio/GraphSession serve instances/scope/verify_claim/verify_consistency | code/test | `test_p194_2f_session_queries.py` | `verified`（connection check scoped） |
 | C-59 | stable QueryClient/open_query facade; lazy package exports; deprecation policy documented | code/test | `test_p194_3_api_facade.py` | `verified` |
 | C-60 | ConnectionExtractor.extract split under 500 lines; behavior preserved by graph baselines | code/test | `test_graph_baseline.py` | `verified` |
-| C-61 | compact capabilities + opt-in compact drivers/evidence surfaces; **known-broken: compact drops uncertainty/truncation markers (P194.5e)** | code/test | `test_p194_5a_compact.py` | `known-broken` |
+| C-61 | compact capabilities + opt-in compact drivers/evidence surfaces; compact preserves uncertainty/truncation markers | code/test | `test_p194_5a_compact.py` | `verified` |
 | C-62 | controlflow labels inline/unmodeled conditions; claim schema published; **known-broken: mixed-driver signals can still report complete (P194.5f)** | code/test | `test_p194_5b_controlflow_claims.py` | `known-broken` |
 | C-63 | JSON mode quiet by default with --verbose escape; session paths exposes directed/mode; **known-broken: unknown endpoints return found=false instead of a structured error (P194.5g)** | code/test | `test_p194_5c_paths_quiet.py` | `known-broken` |
 

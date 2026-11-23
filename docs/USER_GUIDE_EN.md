@@ -151,8 +151,11 @@ sv_query drivers top.y --filelist rtl.f --json --compact
 sv_query trace evidence top.y --filelist rtl.f --json --compact
 ```
 
-They keep the query semantics but drop repeated condition-analysis trees and
-enclosing source chains; use the default output when full evidence is needed.
+They keep query semantics, including truncation/unknown markers
+(`truncated_by_depth`, `function_call`, `runtime_system_call`,
+`condition_analysis_incomplete`, ...), while dropping repeated analysis trees
+and enclosing source chains. Use the default output when the full trees are
+needed.
 
 `stats` is not exposed in the session. `verify_consistency` currently
 implements the `connection` check; unsupported checks return `unknown`, not a

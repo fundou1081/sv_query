@@ -641,11 +641,17 @@ _COMPACT_ROW = (
     "coarse_fallback", "top_modules", "top_ambiguous", "bit_fallback",
     "driver_count", "multi_driver", "driver_conflict", "conditional_drivers",
     "resolved_signal", "resolution", "error",
+    # uncertainty/truncation markers are never optional in compact mode
+    "dynamic_index", "function_call", "runtime_system_call",
+    "truncated_by_depth", "condition_truncated", "cycles_detected",
 )
 _COMPACT_ITEM = (
     "id", "kind", "module", "distance", "width_msb", "width_lsb", "width",
     "precision", "is_signed", "parent", "bit_range", "dynamic_index",
-    "expression", "condition", "resolution", "evidence", "source_location",
+    "function_call", "runtime_system_call",
+    "condition", "condition_unconditional", "condition_simplified",
+    "condition_truncated", "condition_analysis_incomplete",
+    "resolution", "evidence", "source_location",
 )
 
 
