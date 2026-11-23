@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P197.4 semantic shift amount for per-bit mapping <进行中>
+current item : P197.5 semantic reset classification + evidence LHS verification <待做>
 
 ## 计划树
 
@@ -629,7 +629,7 @@ P197 independent code-smell / robustness audit follow-up (2026-11-23) <待做>
 -- P197.1 verify consistency zero-check must return unknown, not verified <已完成>
 -- P197.2 unify CLI/session verify_claim + verify_consistency semantics <已完成>
 -- P197.3 filelist refresh failure + load_graph capability guard <已完成>
--- P197.4 semantic shift amount for per-bit mapping <进行中>
+-- P197.4 semantic shift amount for per-bit mapping <已完成>
 -- P197.5 semantic reset classification + evidence LHS verification <待做>
 -- P197.6 real dangling-alias regression fixture; restore C-64 evidence <待做>
 -- P197.7 cache capability/MIG manifest round-trip <待做>
@@ -638,6 +638,7 @@ P197 independent code-smell / robustness audit follow-up (2026-11-23) <待做>
 -- P197.10 claims/docs/test reconciliation for this audit <待做>
 -- P197.11 worker-only code-review protocol + release wiring + AGENTS iron rule 14 <已完成>
 -- P197.12 verify-parity P2 debt: bit fallback, endpoint guard, envelope docs, port_node_missing test <待做>
+-- P197.13 shift mapping direction matrix hardening <待做>
 
 P193 external trial readiness (2026-11-21 review) <待做>
 -- P193.1 fix sim/tests/config absolute symlink + clone hygiene <已完成>

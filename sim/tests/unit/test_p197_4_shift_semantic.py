@@ -40,7 +40,8 @@ def test_sized_shift_literal_uses_value_not_width(tmp_path):
 
 
 @pytest.mark.parametrize("rhs,expected", [
-    ("a << 4'd2", 2), ("a >> 8'd3", 3), ("a <<< 2", 2), ("a >>> 4'h2", 2)])
+    ("a << 4'd2", 2), ("a >> 8'd3", 3), ("a <<< 2", 2),
+    ("a >>> 4'h2", 2), ("a[7:0] << 4'd2", 2)])
 def test_shift_operator_and_literal_matrix(tmp_path, rhs, expected):
     edge = _a_edge(_tracer(tmp_path, rhs))
     assert edge.source.shift_amount == expected

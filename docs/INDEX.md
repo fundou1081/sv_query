@@ -11,8 +11,8 @@
 | 项 | 值 | 说明 |
 |---|---|---|
 | 源码规模 | 152 文件 / 51,912 行 | `find src -name "*.py"`（2026-11-16 实测） |
-| 测试规模 | 463 测试文件 / 71,627 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **3242 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-24 P197.3 全量复核（3242）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
+| 测试规模 | 463 测试文件 / 71,628 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
+| 全量 (canonical) | **3243 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-24 P197.4 全量复核（3243）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
@@ -49,6 +49,8 @@
 | [dev/CODING_STYLE.md](dev/CODING_STYLE.md) | 编码风格与设计决策: 先探索后决策 / 单一实现 / 修根因 / 函数职责 / 结构化数据 / 影响面 / 协作规则 |
 | [dev/LOCAL_GRAPH_SESSION.md](dev/LOCAL_GRAPH_SESSION.md) | **P194.2d**: GraphSession + stdio graph server + snapshot hydrate |
 | [dev/WIDTH_CONVENTION.md](dev/WIDTH_CONVENTION.md) | **P195.3**: scalar width `(0,0)` / width 1; `[1:0]` remains width 2 |
+| [validation/reviews/2026-11-24_36b0a0d.md](validation/reviews/2026-11-24_36b0a0d.md) | **P197.4** initial review: FAIL (x/z shift literal P1) |
+| [validation/reviews/2026-11-24_99c243f.md](validation/reviews/2026-11-24_99c243f.md) | **P197.4** re-audit: PASS WITH CAVEATS; P1 closed |
 | [validation/reviews/2026-11-24_353d687a.md](validation/reviews/2026-11-24_353d687a.md) | **P197.3** independent worker review: PASS WITH CAVEATS (P2-1 fixed post-review) |
 | [validation/reviews/2026-11-23_229320f.md](validation/reviews/2026-11-23_229320f.md) | **P197.2** independent worker review: PASS WITH CAVEATS (P2 only) |
 | [validation/reviews/2026-11-23_7250285.md](validation/reviews/2026-11-23_7250285.md) | **P197.1** independent worker review: PASS WITH CAVEATS (P2 only) |
