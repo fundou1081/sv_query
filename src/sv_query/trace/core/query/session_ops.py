@@ -58,7 +58,7 @@ def _verify_path_nodes(graph, claim: dict, nodes) -> dict | None:
                                  reason=f"path node {item!r} unresolved",
                                  unknown_kind="unresolved_endpoint")
         resolved.append(rid)
-    missing = [{"from": a, "to": b} for a, b in zip(resolved, resolved[1:])
+    missing = [{"from": a, "to": b} for a, b in zip(resolved, resolved[1:], strict=False)
                if not contracts.has_data_edge(graph.get_edges(a, b))]
     if missing:
         return _claim_result(claim, "contradicted",
@@ -155,9 +155,13 @@ def _connection_check(tracer, graph) -> dict:
                 violations.append({"check": "connection", "kind": "internal_missing",
                                    "instance": inst_path, "port": port_name,
                                    "internal_signal": internal})
-    return {"check": "connection", "status": "fail" if violations else "pass",
-            "checked": checked, "skipped": skipped, "violations": violations,
-            "truncated": False}
+    status = "unknown" if checked == 0 else ("fail" if violations else "pass")
+    result = {"check": "connection", "status": status,
+              "checked": checked, "skipped": skipped, "violations": violations,
+              "truncated": False}
+    if checked == 0:
+        result["error"] = "no applicable instance ports"
+    return result
 
 
 def verify_consistency(tracer, checks=("connection",), signal=None,

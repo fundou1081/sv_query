@@ -52,7 +52,11 @@ class TestConsistencySnapshot(unittest.TestCase):
                       '--checks', 'bit,connection'], env)
             self.assertEqual(0, p.returncode, p.stderr[-1000:])
             r = json.loads(p.stdout)['result']
-            self.assertEqual([], r['unknown_checks'])
+            self.assertFalse(r['verified'])
+            self.assertIn('bit_mapping', r['unknown_checks'])
+            bit = next(c for c in r['checks'] if c['check'] == 'bit_mapping')
+            self.assertEqual('unknown', bit['status'])
+            self.assertEqual(0, bit['checked'])
             connection = next(c for c in r['checks'] if c['check'] == 'connection')
             self.assertEqual('pass', connection['status'])
             self.assertGreater(connection['checked'], 0)

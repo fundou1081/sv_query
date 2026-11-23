@@ -39,3 +39,20 @@ def test_consistency_command_wires_unknown_to_coverage(monkeypatch, capsys):
     assert data["result"]["verified"] is False
     assert data["result"]["coverage_complete"] is False
     assert data["result"]["unknown_checks"] == ["connection"]
+
+
+def test_zero_check_bit_and_connection_are_unknown(tmp_path):
+    from sv_query.cli.core.semantic import verify as mod
+
+    sv = tmp_path / "ports.sv"
+    sv.write_text("module top(input logic a, output logic y); assign y = a; endmodule\n")
+    import sv_query.trace.unified_tracer as ut
+    tracer = ut.UnifiedTracer(sources={str(sv): sv.read_text()}, log_level="ERROR")
+    tracer.build_graph()
+    graph = tracer.get_graph()
+    for check in (mod._check_bit_mapping(graph, None),
+                  mod._check_connections(tracer, graph)):
+        assert check["checked"] == 0
+        assert check["status"] == "unknown"
+        assert check["error"]
+        assert mod._coverage_complete([check]) is False

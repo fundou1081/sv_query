@@ -127,6 +127,12 @@ def _has_data_edge(graph, a: str, b: str) -> bool:
     return has_data_edge(graph.get_edges(a, b))
 
 
+def _check_status(checked: int, violations: list) -> str:
+    if checked == 0:
+        return "unknown"
+    return "fail" if violations else "pass"
+
+
 def _check_reciprocity(tracer, graph, signals: list[str] | None,
                        max_nodes: int, full: bool = False) -> dict:
     """全图/抽样 reciprocity。
@@ -223,7 +229,8 @@ def _check_reciprocity(tracer, graph, signals: list[str] | None,
     # 非信号/父位聚合节点被排除，是显式范围，不当作 checked
     skipped = max(0, len(nodes) - checked - len([
         v for v in violations if v.get("kind") == "node_missing"]))
-    return {"check": "reciprocity", "status": "fail" if violations else "pass",
+    status = _check_status(checked, violations)
+    result = {"check": "reciprocity", "status": status,
             "checked": checked, "skipped": skipped, "violations": violations,
             "truncated": truncated, "mode": mode,
             "excluded": excluded,
@@ -235,6 +242,9 @@ def _check_reciprocity(tracer, graph, signals: list[str] | None,
                 "note": "bit/slice nodes use parent-bus fallback; strict edge reciprocity is not applicable",
             },
             "total_nodes": len(graph.nodes())}
+    if checked == 0:
+        result["error"] = "no applicable signal nodes (all filtered as non-signal/bit-like/constant)"
+    return result
 
 
 def _check_bit_mapping(graph, signals: list[str] | None) -> dict:
@@ -244,6 +254,7 @@ def _check_bit_mapping(graph, signals: list[str] | None) -> dict:
     for n in nodes:
         node = graph.get_node(n)
         if node is None or not node.parent:
+            skipped += 1
             continue
         checked += 1
         parent = graph.get_node(node.parent)
@@ -320,13 +331,17 @@ def _check_bit_mapping(graph, signals: list[str] | None) -> dict:
         if not direct_child:
             violations.append({"check": "bit_mapping", "kind": "id_parent_mismatch",
                                "node": n, "parent": node.parent})
-    return {"check": "bit_mapping", "status": "fail" if violations else "pass",
+    status = _check_status(checked, violations)
+    result = {"check": "bit_mapping", "status": status,
             "checked": checked, "skipped": skipped,
             "bit_select_checked": range_checked, "index_like": index_like,
             "violations": violations, "truncated": False,
             "coverage": {"scope": "all_parent_nodes",
                          "bit_select_checked": range_checked,
                          "index_like": index_like}}
+    if checked == 0:
+        result["error"] = "no applicable parent/bit nodes"
+    return result
 
 
 
@@ -360,9 +375,13 @@ def _check_connections(tracer, graph) -> dict:
                 violations.append({"check": "connection", "kind": "port_node_missing",
                                    "instance": inst_path, "port": port_name,
                                    "port_id": port_id, "internal_signal": internal})
-    return {"check": "connection", "status": "fail" if violations else "pass",
+    status = _check_status(checked, violations)
+    result = {"check": "connection", "status": status,
             "checked": checked, "skipped": skipped, "violations": violations,
             "truncated": False}
+    if checked == 0:
+        result["error"] = "no applicable instance ports"
+    return result
 
 
 def _coverage_complete(results: list[dict]) -> bool:

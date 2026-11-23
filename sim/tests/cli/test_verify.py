@@ -28,12 +28,13 @@ def _claim(fixture: Path, **claim):
 
 
 def test_consistency_clean_design():
-    d = _json("verify", "consistency", "--file", str(STRUCT))
+    d = _json("verify", "consistency", "--file", str(STRUCT),
+              "--checks", "reciprocity,connection")
     r = d["result"]
     assert d["ok"] is True
     assert r["verified"] is True
     assert r["total_violations"] == 0
-    assert {c["check"] for c in r["checks"]} == {"reciprocity", "bit_mapping", "connection"}
+    assert {c["check"] for c in r["checks"]} == {"reciprocity", "connection"}
     assert all(c["status"] == "pass" for c in r["checks"])
 
 
