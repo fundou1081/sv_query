@@ -43,16 +43,18 @@ sv_query --version
 sv_query --help
 ```
 
-`--quiet` / `SVQ_QUIET=1` suppresses compiler/log diagnostics on stderr. It can
-appear before or after the subcommand:
+JSON mode is quiet by default: compiler/log diagnostics are suppressed unless
+you pass `--verbose` (or set `SVQ_NO_QUIET=1`). `--quiet` / `SVQ_QUIET=1` also
+suppress diagnostics in non-JSON mode. These flags can appear before or after
+the subcommand:
 
 ```bash
 sv_query drivers top.y --filelist rtl.f --json --quiet
 SVQ_QUIET=1 sv_query drivers top.y --filelist rtl.f --json
 ```
 
-Use `--quiet` when a wrapper parses stdout and does not want cold-build
-diagnostics mixed into stderr.
+Use `--verbose` only when debugging the compiler; machine wrappers should rely
+on JSON stdout and leave stderr quiet.
 
 ## 1c. Cache and snapshot controls
 
@@ -154,7 +156,9 @@ enclosing source chains; use the default output when full evidence is needed.
 
 `stats` is not exposed in the session. `verify_consistency` currently
 implements the `connection` check; unsupported checks return `unknown`, not a
-false `verified`. The machine-readable contract is in:
+false `verified`. Session `paths` carries `directed` and `mode`
+(`data`/`structural`); it is the same graph view as CLI `paths --directed` when
+`directed=true`. The machine-readable contract is in:
 
 ```bash
 sv_query capabilities --json

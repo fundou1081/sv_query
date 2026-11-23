@@ -83,6 +83,7 @@
 | C-60 | ConnectionExtractor.extract split under 500 lines; behavior preserved by graph baselines | code/test | `test_graph_baseline.py` | `verified` |
 | C-61 | compact capabilities + opt-in compact drivers/evidence surfaces | code/test | `test_p194_5a_compact.py` | `verified` |
 | C-62 | controlflow labels inline/unmodeled conditions; claim schema published in capabilities | code/test | `test_p194_5b_controlflow_claims.py` | `verified` |
+| C-63 | JSON mode quiet by default with --verbose escape; session paths exposes directed/mode and matches CLI same-direction view | code/test | `test_p194_5c_paths_quiet.py` | `verified` |
 
 ---
 

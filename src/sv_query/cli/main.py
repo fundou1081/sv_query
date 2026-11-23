@@ -7,6 +7,8 @@ Usage:
   python src/sv_query/cli/main.py dataflow --help
 """
 
+import logging
+import os
 import sys
 from pathlib import Path
 
@@ -23,23 +25,19 @@ ensure_on_path(SRC_DIR, PROJECT_ROOT)
 # 同时从 sys.argv 中移除 --quiet / -q 避免 Typer 报 unknown option.
 # 这样 LLM 收到的 stdout 只有合法 JSON, 不会被警告污染.
 def _apply_quiet_flag() -> None:
-    """[A3 2026-06-28] Detect --quiet in argv or env, call set_quiet(True)."""
+    """Suppress stderr diagnostics in JSON mode unless --verbose is explicit."""
     quiet_signals = {"--quiet", "-q"}
+    args = sys.argv[1:]
+    json_mode = any(arg in ("--json", "-j") for arg in args)
+    verbose = any(arg in ("--verbose",) for arg in args) or (
+        os.environ.get("SVQ_NO_QUIET", "").lower() in ("1", "true", "yes"))
     env_quiet = os.environ.get("SVQ_QUIET", "").lower() in ("1", "true", "yes")
-    if env_quiet or any(arg in quiet_signals for arg in sys.argv[1:]):
-        try:
-            from sv_query.trace.core.compiler import set_quiet
-            set_quiet(True)
-        except ImportError as e:
-            logger.debug("%s: 忽略 ImportError: %s", __name__, e)
-        # 从 argv 中移除 --quiet / -q (Typer 不识别全局 flag)
-        sys.argv[:] = [a for a in sys.argv if a not in quiet_signals]
-
-import os  # noqa: E402  (needed for env var check above)
+    if not verbose and (env_quiet or json_mode or any(arg in quiet_signals for arg in args)):
+        from sv_query.trace.core.compiler import set_quiet
+        set_quiet(True)
+    sys.argv[:] = [a for a in sys.argv if a not in quiet_signals | {"--verbose"}]
 
 _apply_quiet_flag()
-
-import logging
 
 import typer
 
@@ -423,6 +421,10 @@ def main(
     quiet: bool = typer.Option(
         False, "--quiet", "-q",
         help="Suppress compiler/log diagnostics on stderr", is_eager=True),
+    verbose: bool = typer.Option(
+        False, "--verbose",
+        help="Keep stderr diagnostics in JSON mode (default: JSON is quiet)",
+        is_eager=True),
 ) -> None:
     """SystemVerilog signal tracer and graph diff tool"""
     if version:

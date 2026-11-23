@@ -223,6 +223,7 @@ class GraphSession:
             raise ValueError("path resolver unavailable")
         path = resolver.find_path(src, dst, directed=directed)
         return {"src": src, "dst": dst, "directed": directed,
+                "mode": "data" if directed else "structural",
                 "found": path is not None,
                 "hop_count": (len(path) - 1) if path else None,
                 "path": path}

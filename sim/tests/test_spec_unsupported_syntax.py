@@ -69,7 +69,8 @@ class TestUnsupportedSyntaxGolden:
         """unique case 修饰符被 strip, 按普通 case 处理 + CaseRedundantDefault warning."""
         proc = subprocess.run(
             [sys.executable, 'run_cli.py', 'stats',
-             '--file', str(FIXTURE_DIR / 'probe_unique_case.sv'), '--json'],
+             '--file', str(FIXTURE_DIR / 'probe_unique_case.sv'), '--json',
+             '--verbose'],
             cwd=REPO, capture_output=True, text=True, timeout=60,
         )
         result = json.loads(proc.stdout)
