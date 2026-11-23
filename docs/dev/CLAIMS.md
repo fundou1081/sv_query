@@ -82,6 +82,7 @@
 | C-59 | stable QueryClient/open_query facade; lazy package exports; deprecation policy documented | code/test | `test_p194_3_api_facade.py` | `verified` |
 | C-60 | ConnectionExtractor.extract split under 500 lines; behavior preserved by graph baselines | code/test | `test_graph_baseline.py` | `verified` |
 | C-61 | compact capabilities + opt-in compact drivers/evidence surfaces | code/test | `test_p194_5a_compact.py` | `verified` |
+| C-62 | controlflow labels inline/unmodeled conditions; claim schema published in capabilities | code/test | `test_p194_5b_controlflow_claims.py` | `verified` |
 
 ---
 

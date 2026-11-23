@@ -197,11 +197,29 @@ sv_query verify claim \
 
 The claim key is `type`, not `kind`.
 
+The machine-readable schema is in `capabilities --json`
+(`json_contract.claim_schema`):
+
+```text
+driver      required: signal, driver          optional: transitive
+path        required: from, to                optional: nodes, bidirectional
+connection  required: instance, port, internal
+bit         required: target, source
+```
+
+`driver` is depth-1 by default; set `transitive=true` for deep fanin.
+Unresolved endpoints and unsupported claim types return `unknown`, not false.
+
 Claim results are:
 
 ```text
 verified / contradicted / unknown
 ```
+
+`controlflow analyze` covers **if/case-conditioned drivers only**. An inline
+continuous-assign condition (for example `assign ready_o = (state_q == IDLE)`)
+is labeled `condition_status="not_modeled"` with a warning; it is not reported
+as `complete`. Use `trace evidence` for that source expression.
 
 `unknown` is **not** false. Search-budget exhaustion and unsupported endpoints
 must stay `unknown`.

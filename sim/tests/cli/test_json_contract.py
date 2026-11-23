@@ -39,7 +39,7 @@ def test_top_level_contract_shape():
 
 def test_contract_fields_have_type_and_desc():
     _, c = _contract()
-    skip = {"commands", "bit_normalization", "paths_modes", "session"}
+    skip = {"commands", "bit_normalization", "paths_modes", "session", "claim_schema"}
     for section, fields in c.items():
         if section in skip or section in ("schema_version", "policy", "scope",
                                           "precision_values", "notes"):

@@ -394,6 +394,19 @@ JSON_CONTRACT = {
                 "on an error_entry; error_code is optional outside trace commands",
     },
     "session": SESSION_CONTRACT,
+    "claim_schema": {
+        "types": {
+            "driver": {"required": ["signal", "driver"], "optional": ["transitive"],
+                       "note": "direct driver by default; transitive=true for deep fanin"},
+            "path": {"required": ["from", "to"], "optional": ["nodes", "bidirectional"],
+                     "note": "nodes checks explicit data edges; otherwise directed reachability"},
+            "connection": {"required": ["instance", "port", "internal"]},
+            "bit": {"required": ["target", "source"]},
+        },
+        "verdicts": ["verified", "contradicted", "unknown"],
+        "unknown_rule": "unresolved endpoint or unsupported claim type => unknown, not false",
+        "type_rule": "type is required; invalid type is an input error",
+    },
     "write_scope_policy": {
         "none": "no disk writes",
         "cache": "writes only the sv_query cache/snapshot directory",
@@ -663,7 +676,7 @@ JSON_CONTRACT = {
             "link_fields": "covergroup_rand",
         },
         "controlflow analyze": {
-            "result_fields": ["signal", "conditioned_drivers", "condition_status", "warnings"],
+            "result_fields": ["signal", "conditioned_drivers", "condition_status", "condition_scope", "warnings"],
             "driver_fields": "controlflow_driver",
             "condition_fields": "controlflow_condition",
             "edge_fields": "controlflow_edge",
@@ -1552,6 +1565,8 @@ def to_json(*, include_exp: bool = False, recommended_only: bool = False,
                 "ops": SESSION_CONTRACT["ops"],
                 "unsupported": SESSION_CONTRACT["unsupported_ops"],
             },
+            "claim_types": ["driver", "path", "connection", "bit"],
+            "claim_verdicts": ["verified", "contradicted", "unknown"],
             "commands": [
                 {"name": c["name"], "group": c["group"], "envelope": c["envelope"],
                  "recommended": c["recommended"], "json": c["json"]}

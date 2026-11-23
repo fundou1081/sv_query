@@ -82,6 +82,8 @@ def output_text(data: dict, human: bool = False, tree: bool = False) -> None:
                         if summary:
                             print(f"      {summary.lstrip()}")
 
+        if result.get("condition_status") == "not_modeled":
+            print("  (inline condition not modeled; only if/case drivers are covered)")
         if warnings:
             print("\n  Warnings:")
             for w in warnings:
@@ -158,7 +160,8 @@ def analyze(
         data = {
             "ok": True, "command": "controlflow", "subcommand": "conditions",
             "params": {"signal": signal, "file": str(params_file)},
-            "result": {"signal": signal, "conditions": conditions, "count": len(conditions)},
+            "result": {"signal": signal, "conditions": conditions, "count": len(conditions),
+                       "condition_scope": "if_case_conditioned_drivers_only"},
             "errors": [],
         }
         if json_output:
@@ -214,6 +217,7 @@ def analyze(
             "signal": result.signal,
             "conditioned_drivers": drivers_data,
             "condition_status": result.condition_status,
+            "condition_scope": result.condition_scope,
             "warnings": result.warnings,
         },
         "errors": [],

@@ -341,6 +341,7 @@ def _normalise_intentional_paths_metadata(stdout: str) -> dict:
     """P182.1c paths-direct + P195.5 additive session contract are intentional."""
     data = json.loads(stdout)
     data["json_contract"].pop("session", None)
+    data["json_contract"].pop("claim_schema", None)
     for command in data["commands"]:
         if command["name"] == "paths":
             command["envelope"] = "<P182.1c: direct>"
@@ -350,7 +351,7 @@ def _normalise_intentional_paths_metadata(stdout: str) -> dict:
         policy["exceptions"] = [x for x in exceptions if x != "paths"]
     commands = data.get("json_contract", {}).get("commands", {})
     for key in ("drivers", "loads", "trace fanin", "trace fanout",
-                "trace covergroup", "filelist prune"):
+                "trace covergroup", "filelist prune", "controlflow analyze"):
         commands.pop(key, None)
     data.get("json_contract", {}).pop("dataflow_result", None)
     data.get("json_contract", {}).pop("stats_result", None)

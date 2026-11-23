@@ -1,6 +1,7 @@
 # ControlFlow Analyzer - 控制流分析器
 # 基于 SignalGraph 的边 condition 信息进行控制流分析
 
+import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any
@@ -75,6 +76,7 @@ class ControlFlowAnalysis:
     warnings: list[str] = field(default_factory=list)
     # [P77] complete = 有数据边且 control 已知；unknown = 无边/未建模
     condition_status: str = "unknown"
+    condition_scope: str = "if_case_conditioned_drivers_only"
 
 
 class ControlFlowAnalyzer:
@@ -124,6 +126,7 @@ class ControlFlowAnalyzer:
 
         # 4. 检查警告
         self._check_warnings(result)
+        self._label_unmodeled_inline(result, incoming_edges)
 
         return result
 
@@ -206,6 +209,30 @@ class ControlFlowAnalyzer:
                         conditions.append(edge.condition)
 
         return conditions
+
+    @staticmethod
+    def _looks_like_inline_condition(expr: str) -> bool:
+        expr = (expr or "").strip()
+        if not expr:
+            return False
+        return bool(re.search(r"(==|!=|<=|>=|&&|\|\||\?|\bcase\b)", expr))
+
+    def _label_unmodeled_inline(self, result, incoming_edges) -> None:
+        """Do not call inline continuous-assign conditions 'complete'."""
+        if result.conditioned_drivers:
+            return
+        inline = [
+            edge for edge in incoming_edges
+            if not getattr(edge, "condition", "")
+            and self._looks_like_inline_condition(getattr(edge, "expression", ""))
+        ]
+        if not inline:
+            return
+        result.condition_status = "not_modeled"
+        result.warnings.append(
+            "inline expression condition not modeled by controlflow; "
+            "controlflow covers if/case-conditioned drivers only "
+            "(use trace evidence for the inline source)")
 
     @staticmethod
     def _mark_unmodeled_control(incoming_edges, result) -> None:
