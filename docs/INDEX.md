@@ -12,7 +12,7 @@
 |---|---|---|
 | 源码规模 | 150 文件 / 51,846 行 | `find src -name "*.py"`（2026-11-16 实测） |
 | 测试规模 | 457 测试文件 / 71,271 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **3222 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-23 P194.5c 全量复核（3222）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
+| 全量 (canonical) | **3225 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-23 P194.5c 全量复核（3225）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
@@ -49,6 +49,8 @@
 | [dev/CODING_STYLE.md](dev/CODING_STYLE.md) | 编码风格与设计决策: 先探索后决策 / 单一实现 / 修根因 / 函数职责 / 结构化数据 / 影响面 / 协作规则 |
 | [dev/LOCAL_GRAPH_SESSION.md](dev/LOCAL_GRAPH_SESSION.md) | **P194.2d**: GraphSession + stdio graph server + snapshot hydrate |
 | [dev/WIDTH_CONVENTION.md](dev/WIDTH_CONVENTION.md) | **P195.3**: scalar width `(0,0)` / width 1; `[1:0]` remains width 2 |
+| [validation/reviews/README.md](validation/reviews/README.md) | **P197**: worker review artifact location; no P0/P1 open rule |
+| [dev/CODE_REVIEW_PROTOCOL.md](dev/CODE_REVIEW_PROTOCOL.md) | **P197**: worker-only review, P0/P1 rework/re-audit, release blocking |
 | [dev/API_FACADE.md](dev/API_FACADE.md) | **P194.3**: QueryClient/Session/GraphSession tiers; deprecation policy |
 | [dev/CACHE_CONTRACT.md](dev/CACHE_CONTRACT.md) | **P194.2a**: BuildIdentity/capability manifest; cache default-off; invalidation rules |
 | [dev/WIDE_EXCEPT_AUDIT.md](dev/WIDE_EXCEPT_AUDIT.md) | **P193.4**: 核心查询路径宽 except 审计 + 静态门禁；无静默空结果 |

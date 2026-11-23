@@ -636,6 +636,7 @@ P197 independent code-smell / robustness audit follow-up (2026-11-23) <待做>
 -- P197.8 explicit quiet context; no argv mutation/dead flags <待做>
 -- P197.9 remaining P2 heuristics + except-gate strength <待做>
 -- P197.10 claims/docs/test reconciliation for this audit <待做>
+-- P197.11 worker-only code-review protocol + release wiring <已完成>
 
 P193 external trial readiness (2026-11-21 review) <待做>
 -- P193.1 fix sim/tests/config absolute symlink + clone hygiene <已完成>

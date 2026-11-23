@@ -73,6 +73,9 @@ RTL/filelist/snapshot
    python3 tools/check_plan.py
    python3 tools/check_docs.py --strict
    ```
+5. P0/P1 或语义/缓存/session/verification 改动，必须由**独立 worker 只读审查**
+   （[CODE_REVIEW_PROTOCOL](docs/dev/CODE_REVIEW_PROTOCOL.md)）。审查发现 P0/P1
+   必须重改并复审；未关闭不得提交发布。
 
 ## 5. 核心命令
 

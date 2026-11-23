@@ -9,7 +9,7 @@
 
 | 项 | 值（引自 INDEX） | 说明 |
 |---|---|---|
-| 全量 (canonical) | **3222 passed / 0 failed** | `sim/tests/`, `-m "not opensource"`；0 skipped / 0 unexecuted / 123 deferred；35 subtests（2026-11-23 P194.5c 全量复核（3222））。**0 skipped 不代表测试健康**，见 §语义测试 |
+| 全量 (canonical) | **3225 passed / 0 failed** | `sim/tests/`, `-m "not opensource"`；0 skipped / 0 unexecuted / 123 deferred；35 subtests（2026-11-23 P194.5c 全量复核（3225））。**0 skipped 不代表测试健康**，见 §语义测试 |
 | 回归基线 (unit + regression) | 见 INDEX | `-m "not opensource"` |
 | CLI / integration | 见 INDEX | `sim/tests/cli sim/tests/integration` |
 
@@ -264,3 +264,14 @@ real_project_viz 的 2 个真实失败。**判定时必须数清 skip 数量并�
 - `trace overview A B` (B 复合命令): `sim/tests/cli/test_trace_overview.py`
 - CVA6 代码模式 fixture: `cva6_alu_pattern.sv`, `cva6_scoreboard_pattern.sv`, `cva6_frontend_pattern.sv`
 - dataflow golden DOT 重新生成: `strict_uart.dot`
+
+
+## Independent worker review
+
+P0/P1 or semantic/cache/session/verification changes require a read-only review
+by a separate worker before merge/release:
+
+[CODE_REVIEW_PROTOCOL](docs/dev/CODE_REVIEW_PROTOCOL.md)
+
+The artifact is stored under `docs/validation/reviews/`; open P0/P1 findings
+block release and require rework + re-audit.
