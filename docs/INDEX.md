@@ -49,6 +49,7 @@
 | [dev/CODING_STYLE.md](dev/CODING_STYLE.md) | 编码风格与设计决策: 先探索后决策 / 单一实现 / 修根因 / 函数职责 / 结构化数据 / 影响面 / 协作规则 |
 | [dev/LOCAL_GRAPH_SESSION.md](dev/LOCAL_GRAPH_SESSION.md) | **P194.2d**: GraphSession + stdio graph server + snapshot hydrate |
 | [dev/WIDTH_CONVENTION.md](dev/WIDTH_CONVENTION.md) | **P195.3**: scalar width `(0,0)` / width 1; `[1:0]` remains width 2 |
+| [validation/reviews/2026-11-23_7250285.md](validation/reviews/2026-11-23_7250285.md) | **P197.1** independent worker review: PASS WITH CAVEATS (P2 only) |
 | [validation/reviews/README.md](validation/reviews/README.md) | **P197**: worker review artifact location; no P0/P1 open rule |
 | [dev/CODE_REVIEW_PROTOCOL.md](dev/CODE_REVIEW_PROTOCOL.md) | **P197**: worker-only review, P0/P1 rework/re-audit, release blocking |
 | [dev/API_FACADE.md](dev/API_FACADE.md) | **P194.3**: QueryClient/Session/GraphSession tiers; deprecation policy |

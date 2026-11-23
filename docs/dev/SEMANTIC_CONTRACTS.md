@@ -326,7 +326,7 @@ worker / reviewer 的 `APPROVE` 不是证据。必须提供：
 | 确定性 | `test_determinism` + SPI 3× | ✅ P158.3 |
 | SPI corpus | `tools/agent/run_spi_corpus.py` 9/9 | ✅ P158.4 |
 | 写入安全 | `test_filelist_prune` | ✅ P158.5 |
-| verified 状态机 | `test_verify_truncated` | ✅ P158.6 |
+| verified 状态机 | `test_verify_coverage.py` / `test_verify_consistency_snapshot.py` | ✅ P158.6 / P197.1 |
 | snapshot 构造 | `test_snapshot_robust` / `load_snapshot` | ✅ P158.7 |
 | true-positive/mutation | `test_p158_data_edge_contract`（mutation）+ legacy snapshot 回归 | ✅ P158.8 |
 | snapshot surface/schema | `cli/test_json_contract.py` + `regression/test_schema_contract_resolution.py`（9.1）+ `unit/test_p158_9_2_snapshot_surface.py`（9.2 往返保真/parity） | ✅ P158.9（矩阵见 [SNAPSHOT_SURFACE.md](SNAPSHOT_SURFACE.md)） |

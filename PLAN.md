@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P197.1 verify consistency zero-check must return unknown, not verified <进行中>
+current item : P197.2 unify CLI/session verify_claim + verify_consistency semantics <待做>
 
 ## 计划树
 
@@ -626,7 +626,7 @@ P196 independent review follow-up (2026-11-22) <已完成>
 -- P196.5 reconcile C-49 scope + stdio envelope contract + docs/count attribution <已完成>
 
 P197 independent code-smell / robustness audit follow-up (2026-11-23) <待做>
--- P197.1 verify consistency zero-check must return unknown, not verified <进行中>
+-- P197.1 verify consistency zero-check must return unknown, not verified <已完成>
 -- P197.2 unify CLI/session verify_claim + verify_consistency semantics <待做>
 -- P197.3 filelist refresh failure + load_graph capability guard <待做>
 -- P197.4 semantic shift amount for per-bit mapping <待做>

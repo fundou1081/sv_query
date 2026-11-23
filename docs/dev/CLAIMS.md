@@ -27,7 +27,7 @@
 | C-04 | 同一输入重复构建得到同一张图 | fixture/snapshot | `test_determinism` + SPI 3× | `verified` |
 | C-05 | SPI corpus 是可执行的 real-project 回归 | real-corpus | `run_spi_corpus.py` 9/9 | `verified` |
 | C-06 | `filelist prune` 不会修改用户 RTL | fixture | `test_filelist_prune` | `verified` |
-| C-07 | `verify consistency` 的 verified 覆盖全部请求证据；unknown/truncated 时 coverage_complete=false; **known-broken: zero-check can still be verified (P197.1)** | fixture/snapshot | `test_verify_truncated` / `test_verify_coverage` | `known-broken` |
+| C-07 | `verify consistency` 的 verified 覆盖全部请求证据；unknown/truncated 时 coverage_complete=false（P197.1 worker-reviewed） | fixture/snapshot | `test_verify_coverage.py::test_unknown_check_is_not_complete` / `::test_consistency_command_wires_unknown_to_coverage` / `::test_zero_check_bit_and_connection_are_unknown` / `test_verify_consistency_snapshot.py::test_bit_and_connection_statuses_are_explicit` | `verified` |
 | C-08 | 新 snapshot 可从 MIG 离线执行 connection 检查 | fixture | `test_verify_consistency_snapshot` / `test_snapshot_robust` | `verified` |
 | C-09 | 旧 snapshot 缺 MIG 时显式 unknown，不静默 fallback | fixture | `test_verify_consistency_snapshot` legacy case | `verified` |
 | C-10 | canonical 0 skipped 代表测试健康 | CI | `run_gates.sh` + opensource 112/11/0；123 deferred | `scoped`（canonical 与 opensource 分开；deferred 不等于 unexecuted；0 skip 仍不是健康指标） |
