@@ -55,6 +55,9 @@
 | [validation/reviews/2026-11-24_d594e4d.md](validation/reviews/2026-11-24_d594e4d.md) | **P198.4** initial review: FAIL (legacy concat fallback/dynamic select) |
 | [validation/reviews/2026-11-24_d4fe6c3.md](validation/reviews/2026-11-24_d4fe6c3.md) | **P198.5** initial review: FAIL (gate/IR fallback/scope) |
 | [validation/reviews/2026-11-25_f4e7e9f.md](validation/reviews/2026-11-25_f4e7e9f.md) | **P198.6** initial review: FAIL (false migration claim) |
+| [validation/reviews/2026-11-25_57011a0.md](validation/reviews/2026-11-25_57011a0.md) | **P198.8** initial review: FAIL (little-endian reversed; single-bit refs) |
+| [validation/reviews/2026-11-25_703148a.md](validation/reviews/2026-11-25_703148a.md) | **P198.8** re-audit: FAIL (descending split lost per-bit) |
+| [validation/reviews/2026-11-25_03073e4.md](validation/reviews/2026-11-25_03073e4.md) | **P198.8** final re-audit: PASS WITH CAVEATS |
 | [validation/reviews/2026-11-25_e3a14b8.md](validation/reviews/2026-11-25_e3a14b8.md) | **P198.7** worker review: PASS WITH CAVEATS; generate IR refs |
 | [validation/reviews/2026-11-25_809f041.md](validation/reviews/2026-11-25_809f041.md) | **P198.6** re-audit: PASS WITH CAVEATS; P1 closed, R1/R2 text fixed |
 | [validation/reviews/2026-11-24_c3e8e9f.md](validation/reviews/2026-11-24_c3e8e9f.md) | **P198.5** final review: PASS; shift-only scope complete |
