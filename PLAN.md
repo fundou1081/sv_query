@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P198.4 concat LHS/RHS bit-layout pairing <待做>
+current item : P198.4 concat LHS/RHS bit-layout pairing <进行中>
 
 ## 计划树
 
@@ -629,7 +629,7 @@ P198 typed semantic expression IR (2026-11-24) <待做>
 -- P198.1 Expr/AssignmentExpr/ExpressionStore + strict serialization <已完成>
 -- P198.2 semantic AST builder for IR <已完成>
 -- P198.3 graph/cache integration + edge expr_id + assignment table <已完成>
--- P198.4 concat LHS/RHS bit-layout pairing <待做>
+-- P198.4 concat LHS/RHS bit-layout pairing <进行中>
 -- P198.5 route fanin/fanout bit mapping through IR <待做>
 -- P198.6 migrate viz/expression_tree + docs/claims/cache schema <待做>
 -- P198.7 generate-scope continuous assign IR (bit-select LHS) <待做>

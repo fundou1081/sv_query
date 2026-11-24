@@ -122,6 +122,47 @@ def _handle_concat_assign(assign, raw_lhs, raw_rhs, module, result, module_name,
     # return False 让 _handle_call_assign 接着处理 (跟原代码 if-elif chain 行为一致)
     if not (raw_rhs and hasattr(raw_rhs, "kind") and "Concatenation" in str(raw_rhs.kind)):
         return False
+
+    # [P198.4] typed bit-layout pairing. Only use it when both sides have
+    # known widths and identical total width; otherwise fall through to the
+    # legacy path (which is explicitly tracked as debt until P198.7).
+    from ..concat_layout import pair, signal_part
+    from ..expression_builder import build_expr
+
+    def _suffix(rng):
+        if rng is None:
+            return ""
+        if rng[0] == rng[1]:
+            return f"[{rng[0]}]"
+        return f"[{rng[0]}:{rng[1]}]"
+
+    layout = pair(build_expr(raw_lhs), build_expr(raw_rhs))
+    if layout is not None:
+        for item in layout:
+            lhs_part = signal_part(item.lhs.expr)
+            rhs_part = signal_part(item.rhs.expr)
+            if lhs_part is None or rhs_part is None:
+                continue
+            lhs_base, lhs_range = lhs_part
+            rhs_base, rhs_range = rhs_part
+            lhs_name = lhs_base + _suffix(lhs_range)
+            rhs_name = rhs_base + _suffix(rhs_range)
+            dst_id = f"{module_name}.{lhs_name}"
+            src_id = f"{module_name}.{rhs_name}"
+            for nid, name, width in ((dst_id, lhs_name, item.lhs.width),
+                                     (src_id, rhs_name, item.rhs.width)):
+                if nid not in [n.id for n in result.nodes]:
+                    result.nodes.append(TraceNode(
+                        id=nid, name=name, module=module_name,
+                        kind=NodeKind.SIGNAL, width=(width - 1, 0)))
+            h.append_edge(result, src=src_id, dst=dst_id,
+                          kind=EdgeKind.DRIVER, assign_type="continuous",
+                          expression="")
+        if raw_lhs is not None:
+            lst = h.get_signal(raw_lhs)
+            if lst and raw_rhs is not None:
+                h.store_expr_tree(lst, raw_rhs, module_name, result, genvar_ctx=genvar_ctx)
+        return True
     rhs_signals = []
     rhs_operands = getattr(raw_rhs, "operands", None) or getattr(raw_rhs, "expressions", None)
     if rhs_operands and hasattr(rhs_operands, "__iter__") and not isinstance(rhs_operands, str):
@@ -151,7 +192,7 @@ def _handle_concat_assign(assign, raw_lhs, raw_rhs, module, result, module_name,
     # 原实现是嵌套循环 (对每个 lhs 元素遍历全部 rhs_signals) = 笛卡尔积 —
     # `{y_hi, y_lo} = {a, b}` 产生 4 条边 (a→y_hi, a→y_lo, b→y_hi, b→y_lo),
     # 位置对应关系 (a→y_hi, b→y_lo) 丢失. 修复后 rhs_signals[i]→lhs_elements[i].
-    for lhs_name, rhs_sig in zip(lhs_elements, rhs_signals):
+    for lhs_name, rhs_sig in zip(lhs_elements, rhs_signals, strict=False):
         dst_node_id = f"{module_name}.{lhs_name}"
         if rhs_sig and not rhs_sig[0].isalpha() and not rhs_sig.startswith("_"):
             # [V4] factory 统一入口 (常量路径, src 是字面量字符串)
