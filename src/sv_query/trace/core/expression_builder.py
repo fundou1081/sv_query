@@ -16,7 +16,7 @@ _BIN_OPS = {
 }
 _UNARY_OPS = {
     "logicalnot": "Not", "bitwisenot": "Not", "negate": "Neg",
-    "unaryminus": "Neg", "unaryplus": "",
+    "unaryminus": "Neg", "minus": "Neg", "unaryplus": "",
 }
 
 
@@ -121,10 +121,17 @@ def _conditional(node, width, signed, resolve):
 def _select(node, width, signed, resolve):
     base = getattr(node, "value", None) or getattr(node, "left", None)
     child = build_expr(base, signal_resolver=resolve)
-    msb = getattr(node, "left", None) or getattr(node, "selector", None)
+    selector = getattr(node, "selector", None)
+    msb = getattr(node, "left", None) or selector
     lsb = getattr(node, "right", None)
     bit_range = None
-    if msb is not None and lsb is not None:
+    if selector is not None and lsb is None:
+        try:
+            index = int(selector.value)
+            bit_range = (index, index)
+        except (AttributeError, TypeError, ValueError):
+            bit_range = None
+    elif msb is not None and lsb is not None:
         try:
             bit_range = (int(msb.value), int(lsb.value))
         except (AttributeError, TypeError, ValueError):
@@ -136,11 +143,13 @@ def _select(node, width, signed, resolve):
 
 def _call(node, width, signed, resolve):
     name = str(getattr(node, "subroutineName", "") or "")
-    args = getattr(node, "arguments", None) or ()
+    args = tuple(build_expr(a, signal_resolver=resolve)
+                 for a in (getattr(node, "arguments", None) or ()))
     if name in ("$signed", "$unsigned") and args:
         return Expr(op="Cast", width=width, signed=(name == "$signed"),
-                    children=(build_expr(args[0], signal_resolver=resolve),))
-    return Expr(op="Call", width=width, signed=signed,
+                    children=(args[0],))
+    return Expr(op="Call", width=width, signed=signed, signal=name,
+                children=args,
                 reason=f"function call {name or '<unknown>'}; bit mapping unknown")
 
 

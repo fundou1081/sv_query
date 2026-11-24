@@ -81,3 +81,36 @@ def test_builder_marks_non_cast_call_as_unknown_mapping(tmp_path):
     rhs = _unwrap_cast(assignment.rhs)
     assert rhs.op == "Call"
     assert "bit mapping unknown" in rhs.reason
+
+
+def test_builder_maps_unary_minus_and_not(tmp_path):
+    assignment = _assignment(tmp_path, "assign y = -a;")
+    rhs = _unwrap_cast(assignment.rhs)
+    assert rhs.op == "Neg"
+    assert _unwrap_cast(rhs.children[0]).signal == "a"
+    not_expr = _unwrap_cast(_assignment(tmp_path, "assign y = !en;").rhs)
+    assert not_expr.op == "Not"
+
+
+def test_builder_captures_element_and_range_select_bit_ranges(tmp_path):
+    element = _unwrap_cast(_assignment(tmp_path, "assign y = a[3];").rhs)
+    assert element.op == "Slice" and element.bit_range == (3, 3)
+    assert "unresolved" not in element.reason
+    ranged = _unwrap_cast(_assignment(tmp_path, "assign y = a[7:4];").rhs)
+    assert ranged.op == "Slice" and ranged.bit_range == (7, 4)
+
+
+def test_builder_preserves_call_name_and_args(tmp_path):
+    rhs = _unwrap_cast(_assignment(tmp_path, "assign y = $clog2(a);").rhs)
+    assert rhs.op == "Call"
+    assert rhs.signal == "$clog2"
+    assert rhs.children and rhs.children[0].op == "SignalRef"
+
+
+def test_builder_nested_concat_and_unsupported_kind(tmp_path):
+    nested = _unwrap_cast(_assignment(tmp_path, "assign y = {a, {b, 2'b10}};").rhs)
+    assert nested.op == "Concat"
+    assert any(c.op == "Concat" for c in nested.children)
+    unknown = _unwrap_cast(_assignment(tmp_path, "assign y = a == b;").rhs)
+    assert unknown.op == "Unknown"
+    assert unknown.reason
