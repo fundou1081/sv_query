@@ -247,3 +247,19 @@ function; their per-op regex/branch logic is removed.
 - Concat ordering is easy to reverse; tests must assert MSB/LSB explicitly.
 - IR storage increases cache size; interning and one-copy-per-assignment bound it.
 - Old snapshots must not silently use text fallback; explicit unknown is required.
+
+## 9b. P198.9 parity status (in progress)
+
+Broad enablement of `Slice`/`Concat`/`Cast`/`Ternary` IR bit mapping was
+implemented and tested against the existing bit-precision suite. It is **not
+enabled** yet because it changes established answers in:
+
+- signed extension / direct-copy fanout;
+- concat slice operands;
+- packed-struct member bridges;
+- static-memory bit fanin/fanout.
+
+The shift-only gate remains active. P198.9 must add per-shape golden parity
+mapping (IR result vs current legacy edge result) and explicit error/sentinel
+handling before each additional op is enabled. Do not widen `_edge_expression_ir`
+without that parity matrix.

@@ -759,7 +759,8 @@ class SignalTracer:
         ir = self._edge_expression_ir(edge)
         if ir is not None:
             from ..bit_mapping import output_source_bits
-            mapped = output_source_bits(ir, want_bit, edge.src)
+            ir_bit = self._rel_bit(dst_id, want_bit) if "[" in dst_id else want_bit
+            mapped = output_source_bits(ir, ir_bit, edge.src)
             if mapped is None:
                 return None  # IR exists: unknown must not fall back to legacy
             base = self._bit_base(edge.src)
@@ -910,7 +911,8 @@ class SignalTracer:
         ir = self._edge_expression_ir(edge)
         if ir is not None:
             from ..bit_mapping import input_output_bits
-            mapped = input_output_bits(ir, edge.src, src_bit)
+            ir_src_bit = self._rel_bit(edge.src, src_bit) if "[" in edge.src else src_bit
+            mapped = input_output_bits(ir, edge.src, ir_src_bit)
             if mapped is None:
                 return None
             return [f"{dst_id}[{b}]" for b in mapped if 0 <= b < dst_w]
