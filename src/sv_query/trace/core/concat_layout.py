@@ -27,8 +27,8 @@ class ConcatPair:
 def _segment_width(expr: Expr) -> int | None:
     if expr.width is not None:
         return expr.width
-    if expr.op == "Slice" and expr.children:
-        return expr.children[0].width
+    if expr.op == "Slice":
+        return None  # a slice without semantic width is unknown
     return None
 
 
@@ -100,6 +100,8 @@ def signal_part(expr: Expr) -> tuple[str, tuple[int, int] | None] | None:
     if expr.op == "SignalRef" and expr.signal:
         return expr.signal, None
     if expr.op == "Slice" and expr.children:
+        if expr.reason or expr.bit_range is None:
+            return None  # dynamic/unresolved select is not a whole-signal source
         child = expr.children[0]
         if child.op == "SignalRef" and child.signal:
             return child.signal, expr.bit_range

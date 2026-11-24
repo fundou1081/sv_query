@@ -1811,6 +1811,8 @@ class GraphBuilder:
                 self.graph._const_map.update(result.const_map)
             if getattr(result, 'func_info', None):
                 self.graph._func_info.update(result.func_info)
+            for unknown in getattr(result, 'unknowns', ()) or ():
+                self.graph.add_unknown(unknown)
             # [iter_129] interface 成员桥需要 connection 结果里的端口连接信息
             if getattr(result, 'interface_links', None):
                 if not hasattr(self.graph, "_interface_links"):

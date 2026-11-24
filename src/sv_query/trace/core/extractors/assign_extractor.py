@@ -96,9 +96,23 @@ def create_assign_edges(module, result, module_name, *, h: 'AssignHelpers'):
 
 
 
+def _concat_roots(raw_lhs, raw_rhs):
+    from ..expression_builder import build_expr
+
+    def _unwrap(expr):
+        while expr.op == "Cast" and expr.children:
+            expr = expr.children[0]
+        return expr
+
+    return _unwrap(build_expr(raw_lhs)), _unwrap(build_expr(raw_rhs))
+
+
 def _handle_concat_assign(assign, raw_lhs, raw_rhs, module, result, module_name, genvar_ctx: dict | None = None, *, h: 'AssignHelpers') -> bool:
     """[REFACTOR 2026-06-26] 5a: 处理 Concatenation 拼接赋值. 处理了 return True (已 dispatch), 否则 False."""
-    if not (raw_lhs and hasattr(raw_lhs, "kind") and "Concatenation" in str(raw_lhs.kind)):
+    if raw_lhs is None or raw_rhs is None:
+        return False
+    lhs_ir, rhs_ir = _concat_roots(raw_lhs, raw_rhs)
+    if lhs_ir.op != "Concat" or rhs_ir.op != "Concat":
         return False
     # 提取 LHS 拼接中的所有位选信号
     lhs_elements = []
@@ -120,14 +134,10 @@ def _handle_concat_assign(assign, raw_lhs, raw_rhs, module, result, module_name,
     # 提取 RHS 拼接中的所有信号
     # [FIX 2026-06-26] 当 LHS 是 concat 但 RHS 不是 (e.g. CallExpression),
     # return False 让 _handle_call_assign 接着处理 (跟原代码 if-elif chain 行为一致)
-    if not (raw_rhs and hasattr(raw_rhs, "kind") and "Concatenation" in str(raw_rhs.kind)):
-        return False
-
     # [P198.4] typed bit-layout pairing. Only use it when both sides have
     # known widths and identical total width; otherwise fall through to the
     # legacy path (which is explicitly tracked as debt until P198.7).
     from ..concat_layout import pair, signal_part
-    from ..expression_builder import build_expr
 
     def _suffix(rng):
         if rng is None:
@@ -136,12 +146,20 @@ def _handle_concat_assign(assign, raw_lhs, raw_rhs, module, result, module_name,
             return f"[{rng[0]}]"
         return f"[{rng[0]}:{rng[1]}]"
 
-    layout = pair(build_expr(raw_lhs), build_expr(raw_rhs))
+    layout = pair(lhs_ir, rhs_ir)
     if layout is not None:
         for item in layout:
             lhs_part = signal_part(item.lhs.expr)
             rhs_part = signal_part(item.rhs.expr)
             if lhs_part is None or rhs_part is None:
+                result.unknowns.append({
+                    "kind": "concat_segment_unknown",
+                    "module": module_name,
+                    "lhs": str(item.lhs.expr.to_dict()),
+                    "rhs": str(item.rhs.expr.to_dict()),
+                    "reason": item.lhs.expr.reason or item.rhs.expr.reason
+                    or "unsupported concat segment",
+                })
                 continue
             lhs_base, lhs_range = lhs_part
             rhs_base, rhs_range = rhs_part
@@ -163,6 +181,17 @@ def _handle_concat_assign(assign, raw_lhs, raw_rhs, module, result, module_name,
             if lst and raw_rhs is not None:
                 h.store_expr_tree(lst, raw_rhs, module_name, result, genvar_ctx=genvar_ctx)
         return True
+    # [P198.4] No valid layout: explicit unknown, never legacy leaf zip.
+    result.unknowns.append({
+        "kind": "concat_layout",
+        "module": module_name,
+        "lhs": str(raw_lhs),
+        "rhs": str(raw_rhs),
+        "reason": "width mismatch, dynamic select, or unsupported concat segment",
+    })
+    return True
+    # Legacy leaf-zip path is intentionally unreachable; kept below only as
+    # historical reference until P198.6 removes it.
     rhs_signals = []
     rhs_operands = getattr(raw_rhs, "operands", None) or getattr(raw_rhs, "expressions", None)
     if rhs_operands and hasattr(rhs_operands, "__iter__") and not isinstance(rhs_operands, str):

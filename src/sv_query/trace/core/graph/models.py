@@ -405,6 +405,14 @@ class SignalGraph(nx.DiGraph):
         # [P198.3] typed semantic expression table; empty for old snapshots
         self._expression_store = ExpressionStore()
         self._assignments: dict[str, AssignmentExpr] = {}
+        self._unknowns: list[dict] = []
+
+    def add_unknown(self, unknown: dict) -> None:
+        self._unknowns.append(dict(unknown))
+
+    @property
+    def unknowns(self) -> list[dict]:
+        return [dict(u) for u in self._unknowns]
 
     def set_expression_ir(self, store: ExpressionStore,
                          assignments: dict[str, AssignmentExpr]) -> None:
@@ -768,6 +776,7 @@ class SignalGraph(nx.DiGraph):
             "expression_store": self._expression_store.to_dict(),
             "assignments": {aid: a.to_ref_dict()
                             for aid, a in sorted(self._assignments.items())},
+            "unknowns": [dict(u) for u in self._unknowns],
         }
 
     @classmethod
@@ -879,6 +888,8 @@ class SignalGraph(nx.DiGraph):
 
         # [REFACTOR 2026-08-07 A计划] 恢复表达式树/常量/函数信息
         # 旧 snapshot 可能没有这些字段，get 默认空保持兼容
+        graph._unknowns = [dict(u) for u in (data.get("unknowns") or [])
+                           if isinstance(u, dict)]
         graph._expr_trees = dict(data.get("expr_trees", {}) or {})
         graph._const_map = dict(data.get("const_map", {}) or {})
         graph._func_info = dict(data.get("func_info", {}) or {})
