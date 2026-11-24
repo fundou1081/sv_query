@@ -12,7 +12,7 @@
 |---|---|---|
 | 源码规模 | 157 文件 / 53,102 行 | `find src -name "*.py"`（2026-11-16 实测） |
 | 测试规模 | 470 测试文件 / 72,206 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **3293 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-24 P198.4 全量复核（3293）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
+| 全量 (canonical) | **3293 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-25 P198.6 全量复核（3293）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
@@ -54,6 +54,8 @@
 | [validation/reviews/2026-11-24_5c396b2.md](validation/reviews/2026-11-24_5c396b2.md) | **P198.3** initial review: FAIL (instance-path IR attach) |
 | [validation/reviews/2026-11-24_d594e4d.md](validation/reviews/2026-11-24_d594e4d.md) | **P198.4** initial review: FAIL (legacy concat fallback/dynamic select) |
 | [validation/reviews/2026-11-24_d4fe6c3.md](validation/reviews/2026-11-24_d4fe6c3.md) | **P198.5** initial review: FAIL (gate/IR fallback/scope) |
+| [validation/reviews/2026-11-25_f4e7e9f.md](validation/reviews/2026-11-25_f4e7e9f.md) | **P198.6** initial review: FAIL (false migration claim) |
+| [validation/reviews/2026-11-25_809f041.md](validation/reviews/2026-11-25_809f041.md) | **P198.6** re-audit: PASS WITH CAVEATS; P1 closed, R1/R2 text fixed |
 | [validation/reviews/2026-11-24_c3e8e9f.md](validation/reviews/2026-11-24_c3e8e9f.md) | **P198.5** final review: PASS; shift-only scope complete |
 | [validation/reviews/2026-11-24_22c4f2a.md](validation/reviews/2026-11-24_22c4f2a.md) | **P198.5** re-audit: PASS WITH CAVEATS; P1s closed; parity/P198.9 remain |
 | [validation/reviews/2026-11-24_c8c31ef.md](validation/reviews/2026-11-24_c8c31ef.md) | **P198.4** re-audit: PASS WITH CAVEATS; F1/F2 closed |

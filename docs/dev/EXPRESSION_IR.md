@@ -209,8 +209,10 @@ function; their per-op regex/branch logic is removed.
 
 ### P198.6 — completion
 
-- Viz/expression_tree consumes IR; syntax tree becomes display-only.
-- Const/function extraction from IR.
+- **Target (not yet wired)**: make viz/expression_tree consume IR and make the
+  syntax tree display-only.
+- **Target (not yet wired)**: const/function extraction from IR. Deferred to
+  P198.9 with parity tests; the legacy syntax tree remains authoritative.
 - Docs/CLAIMS/cache schema update.
 - Worker-only review + re-audit for all P0/P1 findings.
 
