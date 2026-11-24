@@ -760,9 +760,10 @@ class SignalTracer:
         if ir is not None:
             from ..bit_mapping import output_source_bits
             mapped = output_source_bits(ir, want_bit, edge.src)
-            if mapped is not None:
-                base = self._bit_base(edge.src)
-                return [f"{base}[{b.bit}]" for b in mapped]
+            if mapped is None:
+                return None  # IR exists: unknown must not fall back to legacy
+            base = self._bit_base(edge.src)
+            return [f"{base}[{b.bit}]" for b in mapped]
 
         abs_pos = want_bit
         rel_pos = self._rel_bit(dst_id, want_bit)
@@ -899,15 +900,20 @@ class SignalTracer:
         None = 该运算符不做逐位映射；[] = 已知不影响任何位（移位越界）；
         [id…] = 候选结果位（可能不在图里）。
         """
+        dst_id = edge.dst
+        if "[" in dst_id:
+            return None
+        dst_node = self.graph.get_node(dst_id)
+        if dst_node is None:
+            return None
+        dst_w = self._node_width(dst_node) or 0
         ir = self._edge_expression_ir(edge)
         if ir is not None:
             from ..bit_mapping import input_output_bits
-            dst_node = self.graph.get_node(edge.dst)
-            if dst_node is not None:
-                dst_w = self._node_width(dst_node) or 0
-                mapped = input_output_bits(ir, edge.src, src_bit)
-                if mapped is not None:
-                    return [f"{edge.dst}[{b}]" for b in mapped if 0 <= b < dst_w]
+            mapped = input_output_bits(ir, edge.src, src_bit)
+            if mapped is None:
+                return None
+            return [f"{dst_id}[{b}]" for b in mapped if 0 <= b < dst_w]
 
         src_info = getattr(edge, "source", None)
         if src_info is None:
@@ -929,13 +935,6 @@ class SignalTracer:
         dst_w = self._node_width(dst_node) or 0
         src_node = self.graph.get_node(edge.src)
         src_w = self._node_width(src_node) or dst_w
-
-        ir = self._edge_expression_ir(edge)
-        if ir is not None:
-            from ..bit_mapping import input_output_bits
-            mapped = input_output_bits(ir, edge.src, src_bit)
-            if mapped is not None:
-                return [f"{dst_id}[{b}]" for b in mapped if 0 <= b < dst_w]
 
         abs_pos = src_bit
         rel_pos = self._rel_bit(edge.src, src_bit)

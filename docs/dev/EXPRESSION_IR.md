@@ -198,12 +198,14 @@ function; their per-op regex/branch logic is removed.
 - Tests: both-side concat, different widths, nested concat, slices.
 - No regression in graph baselines.
 
-### P198.5 — query routing
+### P198.5 — shift query routing (scoped milestone)
 
-- Route fanin/fanout bit mapping through `map_bit`.
-- Dynamic shift/unknown literal/call => unknown.
-- Remove shift/concat source-text regex fallbacks.
-- Parity tests CLI/session.
+- Route **shift** fanin/fanout bit mapping through `map_bit`.
+- Dynamic shift/unknown literal/call => explicit unknown.
+- If an edge has IR, an unmappable IR subtree must NOT fall back to legacy text.
+- Other shapes (concat/slice/struct/memory) remain legacy until P198.9 proves
+  parity; source-text fallback removal for them is part of P198.9.
+- Shift parity tests CLI/session.
 
 ### P198.6 — completion
 
