@@ -37,3 +37,26 @@ def test_generate_for_assign_ids_are_distinct_and_referenced(tmp_path):
     referenced = {e.assignment_id for (_, _), edges in graph._edge_data.items()
                   for e in edges if e.assignment_id}
     assert referenced == set(graph.assignments)
+
+
+def test_generate_for_aid_binds_to_specific_destination(tmp_path):
+    import hashlib
+    graph = _graph(tmp_path, "    for (i=0;i<2;i=i+1) begin : G\n"
+                            "      assign y[i] = a[i];\n"
+                            "    end")
+    for bit in (0, 1):
+        edge = graph._edge_data_for_dst(f"top.y[{bit}]")[0]
+        assignment = graph.assignments[edge.assignment_id]
+        expected = "assign:" + hashlib.sha256(
+            f"top:y[{bit}]:{assignment.lhs.expr_id}:{assignment.rhs.expr_id}".encode()
+        ).hexdigest()[:16]
+        assert edge.assignment_id == expected
+
+
+def test_generate_if_assign_has_ir(tmp_path):
+    graph = _graph(tmp_path, "    if (1) begin : G\n"
+                            "      assign y[0] = a[0];\n"
+                            "    end")
+    assert len(graph.assignments) == 1
+    edge = graph._edge_data_for_dst("top.y[0]")[0]
+    assert edge.expr_id and edge.assignment_id
