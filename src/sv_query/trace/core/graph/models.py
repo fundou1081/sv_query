@@ -894,6 +894,22 @@ class SignalGraph(nx.DiGraph):
                 for aid, a in raw_assignments.items()
             }
             graph.set_expression_ir(store, assignments)
+            for edge_list in graph._edge_data.values():
+                for edge in edge_list:
+                    has_expr = bool(edge.expr_id)
+                    has_assign = bool(edge.assignment_id)
+                    if has_expr != has_assign:
+                        raise ValueError(
+                            "SignalGraph.from_dict: edge must have both or neither "
+                            f"expr_id/assignment_id ({edge.src} -> {edge.dst})")
+                    if has_expr and edge.expr_id not in store._by_id:
+                        raise ValueError(
+                            "SignalGraph.from_dict: dangling expr_id "
+                            f"{edge.expr_id!r} on {edge.src} -> {edge.dst}")
+                    if has_assign and edge.assignment_id not in assignments:
+                        raise ValueError(
+                            "SignalGraph.from_dict: dangling assignment_id "
+                            f"{edge.assignment_id!r} on {edge.src} -> {edge.dst}")
 
         return graph
 

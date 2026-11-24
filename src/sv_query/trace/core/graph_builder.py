@@ -60,6 +60,9 @@ class GraphBuilder:
         # Key: struct variable id (e.g., "module.pkt2")
         # Value: set of member names (e.g., {"addr", "data", "valid"})
         self._struct_members: dict[str, set[str]] = {}
+        # [P198.3] instance paths populated by configure_instances; used to
+        # attach expression IR with the same ids as driver edges.
+        self._instance_paths: list[tuple[str, object]] = []
 
     def build(self) -> SignalGraph:
         """建图：extract → 12 个声明式后处理 pass（顺序由依赖推导，见 graph_pipeline）。"""
@@ -225,8 +228,11 @@ class GraphBuilder:
 
         store = ExpressionStore()
         assignments = {}
-        for module in self.adapter.get_modules():
-            module_name = str(self.adapter.get_module_name(module))
+        modules = self._instance_paths or [
+            (str(self.adapter.get_module_name(m)), m)
+            for m in self.adapter.get_modules()]
+        for instance_path, module in modules:
+            module_name = str(instance_path)
             for assign in self.adapter.get_assignments(module):
                 built = self._assignment_ir(
                     assign, module, module_name, store, assignments)
@@ -816,6 +822,7 @@ class GraphBuilder:
                 walk(root_sym, root_name)
 
 
+            self._instance_paths = list(paths)
             # Pass to DriverExtractor
             driver = self._extractors.get('driver')
             if driver is not None and hasattr(driver, 'set_instance_paths'):

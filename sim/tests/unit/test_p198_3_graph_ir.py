@@ -48,3 +48,36 @@ def test_graph_ir_round_trip_and_legacy_defaults(tmp_path):
     old = SignalGraph.from_dict(legacy)
     assert old.assignments == {}
     assert len(old.expression_store) == 0
+
+
+def test_multi_instance_ir_uses_instance_paths(tmp_path):
+    sv = tmp_path / "multi.sv"
+    sv.write_text(
+        "module sub(input logic [7:0] a, output logic [9:0] y);\n"
+        "  assign y = a << 4'd2;\n"
+        "endmodule\n"
+        "module top(input logic [7:0] a0, a1, output logic [9:0] y0, y1);\n"
+        "  sub u0(.a(a0), .y(y0));\n"
+        "  sub u1(.a(a1), .y(y1));\n"
+        "endmodule\n")
+    graph = UnifiedTracer(sources={str(sv): sv.read_text()}, log_level="ERROR").build_graph()
+    assert len(graph.assignments) == 2
+    ids = set()
+    for dst in ("top.u0.y", "top.u1.y"):
+        edge = graph._edge_data_for_dst(dst)[0]
+        assert edge.expr_id and edge.assignment_id
+        assert edge.assignment_id in graph.assignments
+        ids.add(edge.assignment_id)
+    assert len(ids) == 2
+
+
+def test_snapshot_dangling_ir_ref_is_rejected(tmp_path):
+    import pytest
+    graph = _graph(tmp_path)
+    data = graph.to_dict()
+    for edge in data["edges"]:
+        if edge["kind"] == "DRIVER":
+            edge["expr_id"] = "expr:missing"
+            break
+    with pytest.raises(ValueError, match="dangling expr_id"):
+        SignalGraph.from_dict(data)
