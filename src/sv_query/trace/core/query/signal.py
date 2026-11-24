@@ -714,6 +714,29 @@ class SignalTracer:
         short = edge.src.rsplit(".", 1)[-1]
         return "DirectCopy" if expr == short else None
 
+    def _edge_expression_ir(self, edge):
+        eid = getattr(edge, "expr_id", "")
+        if not eid:
+            return None
+        store = getattr(self.graph, "expression_store", None)
+        if store is None:
+            return None
+        try:
+            expr = store.get(eid)
+        except KeyError:
+            return None
+        # Constant-only expressions still need the legacy constant/sign
+        # extension path; IR bit mapping does not encode constant bits yet.
+        node = expr
+        while node.op == "Cast" and node.children:
+            node = node.children[0]
+        # P198.5 starts with shift nodes. Slice/concat/struct/memory IR mapping
+        # must be parity-proven before it is enabled globally; keep the legacy
+        # path for those shapes (tracked debt).
+        if node.op not in ("ShiftLeft", "ShiftRight"):
+            return None
+        return expr
+
     def _expr_source_bits(self, edge, dst_id: str, want_bit: int) -> list[str] | None:
         """[iter_294 / PLAN P6.1] `s[i]` 依赖的**操作数位节点 id** 列表。
 
@@ -732,6 +755,14 @@ class SignalTracer:
             return None
         dst_w = self._node_width(dst_node) or 1
         src_w = self._node_width(src_node) or dst_w
+
+        ir = self._edge_expression_ir(edge)
+        if ir is not None:
+            from ..bit_mapping import output_source_bits
+            mapped = output_source_bits(ir, want_bit, edge.src)
+            if mapped is not None:
+                base = self._bit_base(edge.src)
+                return [f"{base}[{b.bit}]" for b in mapped]
 
         abs_pos = want_bit
         rel_pos = self._rel_bit(dst_id, want_bit)
@@ -868,6 +899,16 @@ class SignalTracer:
         None = 该运算符不做逐位映射；[] = 已知不影响任何位（移位越界）；
         [id…] = 候选结果位（可能不在图里）。
         """
+        ir = self._edge_expression_ir(edge)
+        if ir is not None:
+            from ..bit_mapping import input_output_bits
+            dst_node = self.graph.get_node(edge.dst)
+            if dst_node is not None:
+                dst_w = self._node_width(dst_node) or 0
+                mapped = input_output_bits(ir, edge.src, src_bit)
+                if mapped is not None:
+                    return [f"{edge.dst}[{b}]" for b in mapped if 0 <= b < dst_w]
+
         src_info = getattr(edge, "source", None)
         if src_info is None:
             return None
@@ -888,6 +929,13 @@ class SignalTracer:
         dst_w = self._node_width(dst_node) or 0
         src_node = self.graph.get_node(edge.src)
         src_w = self._node_width(src_node) or dst_w
+
+        ir = self._edge_expression_ir(edge)
+        if ir is not None:
+            from ..bit_mapping import input_output_bits
+            mapped = input_output_bits(ir, edge.src, src_bit)
+            if mapped is not None:
+                return [f"{dst_id}[{b}]" for b in mapped if 0 <= b < dst_w]
 
         abs_pos = src_bit
         rel_pos = self._rel_bit(edge.src, src_bit)
