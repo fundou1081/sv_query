@@ -882,9 +882,11 @@ class SignalGraph(nx.DiGraph):
         graph._expr_trees = dict(data.get("expr_trees", {}) or {})
         graph._const_map = dict(data.get("const_map", {}) or {})
         graph._func_info = dict(data.get("func_info", {}) or {})
+        from ..expression_ir import AssignmentExpr, ExpressionStore
+        store = ExpressionStore()
+        assignments: dict[str, AssignmentExpr] = {}
         store_data = data.get("expression_store")
         if store_data:
-            from ..expression_ir import AssignmentExpr, ExpressionStore
             store = ExpressionStore.from_dict(store_data)
             raw_assignments = data.get("assignments") or {}
             if not isinstance(raw_assignments, dict):
@@ -893,23 +895,29 @@ class SignalGraph(nx.DiGraph):
                 aid: AssignmentExpr.from_ref_dict(a, store._by_id)
                 for aid, a in raw_assignments.items()
             }
-            graph.set_expression_ir(store, assignments)
-            for edge_list in graph._edge_data.values():
-                for edge in edge_list:
-                    has_expr = bool(edge.expr_id)
-                    has_assign = bool(edge.assignment_id)
-                    if has_expr != has_assign:
-                        raise ValueError(
-                            "SignalGraph.from_dict: edge must have both or neither "
-                            f"expr_id/assignment_id ({edge.src} -> {edge.dst})")
-                    if has_expr and edge.expr_id not in store._by_id:
-                        raise ValueError(
-                            "SignalGraph.from_dict: dangling expr_id "
-                            f"{edge.expr_id!r} on {edge.src} -> {edge.dst}")
-                    if has_assign and edge.assignment_id not in assignments:
-                        raise ValueError(
-                            "SignalGraph.from_dict: dangling assignment_id "
-                            f"{edge.assignment_id!r} on {edge.src} -> {edge.dst}")
+        graph.set_expression_ir(store, assignments)
+        for edge_list in graph._edge_data.values():
+            for edge in edge_list:
+                has_expr = bool(edge.expr_id)
+                has_assign = bool(edge.assignment_id)
+                if has_expr != has_assign:
+                    raise ValueError(
+                        "SignalGraph.from_dict: edge must have both or neither "
+                        f"expr_id/assignment_id ({edge.src} -> {edge.dst})")
+                if not has_expr:
+                    continue
+                if edge.expr_id not in store._by_id:
+                    raise ValueError(
+                        "SignalGraph.from_dict: dangling expr_id "
+                        f"{edge.expr_id!r} on {edge.src} -> {edge.dst}")
+                if edge.assignment_id not in assignments:
+                    raise ValueError(
+                        "SignalGraph.from_dict: dangling assignment_id "
+                        f"{edge.assignment_id!r} on {edge.src} -> {edge.dst}")
+                if assignments[edge.assignment_id].rhs.expr_id != edge.expr_id:
+                    raise ValueError(
+                        "SignalGraph.from_dict: expr_id does not match assignment "
+                        f"{edge.assignment_id!r} on {edge.src} -> {edge.dst}")
 
         return graph
 

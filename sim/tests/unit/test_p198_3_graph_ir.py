@@ -81,3 +81,22 @@ def test_snapshot_dangling_ir_ref_is_rejected(tmp_path):
             break
     with pytest.raises(ValueError, match="dangling expr_id"):
         SignalGraph.from_dict(data)
+
+
+def test_missing_store_with_surviving_refs_is_rejected(tmp_path):
+    import pytest
+    data = _graph(tmp_path).to_dict()
+    data.pop("expression_store")
+    with pytest.raises(ValueError, match="dangling expr_id"):
+        SignalGraph.from_dict(data)
+
+
+def test_ref_must_match_assignment_rhs(tmp_path):
+    import pytest
+    graph = _graph(tmp_path)
+    data = graph.to_dict()
+    edge = next(e for e in data["edges"] if e["kind"] == "DRIVER")
+    aid = edge["assignment_id"]
+    edge["expr_id"] = data["assignments"][aid]["lhs"]
+    with pytest.raises(ValueError, match="does not match assignment"):
+        SignalGraph.from_dict(data)
