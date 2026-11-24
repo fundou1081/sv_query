@@ -209,7 +209,8 @@ class GraphBuilder:
         if (raw is None or not hasattr(raw, "left") or not hasattr(raw, "right")
                 or raw.left is None or raw.right is None):
             return None
-        lhs_name = get_signal(raw.left, None, current_module=module)
+        genvar_ctx = self.adapter.get_genvar_context(assign) or {}
+        lhs_name = get_signal(raw.left, genvar_ctx, current_module=module)
         if not lhs_name or "{" in lhs_name:
             return None
         lhs_expr = build_expr(raw.left)

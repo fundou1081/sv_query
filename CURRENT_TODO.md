@@ -9,7 +9,7 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P198.7 generate-scope continuous assign IR (bit-select LHS)** `<待做>`
+- **当前 item**: **P198.7 generate-scope continuous assign IR (bit-select LHS)** `<进行中>`
   - P195/P196 全部完成；0.3.6 已发布（release-check -> build -> publish）
   - P194.2f 已解除阻塞（P196.1/P196.2 已完成）
   - 独立复核报告: `/tmp/p195_final_review.md`
@@ -19,7 +19,7 @@
 ## 📌 当前真实基线
 
 ```text
-canonical:  3293 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  3295 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 
