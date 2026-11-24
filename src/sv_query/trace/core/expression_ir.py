@@ -32,9 +32,10 @@ def _as_int(value: Any, *, field_name: str, where: str) -> int:
 def _validate_op(expr: Expr) -> None:
     if expr.op not in OPS:
         raise ValueError(f"Expr: unknown op {expr.op!r}")
-    if expr.width is not None and (not isinstance(expr.width, int) or expr.width < 0):
+    if expr.width is not None and (
+            type(expr.width) is not int or expr.width < 0):
         raise ValueError("Expr: width must be a non-negative integer or None")
-    if not isinstance(expr.signed, bool):
+    if type(expr.signed) is not bool:
         raise ValueError("Expr: signed must be bool")
     if not isinstance(expr.children, tuple) or any(
             not isinstance(c, Expr) for c in expr.children):
@@ -49,16 +50,22 @@ def _validate_payload(expr: Expr) -> None:
 
 
 def _validate_signal(expr: Expr) -> None:
+    if not isinstance(expr.signal, str):
+        raise ValueError("Expr: signal must be a string")
     if expr.op == "SignalRef" and not expr.signal:
         raise ValueError("Expr: SignalRef requires signal")
 
 
 def _validate_literal(expr: Expr) -> None:
+    if not isinstance(expr.literal, str):
+        raise ValueError("Expr: literal must be a string")
     if expr.op == "Literal" and not expr.literal:
         raise ValueError("Expr: Literal requires literal text")
 
 
 def _validate_unknown(expr: Expr) -> None:
+    if not isinstance(expr.reason, str):
+        raise ValueError("Expr: reason must be a string")
     if expr.op == "Unknown" and not expr.reason:
         raise ValueError("Expr: Unknown requires reason")
 
@@ -67,13 +74,36 @@ def _validate_bit_range(expr: Expr) -> None:
     if expr.bit_range is None:
         return
     if (not isinstance(expr.bit_range, tuple) or len(expr.bit_range) != 2
-            or any(not isinstance(v, int) for v in expr.bit_range)):
+            or any(type(v) is not int for v in expr.bit_range)):
         raise ValueError("Expr: bit_range must be (msb, lsb)")
 
 
 def _validate_source(expr: Expr) -> None:
-    if not isinstance(expr.source_line, int) or expr.source_line < 0:
+    if type(expr.source_line) is not int or expr.source_line < 0:
         raise ValueError("Expr: source_line must be non-negative")
+
+
+def _parse_bit_range(data: dict):
+    raw = data.get("bit_range")
+    if raw is None:
+        return None
+    if not isinstance(raw, list) or len(raw) != 2:
+        raise ValueError("Expr.from_dict: bit_range must be [msb, lsb]")
+    return (_as_int(raw[0], field_name="bit_range[0]", where="Expr"),
+            _as_int(raw[1], field_name="bit_range[1]", where="Expr"))
+
+
+def _parse_scalars(data: dict):
+    width = data.get("width")
+    if width is not None and type(width) is not int:
+        raise ValueError("Expr.from_dict: width must be an integer or null")
+    signed = data.get("signed", False)
+    if type(signed) is not bool:
+        raise ValueError("Expr.from_dict: signed must be a bool")
+    line = data.get("source_line", 0)
+    if type(line) is not int or line < 0:
+        raise ValueError("Expr.from_dict: source_line must be non-negative")
+    return width, signed, line
 
 
 @dataclass(frozen=True)
@@ -128,20 +158,12 @@ class Expr:
         children_raw = data.get("children", [])
         if not isinstance(children_raw, list):
             raise ValueError("Expr.from_dict: children must be a list")
-        bit_raw = data.get("bit_range")
-        bit_range = None
-        if bit_raw is not None:
-            if not isinstance(bit_raw, list) or len(bit_raw) != 2:
-                raise ValueError("Expr.from_dict: bit_range must be [msb, lsb]")
-            bit_range = (_as_int(bit_raw[0], field_name="bit_range[0]", where="Expr"),
-                         _as_int(bit_raw[1], field_name="bit_range[1]", where="Expr"))
-        line = data.get("source_line", 0)
-        if not isinstance(line, int) or line < 0:
-            raise ValueError("Expr.from_dict: source_line must be non-negative")
+        bit_range = _parse_bit_range(data)
+        width, signed, line = _parse_scalars(data)
         return cls(
             op=op,
-            width=data.get("width"),
-            signed=bool(data.get("signed", False)),
+            width=width,
+            signed=signed,
             children=tuple(cls.from_dict(c) for c in children_raw),
             signal=data.get("signal", ""),
             literal=data.get("literal", ""),
@@ -235,7 +257,7 @@ class ExpressionStore:
     def from_dict(cls, data: Any) -> ExpressionStore:
         if not isinstance(data, dict):
             raise ValueError("ExpressionStore.from_dict: object required")
-        if data.get("version") != IR_VERSION:
+        if type(data.get("version")) is not int or data.get("version") != IR_VERSION:
             raise ValueError(f"ExpressionStore.from_dict: unsupported version {data.get('version')!r}")
         raw = data.get("expressions")
         if not isinstance(raw, dict):

@@ -58,3 +58,29 @@ def test_strict_errors_for_unknown_op_and_bad_store_id():
             "version": 1,
             "expressions": {"expr:deadbeef": Expr(op="Literal", literal="1'b0").to_dict()},
         })
+
+
+def test_width_none_and_optional_condition_are_preserved():
+    expr = Expr(op="SignalRef", width=None, signal="a")
+    assert Expr.from_dict(expr.to_dict()).width is None
+    assignment = AssignmentExpr(lhs=expr, rhs=expr, condition=None)
+    assert AssignmentExpr.from_dict(assignment.to_dict()).condition is None
+
+
+@pytest.mark.parametrize("payload", [
+    {"op": "SignalRef", "signal": 123},
+    {"op": "Literal", "literal": 5},
+    {"op": "Unknown", "reason": 7},
+    {"op": "Literal", "literal": "1'b0", "signed": "false"},
+    {"op": "Literal", "literal": "1'b0", "width": True},
+])
+def test_from_dict_rejects_corrupt_scalar_types(payload):
+    with pytest.raises(ValueError):
+        Expr.from_dict(payload)
+
+
+def test_store_rejects_bad_version_and_unknown_fields():
+    with pytest.raises(ValueError, match="unsupported version"):
+        ExpressionStore.from_dict({"version": 2, "expressions": {}})
+    with pytest.raises(ValueError, match="unknown fields"):
+        Expr.from_dict({"op": "Literal", "literal": "1'b0", "bogus": 1})

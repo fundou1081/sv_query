@@ -83,8 +83,10 @@ store.to_dict() / ExpressionStore.from_dict()
 ```
 
 Identity is a SHA-256 of the canonical JSON of `Expr.to_dict()`, truncated to
-16 hex chars. Identical subtrees share one id (DAG), so repeated operands do not
-duplicate serialized data.
+16 hex chars. Identical subtrees share one id (DAG) in memory. **P198.1 uses an
+inline tree wire format**; P198.3 must switch to flat `expr_id` child/root
+references before IR is persisted. Until then this serialization duplicates
+shared subtrees and must not be used as the final cache/snapshot schema.
 
 `Expr.to_dict()` is canonical: sorted keys, tuple children serialized as lists,
 no absolute paths. `from_dict()` is strict: unknown `op` or missing required
