@@ -54,6 +54,7 @@
 | [validation/reviews/2026-11-24_5c396b2.md](validation/reviews/2026-11-24_5c396b2.md) | **P198.3** initial review: FAIL (instance-path IR attach) |
 | [validation/reviews/2026-11-24_d594e4d.md](validation/reviews/2026-11-24_d594e4d.md) | **P198.4** initial review: FAIL (legacy concat fallback/dynamic select) |
 | [validation/reviews/2026-11-24_d4fe6c3.md](validation/reviews/2026-11-24_d4fe6c3.md) | **P198.5** initial review: FAIL (gate/IR fallback/scope) |
+| [validation/reviews/2026-11-24_c3e8e9f.md](validation/reviews/2026-11-24_c3e8e9f.md) | **P198.5** final review: PASS; shift-only scope complete |
 | [validation/reviews/2026-11-24_22c4f2a.md](validation/reviews/2026-11-24_22c4f2a.md) | **P198.5** re-audit: PASS WITH CAVEATS; P1s closed; parity/P198.9 remain |
 | [validation/reviews/2026-11-24_c8c31ef.md](validation/reviews/2026-11-24_c8c31ef.md) | **P198.4** re-audit: PASS WITH CAVEATS; F1/F2 closed |
 | [validation/reviews/2026-11-24_a163963.md](validation/reviews/2026-11-24_a163963.md) | **P198.3** re-audit: PASS WITH CAVEATS; F1 closed |
