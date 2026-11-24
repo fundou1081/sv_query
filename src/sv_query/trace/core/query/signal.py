@@ -1968,7 +1968,8 @@ class SignalTracer:
             driver_infos.append(driver_info)
 
         # [P3-3] 补全缺失的 clock_domain：通过后继节点的 CLOCK 边反推
-        self._infer_clock_reset_for_drivers(signal_id, driver_infos)
+        if signal_id in self.graph:
+            self._infer_clock_reset_for_drivers(signal_id, driver_infos)
 
         return driver_infos
 
