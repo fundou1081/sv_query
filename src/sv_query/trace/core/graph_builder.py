@@ -197,12 +197,23 @@ class GraphBuilder:
         self._mark_runtime_system_calls()
         return self.graph
 
-    def _assignment_ir(self, assign, module, module_name, store, assignments):
-        """Build/store one continuous assignment; return (aid, root_id, target)."""
-        import hashlib
+    def _concat_targets(self, lhs_expr, rhs_expr, module_name):
+        from .concat_layout import pair, signal_part
 
+        layout = pair(lhs_expr, rhs_expr)
+        if layout is None:
+            return None
+        targets = []
+        for item in layout:
+            part = signal_part(item.lhs.expr)
+            if part is not None:
+                base, rng = part
+                suffix = f"[{rng[0]}:{rng[1]}]" if rng else ""
+                targets.append(f"{module_name}.{base}{suffix}")
+        return targets
+
+    def _assignment_parts(self, assign, module):
         from .expression_builder import build_expr
-        from .expression_ir import AssignmentExpr
         from .extractors._common import get_signal
 
         raw = getattr(assign, "assignment", None)
@@ -211,17 +222,36 @@ class GraphBuilder:
             return None
         genvar_ctx = self.adapter.get_genvar_context(assign) or {}
         lhs_name = get_signal(raw.left, genvar_ctx, current_module=module)
-        if not lhs_name or "{" in lhs_name:
+        if not lhs_name:
             return None
-        lhs_expr = build_expr(raw.left)
-        rhs_expr = build_expr(raw.right)
+        return lhs_name, build_expr(raw.left), build_expr(raw.right)
+
+    def _assignment_ir(self, assign, module, module_name, store, assignments):
+        """Build/store one continuous assignment; return (aid, root_id, targets)."""
+        import hashlib
+
+        from .expression_ir import AssignmentExpr
+
+        parts = self._assignment_parts(assign, module)
+        if parts is None:
+            return None
+        lhs_name, lhs_expr, rhs_expr = parts
+        concat = lhs_expr.op == "Concat"
+        if concat:
+            targets = self._concat_targets(lhs_expr, rhs_expr, module_name)
+            if targets is None:
+                return None
+        else:
+            if "{" in lhs_name:
+                return None
+            targets = [f"{module_name}.{lhs_name}"]
         assignment = AssignmentExpr(lhs=lhs_expr, rhs=rhs_expr, assign_type="continuous")
         aid = "assign:" + hashlib.sha256(
             f"{module_name}:{lhs_name}:{lhs_expr.expr_id}:{rhs_expr.expr_id}".encode()
         ).hexdigest()[:16]
         assignments[aid] = assignment
         store.add(lhs_expr)
-        return aid, store.add(rhs_expr), f"{module_name}.{lhs_name}"
+        return aid, store.add(rhs_expr), targets
 
     def _attach_expression_ir(self) -> None:
         """Attach semantic expression IR for continuous assignments (P198.3)."""
@@ -239,12 +269,13 @@ class GraphBuilder:
                     assign, module, module_name, store, assignments)
                 if built is None:
                     continue
-                aid, root_id, target = built
-                for edge in self.graph._edge_data_for_dst(target):
-                    if edge.kind.name != "DRIVER":
-                        continue
-                    edge.expr_id = root_id
-                    edge.assignment_id = aid
+                aid, root_id, targets = built
+                for target in targets:
+                    for edge in self.graph._edge_data_for_dst(target):
+                        if edge.kind.name != "DRIVER":
+                            continue
+                        edge.expr_id = root_id
+                        edge.assignment_id = aid
         self.graph.set_expression_ir(store, assignments)
 
     def _expand_slice_bit_nodes(self) -> None:

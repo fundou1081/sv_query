@@ -77,3 +77,29 @@ def test_graph_dynamic_select_segment_is_unknown(tmp_path):
 def test_graph_literal_segment_is_not_silently_dropped(tmp_path):
     graph = _graph(tmp_path, "assign {y1, y0} = {a[1:0], 2'b10};")
     assert any(u["kind"] == "concat_segment_unknown" for u in graph.unknowns)
+
+
+def test_graph_concat_edges_carry_ir_refs(tmp_path):
+    graph = _graph(tmp_path, "assign {y1, y0} = {a[1:0], b[1:0]};")
+    edge = graph._edge_data_for_dst("top.y1")[0]
+    assert edge.expr_id and edge.assignment_id
+    assert edge.assignment_id in graph.assignments
+
+
+def test_mixed_segmentation_splits_wide_rhs(tmp_path):
+    sv = tmp_path / "mixed.sv"
+    sv.write_text(
+        "module top(input logic [1:0] a, output logic y0, output logic y1);\n"
+        "  assign {y1, y0} = {a[1:0]};\n"
+        "endmodule\n")
+    graph = UnifiedTracer(sources={str(sv): sv.read_text()}, log_level="ERROR").build_graph()
+    pairs = {(e.src, e.dst) for (_, _), edges in graph._edge_data.items()
+             for e in edges if e.assign_type == "continuous"}
+    assert ("top.a[1]", "top.y1") in pairs
+    assert ("top.a[0]", "top.y0") in pairs
+
+
+def test_slice_without_width_is_unknown():
+    expr = Expr(op="Slice", width=None, children=(
+        Expr(op="SignalRef", width=4, signal="a"),), bit_range=None)
+    assert flatten(expr) is None

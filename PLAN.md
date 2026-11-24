@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P198.8 concat P2 debt: overlap segmentation, IR refs, diagnostics, F6 test <待做>
+current item : P198.8 concat P2 debt: overlap segmentation, IR refs, diagnostics, F6 test <进行中>
 
 ## 计划树
 
@@ -633,7 +633,7 @@ P198 typed semantic expression IR (2026-11-24) <待做>
 -- P198.5 shift bit mapping through IR + CLI/session parity <已完成>
 -- P198.6 migrate viz/expression_tree + docs/claims/cache schema <已完成>
 -- P198.7 generate-scope continuous assign IR (bit-select LHS) <已完成>
--- P198.8 concat P2 debt: overlap segmentation, IR refs, diagnostics, F6 test <待做>
+-- P198.8 concat P2 debt: overlap segmentation, IR refs, diagnostics, F6 test <进行中>
 -- P198.9 concat/slice/struct/memory IR bit-mapping parity + CLI/session tests <待做>
 
 P197 independent code-smell / robustness audit follow-up (2026-11-23) <待做>

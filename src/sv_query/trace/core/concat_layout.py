@@ -70,11 +70,27 @@ def flatten(expr: Expr) -> list[Segment] | None:
     return sorted(out, key=lambda s: s.offset)
 
 
-def pair(lhs: Expr, rhs: Expr) -> list[ConcatPair] | None:
-    """Pair lhs/rhs segments by absolute bit range.
+def _subexpr(seg: Segment, lo: int, hi: int) -> Expr | None:
+    """Sub-expression for relative bits [lo, hi] of a segment."""
+    if lo == 0 and hi == seg.width - 1:
+        return seg.expr
+    expr = seg.expr
+    if expr.op == "SignalRef":
+        return Expr(op="Slice", width=hi - lo + 1, children=(expr,),
+                    bit_range=(hi, lo))
+    if expr.op == "Slice" and expr.children and expr.bit_range is not None:
+        base = min(expr.bit_range)
+        return Expr(op="Slice", width=hi - lo + 1,
+                    children=(expr.children[0],),
+                    bit_range=(base + hi, base + lo))
+    return None  # literal/unknown subrange: caller must mark unknown
 
-    Returns None for unknown/ mismatched widths, so callers can emit explicit
-    unknown instead of inventing a leaf mapping.
+
+def pair(lhs: Expr, rhs: Expr) -> list[ConcatPair] | None:
+    """Pair overlapping bit ranges, splitting wide/narrow segments.
+
+    Returns None for unknown widths/unsupported subranges; the caller must emit
+    an explicit unknown rather than fabricate a leaf mapping.
     """
     left = flatten(lhs)
     right = flatten(rhs)
@@ -87,11 +103,16 @@ def pair(lhs: Expr, rhs: Expr) -> list[ConcatPair] | None:
         l_lo, l_hi = lseg.offset, lseg.offset + lseg.width - 1
         for rseg in right:
             r_lo, r_hi = rseg.offset, rseg.offset + rseg.width - 1
-            if l_lo == r_lo and l_hi == r_hi:
-                out.append(ConcatPair(lhs=lseg, rhs=rseg))
-                break
-        else:
-            return None
+            lo, hi = max(l_lo, r_lo), min(l_hi, r_hi)
+            if lo > hi:
+                continue
+            lsub = _subexpr(lseg, lo - lseg.offset, hi - lseg.offset)
+            rsub = _subexpr(rseg, lo - rseg.offset, hi - rseg.offset)
+            if lsub is None or rsub is None:
+                return None
+            out.append(ConcatPair(
+                lhs=Segment(expr=lsub, width=hi - lo + 1, offset=lo),
+                rhs=Segment(expr=rsub, width=hi - lo + 1, offset=lo)))
     return out
 
 
