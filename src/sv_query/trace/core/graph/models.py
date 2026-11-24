@@ -313,6 +313,7 @@ class DriverInfo:
     source: SignalSource | None = None  # [V6.6] 位精确信号源 (驱动源或负载源)
     condition: str = ""  # 驱动条件 (来自 if 语句)
     expression_tree: dict | None = None  # [Plan F2.4.1] 结构化 driver 表达式 AST (None = 未注入/无)
+    expression_ir: dict | None = None  # [P198.6] typed IR snapshot (None = no IR)
     reset_condition: str = ""  # 复位条件 (来自 if (!rst_ni))
     clock_domain: str = ""  # 时钟域
     assign_type: str = ""  # always_ff / always_comb / continuous / blocking / nonblocking

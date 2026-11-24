@@ -1965,6 +1965,13 @@ class SignalTracer:
                 tree_dict = expr_trees.get(signal_id)
                 if tree_dict is not None:
                     driver_info.expression_tree = tree_dict
+            if edge is not None and edge.expr_id:
+                store = getattr(self.graph, "expression_store", None)
+                if store is not None:
+                    try:
+                        driver_info.expression_ir = store.get(edge.expr_id).to_dict()
+                    except KeyError:
+                        driver_info.expression_ir = None
             driver_infos.append(driver_info)
 
         # [P3-3] 补全缺失的 clock_domain：通过后继节点的 CLOCK 边反推

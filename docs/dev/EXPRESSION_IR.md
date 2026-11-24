@@ -214,6 +214,17 @@ function; their per-op regex/branch logic is removed.
 - Docs/CLAIMS/cache schema update.
 - Worker-only review + re-audit for all P0/P1 findings.
 
+## 9a. P198.6 status (viz bridge)
+
+- `expression_ir_bridge.ir_to_tree()` converts typed IR to the display tree.
+- `DriverInfo.expression_ir` exposes the typed RHS snapshot alongside the legacy
+  syntax `expression_tree`.
+- `collect_ir()` extracts literals/calls from IR; const/function consumers can
+  migrate without re-reading source.
+- The legacy syntax `ExpressionTree` remains display-only during this phase;
+  P198.9 owns remaining shape parity. Cache wire schema is already 3.2; no new
+  field was added here.
+
 ## 10. Acceptance tests
 
 - `{a,b} = {c,d}` maps c→a, d→b.

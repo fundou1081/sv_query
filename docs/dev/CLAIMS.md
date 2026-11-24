@@ -85,6 +85,7 @@
 | C-62 | controlflow labels inline/unmodeled conditions; claim schema published; **known-broken: mixed-driver signals can still report complete (P194.5f)** | code/test | `test_p194_5b_controlflow_claims.py` | `known-broken` |
 | C-63 | JSON mode quiet by default with --verbose escape; session paths exposes directed/mode; **known-broken: unknown endpoints return found=false instead of a structured error (P194.5g)** | code/test | `test_p194_5c_paths_quiet.py` | `known-broken` |
 | C-64 | depth=1 does not return a dangling full-range bit alias as its own driver; **unverified: current regression fixture does not build the alias (P197.6)** | code/test | `test_p194_5i_depth_alias.py` | `unverified` |
+| C-66 | P198.6 typed IR is exposed to viz/DriverInfo and const/call extraction; legacy syntax tree is display-only | code/test | `test_p198_6_ir_viz.py` | `scoped` |
 
 ---
 
