@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from sv_query.trace.core.expression_builder import build_expr
 from sv_query.trace.core.expression_ir import AssignmentExpr
 from sv_query.trace.unified_tracer import UnifiedTracer
@@ -114,3 +116,16 @@ def test_builder_nested_concat_and_unsupported_kind(tmp_path):
     unknown = _unwrap_cast(_assignment(tmp_path, "assign y = a == b;").rhs)
     assert unknown.op == "Unknown"
     assert unknown.reason
+
+
+@pytest.mark.parametrize("body,expected", [
+    ("assign y = a * b;", "Mul"),
+    ("assign y = a / b;", "Div"),
+    ("assign y = a % b;", "Mod"),
+    ("assign y = a & b;", "And"),
+    ("assign y = a | b;", "Or"),
+    ("assign y = a ^ b;", "Xor"),
+])
+def test_builder_maps_binary_operator_matrix(tmp_path, body, expected):
+    rhs = _unwrap_cast(_assignment(tmp_path, body).rhs)
+    assert rhs.op == expected
