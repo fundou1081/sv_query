@@ -11,7 +11,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
-IR_VERSION = 1
+IR_VERSION = 2
 OPS = frozenset({
     "SignalRef", "Literal", "Concat", "Slice", "Shift", "Add", "Sub", "Mul",
     "Div", "Mod", "And", "Or", "Xor", "Not", "Neg", "Cast", "Ternary", "Call",
@@ -172,6 +172,33 @@ class Expr:
             source_line=line,
         )
 
+    def to_ref_dict(self) -> dict:
+        """Wire form: children are expr ids (flat DAG), not inline copies."""
+        data = self.to_dict()
+        data["children"] = [c.expr_id for c in self.children]
+        return data
+
+    @classmethod
+    def from_ref_dict(cls, data: Any, lookup: dict[str, Expr]) -> Expr:
+        if not isinstance(data, dict):
+            raise ValueError("Expr.from_ref_dict: node must be an object")
+        allowed = {"op", "width", "signed", "children", "signal", "literal",
+                   "bit_range", "reason", "source_line"}
+        extra = set(data) - allowed
+        if extra:
+            raise ValueError(f"Expr.from_ref_dict: unknown fields {sorted(extra)}")
+        raw_children = data.get("children", [])
+        if not isinstance(raw_children, list):
+            raise ValueError("Expr.from_ref_dict: children must be a list")
+        children = []
+        for cid in raw_children:
+            if not isinstance(cid, str) or cid not in lookup:
+                raise ValueError(f"Expr.from_ref_dict: missing child ref {cid!r}")
+            children.append(lookup[cid])
+        inline = dict(data)
+        inline["children"] = [c.to_dict() for c in children]
+        return cls.from_dict(inline)
+
     def fingerprint(self) -> str:
         return hashlib.sha256(_canonical_json(self.to_dict()).encode()).hexdigest()[:16]
 
@@ -222,6 +249,68 @@ class AssignmentExpr:
         )
 
 
+    def to_ref_dict(self) -> dict:
+        return {
+            "lhs": self.lhs.expr_id,
+            "rhs": self.rhs.expr_id,
+            "condition": self.condition.expr_id if self.condition else None,
+            "assign_type": self.assign_type,
+        }
+
+    @classmethod
+    def from_ref_dict(cls, data: Any, lookup: dict[str, Expr]) -> AssignmentExpr:
+        if not isinstance(data, dict):
+            raise ValueError("AssignmentExpr.from_ref_dict: object required")
+        allowed = {"lhs", "rhs", "condition", "assign_type"}
+        extra = set(data) - allowed
+        if extra:
+            raise ValueError(
+                f"AssignmentExpr.from_ref_dict: unknown fields {sorted(extra)}")
+        lhs = data.get("lhs")
+        rhs = data.get("rhs")
+        if lhs not in lookup or rhs not in lookup:
+            raise ValueError("AssignmentExpr.from_ref_dict: missing side ref")
+        cond = data.get("condition")
+        if cond is not None and cond not in lookup:
+            raise ValueError("AssignmentExpr.from_ref_dict: missing condition ref")
+        return cls(lhs=lookup[lhs], rhs=lookup[rhs],
+                   condition=lookup[cond] if cond else None,
+                   assign_type=data.get("assign_type", ""))
+
+
+def _resolve_store_expressions(raw: dict) -> dict[str, Expr]:
+    resolved: dict[str, Expr] = {}
+    visiting: set[str] = set()
+
+    def resolve(eid: str) -> Expr:
+        if eid in resolved:
+            return resolved[eid]
+        if eid in visiting:
+            raise ValueError(f"ExpressionStore.from_dict: cycle at {eid!r}")
+        if eid not in raw:
+            raise ValueError(f"ExpressionStore.from_dict: missing expression {eid!r}")
+        visiting.add(eid)
+        node = raw[eid]
+        if isinstance(node, dict):
+            children = node.get("children", [])
+            if isinstance(children, list):
+                for cid in children:
+                    if isinstance(cid, str):
+                        resolve(cid)
+        expr = Expr.from_ref_dict(node, resolved)
+        visiting.remove(eid)
+        if expr.expr_id != eid:
+            raise ValueError(
+                f"ExpressionStore.from_dict: id mismatch for {eid!r} "
+                f"(canonical {expr.expr_id!r})")
+        resolved[eid] = expr
+        return expr
+
+    for eid in raw:
+        resolve(eid)
+    return resolved
+
+
 @dataclass
 class ExpressionStore:
     """Interned expression DAG. Keys are stable ``expr:<hash>`` ids."""
@@ -251,7 +340,8 @@ class ExpressionStore:
 
     def to_dict(self) -> dict:
         return {"version": IR_VERSION,
-                "expressions": {eid: expr.to_dict() for eid, expr in sorted(self._by_id.items())}}
+                "expressions": {eid: expr.to_ref_dict()
+                                for eid, expr in sorted(self._by_id.items())}}
 
     @classmethod
     def from_dict(cls, data: Any) -> ExpressionStore:
@@ -262,14 +352,10 @@ class ExpressionStore:
         raw = data.get("expressions")
         if not isinstance(raw, dict):
             raise ValueError("ExpressionStore.from_dict: expressions must be an object")
+        if any(not isinstance(eid, str) for eid in raw):
+            raise ValueError("ExpressionStore.from_dict: expression id must be a string")
+        resolved = _resolve_store_expressions(raw)
         store = cls()
-        for eid, node in raw.items():
-            if not isinstance(eid, str):
-                raise ValueError("ExpressionStore.from_dict: expression id must be a string")
-            expr = Expr.from_dict(node)
-            if expr.expr_id != eid:
-                raise ValueError(
-                    f"ExpressionStore.from_dict: id mismatch for {eid!r} "
-                    f"(canonical {expr.expr_id!r})")
-            store.add(expr)
+        for eid in raw:
+            store.add(resolved[eid])
         return store

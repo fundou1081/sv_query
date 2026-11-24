@@ -174,6 +174,13 @@ class GraphBuilder:
                 provides={"gen_block_map"},
                 note="generate block 真实 label → LHS 基名映射（viz 用）",
             ),
+            Stage(
+                "expression_ir",
+                self._attach_expression_ir,
+                requires={"edges"},
+                provides={"expression_ir"},
+                note="[P198.3] semantic expressions/assignments -> SignalGraph",
+            ),
         ])
         pipeline.run()
         # [iter_299 / PLAN P11.2] 所有 pass 完成后统一修 packed 成员宽度/位段
@@ -186,6 +193,52 @@ class GraphBuilder:
         # [iter_322 / PLAN P26.2] 运行期系统调用（$random 等）
         self._mark_runtime_system_calls()
         return self.graph
+
+    def _assignment_ir(self, assign, module, module_name, store, assignments):
+        """Build/store one continuous assignment; return (aid, root_id, target)."""
+        import hashlib
+
+        from .expression_builder import build_expr
+        from .expression_ir import AssignmentExpr
+        from .extractors._common import get_signal
+
+        raw = getattr(assign, "assignment", None)
+        if (raw is None or not hasattr(raw, "left") or not hasattr(raw, "right")
+                or raw.left is None or raw.right is None):
+            return None
+        lhs_name = get_signal(raw.left, None, current_module=module)
+        if not lhs_name or "{" in lhs_name:
+            return None
+        lhs_expr = build_expr(raw.left)
+        rhs_expr = build_expr(raw.right)
+        assignment = AssignmentExpr(lhs=lhs_expr, rhs=rhs_expr, assign_type="continuous")
+        aid = "assign:" + hashlib.sha256(
+            f"{module_name}:{lhs_name}:{lhs_expr.expr_id}:{rhs_expr.expr_id}".encode()
+        ).hexdigest()[:16]
+        assignments[aid] = assignment
+        store.add(lhs_expr)
+        return aid, store.add(rhs_expr), f"{module_name}.{lhs_name}"
+
+    def _attach_expression_ir(self) -> None:
+        """Attach semantic expression IR for continuous assignments (P198.3)."""
+        from .expression_ir import ExpressionStore
+
+        store = ExpressionStore()
+        assignments = {}
+        for module in self.adapter.get_modules():
+            module_name = str(self.adapter.get_module_name(module))
+            for assign in self.adapter.get_assignments(module):
+                built = self._assignment_ir(
+                    assign, module, module_name, store, assignments)
+                if built is None:
+                    continue
+                aid, root_id, target = built
+                for edge in self.graph._edge_data_for_dst(target):
+                    if edge.kind.name != "DRIVER":
+                        continue
+                    edge.expr_id = root_id
+                    edge.assignment_id = aid
+        self.graph.set_expression_ir(store, assignments)
 
     def _expand_slice_bit_nodes(self) -> None:
         """[iter_291 / PLAN P5.4 F3] 把切片赋值展开成**逐位节点 + 位对位 DRIVER**。

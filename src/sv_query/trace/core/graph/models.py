@@ -13,6 +13,7 @@ import networkx as nx
 # [Stage 1] TraceEdge.source_location 字段用 SourceLocation
 # coverage_models 不反向依赖 graph.models, 无循环 import 风险
 from ..coverage_models import SourceLocation
+from ..expression_ir import AssignmentExpr, ExpressionStore
 
 
 def _filter_json_safe(d: dict | None) -> dict:
@@ -287,6 +288,9 @@ class TraceEdge:
     # [V6.5 2026-07-28] [V6.6 renamed from driver_source] 结构化信号源
     # driver 和 load 共享 — 当 source 非 None 时, expression/bit_slice 应保持同步
     source: SignalSource | None = None
+    # [P198.3] optional typed expression/assignment references; empty = legacy/no IR
+    expr_id: str = ""
+    assignment_id: str = ""
     # [V7.0 2026-08-03] 嵌套条件累积链 (外层→内层, AND 语义)
     # 例: ["sel_d == 2'd0", "sel_e == 2'd0"]
     # 互斥关系由渲染器自动推导: 按 (dst, chain[:-1]) 分组, >=2 条边 → mux/case
@@ -398,6 +402,37 @@ class SignalGraph(nx.DiGraph):
         self._function_nodes: set[str] = set()
         # [iter_322 / PLAN P26.2] 运行期系统调用结果节点（$random 等）
         self._runtime_system_nodes: set[str] = set()
+        # [P198.3] typed semantic expression table; empty for old snapshots
+        self._expression_store = ExpressionStore()
+        self._assignments: dict[str, AssignmentExpr] = {}
+
+    def set_expression_ir(self, store: ExpressionStore,
+                         assignments: dict[str, AssignmentExpr]) -> None:
+        self._expression_store = store
+        self._assignments = dict(assignments)
+
+    @property
+    def expression_store(self) -> ExpressionStore:
+        return self._expression_store
+
+    @property
+    def assignments(self) -> dict[str, AssignmentExpr]:
+        return dict(self._assignments)
+
+    def _edge_data_for_dst(self, dst: str) -> list[TraceEdge]:
+        rows = []
+        for edge_list in self._edge_data.values():
+            rows.extend(e for e in edge_list if e.dst == dst)
+        return rows
+
+    def get_expression(self, expr_id: str):
+        return self._expression_store.get(expr_id)
+
+    def get_assignment(self, assignment_id: str) -> AssignmentExpr:
+        try:
+            return self._assignments[assignment_id]
+        except KeyError:
+            raise KeyError(f"assignment not found: {assignment_id!r}") from None
 
     def add_trace_node(self, node: TraceNode) -> None:
         self._node_data[node.id] = node
@@ -470,6 +505,8 @@ class SignalGraph(nx.DiGraph):
                 and existing_edge.condition == edge.condition
                 and existing_edge.assign_type == edge.assign_type
                 and existing_edge.expression == edge.expression
+                and existing_edge.expr_id == edge.expr_id
+                and existing_edge.assignment_id == edge.assignment_id
             ):
                 return  # 完全重复，跳过
 
@@ -709,6 +746,8 @@ class SignalGraph(nx.DiGraph):
                         "is_function_call": edge.is_function_call,
                         "source": asdict(edge.source) if edge.source is not None else None,
                         "extra": _filter_json_safe(edge.extra),
+                        "expr_id": edge.expr_id,
+                        "assignment_id": edge.assignment_id,
                     }
                 )
 
@@ -726,6 +765,9 @@ class SignalGraph(nx.DiGraph):
             "expr_trees": dict(self._expr_trees),
             "const_map": dict(self._const_map),
             "func_info": dict(self._func_info),
+            "expression_store": self._expression_store.to_dict(),
+            "assignments": {aid: a.to_ref_dict()
+                            for aid, a in sorted(self._assignments.items())},
         }
 
     @classmethod
@@ -830,6 +872,8 @@ class SignalGraph(nx.DiGraph):
                 is_function_call=bool(edge_dict.get("is_function_call", False)),
                 source=source,
                 extra=dict(edge_dict.get("extra") or {}),
+                expr_id=edge_dict.get("expr_id", ""),
+                assignment_id=edge_dict.get("assignment_id", ""),
             )
             graph.add_trace_edge(edge)
 
@@ -838,6 +882,18 @@ class SignalGraph(nx.DiGraph):
         graph._expr_trees = dict(data.get("expr_trees", {}) or {})
         graph._const_map = dict(data.get("const_map", {}) or {})
         graph._func_info = dict(data.get("func_info", {}) or {})
+        store_data = data.get("expression_store")
+        if store_data:
+            from ..expression_ir import AssignmentExpr, ExpressionStore
+            store = ExpressionStore.from_dict(store_data)
+            raw_assignments = data.get("assignments") or {}
+            if not isinstance(raw_assignments, dict):
+                raise ValueError("SignalGraph.from_dict: assignments must be an object")
+            assignments = {
+                aid: AssignmentExpr.from_ref_dict(a, store._by_id)
+                for aid, a in raw_assignments.items()
+            }
+            graph.set_expression_ir(store, assignments)
 
         return graph
 

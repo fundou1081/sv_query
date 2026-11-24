@@ -55,7 +55,7 @@ def test_strict_errors_for_unknown_op_and_bad_store_id():
         Expr(op="Bogus")
     with pytest.raises(ValueError, match="id mismatch"):
         ExpressionStore.from_dict({
-            "version": 1,
+            "version": 2,
             "expressions": {"expr:deadbeef": Expr(op="Literal", literal="1'b0").to_dict()},
         })
 
@@ -81,6 +81,6 @@ def test_from_dict_rejects_corrupt_scalar_types(payload):
 
 def test_store_rejects_bad_version_and_unknown_fields():
     with pytest.raises(ValueError, match="unsupported version"):
-        ExpressionStore.from_dict({"version": 2, "expressions": {}})
+        ExpressionStore.from_dict({"version": 1, "expressions": {}})
     with pytest.raises(ValueError, match="unknown fields"):
         Expr.from_dict({"op": "Literal", "literal": "1'b0", "bogus": 1})
