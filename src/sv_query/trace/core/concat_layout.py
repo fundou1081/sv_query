@@ -79,10 +79,13 @@ def _subexpr(seg: Segment, lo: int, hi: int) -> Expr | None:
         return Expr(op="Slice", width=hi - lo + 1, children=(expr,),
                     bit_range=(hi, lo))
     if expr.op == "Slice" and expr.children and expr.bit_range is not None:
-        base = min(expr.bit_range)
+        msb, lsb = expr.bit_range
+        direction = 1 if msb >= lsb else -1
+        start = lsb + direction * lo
+        end = lsb + direction * hi
         return Expr(op="Slice", width=hi - lo + 1,
                     children=(expr.children[0],),
-                    bit_range=(base + hi, base + lo))
+                    bit_range=(start, end))
     return None  # literal/unknown subrange: caller must mark unknown
 
 

@@ -103,3 +103,36 @@ def test_slice_without_width_is_unknown():
     expr = Expr(op="Slice", width=None, children=(
         Expr(op="SignalRef", width=4, signal="a"),), bit_range=None)
     assert flatten(expr) is None
+
+
+def test_descending_packed_concat_maps_correct_bits(tmp_path):
+    sv = tmp_path / "desc.sv"
+    sv.write_text(
+        "module top(input logic [0:1] a, input logic [0:1] b,\n"
+        "           output logic [0:3] y);\n"
+        "  assign {y[0:3]} = {a[0:1], b[0:1]};\n"
+        "endmodule\n")
+    graph = UnifiedTracer(sources={str(sv): sv.read_text()}, log_level="ERROR").build_graph()
+    pairs = {(e.src, e.dst) for (_, _), edges in graph._edge_data.items()
+             for e in edges if e.assign_type == "continuous"}
+    assert ("top.a[0:1]", "top.y[1:0]") in pairs
+    assert ("top.b[0:1]", "top.y[3:2]") in pairs
+    assert ("top.a[0:1][0]", "top.y[0]") in pairs
+    assert ("top.a[0:1][1]", "top.y[1]") in pairs
+    assert ("top.b[0:1][0]", "top.y[2]") in pairs
+    assert ("top.b[0:1][1]", "top.y[3]") in pairs
+
+
+def test_single_bit_slice_lhs_concat_has_refs(tmp_path):
+    sv = tmp_path / "bits.sv"
+    sv.write_text(
+        "module top(input logic [3:0] a, output logic [3:0] y);\n"
+        "  assign {y[3], y[2], y[1], y[0]} = {a[3], a[2], a[1], a[0]};\n"
+        "endmodule\n")
+    graph = UnifiedTracer(sources={str(sv): sv.read_text()}, log_level="ERROR").build_graph()
+    referenced = {e.assignment_id for (_, _), edges in graph._edge_data.items()
+                  for e in edges if e.assignment_id}
+    assert referenced == set(graph.assignments)
+    for bit in range(4):
+        edge = graph._edge_data_for_dst(f"top.y[{bit}]")[0]
+        assert edge.expr_id and edge.assignment_id

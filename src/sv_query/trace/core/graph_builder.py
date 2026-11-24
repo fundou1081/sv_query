@@ -208,7 +208,12 @@ class GraphBuilder:
             part = signal_part(item.lhs.expr)
             if part is not None:
                 base, rng = part
-                suffix = f"[{rng[0]}:{rng[1]}]" if rng else ""
+                if rng is None:
+                    suffix = ""
+                elif rng[0] == rng[1]:
+                    suffix = f"[{rng[0]}]"
+                else:
+                    suffix = f"[{rng[0]}:{rng[1]}]"
                 targets.append(f"{module_name}.{base}{suffix}")
         return targets
 
