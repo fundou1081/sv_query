@@ -9,7 +9,7 @@ _LABELS = {
     "Add": "+", "Sub": "-", "Mul": "*", "Div": "/", "Mod": "%",
     "And": "&", "Or": "|", "Xor": "^", "Not": "!", "Neg": "-",
     "ShiftLeft": "<<", "ShiftRight": ">>", "Concat": "{}",
-    "Cast": "cast", "Ternary": "?:", "Slice": "[]", "Call": "call",
+    "Cast": "cast", "Ternary": "?:", "Slice": "[]", "Call": "call", "Shift": "shift",
 }
 
 
@@ -19,7 +19,8 @@ def _label(expr: Any) -> tuple[str, str]:
     if expr.op == "Literal":
         return expr.literal, "Const"
     if expr.op == "Slice":
-        return str(expr.bit_range or "[]"), "Slice"
+        rng = expr.bit_range
+        return (f"[{rng[0]}:{rng[1]}]" if rng else "[]"), "Slice"
     if expr.op == "Call":
         return expr.signal or "call", "Call"
     if expr.op == "Unknown":

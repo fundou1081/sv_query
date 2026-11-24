@@ -19,7 +19,7 @@
 ## 📌 当前真实基线
 
 ```text
-canonical:  3291 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  3293 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 

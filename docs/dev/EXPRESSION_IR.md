@@ -216,14 +216,14 @@ function; their per-op regex/branch logic is removed.
 
 ## 9a. P198.6 status (viz bridge)
 
-- `expression_ir_bridge.ir_to_tree()` converts typed IR to the display tree.
+- `expression_ir_bridge.ir_to_tree()` and `collect_ir()` are available hooks
+  for IR-backed visualization and const/call extraction.
 - `DriverInfo.expression_ir` exposes the typed RHS snapshot alongside the legacy
   syntax `expression_tree`.
-- `collect_ir()` extracts literals/calls from IR; const/function consumers can
-  migrate without re-reading source.
-- The legacy syntax `ExpressionTree` remains display-only during this phase;
-  P198.9 owns remaining shape parity. Cache wire schema is already 3.2; no new
-  field was added here.
+- **These hooks are not yet wired into production viz/const extraction.** The
+  legacy syntax tree remains functionally live (including OP_TERNARY/OP_CASE
+  emission) until P198.9 performs the migration with parity tests.
+- Cache wire schema is already 3.2; no new field was added here.
 
 ## 10. Acceptance tests
 
