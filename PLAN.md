@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P197.5 semantic reset classification + evidence LHS verification <待做>
+current item : P198.1 Expr/AssignmentExpr/ExpressionStore + strict serialization <进行中>
 
 ## 计划树
 
@@ -624,6 +624,14 @@ P196 independent review follow-up (2026-11-22) <已完成>
 -- P196.3 P1 file-mode GraphSession.refresh reads disk content; regression test <已完成>
 -- P196.4 P1 remaining packed/fallback scalar width normalization; C-49 scope <已完成>
 -- P196.5 reconcile C-49 scope + stdio envelope contract + docs/count attribution <已完成>
+
+P198 typed semantic expression IR (2026-11-24) <待做>
+-- P198.1 Expr/AssignmentExpr/ExpressionStore + strict serialization <进行中>
+-- P198.2 semantic AST builder for IR <待做>
+-- P198.3 graph/cache integration + edge expr_id + assignment table <待做>
+-- P198.4 concat LHS/RHS bit-layout pairing <待做>
+-- P198.5 route fanin/fanout bit mapping through IR <待做>
+-- P198.6 migrate viz/expression_tree + docs/claims/cache schema <待做>
 
 P197 independent code-smell / robustness audit follow-up (2026-11-23) <待做>
 -- P197.1 verify consistency zero-check must return unknown, not verified <已完成>

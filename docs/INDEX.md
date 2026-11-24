@@ -10,9 +10,9 @@
 
 | 项 | 值 | 说明 |
 |---|---|---|
-| 源码规模 | 152 文件 / 51,912 行 | `find src -name "*.py"`（2026-11-16 实测） |
-| 测试规模 | 463 测试文件 / 71,628 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **3243 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-24 P197.4 全量复核（3243）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
+| 源码规模 | 153 文件 / 52,165 行 | `find src -name "*.py"`（2026-11-16 实测） |
+| 测试规模 | 464 测试文件 / 71,688 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
+| 全量 (canonical) | **3247 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-24 P197.4 全量复核（3247）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
@@ -55,6 +55,7 @@
 | [validation/reviews/2026-11-23_229320f.md](validation/reviews/2026-11-23_229320f.md) | **P197.2** independent worker review: PASS WITH CAVEATS (P2 only) |
 | [validation/reviews/2026-11-23_7250285.md](validation/reviews/2026-11-23_7250285.md) | **P197.1** independent worker review: PASS WITH CAVEATS (P2 only) |
 | [validation/reviews/README.md](validation/reviews/README.md) | **P197**: worker review artifact location; no P0/P1 open rule |
+| [dev/EXPRESSION_IR.md](dev/EXPRESSION_IR.md) | **P198**: typed semantic expression DAG, concat layout, migration contract |
 | [dev/CODE_REVIEW_PROTOCOL.md](dev/CODE_REVIEW_PROTOCOL.md) | **P197**: worker-only review, P0/P1 rework/re-audit, release blocking |
 | [dev/API_FACADE.md](dev/API_FACADE.md) | **P194.3**: QueryClient/Session/GraphSession tiers; deprecation policy |
 | [dev/CACHE_CONTRACT.md](dev/CACHE_CONTRACT.md) | **P194.2a**: BuildIdentity/capability manifest; cache default-off; invalidation rules |
