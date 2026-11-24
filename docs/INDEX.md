@@ -12,7 +12,7 @@
 |---|---|---|
 | 源码规模 | 155 文件 / 52,789 行 | `find src -name "*.py"`（2026-11-16 实测） |
 | 测试规模 | 467 测试文件 / 72,026 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **3283 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-24 P198.2 全量复核（3283）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
+| 全量 (canonical) | **3283 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-24 P198.4 全量复核（3283）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
@@ -52,6 +52,8 @@
 | [validation/reviews/2026-11-24_36b0a0d.md](validation/reviews/2026-11-24_36b0a0d.md) | **P197.4** initial review: FAIL (x/z shift literal P1) |
 | [validation/reviews/2026-11-24_618cc16.md](validation/reviews/2026-11-24_618cc16.md) | **P198.2** initial review: FAIL (unary minus / element select) |
 | [validation/reviews/2026-11-24_5c396b2.md](validation/reviews/2026-11-24_5c396b2.md) | **P198.3** initial review: FAIL (instance-path IR attach) |
+| [validation/reviews/2026-11-24_d594e4d.md](validation/reviews/2026-11-24_d594e4d.md) | **P198.4** initial review: FAIL (legacy concat fallback/dynamic select) |
+| [validation/reviews/2026-11-24_c8c31ef.md](validation/reviews/2026-11-24_c8c31ef.md) | **P198.4** re-audit: PASS WITH CAVEATS; F1/F2 closed |
 | [validation/reviews/2026-11-24_a163963.md](validation/reviews/2026-11-24_a163963.md) | **P198.3** re-audit: PASS WITH CAVEATS; F1 closed |
 | [validation/reviews/2026-11-24_c2b13b7.md](validation/reviews/2026-11-24_c2b13b7.md) | **P198.2** re-audit: PASS WITH CAVEATS; P1s closed |
 | [validation/reviews/2026-11-24_1817145d.md](validation/reviews/2026-11-24_1817145d.md) | **P198.1** independent worker review: PASS WITH CAVEATS; P2 strictness/tests fixed |
