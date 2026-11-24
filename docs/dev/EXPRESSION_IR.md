@@ -47,7 +47,7 @@ class Expr:
 `op` is a stable string (JSON-friendly). Allowed initial ops:
 
 ```text
-SignalRef Literal Concat Slice Shift Add Sub Mul Div Mod
+SignalRef Literal Concat Slice ShiftLeft ShiftRight Add Sub Mul Div Mod
 And Or Xor Not Neg Cast Ternary Call Unknown
 ```
 
@@ -100,7 +100,7 @@ Build with pyslang semantic AST, not syntax tokens:
 |---|---|
 | `NamedValueExpression` | `SignalRef(signal=...)` |
 | `IntegerLiteralExpression` | `Literal(literal=str(value))` |
-| `BinaryExpression` | `Add/Sub/.../Shift` with `left,right` |
+| `BinaryExpression` | `Add/Sub/.../ShiftLeft/ShiftRight` with `left,right` |
 | `UnaryExpression` | `Not/Neg` with operand |
 | `ConversionExpression` | `Cast` with operand |
 | `ConcatenationExpression` | `Concat(operands)` |
@@ -156,7 +156,7 @@ SignalRef   -> that signal bit
 Literal     -> known constant bit, or unknown if X/Z
 Concat      -> select child by offset
 Slice       -> adjust index
-Shift       -> constant k: offset; dynamic: unknown
+ShiftLeft/Right -> constant k: offset; dynamic: unknown
 Cast        -> width/signedness rule
 Ternary     -> union of branches; incomplete if condition unknown
 Call        -> unknown unless semantic inline support exists
