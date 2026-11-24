@@ -136,3 +136,34 @@ def test_single_bit_slice_lhs_concat_has_refs(tmp_path):
     for bit in range(4):
         edge = graph._edge_data_for_dst(f"top.y[{bit}]")[0]
         assert edge.expr_id and edge.assignment_id
+
+
+def test_descending_multi_bit_split_expands_per_bit(tmp_path):
+    from sv_query.trace.unified_tracer import UnifiedTracer
+    sv = tmp_path / "dsplit.sv"
+    sv.write_text(
+        "module top(input logic [2:0] a, input logic b, output logic [3:0] y);\n"
+        "  assign {y[3], y[2:0]} = {a[2:0], b};\n"
+        "endmodule\n")
+    tracer = UnifiedTracer(sources={str(sv): sv.read_text()}, log_level="ERROR")
+    graph = tracer.build_graph()
+    assert {r.id for r in tracer.trace_fanin("top.y[1]")} == {"top.a[0]"}
+    assert {r.id for r in tracer.trace_fanin("top.y[2]")} == {"top.a[1]"}
+    assert {r.id for r in tracer.trace_fanin("top.y[3]")} == {"top.a[2]"}
+    assert graph is not None
+
+
+def test_descending_wide_rhs_keeps_per_bit_fanin(tmp_path):
+    from sv_query.trace.unified_tracer import UnifiedTracer
+    sv = tmp_path / "wide.sv"
+    sv.write_text(
+        "module top(input logic [3:0] a, output logic [1:0] y0,\n"
+        "           output logic [1:0] y1);\n"
+        "  assign {y1, y0} = {a[3:0]};\n"
+        "endmodule\n")
+    tracer = UnifiedTracer(sources={str(sv): sv.read_text()}, log_level="ERROR")
+    tracer.build_graph()
+    assert {r.id for r in tracer.trace_fanin("top.y0[0]")} == {"top.a[0]"}
+    assert {r.id for r in tracer.trace_fanin("top.y0[1]")} == {"top.a[1]"}
+    assert {r.id for r in tracer.trace_fanin("top.y1[0]")} == {"top.a[2]"}
+    assert {r.id for r in tracer.trace_fanin("top.y1[1]")} == {"top.a[3]"}

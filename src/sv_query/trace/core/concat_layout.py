@@ -83,9 +83,13 @@ def _subexpr(seg: Segment, lo: int, hi: int) -> Expr | None:
         direction = 1 if msb >= lsb else -1
         start = lsb + direction * lo
         end = lsb + direction * hi
+        # The graph's slice-expansion pass expects descending [hi:lo].
+        # Keep the physical bits direction-correct, but always emit the
+        # higher index first so per-bit expansion still happens.
+        high, low = max(start, end), min(start, end)
         return Expr(op="Slice", width=hi - lo + 1,
                     children=(expr.children[0],),
-                    bit_range=(start, end))
+                    bit_range=(high, low))
     return None  # literal/unknown subrange: caller must mark unknown
 
 
