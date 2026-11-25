@@ -58,6 +58,7 @@
 | [validation/reviews/2026-11-25_57011a0.md](validation/reviews/2026-11-25_57011a0.md) | **P198.8** initial review: FAIL (little-endian reversed; single-bit refs) |
 | [validation/reviews/2026-11-25_703148a.md](validation/reviews/2026-11-25_703148a.md) | **P198.8** re-audit: FAIL (descending split lost per-bit) |
 | [validation/reviews/2026-11-25_7e66098.md](validation/reviews/2026-11-25_7e66098.md) | **P198.10c** audit: PASS WITH CAVEATS; depth=1 duplicate aggregate |
+| [validation/reviews/2026-11-26_e65b5a2.md](validation/reviews/2026-11-26_e65b5a2.md) | **P197.12** worker review: PASS WITH CAVEATS; verify parity P2s closed |
 | [validation/reviews/2026-11-25_37bed29.md](validation/reviews/2026-11-25_37bed29.md) | **P197.10** worker review: PASS WITH CAVEATS; claims/audit reconciliation |
 | [validation/reviews/2026-11-25_e16240f.md](validation/reviews/2026-11-25_e16240f.md) | **P197.9** worker review: PASS WITH CAVEATS; semantic bit/gate |
 | [validation/reviews/2026-11-25_5e7789d.md](validation/reviews/2026-11-25_5e7789d.md) | **P197.8** worker review: PASS WITH CAVEATS; quiet context/argv |
