@@ -46,7 +46,7 @@ and the P194.5e-h items land.
 
 ## P197.10 remediation reconciliation (2026-11-25)
 
-P1 findings are fixed and gate-backed; no P1 remains open.
+P1s targeted for remediation are fixed and gate-backed; F4/F5 remain known-broken/tracked (P194.5g/P194.5f) and F10 tracked (P197.12/P194.5f); no P1 is silently verified.
 
 | ID | Status | Claim | Regression |
 |---|---|---|---|
@@ -72,4 +72,5 @@ P2 disposition:
 - open and tracked: confidence provenance and `instances --depth` (P197.16),
   diagnostic `[]`/`0` fallbacks (P197.16), cache singleton env (P197.16),
   FSM state/reset string classification (P194.5f), remaining except
-  name-substring marker (P197.15), verify-parity P2 (P197.12).
+  name-substring marker (P197.15), evidence RHS substring + compound-reset
+  heuristic (P197.14), verify-parity P2 (P197.12).

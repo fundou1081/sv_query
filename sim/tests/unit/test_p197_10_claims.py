@@ -15,4 +15,8 @@ def test_claims_cover_p197_remediation_and_audit_links_them():
     assert "P197.10 remediation reconciliation" in audit
     for finding in ("F1", "F6", "F8", "F9", "S1", "S2", "S3"):
         assert f"| {finding} | fixed |" in audit
-    assert "P197.16" in audit
+    for finding in ("F4", "F5", "F10"):
+        assert f"| {finding} | open" in audit
+    assert "C-62 |" in claims and "`known-broken`" in claims
+    assert "C-63 |" in claims
+    assert "P197.14" in audit and "P197.16" in audit
