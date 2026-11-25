@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import gzip
 import json
-from pathlib import Path
 
 from sv_query.trace.unified_tracer import UnifiedTracer
 
@@ -47,5 +46,24 @@ def test_manifest_mig_without_payload_is_not_hydrated(tmp_path, monkeypatch):
 
     fresh = UnifiedTracer(filelist=FL, log_level="ERROR")
     fresh.build_graph(use_cache=True, required_capabilities={"graph", "mig"})
+    assert fresh._build_phase == "ready"
+    assert fresh.get_module_graph() is not None
+
+
+def test_graph_only_manifest_without_mig_is_miss(tmp_path, monkeypatch):
+    _cache(monkeypatch, tmp_path)
+    first = UnifiedTracer(filelist=FL, log_level="ERROR")
+    first.build_graph(use_cache=True, required_capabilities={"graph", "mig"})
+    files = list(tmp_path.rglob("*.json.gz"))
+    data = json.load(gzip.open(files[0], "rt", encoding="utf-8"))
+    data["data"]["manifest"]["capabilities"] = ["graph"]
+    data["data"].pop("module_graph_data", None)
+    with gzip.open(files[0], "wt", encoding="utf-8") as f:
+        json.dump(data, f)
+    from sv_query.trace.core.cache import get_cache
+    get_cache()._memory_cache.clear()
+    fresh = UnifiedTracer(filelist=FL, log_level="ERROR")
+    fresh.build_graph(use_cache=True, required_capabilities={"graph", "mig"})
+    assert fresh._cache_status == "miss"
     assert fresh._build_phase == "ready"
     assert fresh.get_module_graph() is not None

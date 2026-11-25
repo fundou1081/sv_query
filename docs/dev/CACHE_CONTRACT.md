@@ -54,21 +54,23 @@ Every entry self-describes:
 
 ```json
 {
-  "capabilities": ["graph"],
+  "capabilities": ["graph", "mig"],
   "graph_semantics": "1",
-  "cache_schema": "3.1",
+  "cache_schema": "3.3",
   "build_identity": {...}
 }
 ```
 
-Current graph cache owns **graph only**. MIG/class/path-resolver capabilities are
-not cached. `build_graph(required_capabilities=...)` only hydrates an entry when
-the manifest covers every requested capability; trace/GraphSession callers request
-`{"graph", "mig"}`, so a graph-only hit is a miss and rebuilds with MIG. P195.2.
+Current graph cache stores **graph + MIG + path-resolver state**. The manifest
+declares the actual capabilities (`graph`, and `mig` when
+`module_graph_data` is present). `build_graph(required_capabilities=...)` only
+hydrates when both the declared and actual payload cover every requested
+capability; a manifest that claims MIG without `module_graph_data` is a miss.
+Class hierarchy is still not cached. P197.7 extends P195.2/P194.2a.
 
 A missing manifest or missing required capability is a **miss**, not a partial
-hit. Old entries without the manifest are rebuilt. P195.1 covers closure hashing;
-P195.2 covers capability enforcement (MIG).
+hit. Old entries (schema 3.2 and earlier) are rejected by the cache version. P195.1
+covers closure hashing; P195.2 covers capability enforcement; P197.7 covers MIG.
 
 ## 3. Default policy
 
@@ -82,12 +84,13 @@ P195.2 covers capability enforcement (MIG).
 ## 4. Tests
 
 - every identity field changes the key;
-- manifest declares only `graph`;
+- manifest declares the actual capabilities (`graph`, optionally `mig`);
+- a MIG label without `module_graph_data` is not hydrated;
 - entry without manifest rebuilds (not hydrated);
 - cold/warm output parity is still required when P194.2b enables commands.
 
 ## 5. Non-goals
 
-- no MIG/class cache in P194.2a;
+- graph cache stores MIG/path-resolver, but not class hierarchy;
 - no session/server in P194.2a;
 - no incremental rebuild.
