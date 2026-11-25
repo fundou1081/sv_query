@@ -68,3 +68,36 @@ def test_reciprocity_zero_check_is_unknown(tmp_path):
     assert result["verified"] is False
     assert result["unknown_checks"] == ["reciprocity"]
     assert result["checks"][0]["checked"] == 0
+
+
+def _bus(tmp_path: Path) -> Path:
+    sv = tmp_path / "bus.sv"
+    sv.write_text(
+        "module top(input logic [7:0] a, output logic [7:0] y);\n"
+        "  assign y = a;\n"
+        "endmodule\n")
+    return sv
+
+
+def test_path_bit_fallback_parity(tmp_path):
+    from sv_query.graph_session import GraphSession
+    sv = _bus(tmp_path)
+    for claim in (
+        {"type": "path", "from": "top.a", "to": "top.y",
+         "nodes": ["top.a[0]", "top.y[0]"]},
+        {"type": "path", "from": "top.a[0]", "to": "top.y[0]"},
+    ):
+        cli = _cli("verify", "claim", "--file", str(sv), "--claim", json.dumps(claim))
+        session = GraphSession(file=str(sv)).verify_claim(claim)
+        assert cli["result"]["status"] == "unknown"
+        assert session["status"] == "unknown"
+
+
+def test_single_node_path_is_contradicted(tmp_path):
+    from sv_query.graph_session import GraphSession
+    sv = _fixture(tmp_path)
+    claim = {"type": "path", "from": "top.a", "to": "top.y", "nodes": ["top.a"]}
+    cli = _cli("verify", "claim", "--file", str(sv), "--claim", json.dumps(claim))
+    session = GraphSession(file=str(sv)).verify_claim(claim)
+    assert cli["result"]["status"] == "contradicted"
+    assert session["status"] == "contradicted"

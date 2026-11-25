@@ -91,12 +91,19 @@ def _reachable_path(tracer, claim, sid, did) -> dict:
     return claim_result(claim, "contradicted", reason=reason)
 
 
+def _resolve_path_node(graph, value, resolve):
+    rid, status = resolve(graph, value)
+    if not rid or status == "bit_base_fallback":
+        return "", status or "unresolved_endpoint"
+    return rid, status
+
+
 def verify_path(tracer, graph, claim: dict, resolve) -> dict:
     src, dst, nodes = claim.get("from"), claim.get("to"), claim.get("nodes")
     if not src or not dst:
         return claim_result(claim, "unknown", reason="claim requires from + to")
-    sid, _ = resolve(graph, src)
-    did, _ = resolve(graph, dst)
+    sid, _ = _resolve_path_node(graph, src, resolve)
+    did, _ = _resolve_path_node(graph, dst, resolve)
     if not sid or not did:
         return claim_result(claim, "unknown",
                             reason=f"endpoint unresolved: {src!r}/{dst!r}",
@@ -105,7 +112,7 @@ def verify_path(tracer, graph, claim: dict, resolve) -> dict:
         return _reachable_path(tracer, claim, sid, did)
     resolved = []
     for n in nodes:
-        rid, rstat = resolve(graph, n)
+        rid, rstat = _resolve_path_node(graph, n, resolve)
         if not rid:
             return claim_result(claim, "unknown",
                                 reason=f"path node {n!r} {rstat}",

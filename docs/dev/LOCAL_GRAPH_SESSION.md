@@ -75,18 +75,15 @@ drivers
 loads
 paths
 dataflow
+instances
+scope
+verify_claim
+verify_consistency
 version (builtin)
 ```
 
-Deliberately unsupported (return `E_UNSUPPORTED_OP`):
-
-```text
-verify_claim
-verify_consistency
-scope
-instances
-stats
-```
+All current graph/query/session ops are supported; no deliberate
+`E_UNSUPPORTED_OP` remains.
 
 The machine-readable version is
 `capabilities --json` → `json_contract.session`. It is the source of truth for
@@ -96,10 +93,15 @@ ops and the success/failure envelope.
 
 ```json
 {"ok": true, "op": "drivers", "result": {...}}
-{"ok": false, "op": "verify_claim",
+{"ok": false, "op": "paths",
  "error_code": "E_UNSUPPORTED_OP",
- "error": {"type": "UnsupportedOperation", "message": "unsupported op: verify_claim"}}
+ "error": {"type": "UnsupportedOperation", "message": "unsupported op: paths"}}
 ```
+
+`verify_claim` and `verify_consistency` are supported. Their result payload is
+the same as CLI: `status` is `verified|contradicted|unknown`; `unknown` carries
+`machine:{status,unknown_kind,unresolved_endpoint}`, while `verified` and
+`contradicted` do not emit `machine`.
 
 `request_id`, when supplied, is echoed. `op` is omitted only when the request
 cannot be parsed (parse/startup errors); refresh/handler failures echo it. One
