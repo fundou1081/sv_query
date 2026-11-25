@@ -82,8 +82,8 @@ verify_consistency
 version (builtin)
 ```
 
-All current graph/query/session ops are supported; no deliberate
-`E_UNSUPPORTED_OP` remains.
+All graph/query/verify ops are supported; the only deliberately unsupported op
+is `stats` (`E_UNSUPPORTED_OP`).
 
 The machine-readable version is
 `capabilities --json` → `json_contract.session`. It is the source of truth for
@@ -93,15 +93,19 @@ ops and the success/failure envelope.
 
 ```json
 {"ok": true, "op": "drivers", "result": {...}}
-{"ok": false, "op": "paths",
+{"ok": false, "op": "stats",
  "error_code": "E_UNSUPPORTED_OP",
- "error": {"type": "UnsupportedOperation", "message": "unsupported op: paths"}}
+ "error": {"type": "UnsupportedOperation", "message": "unsupported op: stats"}}
 ```
 
-`verify_claim` and `verify_consistency` are supported. Their result payload is
-the same as CLI: `status` is `verified|contradicted|unknown`; `unknown` carries
+`verify_claim` returns the same payload as CLI: `status` is
+`verified|contradicted|unknown`; `unknown` carries
 `machine:{status,unknown_kind,unresolved_endpoint}`, while `verified` and
 `contradicted` do not emit `machine`.
+
+`verify_consistency` returns a report, not a claim result:
+`{verified,coverage_complete,unknown_checks,checks[]}`; each check has
+`status: pass|fail|unknown`. It has no top-level `status` or `machine`.
 
 `request_id`, when supplied, is echoed. `op` is omitted only when the request
 cannot be parsed (parse/startup errors); refresh/handler failures echo it. One

@@ -10,7 +10,7 @@
 
 | 项 | 值 | 说明 |
 |---|---|---|
-| 源码规模 | 159 文件 / 53,304 行 | `find src -name "*.py"`（2026-11-16 实测） |
+| 源码规模 | 159 文件 / 53,310 行 | `find src -name "*.py"`（2026-11-16 实测） |
 | 测试规模 | 473 测试文件 / 72,450 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
 | 全量 (canonical) | **3331 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-26 P197.10 全量复核（3331）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
