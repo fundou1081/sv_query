@@ -250,8 +250,8 @@ function; their per-op regex/branch logic is removed.
 
 ## 9b. P198.9 parity status (scoped)
 
-Broad Slice/Cast/Ternary IR routing is enabled after fixing source-name
+Broad Slice/Cast/Ternary/Concat IR routing is enabled after fixing source-name
 normalization, relative-vs-absolute bit handling, and array-element guards.
 Packed struct/memory cases that use array elements stay on the legacy path
-explicitly. `Concat` bit routing remains on legacy until P198.11 proves parity;
-enabling it changed existing concat wide/narrow answers.
+explicitly. `Concat` bit routing is enabled in P198.11 after the direction-aware concat
+layout and array-element guard proved parity.

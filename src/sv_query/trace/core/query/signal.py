@@ -741,7 +741,7 @@ class SignalTracer:
             node = node.children[0]
         # P198.5/P198.9: shifts plus parity-proven Slice/Cast/Ternary.
         # Concat and array-element endpoints stay legacy (P198.11).
-        if node.op not in ("ShiftLeft", "ShiftRight", "Slice", "Cast", "Ternary"):
+        if node.op not in ("ShiftLeft", "ShiftRight", "Slice", "Cast", "Ternary", "Concat"):
             return None
         return expr
 
