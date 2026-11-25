@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P198.10 wider-bus part-select concat/plain silent-drop/coarse-gap hardening <待做>
+current item : P198.10 wider-bus part-select concat/plain silent-drop/coarse-gap hardening <进行中>
 
 ## 计划树
 
@@ -636,7 +636,7 @@ P198 typed semantic expression IR (2026-11-24) <待做>
 -- P198.8 concat P2 debt: overlap segmentation, IR refs, diagnostics, F6 test <已完成>
 -- P198.9 Slice/Cast/Ternary/array-guarded IR bit-mapping parity <已完成>
 -- P198.11 concat bit-mapping IR parity <待做>
--- P198.10 wider-bus part-select concat/plain silent-drop/coarse-gap hardening <待做>
+-- P198.10 wider-bus part-select concat/plain silent-drop/coarse-gap hardening <进行中>
 
 P197 independent code-smell / robustness audit follow-up (2026-11-23) <待做>
 -- P197.1 verify consistency zero-check must return unknown, not verified <已完成>

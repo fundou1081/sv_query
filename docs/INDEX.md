@@ -96,6 +96,7 @@
 | [agent/AGENT_FEATURE_MAP.md](agent/AGENT_FEATURE_MAP.md) | **P143 历史快照**（P182.4 起由 [CAPABILITIES_GENERATED](agent/CAPABILITIES_GENERATED.md) 取代） |
 | [agent/AGENT_TASK_CORPUS.md](agent/AGENT_TASK_CORPUS.md) | **P145**: 15 个可执行 agent 任务 + false-confident/found 指标 |
 | [validation/CODE_SMELL_AUDIT_2026-11-23.md](validation/CODE_SMELL_AUDIT_2026-11-23.md) | **P197**: verify/cache/semantic heuristics audit; P194.5d blocked |
+| [validation/P19810_PART_SELECT_2026-11-25.md](validation/P19810_PART_SELECT_2026-11-25.md) | **P198.10** part-select investigation; fix split into 10a/10b/10c |
 | [validation/P1945_AUDIT_2026-11-23.md](validation/P1945_AUDIT_2026-11-23.md) | **P194.5 audit**: P1 compact/controlflow/paths defects; P194.5d blocked |
 | [validation/P1945_LOCAL_MEASURE_2026-11-23.md](validation/P1945_LOCAL_MEASURE_2026-11-23.md) | **P194.5**: local 3-corpus session/cache/token evidence; explicitly not external |
 | [validation/P145_VALIDATION_BASELINE_2026-11-10.md](validation/P145_VALIDATION_BASELINE_2026-11-10.md) | **P145**: full gate 环境 skip + agent corpus |
