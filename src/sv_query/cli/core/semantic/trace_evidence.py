@@ -34,6 +34,7 @@ from sv_query.trace.core.source_assignment import (
 from sv_query.trace.core.source_assignment import (
     line_is_lhs as _line_is_lhs,
 )
+from sv_query.trace.core.source_assignment import signal_token_present
 
 logger = logging.getLogger(__name__)
 _REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -187,9 +188,9 @@ def _with_functional_line(ev_dict, signal: str, sources=None):
     ev_dict["source_location"] = {**ev_dict["source_location"],
                                   "line_start": line, "line_end": line}
     ev_dict["source_text"] = source
-    leaf = signal.rsplit(".", 1)[-1]
-    ev_dict["is_verified"] = leaf in source
-    ev_dict["credibility_score"] = 1.0 if leaf in source else 0.2
+    ok = signal_token_present(signal, source)
+    ev_dict["is_verified"] = ok
+    ev_dict["credibility_score"] = 1.0 if ok else 0.2
     return ev_dict
 
 def _resolve_evidence_dict(resolver, graph, signal: str, sources=None) -> dict | None:

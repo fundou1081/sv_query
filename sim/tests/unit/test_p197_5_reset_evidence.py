@@ -27,3 +27,22 @@ def test_evidence_matches_whole_identifier():
         text="always_comb data = metadata;")
     ev = Evidence(signal="top.data", enclosing_assign=snippet)
     assert ev.matches_signal_name is True
+
+
+def test_cli_evidence_does_not_score_metadata_as_data(tmp_path):
+    import json
+    import subprocess
+    import sys
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[3]
+    sv = tmp_path / "meta.sv"
+    sv.write_text(
+        "module top(input logic [7:0] data, output logic [7:0] metadata);\n"
+        "  assign metadata = data;\n"
+        "endmodule\n")
+    p = subprocess.run([sys.executable, "run_cli.py", "trace", "evidence",
+                        "top.data", "-f", str(sv), "--json", "--no-cache"],
+                       cwd=root, capture_output=True, text=True, timeout=120)
+    assert p.returncode == 0, p.stderr[-400:]
+    ev = json.loads(p.stdout)["result"]["signals"][0]["evidence"]
+    assert ev["is_verified"] is False
