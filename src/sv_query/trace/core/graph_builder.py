@@ -314,8 +314,6 @@ class GraphBuilder:
             if not m:
                 return None
             hi, lo = int(m.group("hi")), int(m.group("lo"))
-            if hi <= lo:
-                return None  # 只处理升序（常见）切片
             return m.group("base"), hi, lo
 
         def _ensure_bit(base: str, bit: int):
@@ -357,6 +355,15 @@ class GraphBuilder:
                     return None
             return None
 
+        def _slice_bit(msb: int, lsb: int, k: int) -> int:
+            return lsb + k if msb > lsb else lsb - k
+
+        def _bus_bit(node, k: int) -> int:
+            w = getattr(node, "width", None)
+            if isinstance(w, (tuple, list)) and len(w) >= 2:
+                return int(w[1]) + k if int(w[0]) > int(w[1]) else int(w[1]) - k
+            return k
+
         def _add_driver(src_bit: str, dst_bit: str) -> None:
             if src_bit is None or dst_bit is None:
                 return
@@ -395,13 +402,14 @@ class GraphBuilder:
             # --- LHS 切片: X[hi:lo] = source ---
             if dst_slice is not None:
                 base, hi, lo = dst_slice
-                width = hi - lo + 1
+                width = abs(hi - lo) + 1
                 if src_slice is not None:
                     sbase, shi, slo = src_slice
-                    if (shi - slo + 1) != width:
+                    if (abs(shi - slo) + 1) != width:
                         continue
                     for k in range(width):
-                        _add_driver(_ensure_bit(sbase, slo + k), _ensure_bit(base, lo + k))
+                        _add_driver(_ensure_bit(sbase, _slice_bit(shi, slo, k)),
+                                    _ensure_bit(base, _slice_bit(hi, lo, k)))
                 elif src_node.kind.name in ("CONST", "OP_TERNARY", "OP_CASE"):
                     continue  # 常量/运算节点：值位映射不在本版
                 else:
@@ -409,22 +417,24 @@ class GraphBuilder:
                     src_w = _width_of(src_node)
                     limit = min(width, src_w) if src_w else width
                     for k in range(limit):
-                        _add_driver(_ensure_bit(src, k), _ensure_bit(base, lo + k))
+                        _add_driver(_ensure_bit(src, _bus_bit(src_node, k)),
+                                    _ensure_bit(base, _slice_bit(hi, lo, k)))
                 continue
 
             # --- RHS 切片: bus = S[hi:lo] ---
             if src_slice is not None and "[" not in dst:
                 sbase, shi, slo = src_slice
-                width = shi - slo + 1
+                width = abs(shi - slo) + 1
                 dst_width = dst_node.width if isinstance(dst_node.width, tuple) else None
-                if dst_width is not None and dst_width[0] != dst_width[1]:
-                    dst_w = abs(int(dst_width[0]) - int(dst_width[1])) + 1
-                    if dst_w != width:
-                        continue
                 if dst_node.kind.name in ("CONST", "OP_TERNARY", "OP_CASE"):
                     continue
-                for k in range(width):
-                    _add_driver(_ensure_bit(sbase, slo + k), _ensure_bit(dst, k))
+                dst_w = None
+                if dst_width is not None and dst_width[0] != dst_width[1]:
+                    dst_w = abs(int(dst_width[0]) - int(dst_width[1])) + 1
+                limit = min(width, dst_w) if dst_w is not None else width
+                for k in range(limit):
+                    _add_driver(_ensure_bit(sbase, _slice_bit(shi, slo, k)),
+                                _ensure_bit(dst, _bus_bit(dst_node, k)))
 
         logger.debug("_expand_slice_bit_nodes: 新增 %d 个位节点", new_nodes)
 

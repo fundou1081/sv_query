@@ -115,12 +115,12 @@ def test_descending_packed_concat_maps_correct_bits(tmp_path):
     graph = UnifiedTracer(sources={str(sv): sv.read_text()}, log_level="ERROR").build_graph()
     pairs = {(e.src, e.dst) for (_, _), edges in graph._edge_data.items()
              for e in edges if e.assign_type == "continuous"}
-    assert ("top.a[0:1]", "top.y[1:0]") in pairs
-    assert ("top.b[0:1]", "top.y[3:2]") in pairs
-    assert ("top.a[0:1][0]", "top.y[0]") in pairs
-    assert ("top.a[0:1][1]", "top.y[1]") in pairs
-    assert ("top.b[0:1][0]", "top.y[2]") in pairs
-    assert ("top.b[0:1][1]", "top.y[3]") in pairs
+    assert ("top.a[0:1]", "top.y[0:1]") in pairs
+    assert ("top.b[0:1]", "top.y[2:3]") in pairs
+    assert ("top.a[0]", "top.y[0]") in pairs
+    assert ("top.a[1]", "top.y[1]") in pairs
+    assert ("top.b[0]", "top.y[2]") in pairs
+    assert ("top.b[1]", "top.y[3]") in pairs
 
 
 def test_single_bit_slice_lhs_concat_has_refs(tmp_path):
