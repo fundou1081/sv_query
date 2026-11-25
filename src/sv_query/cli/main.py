@@ -418,12 +418,14 @@ def main(
     if version:
         typer.echo(PACKAGE_VERSION)
         raise typer.Exit()
-    if quiet:
+    # run() owns quiet precedence. Only direct app() callers (tests/embedding)
+    # apply the flags here; otherwise mixed-position flags could override it.
+    if not invocation_args():
         from sv_query.trace.core.compiler import set_quiet
-        set_quiet(True)
-    if verbose:
-        from sv_query.trace.core.compiler import set_quiet
-        set_quiet(False)
+        if verbose:
+            set_quiet(False)
+        elif quiet:
+            set_quiet(True)
     if ctx.invoked_subcommand is None:
         typer.echo(ctx.get_help())
 

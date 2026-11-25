@@ -10,9 +10,9 @@
 
 | 项 | 值 | 说明 |
 |---|---|---|
-| 源码规模 | 158 文件 / 53,282 行 | `find src -name "*.py"`（2026-11-16 实测） |
+| 源码规模 | 159 文件 / 53,292 行 | `find src -name "*.py"`（2026-11-16 实测） |
 | 测试规模 | 473 测试文件 / 72,450 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **3322 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-25 P198.9 全量复核（3322）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
+| 全量 (canonical) | **3323 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-25 P198.9 全量复核（3323）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
@@ -58,6 +58,7 @@
 | [validation/reviews/2026-11-25_57011a0.md](validation/reviews/2026-11-25_57011a0.md) | **P198.8** initial review: FAIL (little-endian reversed; single-bit refs) |
 | [validation/reviews/2026-11-25_703148a.md](validation/reviews/2026-11-25_703148a.md) | **P198.8** re-audit: FAIL (descending split lost per-bit) |
 | [validation/reviews/2026-11-25_7e66098.md](validation/reviews/2026-11-25_7e66098.md) | **P198.10c** audit: PASS WITH CAVEATS; depth=1 duplicate aggregate |
+| [validation/reviews/2026-11-25_5e7789d.md](validation/reviews/2026-11-25_5e7789d.md) | **P197.8** worker review: PASS WITH CAVEATS; quiet context/argv |
 | [validation/reviews/2026-11-25_cf5cb44.md](validation/reviews/2026-11-25_cf5cb44.md) | **P197.7** worker review: PASS WITH CAVEATS; MIG cache round-trip |
 | [validation/reviews/2026-11-25_12f312d.md](validation/reviews/2026-11-25_12f312d.md) | **P197.6** worker review: PASS WITH CAVEATS; real alias fixture restores C-64 |
 | [validation/reviews/2026-11-25_c20796a.md](validation/reviews/2026-11-25_c20796a.md) | **P197.5** worker review: PASS WITH CAVEATS; reset/evidence P1s closed |

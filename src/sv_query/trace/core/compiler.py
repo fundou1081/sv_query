@@ -45,7 +45,7 @@ def quiet_context(enabled: bool = True):
 
 
 def set_quiet(quiet: bool = True) -> None:
-    """Set global quiet mode for LLM consumption.
+    """Set quiet mode for the current execution context.
 
     When quiet=True, all diagnostic messages (SWAP warning, INFO logs,
     ERROR messages) are suppressed. JSON output via stdout is unaffected.

@@ -31,3 +31,17 @@ def test_run_does_not_mutate_argv_and_filters_after_verb(monkeypatch):
     # --verbose wins over --json quiet default inside the invocation context.
     assert captured["quiet"] is False
     assert is_quiet() is False
+
+
+def test_quiet_context_is_thread_local():
+    import threading
+    seen = {}
+    def worker():
+        with quiet_context():
+            seen["inside"] = is_quiet()
+        seen["after"] = is_quiet()
+    t = threading.Thread(target=worker)
+    t.start()
+    t.join()
+    assert seen == {"inside": True, "after": False}
+    assert is_quiet() is False
