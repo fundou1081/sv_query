@@ -1074,6 +1074,10 @@ class SignalTracer:
                 return True
         return False
 
+    def _parent_has_part_select(self, signal_id: str) -> bool:
+        return any("[" in psrc and ":" in psrc
+                   for psrc, _ in self._parent_driver_sources(signal_id))
+
     def _trace_parent_bit_drivers(self, signal_id, drivers, seen_ids,
                                   current_depth, max_depth, allow_cross_module):
         """[iter_295 / PLAN P7.1] 位节点：父总线上的驱动按位映射后并入。
@@ -1090,7 +1094,7 @@ class SignalTracer:
         # additional multi-driver. Bus-copy parents (no slice) keep the old
         # multi-driver behavior.
         parent_sources = self._parent_driver_sources(signal_id)
-        if any("[" in psrc and ":" in psrc for psrc, _ in parent_sources):
+        if self._parent_has_part_select(signal_id):
             return
         for psrc, pedge in parent_sources:
             # 父总线边的 dst 是总线本身；位位置用绝对索引（y[1] → 1）
@@ -1357,7 +1361,7 @@ class SignalTracer:
 
         # [iter_294 / PLAN P6.1] 位节点：父总线上的表达式驱动按位映射
         want_bit = self._bit_index_of(signal_id)
-        if want_bit is not None:
+        if want_bit is not None and not self._parent_has_part_select(signal_id):
             for psrc, pedge in self._parent_driver_sources(signal_id):
                 mapped = self._expr_source_bits(pedge, pedge.dst, want_bit)
                 if mapped is None:
