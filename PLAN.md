@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P197.6 real dangling-alias regression fixture; restore C-64 evidence <待做>
+current item : P197.7 cache capability/MIG manifest round-trip <待做>
 
 ## 计划树
 
@@ -644,7 +644,7 @@ P197 independent code-smell / robustness audit follow-up (2026-11-23) <待做>
 -- P197.3 filelist refresh failure + load_graph capability guard <已完成>
 -- P197.4 semantic shift amount for per-bit mapping <已完成>
 -- P197.5 semantic reset classification + evidence LHS verification <已完成>
--- P197.6 real dangling-alias regression fixture; restore C-64 evidence <待做>
+-- P197.6 real dangling-alias regression fixture; restore C-64 evidence <已完成>
 -- P197.7 cache capability/MIG manifest round-trip <待做>
 -- P197.8 explicit quiet context; no argv mutation/dead flags <待做>
 -- P197.9 remaining P2 heuristics + except-gate strength <待做>

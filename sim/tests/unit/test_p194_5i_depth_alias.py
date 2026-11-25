@@ -22,8 +22,11 @@ def _run(path: Path, *args: str) -> dict:
 def _fixture(tmp_path: Path) -> Path:
     sv = tmp_path / "bin2gray.sv"
     sv.write_text(
-        "module bin2gray(input logic [31:0] bin_in, output logic [31:0] gray_out);\n"
-        "  assign gray_out = bin_in ^ (bin_in >> 1);\n"
+        "module bin2gray #(parameter WIDTH = 32)(\n"
+        "  input [WIDTH-1:0] bin_in, output logic [WIDTH-1:0] gray_out);\n"
+        "  always_comb begin\n"
+        "    gray_out[WIDTH-1:0] = bin_in[WIDTH-1:0] ^ (bin_in[WIDTH-1:0] >> 1);\n"
+        "  end\n"
         "endmodule\n")
     return sv
 
@@ -39,3 +42,12 @@ def test_depth1_input_port_does_not_report_its_own_bit_alias(tmp_path):
     row = _run(_fixture(tmp_path), "drivers", "bin_in", "--depth", "1")
     ids = [item["id"] for item in row["drivers"]]
     assert "bin2gray.bin_in[31:0]" not in ids
+
+
+def test_fixture_really_contains_the_dangling_alias(tmp_path):
+    from sv_query.trace.unified_tracer import UnifiedTracer
+    sv = _fixture(tmp_path)
+    tracer = UnifiedTracer(sources={str(sv): sv.read_text()}, log_level="ERROR")
+    graph = tracer.build_graph()
+    assert "bin2gray.gray_out[31:0]" in graph
+    assert "bin2gray.bin_in[31:0]" in graph
