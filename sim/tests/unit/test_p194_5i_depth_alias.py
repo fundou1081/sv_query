@@ -49,5 +49,9 @@ def test_fixture_really_contains_the_dangling_alias(tmp_path):
     sv = _fixture(tmp_path)
     tracer = UnifiedTracer(sources={str(sv): sv.read_text()}, log_level="ERROR")
     graph = tracer.build_graph()
-    assert "bin2gray.gray_out[31:0]" in graph
-    assert "bin2gray.bin_in[31:0]" in graph
+    for alias in ("bin2gray.gray_out[31:0]", "bin2gray.bin_in[31:0]"):
+        assert alias in graph
+        assert graph.in_degree(alias) == 0
+        assert any(e.kind.name == "BIT_SELECT"
+                   for dst in graph.successors(alias)
+                   for e in graph.get_edges(alias, dst))
