@@ -739,9 +739,8 @@ class SignalTracer:
         node = expr
         while node.op == "Cast" and node.children:
             node = node.children[0]
-        # P198.5 starts with shift nodes. Slice/concat/struct/memory IR mapping
-        # must be parity-proven before it is enabled globally; keep the legacy
-        # path for those shapes (tracked debt).
+        # P198.5/P198.9: shifts plus parity-proven Slice/Cast/Ternary.
+        # Concat and array-element endpoints stay legacy (P198.11).
         if node.op not in ("ShiftLeft", "ShiftRight", "Slice", "Cast", "Ternary"):
             return None
         return expr

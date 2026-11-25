@@ -212,7 +212,7 @@ function; their per-op regex/branch logic is removed.
 - **Target (not yet wired)**: make viz/expression_tree consume IR and make the
   syntax tree display-only.
 - **Target (not yet wired)**: const/function extraction from IR. Deferred to
-  P198.9 with parity tests; the legacy syntax tree remains authoritative.
+  P198.11+ with parity tests; the legacy syntax tree remains authoritative.
 - Docs/CLAIMS/cache schema update.
 - Worker-only review + re-audit for all P0/P1 findings.
 
@@ -224,7 +224,7 @@ function; their per-op regex/branch logic is removed.
   syntax `expression_tree`.
 - **These hooks are not yet wired into production viz/const extraction.** The
   legacy syntax tree remains functionally live (including OP_TERNARY/OP_CASE
-  emission) until P198.9 performs the migration with parity tests.
+  emission) until P198.11+ performs the migration with parity tests.
 - Cache wire schema is already 3.2; no new field was added here.
 
 ## 10. Acceptance tests
