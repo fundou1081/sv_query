@@ -19,7 +19,8 @@ class SourceBit:
 
 
 def _base_name(signal: str) -> str:
-    return signal.rsplit(".", 1)[-1]
+    name = signal.rsplit(".", 1)[-1]
+    return name.split("[", 1)[0]
 
 
 def _matches(name: str, wanted: str) -> bool:

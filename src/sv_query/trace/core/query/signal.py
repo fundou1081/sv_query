@@ -714,6 +714,13 @@ class SignalTracer:
         short = edge.src.rsplit(".", 1)[-1]
         return "DirectCopy" if expr == short else None
 
+    def _has_array_endpoint(self, edge) -> bool:
+        for endpoint in (getattr(edge, "src", ""), getattr(edge, "dst", "")):
+            node = self.graph.get_node(endpoint)
+            if node is not None and (node.extra or {}).get("array_element"):
+                return True
+        return False
+
     def _edge_expression_ir(self, edge):
         eid = getattr(edge, "expr_id", "")
         if not eid:
@@ -727,13 +734,15 @@ class SignalTracer:
             return None
         # Constant-only expressions still need the legacy constant/sign
         # extension path; IR bit mapping does not encode constant bits yet.
+        if self._has_array_endpoint(edge):
+            return None
         node = expr
         while node.op == "Cast" and node.children:
             node = node.children[0]
         # P198.5 starts with shift nodes. Slice/concat/struct/memory IR mapping
         # must be parity-proven before it is enabled globally; keep the legacy
         # path for those shapes (tracked debt).
-        if node.op not in ("ShiftLeft", "ShiftRight"):
+        if node.op not in ("ShiftLeft", "ShiftRight", "Slice", "Cast", "Ternary"):
             return None
         return expr
 
@@ -759,7 +768,8 @@ class SignalTracer:
         ir = self._edge_expression_ir(edge)
         if ir is not None:
             from ..bit_mapping import output_source_bits
-            ir_bit = self._rel_bit(dst_id, want_bit) if "[" in dst_id else want_bit
+            ir_bit = (self._rel_bit(dst_id, want_bit)
+                      if "[" in dst_id and ir.width == 1 else want_bit)
             mapped = output_source_bits(ir, ir_bit, edge.src)
             if mapped is None:
                 return None  # IR exists: unknown must not fall back to legacy
@@ -911,8 +921,7 @@ class SignalTracer:
         ir = self._edge_expression_ir(edge)
         if ir is not None:
             from ..bit_mapping import input_output_bits
-            ir_src_bit = self._rel_bit(edge.src, src_bit) if "[" in edge.src else src_bit
-            mapped = input_output_bits(ir, edge.src, ir_src_bit)
+            mapped = input_output_bits(ir, edge.src, src_bit)
             if mapped is None:
                 return None
             return [f"{dst_id}[{b}]" for b in mapped if 0 <= b < dst_w]
