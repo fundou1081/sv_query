@@ -27,6 +27,7 @@ from .source_assignment import (
 from .source_assignment import (
     find_assignment_near,
     find_functional_assignment,
+    signal_token_present,
 )
 
 logger = logging.getLogger(__name__)
@@ -80,7 +81,7 @@ class Evidence:
             self.enclosing_class,
             self.enclosing_constraint,
         ]:
-            if snippet and snippet.text and self.signal.split(".")[-1] in snippet.text:
+            if snippet and snippet.text and signal_token_present(self.signal, snippet.text):
                 return True
         return False
 

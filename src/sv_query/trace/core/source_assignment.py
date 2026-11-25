@@ -15,8 +15,23 @@ logger = logging.getLogger(__name__)
 
 def is_reset_condition(cond: str) -> bool:
     c = (cond or "").strip().lower()
-    return bool(re.search(r"(?:^|[^a-z0-9])(?:a?reset|s?rst|arst|nrst)\w*", c)) \
-        and "&&" not in c and "||" not in c
+    if not c:
+        return False
+    # An assignment/declaration is not a condition. This prevents
+    # `assign reset_counter = data;` from being classified as a reset branch.
+    if re.search(r"(?<![=!<>])=(?!=)", c):
+        return False
+    # A reset signal may be combined with other conditions (`!rst_n && en`);
+    # do not reject compound expressions just because they contain &&/||.
+    return bool(re.search(r"(?:^|[^a-z0-9])(?:a?reset|s?rst|arst|nrst)\w*", c))
+
+
+def signal_token_present(signal: str, text: str) -> bool:
+    """Whole-identifier match of the signal leaf (no `data` in `metadata`)."""
+    leaf = (signal or "").rsplit(".", 1)[-1].split("[", 1)[0]
+    if not leaf or not text:
+        return False
+    return bool(re.search(rf"(?<![A-Za-z0-9_$]){re.escape(leaf)}(?![A-Za-z0-9_$])", text))
 
 
 def strip_block_comments(text: str) -> str:
