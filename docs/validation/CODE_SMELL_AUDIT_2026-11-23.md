@@ -1,7 +1,7 @@
 # Code-smell / robustness audit (2026-11-23)
 
 > **Scope**: HEAD `68452fd0`; read-only independent audits.
-> **Disposition**: remediation tracked as P197. No release claim is changed here.
+> **Disposition**: P1 remediation landed in P197.1–P197.9; P197.10 reconciles claims/tests and records remaining P2 debt.
 
 ## Highest-impact findings
 
@@ -43,3 +43,33 @@ stdio envelopes are structured.
 
 P197.1 through P197.10 in PLAN.md. P194.5d remains blocked until P197.1-P197.3
 and the P194.5e-h items land.
+
+## P197.10 remediation reconciliation (2026-11-25)
+
+P1 findings are fixed and gate-backed; no P1 remains open.
+
+| ID | Status | Claim | Regression |
+|---|---|---|---|
+| F1 | fixed | C-07 | `test_verify_coverage.py` |
+| F2 | fixed | C-58 | `test_p197_2_verify_parity.py` |
+| F3 | fixed | C-67 | `test_p197_3_refresh_guard.py` |
+| F4 | open (P194.5g) | C-63 known-broken | session paths endpoint parity |
+| F5 | open (P194.5f) | C-62 known-broken | controlflow mixed-driver |
+| F6 | fixed | C-64/C-70 | `test_p194_5i_depth_alias.py` |
+| F7 | fixed | C-67 | `test_p197_3_refresh_guard.py` |
+| F8 | fixed | C-45/C-48 | `test_p197_7_mig_cache.py` |
+| F9 | fixed | C-71 | `test_p197_8_quiet_context.py` |
+| F10 | open (P194.5f/P197.12) | C-62/C-58 | shared connection checks |
+| S1 | fixed | C-68 | `test_p197_4_shift_semantic.py` |
+| S2 | fixed | C-69 | `test_p197_5_reset_evidence.py` |
+| S3 | fixed | C-69 | `test_p197_5_reset_evidence.py` |
+
+P2 disposition:
+
+- fixed: `_expand_bit_children` id-prefix scan; bit index/range id parsing;
+  core-except keyword-marker gate; reset substring; cache MIG manifest.
+- fixed by P198.10/P198.11: little-endian concat direction, concat IR parity.
+- open and tracked: confidence provenance and `instances --depth` (P197.16),
+  diagnostic `[]`/`0` fallbacks (P197.16), cache singleton env (P197.16),
+  FSM state/reset string classification (P194.5f), remaining except
+  name-substring marker (P197.15), verify-parity P2 (P197.12).

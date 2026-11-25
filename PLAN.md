@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P197.10 claims/docs/test reconciliation for this audit <待做>
+current item : P197.10 claims/docs/test reconciliation for this audit <进行中>
 
 ## 计划树
 
@@ -648,12 +648,13 @@ P197 independent code-smell / robustness audit follow-up (2026-11-23) <待做>
 -- P197.7 cache capability/MIG manifest round-trip <已完成>
 -- P197.8 explicit quiet context; no argv mutation/dead flags <已完成>
 -- P197.9 remaining P2 heuristics + except-gate strength <已完成>
--- P197.10 claims/docs/test reconciliation for this audit <待做>
+-- P197.10 claims/docs/test reconciliation for this audit <进行中>
 -- P197.11 worker-only code-review protocol + release wiring + AGENTS iron rule 14 <已完成>
 -- P197.12 verify-parity P2 debt: bit fallback, endpoint guard, envelope docs, port_node_missing test <待做>
 -- P197.13 shift mapping direction matrix hardening <待做>
 -- P197.14 evidence RHS substring + compound-reset heuristic debt <待做>
 -- P197.15 cache build_graph CC + privacy-review artifact policy + except name-substring marker <待做>
+-- P197.16 confidence provenance + instances depth + diagnostic fallbacks + cache singleton env <待做>
 
 P193 external trial readiness (2026-11-21 review) <待做>
 -- P193.1 fix sim/tests/config absolute symlink + clone hygiene <已完成>

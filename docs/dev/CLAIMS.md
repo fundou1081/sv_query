@@ -65,10 +65,10 @@
 | C-42 | installed runtime has no network/telemetry imports; cache/snapshot are local-only | tool/test | `test_p193_8_privacy.py` | `verified`（static） |
 | C-43 | external beta contract page defines stable/no-promise/evidence/cold-start expectations | doc/test | `test_p193_9_beta_contract.py` | `verified` |
 | C-44 | 安装/运行路径无作者 home、entry 无 sys.path bootstrap、无重复 safe_str import | static/test | `test_p194_1_cleanup.py` | `verified` |
-| C-45 | graph cache key from single BuildIdentity; payload declares graph-only capability; no manifest => miss; closure includes defines/files/headers (P195.1) | code/test | `test_p194_2a_build_identity.py`, `test_p195_1_cache_closure.py` | `verified` |
+| C-45 | graph cache key from single BuildIdentity; payload declares actual graph+mig capability and restores MIG/path-resolver; no manifest => miss; closure includes defines/files/headers (P195.1/P197.7) | code/test | `test_p194_2a_build_identity.py`, `test_p195_1_cache_closure.py`, `test_p197_7_mig_cache.py` | `verified` |
 | C-46 | graph nodes/edges/subgraph opt into graph cache with hit/miss/disabled status and --no-cache | code/test | `test_p194_2b_graph_cache.py` | `verified` |
 | C-47 | GraphSession reuses one graph; stdio session serves supported graph/query ops; legacy no-MIG snapshot fails explicitly instead of emptying the graph (P196.1) | code/test | `test_p194_2c_graph_session.py`, `test_p196_1_snapshot_capability.py` | `verified` |
-| C-48 | GraphSession exposes drivers/loads/paths/dataflow; file-mode refresh re-reads disk; MIG-required callers cannot hydrate a graph-only entry (P195.2/P196.3) | code/test | `test_p194_2c_graph_session.py`, `test_p195_2_capability_enforcement.py`, `test_p196_3_file_refresh.py` | `verified` |
+| C-48 | GraphSession exposes drivers/loads/paths/dataflow; file-mode refresh re-reads disk; MIG-required callers hydrate only entries with actual MIG payload (P195.2/P196.3/P197.7) | code/test | `test_p194_2c_graph_session.py`, `test_p195_2_capability_enforcement.py`, `test_p196_3_file_refresh.py`, `test_p197_7_mig_cache.py` | `verified` |
 | C-49 | scalar port/variable/profile and packed-struct 1-bit members are `(0,0)` / width 1; `[1:0]` remains width 2; **scoped: lazy extractor defaults, bit_select/ports_ifaces fallbacks, and explicitly-unknown connection widths may use `(1,0)`** | code/test | `test_p195_3_scalar_width.py`, `test_p196_4_packed_width.py` | `scoped` |
 | C-50 | PyPI publish is blocked by tests + version/tag gate | code/test | `test_p195_4_release_gate.py` | `verified` |
 | C-51 | session protocol ops/envelope/unsupported are documented and machine-readable; all stdio error paths use the structured failure envelope (op omitted only when unparseable) | code/test | `test_p195_5_session_contract.py`, `test_p196_2_stdio_envelopes.py` | `verified` |
@@ -85,7 +85,7 @@
 | C-62 | controlflow labels inline/unmodeled conditions; claim schema published; **known-broken: mixed-driver signals can still report complete (P194.5f)** | code/test | `test_p194_5b_controlflow_claims.py` | `known-broken` |
 | C-63 | JSON mode quiet by default with --verbose escape; session paths exposes directed/mode; **known-broken: unknown endpoints return found=false instead of a structured error (P194.5g)** | code/test | `test_p194_5c_paths_quiet.py` | `known-broken` |
 | C-64 | depth=1 does not return a dangling full-range bit alias as its own driver; real parameterized `always_comb` fixture builds `gray_out[31:0]`/`bin_in[31:0]` aliases | code/test | `test_p194_5i_depth_alias.py` | `verified` |
-| C-66 | P198.6 exposes typed IR as DriverInfo.expression_ir and provides an IR→viz/const collector hook; these hooks are NOT yet wired into production viz/const extraction. Legacy syntax tree remains functional (including OP_TERNARY/CASE emission) until P198.11+ migration. | code/test | `test_p198_6_ir_viz.py` | `scoped` |
+| C-66 | P198.6 exposes typed IR as DriverInfo.expression_ir and provides an IR→viz/const collector hook; these hooks are NOT yet wired into production viz/const extraction. Legacy syntax tree remains functional (including OP_TERNARY/CASE emission); P198.11 enables concat bit mapping but IR→viz/const hooks remain unwired. | code/test | `test_p198_6_ir_viz.py`, `test_p198_11_concat_ir.py` | `scoped` |
 
 ---
 
@@ -96,3 +96,11 @@
    并给出 gate 命令。
 3. 删除/降级能力时，把 claim 标 `scoped`/归档，不得静默删除。
 4. 文案中的 “支持 / 保证 / 已验证 / byte-identical” 必须能对应到本表一行。
+
+| C-67 | filelist refresh raises on unreadable closure; load_graph requires declared capabilities instead of silently rebuilding an empty graph (P197.3) | code/test | `test_p197_3_refresh_guard.py` | `verified` |
+| C-68 | shift bit mapping uses the semantic shift amount, not the literal's width (`4'd2` = 2) (P197.4) | code/test | `test_p197_4_shift_semantic.py` | `verified` |
+| C-69 | reset classification rejects assignments and recognizes compound reset guards; evidence matches whole identifiers, not `data`/`metadata` substrings (P197.5) | code/test | `test_p197_5_reset_evidence.py` | `verified` |
+| C-70 | dangling full-range alias fixture is non-vacuous and depth=1 suppresses self alias (P197.6) | code/test | `test_p194_5i_depth_alias.py` | `verified` |
+| C-71 | quiet is context-local (`sv_query.quiet_context`); CLI does not mutate sys.argv and filters flags into a local argv copy (P197.8) | code/test | `test_p197_8_quiet_context.py`, `test_p194_5c_paths_quiet.py` | `verified` |
+| C-72 | bit index/children prefer node metadata; core-except gate classifies AST actions rather than source-text markers (P197.9) | code/test | `test_p197_9_bit_heuristics.py`, `test_p193_4_core_except.py` | `verified` |
+| C-73 | P197.10 reconciles audit P1/P2 dispositions with claims/tests and records remaining P2 debt | doc/test | `test_p197_10_claims.py` | `scoped`（doc reconciliation, not a semantic capability） |
