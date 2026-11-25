@@ -167,3 +167,16 @@ def test_descending_wide_rhs_keeps_per_bit_fanin(tmp_path):
     assert {r.id for r in tracer.trace_fanin("top.y0[1]")} == {"top.a[1]"}
     assert {r.id for r in tracer.trace_fanin("top.y1[0]")} == {"top.a[2]"}
     assert {r.id for r in tracer.trace_fanin("top.y1[1]")} == {"top.a[3]"}
+
+
+def test_ascending_part_select_bit_fanin_drops_duplicate_aggregate(tmp_path):
+    from sv_query.trace.unified_tracer import UnifiedTracer
+    sv = tmp_path / "plain_le_fanin.sv"
+    sv.write_text(
+        "module top(input logic [0:7] a, output logic [0:1] y0);\n"
+        "  assign y0 = a[2:5];\n"
+        "endmodule\n")
+    tracer = UnifiedTracer(sources={str(sv): sv.read_text()}, log_level="ERROR")
+    tracer.build_graph()
+    assert {r.id for r in tracer.trace_fanin("top.y0[0]")} == {"top.a[5]"}
+    assert {r.id for r in tracer.trace_fanin("top.y0[1]")} == {"top.a[4]"}

@@ -1085,7 +1085,14 @@ class SignalTracer:
         bit = self._bit_index_of(signal_id)
         if bit is None:
             return
-        for psrc, pedge in self._parent_driver_sources(signal_id):
+        # [P198.10c] If this bit already has a precise direct driver from a
+        # part-select aggregate, the aggregate edge is a duplicate, not an
+        # additional multi-driver. Bus-copy parents (no slice) keep the old
+        # multi-driver behavior.
+        parent_sources = self._parent_driver_sources(signal_id)
+        if any("[" in psrc and ":" in psrc for psrc, _ in parent_sources):
+            return
+        for psrc, pedge in parent_sources:
             # 父总线边的 dst 是总线本身；位位置用绝对索引（y[1] → 1）
             mapped = self._expr_source_bits(pedge, pedge.dst, bit)
             if mapped is None:
