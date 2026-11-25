@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P197.8 explicit quiet context; no argv mutation/dead flags <待做>
+current item : P197.8 explicit quiet context; no argv mutation/dead flags <进行中>
 
 ## 计划树
 
@@ -646,7 +646,7 @@ P197 independent code-smell / robustness audit follow-up (2026-11-23) <待做>
 -- P197.5 semantic reset classification + evidence LHS verification <已完成>
 -- P197.6 real dangling-alias regression fixture; restore C-64 evidence <已完成>
 -- P197.7 cache capability/MIG manifest round-trip <已完成>
--- P197.8 explicit quiet context; no argv mutation/dead flags <待做>
+-- P197.8 explicit quiet context; no argv mutation/dead flags <进行中>
 -- P197.9 remaining P2 heuristics + except-gate strength <待做>
 -- P197.10 claims/docs/test reconciliation for this audit <待做>
 -- P197.11 worker-only code-review protocol + release wiring + AGENTS iron rule 14 <已完成>

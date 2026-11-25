@@ -7,11 +7,14 @@ P183.4 exposes the transport-agnostic :class:`sv_query.session.Session`.
 """
 from .session import Session
 
-__all__ = ["Session", "QueryClient", "open_query"]
+__all__ = ["Session", "QueryClient", "open_query", "quiet_context"]
 
 
 def __getattr__(name: str):
     """Lazy facade exports keep ``import sv_query.errors`` engine-free."""
+    if name == "quiet_context":
+        from .quiet import quiet_context
+        return quiet_context
     if name in ("QueryClient", "open_query"):
         from . import api
         return getattr(api, name)

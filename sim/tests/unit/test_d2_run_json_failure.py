@@ -68,7 +68,7 @@ def test_unexpected_exception_json_emits_e_internal(monkeypatch, capsys):
     """未预期异常在 --json 下 → E_INTERNAL JSON 信封 + rc=1，stdout 不为空。"""
     from sv_query.cli import main as cli_main
 
-    def boom() -> None:
+    def boom(args=None) -> None:
         raise RuntimeError("injected boom")
 
     monkeypatch.setattr(cli_main, "app", boom)
@@ -93,7 +93,7 @@ def test_unexpected_exception_with_json_short_flag(monkeypatch, capsys):
     """`-j` 与 `--json` 等价（不能只认长选项）。"""
     from sv_query.cli import main as cli_main
 
-    def boom() -> None:
+    def boom(args=None) -> None:
         raise ValueError("short flag")
 
     monkeypatch.setattr(cli_main, "app", boom)
@@ -117,7 +117,7 @@ def test_unexpected_exception_non_json_keeps_traceback():
     code = (
         "import sys\n"
         "from sv_query.cli import main\n"
-        "def boom():\n"
+        "def boom(args=None):\n"
         "    raise RuntimeError('injected boom')\n"
         "main.app = boom\n"
         "sys.argv = ['sv_query', 'boom']\n"
@@ -239,7 +239,7 @@ def test_unexpected_exception_json_svq_debug_keeps_traceback():
     code = (
         "import sys\n"
         "from sv_query.cli import main\n"
-        "def boom():\n"
+        "def boom(args=None):\n"
         "    raise RuntimeError('injected boom')\n"
         "main.app = boom\n"
         "sys.argv = ['sv_query', 'boom', '--json']\n"

@@ -19,27 +19,9 @@ from sv_query.session import PACKAGE_VERSION  # noqa: E402
 
 ensure_on_path(SRC_DIR, PROJECT_ROOT)
 
-# [A3 2026-06-28] Global --quiet support for LLM consumers.
-# 在 Typer 启动前检查 sys.argv, 如果有 --quiet / -q / SVQ_QUIET env,
-# 则调用 sv_query.trace.core.compiler.set_quiet(True) 抑制所有 stderr 输出 (SWAP warning, INFO log, 等).
-# 同时从 sys.argv 中移除 --quiet / -q 避免 Typer 报 unknown option.
-# 这样 LLM 收到的 stdout 只有合法 JSON, 不会被警告污染.
-def _apply_quiet_flag() -> None:
-    """Suppress stderr diagnostics in JSON mode unless --verbose is explicit."""
-    quiet_signals = {"--quiet", "-q"}
-    args = sys.argv[1:]
-    json_mode = any(arg in ("--json", "-j") for arg in args)
-    verbose = any(arg in ("--verbose",) for arg in args) or (
-        os.environ.get("SVQ_NO_QUIET", "").lower() in ("1", "true", "yes"))
-    env_quiet = os.environ.get("SVQ_QUIET", "").lower() in ("1", "true", "yes")
-    if not verbose and (env_quiet or json_mode or any(arg in quiet_signals for arg in args)):
-        from sv_query.trace.core.compiler import set_quiet
-        set_quiet(True)
-    sys.argv[:] = [a for a in sys.argv if a not in quiet_signals | {"--verbose"}]
-
-_apply_quiet_flag()
-
-import typer
+# [P197.8] Quiet is a ContextVar; flags are filtered into a local argv copy,
+# never by mutating sys.argv.
+import typer  # noqa: E402
 
 # [C-Flaky-3b 2026-06-27 disabled] 经验证 CLI 入口 reclaim 让 subprocess 更慢
 # 甚至更不稳定 (4GB 分配 + 父进程已有 reclaim 时累积). 只依赖 conftest.py
@@ -49,6 +31,11 @@ from sv_query.cli._common import (
     _build_tracer,
     handle_compilation_error,
     json_requested,
+)
+from sv_query.cli._invocation import (  # noqa: E402
+    invocation_args,
+    reset_invocation_args,
+    set_invocation_args,
 )
 
 # [iter_248 T2] 诊断: 4 个子命令合并为 1 个 `diagnose <check>` (fix 老路径已删除)
@@ -78,6 +65,7 @@ from sv_query.cli.core.semantic.verify import verify_app
 from sv_query.cli.core.state.snapshot import snapshot_app
 from sv_query.cli.view.architecture import architecture_app  # [P133] module/instance architecture
 from sv_query.cli.view.review import review_app  # [iter_364 P62] 局部 review artifact
+from sv_query.trace.core.compiler import quiet_context  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -433,6 +421,9 @@ def main(
     if quiet:
         from sv_query.trace.core.compiler import set_quiet
         set_quiet(True)
+    if verbose:
+        from sv_query.trace.core.compiler import set_quiet
+        set_quiet(False)
     if ctx.invoked_subcommand is None:
         typer.echo(ctx.get_help())
 
@@ -461,43 +452,79 @@ def _debug_enabled() -> bool:
 
 def _command_label() -> str:
     """从 argv 提取前两个非选项 token 作为信封里的命令名 (保持既有格式)。"""
-    tokens = [a for a in sys.argv[1:] if not a.startswith("-")]
+    tokens = [a for a in invocation_args() if not a.startswith("-")]
     return " ".join(tokens[:2]) or "sv_query"
 
 
-def run() -> None:
-    """CLI 统一入口 (console script `sv_query` 与 `run_cli.py` 共用)。"""
-    from sv_query.trace.core.compiler import CompilationError  # 延迟 import: 入口期不加载分析栈
+def _filter_quiet_args(argv: list[str]) -> list[str]:
+    """Keep flags before the command; drop unknown global flags after it."""
+    quiet_flags = {"--quiet", "-q", "--verbose"}
+    out: list[str] = []
+    seen_command = False
+    for arg in argv:
+        if not seen_command:
+            out.append(arg)
+            if not arg.startswith("-") and arg not in quiet_flags:
+                seen_command = True
+            continue
+        if arg in quiet_flags:
+            continue
+        out.append(arg)
+    return out
 
-    try:
-        app()
-    except (CompilationError, OSError, UnicodeDecodeError) as e:
-        # [iter_201 F1] 请求了 --json 却逃到顶层的错误 (文件不存在/编码/编译失败)
-        # 也必须给出**结构化错误信封** (过去 stdout 为空, 消费者拿不到 JSON)。
-        if json_requested():
-            from sv_query.cli._common import emit_json_error
-            emit_json_error(_command_label(), e)
+
+def _run_app(args: list[str], quiet: bool) -> None:
+    with quiet_context(quiet):
+        app(args=args)
+
+
+def _handle_known_error(e: BaseException) -> None:
+    if json_requested():
+        from sv_query.cli._common import emit_json_error
+        emit_json_error(_command_label(), e)
+    if _debug_enabled():
+        raise
+    msg = str(e).strip() or type(e).__name__
+    lines = msg.splitlines()
+    head = "\n".join(lines[:5])
+    if len(lines) > 5:
+        head += f"\n  ... (共 {len(lines)} 行; 完整内容: SVQ_DEBUG=1)"
+    print(f"sv_query: error: {head}", file=sys.stderr)
+    raise SystemExit(1) from None
+
+
+def _handle_unexpected_error(e: BaseException) -> None:
+    if json_requested():
+        from sv_query.cli._common import emit_json_error
+        emit_json_error(_command_label(), e)
         if _debug_enabled():
             raise
-        msg = str(e).strip() or type(e).__name__
-        lines = msg.splitlines()          # elaboration 报告常是多行: 只留前 5 行
-        head = "\n".join(lines[:5])
-        if len(lines) > 5:
-            head += f"\n  ... (共 {len(lines)} 行; 完整内容: SVQ_DEBUG=1)"
-        print(f"sv_query: error: {head}", file=sys.stderr)
         raise SystemExit(1) from None
+    raise
+
+
+def run() -> None:
+    """CLI 统一入口; no sys.argv mutation, quiet scoped to this invocation."""
+    from sv_query.trace.core.compiler import CompilationError
+
+    raw = list(sys.argv[1:])
+    args = _filter_quiet_args(raw)
+    json_mode = "--json" in raw or "-j" in raw
+    verbose = "--verbose" in raw or os.environ.get(
+        "SVQ_NO_QUIET", "").lower() in ("1", "true", "yes")
+    env_quiet = os.environ.get("SVQ_QUIET", "").lower() in ("1", "true", "yes")
+    quiet = not verbose and (env_quiet or json_mode or "--quiet" in raw or "-q" in raw)
+    token = set_invocation_args(raw)
+    try:
+        _run_app(args, quiet)
+    except (CompilationError, OSError, UnicodeDecodeError) as e:
+        _handle_known_error(e)
     except typer.Exit:
-        # 受控退出 (fail()/handle_compilation_error()): 信封/消息已输出, 不重复包装。
         raise
     except Exception as e:
-        # 未分类/未预期异常。--json 下 stdout 不能为空; 非 --json 保留 traceback。
-        if json_requested():
-            from sv_query.cli._common import emit_json_error
-            emit_json_error(_command_label(), e)
-            if _debug_enabled():
-                raise
-            raise SystemExit(1) from None
-        raise
+        _handle_unexpected_error(e)
+    finally:
+        reset_invocation_args(token)
 
 
 if __name__ == "__main__":

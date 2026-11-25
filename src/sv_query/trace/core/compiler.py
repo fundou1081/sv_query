@@ -6,9 +6,11 @@
 # 遵循铁律1: 必须使用 Semantic AST (Compilation + getRoot())
 # ==============================================================================
 
+import contextvars
 import logging
 import os
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -16,7 +18,8 @@ logger = logging.getLogger(__name__)
 # [A1 + A3 2026-06-28] Global quiet flag for LLM-friendly output.
 # When True, all diagnostic output (warnings, info, errors) goes to /dev/null.
 # Without --quiet, all non-JSON output still goes to stderr (Unix convention).
-_QUIET = False
+_QUIET: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "sv_query_quiet", default=False)
 # [ADD 2026-07-10] Global flag: 是否在本次 elaboration 中遇到内存压力 (SWAP > 2GB).
 #   anomaly 检测应该读这个 flag, 如果为 True, 把 anomalies 标为 "low confidence" (可能是误报)。
 _ELABORATION_INCOMPLETE = False
@@ -29,7 +32,16 @@ def is_quiet() -> bool:
     `visualize pipeline --quiet` 仍会泄漏 Phase 3/4 进度与 pipeline 摘要 6 行
     (iter_202 对抗测试发现) → 这些点必须自己查 quiet 状态。
     """
-    return _QUIET
+    return _QUIET.get()
+
+
+@contextmanager
+def quiet_context(enabled: bool = True):
+    token = _QUIET.set(enabled)
+    try:
+        yield
+    finally:
+        _QUIET.reset(token)
 
 
 def set_quiet(quiet: bool = True) -> None:
@@ -42,8 +54,7 @@ def set_quiet(quiet: bool = True) -> None:
         from sv_query.trace.core.compiler import set_quiet
         set_quiet(True)  # suppress all stderr noise
     """
-    global _QUIET
-    _QUIET = quiet
+    _QUIET.set(quiet)
 
 # [P194.1] Bindings override is explicit (SVQ_PYSLANG_BINDINGS); no author path.
 from ._bindings import add_bindings_from_env
@@ -103,7 +114,7 @@ def _check_memory_pressure():
     这个函数检测 swap 使用情况, 如果超过阈值就 warn.
     """
     import sys as _sys
-    if _QUIET:  # [A3 2026-06-28] quiet 模式下不输出任何警告
+    if is_quiet():  # [A3 2026-06-28] quiet 模式下不输出任何警告
         return
     try:
         import resource
@@ -261,7 +272,7 @@ class SVCompiler:
 
     def _log(self, level: str, msg: str):
         """内部日志输出. [A1 2026-06-28] 全部走 stderr (LLM-friendly)."""
-        if _QUIET:
+        if is_quiet():
             return
         level_val = self._parse_log_level(level)
         if level_val >= self._log_level:

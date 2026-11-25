@@ -254,8 +254,11 @@ def display_path(file, sources, filelist) -> str:
 
 def json_requested(argv: list[str] | None = None) -> bool:
     """命令行是否请求了结构化 JSON 输出 (`--json` / `-j`)。"""
-    import sys as _sys
-    args = argv if argv is not None else _sys.argv[1:]
+    if argv is None:
+        from ._invocation import invocation_args
+        args = invocation_args()
+    else:
+        args = argv
     return "--json" in args or "-j" in args
 
 
