@@ -40,3 +40,27 @@ def test_gate_covers_library_and_session():
     assert "src/sv_query/graph_session.py" in tool.CORE_FILES
     assert "src/sv_query/cli/core/locate/session_cmd.py" in tool.CORE_FILES
     assert len(tool.CORE_FILES) >= 11
+
+
+def test_comments_and_pass_are_not_explicit(tmp_path):
+    silent = tmp_path / "comment.py"
+    silent.write_text(
+        "def f():\n"
+        "    try:\n"
+        "        return 1\n"
+        "    except Exception:\n"
+        "        # error unknown\n"
+        "        pass\n")
+    assert tool.scan_source(silent)
+
+
+def test_assigning_unknown_is_explicit(tmp_path):
+    explicit = tmp_path / "unknown.py"
+    explicit.write_text(
+        "def f():\n"
+        "    try:\n"
+        "        return 1\n"
+        "    except Exception:\n"
+        "        status = 'unknown'\n"
+        "        return status\n")
+    assert tool.scan_source(explicit) == []

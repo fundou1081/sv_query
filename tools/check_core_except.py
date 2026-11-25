@@ -25,9 +25,9 @@ CORE_FILES = (
     "src/sv_query/trace/core/cache/ast_cache.py",
     "src/sv_query/trace/core/cache/build_identity.py",
 )
-MARKERS = (
-    "unknown", "partial", "error", "errors", "raise", "logger",
-    "make_error", "fail(", "warning", "violations", "status",
+EXPLICIT_NAMES = (
+    "unknown", "partial", "error", "errors", "status", "truncated",
+    "unresolved", "violations",
 )
 
 
@@ -35,6 +35,46 @@ def _body_text(lines: list[str], handler: ast.ExceptHandler) -> str:
     start = handler.body[0].lineno - 1
     end = handler.body[-1].end_lineno or start + 1
     return "\n".join(lines[start:end])
+
+
+def _name_has_marker(name: str) -> bool:
+    return any(marker in name.lower() for marker in EXPLICIT_NAMES)
+
+
+def _is_explicit_handler(handler: ast.ExceptHandler) -> bool:
+    """AST action check: comments/strings alone do not make a handler explicit."""
+    for stmt in handler.body:
+        for node in ast.walk(stmt):
+            if isinstance(node, ast.Raise):
+                return True
+            if isinstance(node, ast.Return) and node.value is not None:
+                if isinstance(node.value, ast.Dict):
+                    for key in node.value.keys:
+                        if isinstance(key, ast.Constant) and _name_has_marker(str(key.value)):
+                            return True
+                if isinstance(node.value, (ast.Name, ast.Attribute)):
+                    label = getattr(node.value, "id", getattr(node.value, "attr", ""))
+                    if _name_has_marker(str(label)):
+                        return True
+            if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                for target in targets:
+                    label = getattr(target, "id", getattr(target, "attr", ""))
+                    if _name_has_marker(str(label)):
+                        return True
+            if isinstance(node, ast.Call):
+                func = node.func
+                label = getattr(func, "id", getattr(func, "attr", ""))
+                owner = getattr(func, "value", None)
+                owner_name = getattr(owner, "id", getattr(owner, "attr", ""))
+                if any(token in (str(label) + str(owner_name)).lower() for token in (
+                        "logger", "fail", "make_error", "emit_error", "warning",
+                        "violation", "error_response", "echo")):
+                    return True
+                if isinstance(func, ast.Attribute) and _name_has_marker(
+                        getattr(func.value, "id", "")):
+                    return True
+    return False
 
 
 def scan_source(path: Path) -> list[tuple[int, str]]:
@@ -50,7 +90,7 @@ def scan_source(path: Path) -> list[tuple[int, str]]:
         if not is_broad:
             continue
         body = _body_text(lines, node)
-        if not any(marker in body.lower() for marker in MARKERS):
+        if not _is_explicit_handler(node):
             found.append((node.lineno, body.strip().splitlines()[0][:120]))
     return found
 

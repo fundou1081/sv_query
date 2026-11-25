@@ -296,12 +296,16 @@ class SignalTracer:
         """
         prefix = signal_id + "["
         for nid in list(self.graph.nodes()):
-            if nid == signal_id or not nid.startswith(prefix):
+            node = self.graph.get_node(nid)
+            if node is None or nid == signal_id or nid in seen_ids:
                 continue
-            if nid in seen_ids:
-                continue
-            rest = nid[len(prefix):]
-            if "]" not in rest:
+            parent = getattr(node, "parent", None)
+            semantic_child = parent == signal_id and node.bit_range is not None
+            # Unresolved parameterized ids (`gray_out[WIDTH-1:0]`) have no
+            # parent metadata; retain the structural prefix fallback for them.
+            unresolved_child = (parent is None and nid.startswith(prefix)
+                                and "]" in nid[len(prefix):])
+            if not (semantic_child or unresolved_child):
                 continue
             self._trace_drivers_recursive(
                 nid, drivers, seen_ids, current_depth + 1, max_depth,
@@ -1028,13 +1032,17 @@ class SignalTracer:
         [iter_307 / PLAN P13.6] unpacked array 元素 id 也是 `mem[1]`，但它是
         完整元素（宽度=元素宽度），不能当位节点；宽度 >1 的节点同理。
         """
+        node = self.graph.get_node(node_id)
+        if node is not None:
+            if (node.extra or {}).get("array_element"):
+                return None
+            start = getattr(node, "parent_bit_start", None)
+            end = getattr(node, "parent_bit_end", None)
+            if start is not None and end is not None:
+                return start if start == end else None
         import re
-
         m = re.search(r"\[(\d+)\]$", node_id)
         if not m:
-            return None
-        node = self.graph.get_node(node_id)
-        if node is not None and (node.extra or {}).get("array_element"):
             return None
         return int(m.group(1))
 
