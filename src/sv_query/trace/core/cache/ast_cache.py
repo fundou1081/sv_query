@@ -61,7 +61,7 @@ def resolve_cache_dir(explicit: str | os.PathLike | None = None) -> Path:
 CACHE_DIR = resolve_cache_dir()
 
 # 缓存版本
-CACHE_VERSION = "3.2"  # [P198.3] graph payload carries typed expression IR
+CACHE_VERSION = "3.3"  # [P197.7] graph payload carries MIG + typed expression IR
 
 # [iter_271] 缓存文件: gzip 压缩 + 总量上限 (LRU 淘汰)
 # 单工程图 JSON 可达 20MB, 压缩后通常 3~5MB。上限默认 1GB, 可用 SVQ_CACHE_MAX_MB 覆盖。

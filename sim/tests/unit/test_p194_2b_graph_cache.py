@@ -26,7 +26,7 @@ def test_graph_nodes_cold_then_hit_then_no_cache(tmp_path):
     warm = _run("graph", "nodes", cache=tmp_path)
     assert cold["params"]["cache"]["status"] == "miss"
     assert warm["params"]["cache"]["status"] == "hit"
-    assert warm["params"]["cache"]["capabilities"] == ["graph"]
+    assert warm["params"]["cache"]["capabilities"] == ["graph", "mig"]
     assert [n["id"] for n in cold["result"]["nodes"]] == [n["id"] for n in warm["result"]["nodes"]]
 
     off = _run("graph", "nodes", "--no-cache", cache=tmp_path)

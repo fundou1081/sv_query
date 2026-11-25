@@ -58,9 +58,10 @@ class BuildIdentity:
         raw = json.dumps(self.canonical(), sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
-    def manifest(self) -> dict:
+    def manifest(self, capabilities=None) -> dict:
+        caps = sorted(set(capabilities or (GRAPH_CAPABILITY,)))
         return {
-            "capabilities": [GRAPH_CAPABILITY],
+            "capabilities": caps,
             "graph_semantics": self.graph_semantics,
             "cache_schema": self.cache_schema,
             "build_identity": self.canonical(),

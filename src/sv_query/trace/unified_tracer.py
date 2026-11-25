@@ -399,18 +399,25 @@ class UnifiedTracer:
                 cached = cache.get_by_key(cache_key, force=force, project_key=project_key)
                 payload = (cached or {}).get("data") or {}
                 manifest = payload.get("manifest") or {}
-                capabilities = set(manifest.get("capabilities") or ())
-                if required <= capabilities and payload.get("graph_data"):
+                declared = set(manifest.get("capabilities") or ())
+                mig_data = payload.get("module_graph_data")
+                actual = {"graph"} if payload.get("graph_data") else set()
+                if mig_data is not None:
+                    actual.add("mig")
+                if (payload.get("graph_data") and required <= actual
+                        and required <= declared and declared <= actual):
                     _main_logger.info(f"Loading graph from cache (key={cache_key[:8]}...)")
+                    from .core.module_instance_graph import ModuleInstanceGraph, PathResolver
                     self._graph = SignalGraph.from_dict(payload["graph_data"])
+                    self._module_graph = (
+                        ModuleInstanceGraph.from_dict(mig_data)
+                        if mig_data is not None else None)
                     self._init_tracers()
-                    from .core.module_instance_graph import PathResolver
-                    self._path_resolver = PathResolver(
-                        self._graph, getattr(self, "_module_graph", None))
+                    self._path_resolver = PathResolver(self._graph, self._module_graph)
                     self._build_phase = "hydrated"
                     self._hydrated_without_sources = False
                     self._cache_status = "hit"
-                    self._built_capabilities = frozenset(capabilities)
+                    self._built_capabilities = frozenset(actual)
                     return self._graph
                 if payload:
                     _main_logger.debug(
@@ -458,7 +465,10 @@ class UnifiedTracer:
                 get_cache().put_by_key(
                     cache_key,
                     {"graph_data": self._graph.to_dict(),
-                     "manifest": identity.manifest()},
+                     "module_graph_data": (
+                         self._module_graph.to_dict()
+                         if getattr(self, "_module_graph", None) is not None else None),
+                     "manifest": identity.manifest(self._built_capabilities)},
                     project_key=project_key,
                 )
             except Exception as exc:
