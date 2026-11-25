@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P197.6 pyright/mypy + generated JSON schema <待做>
+current item : P197.6 real dangling-alias regression fixture; restore C-64 evidence <待做>
 
 ## 计划树
 
