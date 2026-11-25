@@ -294,22 +294,25 @@ class SignalTracer:
         This is a query-level aggregation; it does not add synthetic graph
         edges (and therefore does not change path semantics).
         """
-        prefix = signal_id + "["
         for nid in list(self.graph.nodes()):
             node = self.graph.get_node(nid)
             if node is None or nid == signal_id or nid in seen_ids:
                 continue
-            parent = getattr(node, "parent", None)
-            semantic_child = parent == signal_id and node.bit_range is not None
-            # Unresolved parameterized ids (`gray_out[WIDTH-1:0]`) have no
-            # parent metadata; retain the structural prefix fallback for them.
-            unresolved_child = (parent is None and nid.startswith(prefix)
-                                and "]" in nid[len(prefix):])
-            if not (semantic_child or unresolved_child):
+            if not self._is_bit_child_node(node, signal_id, nid):
                 continue
             self._trace_drivers_recursive(
                 nid, drivers, seen_ids, current_depth + 1, max_depth,
                 allow_cross_module)
+
+    @staticmethod
+    def _is_bit_child_node(node, signal_id: str, nid: str) -> bool:
+        parent = getattr(node, "parent", None)
+        if parent == signal_id:
+            return node.bit_range is not None or node.parent_bit_start is not None
+        # Unresolved parameterized ids (`gray_out[WIDTH-1:0]`) have no parent
+        # metadata; retain the structural prefix fallback for them.
+        prefix = signal_id + "["
+        return parent is None and nid.startswith(prefix) and "]" in nid[len(prefix):]
 
     def _expand_incoming_bit_select(self, signal_id, drivers, seen_ids,
                                     current_depth, max_depth, allow_cross_module,
