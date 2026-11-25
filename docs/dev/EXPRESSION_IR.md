@@ -203,8 +203,9 @@ function; their per-op regex/branch logic is removed.
 - Route **shift** fanin/fanout bit mapping through `map_bit`.
 - Dynamic shift/unknown literal/call => explicit unknown.
 - If an edge has IR, an unmappable IR subtree must NOT fall back to legacy text.
-- Other shapes (concat/slice/struct/memory) remain legacy until P198.9 proves
-  parity; source-text fallback removal for them is part of P198.9.
+- Slice/Cast/Ternary/Concat are enabled after parity; array-element endpoints
+  remain on legacy. Source-text fallback removal for struct/memory is tracked
+  separately.
 - Shift parity tests CLI/session.
 
 ### P198.6 — completion

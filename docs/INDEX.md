@@ -58,6 +58,7 @@
 | [validation/reviews/2026-11-25_57011a0.md](validation/reviews/2026-11-25_57011a0.md) | **P198.8** initial review: FAIL (little-endian reversed; single-bit refs) |
 | [validation/reviews/2026-11-25_703148a.md](validation/reviews/2026-11-25_703148a.md) | **P198.8** re-audit: FAIL (descending split lost per-bit) |
 | [validation/reviews/2026-11-25_7e66098.md](validation/reviews/2026-11-25_7e66098.md) | **P198.10c** audit: PASS WITH CAVEATS; depth=1 duplicate aggregate |
+| [validation/reviews/2026-11-25_360706f.md](validation/reviews/2026-11-25_360706f.md) | **P198.11** worker review: PASS WITH CAVEATS; concat IR enabled |
 | [validation/reviews/2026-11-25_f55fb94.md](validation/reviews/2026-11-25_f55fb94.md) | **P198.10c** re-audit: PASS WITH CAVEATS; depth caveat closed |
 | [validation/reviews/2026-11-25_21722a6.md](validation/reviews/2026-11-25_21722a6.md) | **P198.9** worker review: PASS WITH CAVEATS; scoped Slice/Cast/Ternary |
 | [validation/reviews/2026-11-25_03073e4.md](validation/reviews/2026-11-25_03073e4.md) | **P198.8** final re-audit: PASS WITH CAVEATS |

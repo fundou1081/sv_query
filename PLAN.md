@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P198.11 concat bit-mapping IR parity <进行中>
+current item : P197.5 semantic reset classification + evidence LHS verification <待做>
 
 ## 计划树
 
@@ -625,7 +625,7 @@ P196 independent review follow-up (2026-11-22) <已完成>
 -- P196.4 P1 remaining packed/fallback scalar width normalization; C-49 scope <已完成>
 -- P196.5 reconcile C-49 scope + stdio envelope contract + docs/count attribution <已完成>
 
-P198 typed semantic expression IR (2026-11-24) <待做>
+P198 typed semantic expression IR (2026-11-24) <已完成>
 -- P198.1 Expr/AssignmentExpr/ExpressionStore + strict serialization <已完成>
 -- P198.2 semantic AST builder for IR <已完成>
 -- P198.3 graph/cache integration + edge expr_id + assignment table <已完成>
@@ -635,7 +635,7 @@ P198 typed semantic expression IR (2026-11-24) <待做>
 -- P198.7 generate-scope continuous assign IR (bit-select LHS) <已完成>
 -- P198.8 concat P2 debt: overlap segmentation, IR refs, diagnostics, F6 test <已完成>
 -- P198.9 Slice/Cast/Ternary/array-guarded IR bit-mapping parity <已完成>
--- P198.11 concat bit-mapping IR parity <进行中>
+-- P198.11 concat bit-mapping IR parity <已完成>
 -- P198.10 wider-bus part-select concat/plain silent-drop/coarse-gap hardening <已完成>
 
 P197 independent code-smell / robustness audit follow-up (2026-11-23) <待做>
