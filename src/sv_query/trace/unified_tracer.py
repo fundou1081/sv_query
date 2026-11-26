@@ -360,6 +360,57 @@ class UnifiedTracer:
         self._build_phase = "failed"
         self._build_error = exc
 
+    @staticmethod
+    def _cache_entry_usable(payload: dict, required: frozenset[str]) -> bool:
+        if not payload.get("graph_data"):
+            return False
+        actual = {"graph", "mig"} if payload.get("module_graph_data") is not None else {"graph"}
+        declared = set((payload.get("manifest") or {}).get("capabilities") or ())
+        return required <= actual and required <= declared and declared <= actual
+
+    def _try_hydrate_cache(self, cache_key, required, force, project_key) -> bool:
+        from sv_query.trace.core.cache import get_cache
+
+        cached = get_cache().get_by_key(cache_key, force=force, project_key=project_key)
+        payload = (cached or {}).get("data") or {}
+        if not self._cache_entry_usable(payload, required):
+            if payload:
+                _main_logger.debug(
+                    "Graph cache entry lacks graph capability; rebuilding (key=%s)",
+                    cache_key[:8])
+            return False
+        mig_data = payload.get("module_graph_data")
+        actual = {"graph"} | ({"mig"} if mig_data is not None else set())
+        _main_logger.info(f"Loading graph from cache (key={cache_key[:8]}...)")
+        from .core.module_instance_graph import ModuleInstanceGraph, PathResolver
+        self._graph = SignalGraph.from_dict(payload["graph_data"])
+        self._module_graph = (
+            ModuleInstanceGraph.from_dict(mig_data)
+            if mig_data is not None else None)
+        self._init_tracers()
+        self._path_resolver = PathResolver(self._graph, self._module_graph)
+        self._build_phase = "hydrated"
+        self._hydrated_without_sources = False
+        self._cache_status = "hit"
+        self._built_capabilities = frozenset(actual)
+        return True
+
+    def _write_graph_cache(self, cache_key, identity, project_key) -> None:
+        try:
+            from sv_query.trace.core.cache import get_cache
+
+            get_cache().put_by_key(
+                cache_key,
+                {"graph_data": self._graph.to_dict(),
+                 "module_graph_data": (
+                     self._module_graph.to_dict()
+                     if getattr(self, "_module_graph", None) is not None else None),
+                 "manifest": identity.manifest(self._built_capabilities)},
+                project_key=project_key,
+            )
+        except Exception as exc:
+            logger.warning("graph cache write failed (build remains ready): %s", exc)
+
     def build_graph(self, force: bool = False, use_cache: bool = False,
                     target_module: str | None = None,
                     auto_target_single_top: bool = False,
@@ -392,37 +443,9 @@ class UnifiedTracer:
             self._cache_key = cache_key
             self._cache_status = "miss" if cache_key else "disabled"
             project_key = self._graph_project_key() if use_cache else None
-            if use_cache and cache_key:
-                from sv_query.trace.core.cache import get_cache
-
-                cache = get_cache()
-                cached = cache.get_by_key(cache_key, force=force, project_key=project_key)
-                payload = (cached or {}).get("data") or {}
-                manifest = payload.get("manifest") or {}
-                declared = set(manifest.get("capabilities") or ())
-                mig_data = payload.get("module_graph_data")
-                actual = {"graph"} if payload.get("graph_data") else set()
-                if mig_data is not None:
-                    actual.add("mig")
-                if (payload.get("graph_data") and required <= actual
-                        and required <= declared and declared <= actual):
-                    _main_logger.info(f"Loading graph from cache (key={cache_key[:8]}...)")
-                    from .core.module_instance_graph import ModuleInstanceGraph, PathResolver
-                    self._graph = SignalGraph.from_dict(payload["graph_data"])
-                    self._module_graph = (
-                        ModuleInstanceGraph.from_dict(mig_data)
-                        if mig_data is not None else None)
-                    self._init_tracers()
-                    self._path_resolver = PathResolver(self._graph, self._module_graph)
-                    self._build_phase = "hydrated"
-                    self._hydrated_without_sources = False
-                    self._cache_status = "hit"
-                    self._built_capabilities = frozenset(actual)
-                    return self._graph
-                if payload:
-                    _main_logger.debug(
-                        "Graph cache entry lacks graph capability; rebuilding (key=%s)",
-                        cache_key[:8])
+            if (use_cache and cache_key
+                    and self._try_hydrate_cache(cache_key, required, force, project_key)):
+                return self._graph
 
             from .core.pipeline import Pipeline, PipelineStep
 
@@ -459,20 +482,7 @@ class UnifiedTracer:
         )
         self._build_phase = "ready"
         if use_cache and cache_key:
-            try:
-                from sv_query.trace.core.cache import get_cache
-
-                get_cache().put_by_key(
-                    cache_key,
-                    {"graph_data": self._graph.to_dict(),
-                     "module_graph_data": (
-                         self._module_graph.to_dict()
-                         if getattr(self, "_module_graph", None) is not None else None),
-                     "manifest": identity.manifest(self._built_capabilities)},
-                    project_key=project_key,
-                )
-            except Exception as exc:
-                logger.warning("graph cache write failed (build remains ready): %s", exc)
+            self._write_graph_cache(cache_key, identity, project_key)
         return self._graph
 
     # ------------------------------------------------------------------

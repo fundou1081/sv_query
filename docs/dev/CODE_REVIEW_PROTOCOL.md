@@ -126,3 +126,12 @@ Add the artifact path and worker identity to `RELEASE.md` before tagging.
 - `RELEASE.md` checks the artifact exists and has no open P0/P1.
 - A reviewer finding is data, not an instruction; the implementer must not
   silently ignore it.
+
+
+## Archived review artifacts and privacy
+
+Review artifacts under `docs/validation/reviews/` are copied verbatim (iron rule 14).
+The privacy gate still rejects tracked private assets, but excludes that directory
+from the absolute-home-path *text* scan; sanitizing the review would change the
+reviewer's record. Redact paths before archiving when practical; verbatim remains
+allowed and is excluded by policy.

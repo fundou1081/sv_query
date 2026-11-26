@@ -11,6 +11,7 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+REVIEW_PREFIX = "docs/validation/reviews/"
 FORBIDDEN_PREFIXES = (
     "agents/", "memory/", "docs/task_tree/", "docs/sessions/",
     "docs/archive/", "docs/refactoring/", "docs/lessons/",
@@ -19,6 +20,11 @@ FORBIDDEN_PREFIXES = (
 _AUTHOR = "fund" + "ou"
 FORBIDDEN_TEXT = (f"/Users/{_AUTHOR}", f"/home/{_AUTHOR}", f"C:\\Users\\{_AUTHOR}")
 TEXT_SUFFIXES = {".md", ".py", ".toml", ".yml", ".yaml", ".txt", ".json", ".f", ".sv", ".sh"}
+
+
+def text_scan_allowed(path: str) -> bool:
+    """Archived review artifacts are verbatim by protocol; assets still tracked."""
+    return not path.startswith(REVIEW_PREFIX)
 
 
 def tracked_files(repo: Path = ROOT) -> list[str]:
@@ -34,7 +40,8 @@ def problems(repo: Path = ROOT) -> list[str]:
         if path.startswith(FORBIDDEN_PREFIXES):
             found.append(f"private asset tracked: {path}")
         p = repo / path
-        if p.suffix.lower() not in TEXT_SUFFIXES or not p.is_file():
+        if (p.suffix.lower() not in TEXT_SUFFIXES or not p.is_file()
+                or not text_scan_allowed(path)):
             continue
         text = p.read_text(errors="ignore")
         for needle in FORBIDDEN_TEXT:

@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P197.15 cache build_graph CC + privacy-review artifact policy + except name-substring marker <待做>
+current item : P197.15 cache build_graph CC + privacy-review artifact policy + except name-substring marker <进行中>
 
 ## 计划树
 
@@ -653,7 +653,7 @@ P197 independent code-smell / robustness audit follow-up (2026-11-23) <待做>
 -- P197.12 verify-parity P2 debt: bit fallback, endpoint guard, envelope docs, port_node_missing test <已完成>
 -- P197.13 shift mapping direction matrix hardening <已完成>
 -- P197.14 evidence RHS substring + compound-reset heuristic debt <已完成>
--- P197.15 cache build_graph CC + privacy-review artifact policy + except name-substring marker <待做>
+-- P197.15 cache build_graph CC + privacy-review artifact policy + except name-substring marker <进行中>
 -- P197.16 confidence provenance + instances depth + diagnostic fallbacks + cache singleton env <待做>
 -- P197.17 arithmetic-shift sign-fill bits (F2 from P197.13) <待做>
 

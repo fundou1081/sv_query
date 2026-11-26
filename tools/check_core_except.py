@@ -38,7 +38,11 @@ def _body_text(lines: list[str], handler: ast.ExceptHandler) -> str:
 
 
 def _name_has_marker(name: str) -> bool:
-    return any(marker in name.lower() for marker in EXPLICIT_NAMES)
+    lowered = name.lower()
+    return any(
+        lowered == marker or lowered.startswith(marker + "_")
+        or lowered.endswith("_" + marker)
+        for marker in EXPLICIT_NAMES)
 
 
 def _is_explicit_handler(handler: ast.ExceptHandler) -> bool:

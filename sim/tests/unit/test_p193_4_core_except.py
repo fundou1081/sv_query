@@ -64,3 +64,22 @@ def test_assigning_unknown_is_explicit(tmp_path):
         "        status = 'unknown'\n"
         "        return status\n")
     assert tool.scan_source(explicit) == []
+
+
+def test_marker_must_be_a_whole_name_component(tmp_path):
+    subtle = tmp_path / "subtle.py"
+    subtle.write_text(
+        "def f():\n"
+        "    try:\n"
+        "        return 1\n"
+        "    except Exception:\n"
+        "        my_error_count = 0\n")
+    explicit = tmp_path / "explicit.py"
+    explicit.write_text(
+        "def f():\n"
+        "    try:\n"
+        "        return 1\n"
+        "    except Exception:\n"
+        "        error_count = 0\n")
+    assert tool.scan_source(subtle)
+    assert tool.scan_source(explicit) == []

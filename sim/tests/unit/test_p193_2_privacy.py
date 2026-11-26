@@ -15,6 +15,11 @@ def test_no_private_assets_or_home_paths():
     assert tool.problems(ROOT) == []
 
 
+def test_review_artifacts_are_text_scan_exempt():
+    assert tool.text_scan_allowed("docs/validation/reviews/x.md") is False
+    assert tool.text_scan_allowed("docs/dev/CLAIMS.md") is True
+
+
 def test_privacy_and_hygiene_gates_pass():
     assert tool.main(["--root", str(ROOT)]) == 0
     proc = subprocess.run(
