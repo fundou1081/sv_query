@@ -309,7 +309,11 @@ _RUNNER = (
 
 @pytest.fixture(scope="module")
 def baseline_src(tmp_path_factory) -> Path:
-    """解压 fixture 中 D12 baseline 的 `src/`（不碰工作区）。"""
+    """解压 fixture 中 D12 baseline 的 `src/`（不碰工作区）。
+
+    P197.25 patched one capabilities marker line and repacked the archive; the
+    extracted content otherwise matches the frozen D12 snapshot.
+    """
     if not BASELINE_ARCHIVE.is_file():
         pytest.fail(f"missing baseline fixture: {BASELINE_ARCHIVE}")
     root = tmp_path_factory.mktemp("d12_baseline")
