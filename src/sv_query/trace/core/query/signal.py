@@ -280,7 +280,10 @@ class SignalTracer:
         width = getattr(node, "width", None) if node is not None else None
         if not (isinstance(width, (tuple, list)) and len(width) >= 2):
             return True
-        return min(int(width[0]), int(width[1])) <= bit <= max(int(width[0]), int(width[1]))
+        pair = (int(width[0]), int(width[1]))
+        if pair in ((0, 0), (1, 0)) or (getattr(node, "extra", {}) or {}).get("placeholder"):
+            return True  # unknown/placeholder width: do not prune conservatively
+        return min(pair) <= bit <= max(pair)
 
     def _trace_missing_node(self, signal_id, drivers, seen_ids,
                             current_depth, max_depth, allow_cross_module):
@@ -1997,9 +2000,9 @@ class SignalTracer:
         for src in preds:
             node_edge = self.graph.get_edge(src, node.id)
             if node_edge and node_edge.kind.name == "DRIVER":
-                condition = node_edge.condition
-                clock_domain = node_edge.clock_domain
-                assign_type = node_edge.assign_type
+                condition = node_edge.condition or ""
+                clock_domain = node_edge.clock_domain or ""
+                assign_type = node_edge.assign_type or ""
                 break
         return condition, clock_domain, assign_type
 
