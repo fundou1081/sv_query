@@ -28,6 +28,7 @@ from .source_assignment import (
     find_assignment_near,
     find_functional_assignment,
     signal_token_present,
+    source_expr_present,
 )
 
 logger = logging.getLogger(__name__)
@@ -98,7 +99,8 @@ class Evidence:
             self.enclosing_class,
             self.enclosing_constraint,
         ]:
-            if snippet and snippet.text and self.source_expr in snippet.text:
+            if snippet and snippet.text and source_expr_present(
+                    self.source_expr, snippet.text):
                 return True
         return False
 

@@ -13,6 +13,23 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
+_RESET_CORE = r"(?:a?reset|s?rst|arst|nrst)n?"
+_RESET_SUFFIX = r"(?:_(?:n|ni|no|b|l))?"
+_RESET_EXACT = re.compile(rf"^{_RESET_CORE}{_RESET_SUFFIX}$")
+_RESET_TAIL = re.compile(rf"_{_RESET_CORE}{_RESET_SUFFIX}$")
+
+
+def _is_reset_token(token: str) -> bool:
+    return bool(_RESET_EXACT.match(token) or _RESET_TAIL.search(token))
+
+
+def _reset_identifiers(cond: str) -> list[str]:
+    """Identifiers that are reset-like by whole token/tail, not substring."""
+    return [m.group(0).lower()
+            for m in re.finditer(r"[A-Za-z_$][A-Za-z0-9_$]*", cond or "")
+            if _is_reset_token(m.group(0).lower())]
+
+
 def is_reset_condition(cond: str) -> bool:
     c = (cond or "").strip().lower()
     if not c:
@@ -21,9 +38,19 @@ def is_reset_condition(cond: str) -> bool:
     # `assign reset_counter = data;` from being classified as a reset branch.
     if re.search(r"(?<![=!<>])=(?!=)", c):
         return False
-    # A reset signal may be combined with other conditions (`!rst_n && en`);
-    # do not reject compound expressions just because they contain &&/||.
-    return bool(re.search(r"(?:^|[^a-z0-9])(?:a?reset|s?rst|arst|nrst)\w*", c))
+    # Whole reset tokens only: `check_reset_status` is not a reset.
+    return bool(_reset_identifiers(c))
+
+
+def source_expr_present(source_expr: str, text: str) -> bool:
+    """RHS presence with identifier boundaries (no `data` in `metadata`)."""
+    expr = " ".join((source_expr or "").split())
+    if not expr or not text:
+        return False
+    if re.fullmatch(r"[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)*", expr):
+        return signal_token_present(expr, text)
+    pattern = re.escape(expr).replace(r"\ ", r"\s+")
+    return bool(re.search(rf"(?<![A-Za-z0-9_$]){pattern}(?![A-Za-z0-9_$])", text))
 
 
 def signal_token_present(signal: str, text: str) -> bool:
@@ -68,8 +95,8 @@ def _collect_if_condition(lines: list[str], idx: int) -> str | None:
 
 
 def _reset_token(cond: str) -> str:
-    m = re.search(r"(?:a?reset|s?rst|arst|nrst)\w*", cond or "", re.I)
-    return m.group(0).lower() if m else ""
+    tokens = _reset_identifiers(cond or "")
+    return tokens[0] if tokens else ""
 
 
 def _active_low_reset(cond: str) -> bool:

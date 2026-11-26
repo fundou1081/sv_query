@@ -46,3 +46,19 @@ def test_cli_evidence_does_not_score_metadata_as_data(tmp_path):
     assert p.returncode == 0, p.stderr[-400:]
     ev = json.loads(p.stdout)["result"]["signals"][0]["evidence"]
     assert ev["is_verified"] is False
+
+
+def test_reset_substring_tokens_are_not_reset():
+    assert not is_reset_condition("check_reset_status && valid")
+    assert is_reset_condition("soft_reset && valid")
+    assert is_reset_condition("rst_n")
+
+
+def test_source_expr_does_not_match_substring():
+    snippet = SourceSnippet(
+        location=SourceLocation(file="x.sv", line_start=1, line_end=1),
+        text="always_comb y = metadata;")
+    ev = Evidence(signal="top.y", source_expr="data", enclosing_assign=snippet)
+    assert ev.matches_source_expr is False
+    snippet.text = "always_comb y = data;"
+    assert ev.matches_source_expr is True
