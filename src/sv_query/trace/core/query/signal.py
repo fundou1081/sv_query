@@ -46,8 +46,10 @@ class SignalTracer:
             return "uncertain"
         node = self.graph.get_node(signal_id)
         if "[" in signal_id and not (node and (node.extra or {}).get("array_element")):
-            ids = [getattr(d, "id", None) for d in drivers]
-            if any(i is not None and "[" not in i for i in ids):
+            coarse = [d for d in drivers
+                      if "[" not in getattr(d, "id", "")
+                      and getattr(d, "kind", None) is not NodeKind.CONST]
+            if coarse:
                 return "low"
         return "high"
 

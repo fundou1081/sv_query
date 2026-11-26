@@ -92,6 +92,7 @@
 | C-72 | bit index/children prefer node metadata; core-except gate classifies AST actions rather than source-text markers (P197.9) | code/test | `test_p197_9_bit_heuristics.py`, `test_p193_4_core_except.py` | `verified` |
 | C-73 | P197.10 reconciles audit P1/P2 dispositions with claims/tests and records remaining P2 debt | doc/test | `test_p197_10_claims.py` | `scoped`（doc reconciliation, not a semantic capability） |
 | C-74 | shift/part-select IR bit mapping preserves declared ascending/descending direction for full buses and legal slices; **scoped: CLI slice-bit drivers may report bus precision, and arithmetic-shift sign fill is P197.17** | code/test | `test_p197_13_shift_direction.py` | `scoped` |
+| C-75 | bit queries with a coarse parent-bus driver report `confidence=low`; instance depth is relative to the root/top; managed cache rebuilds on `SVQ_CACHE_DIR` change (P197.16) | code/test | `test_p197_16_provenance.py` | `verified` |
 
 ---
 

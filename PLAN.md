@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P197.16 confidence provenance + instances depth + diagnostic fallbacks + cache singleton env <进行中>
+current item : P197.17 arithmetic-shift sign-fill bits (F2 from P197.13) <待做>
 
 ## 计划树
 
@@ -654,8 +654,9 @@ P197 independent code-smell / robustness audit follow-up (2026-11-23) <待做>
 -- P197.13 shift mapping direction matrix hardening <已完成>
 -- P197.14 evidence RHS substring + compound-reset heuristic debt <已完成>
 -- P197.15 cache build_graph CC + privacy-review artifact policy + except name-substring marker <已完成>
--- P197.16 confidence provenance + instances depth + diagnostic fallbacks + cache singleton env <进行中>
+-- P197.16 confidence provenance + instances depth + diagnostic fallbacks + cache singleton env <已完成>
 -- P197.17 arithmetic-shift sign-fill bits (F2 from P197.13) <待做>
+-- P197.18 literal-driver NetworkXError in trace_fanin_detailed (P197.16 N6) <待做>
 
 P193 external trial readiness (2026-11-21 review) <待做>
 -- P193.1 fix sim/tests/config absolute symlink + clone hygiene <已完成>
