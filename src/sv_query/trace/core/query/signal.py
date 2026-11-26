@@ -269,6 +269,13 @@ class SignalTracer:
     # 6 类规则的具体实现
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _declared_width_pair(node) -> tuple[int, int] | None:
+        width = getattr(node, "width", None) if node is not None else None
+        if not (isinstance(width, (tuple, list)) and len(width) >= 2):
+            return None
+        return int(width[0]), int(width[1])
+
     def _bit_in_bus_range(self, signal_id: str) -> bool:
         if ":" in signal_id or "[" not in signal_id:
             return False
@@ -277,11 +284,11 @@ class SignalTracer:
             return False
         base = signal_id.rsplit("[", 1)[0]
         node = self.graph.get_node(base)
-        width = getattr(node, "width", None) if node is not None else None
-        if not (isinstance(width, (tuple, list)) and len(width) >= 2):
-            return True
-        pair = (int(width[0]), int(width[1]))
-        if pair in ((0, 0), (1, 0)) or (getattr(node, "extra", {}) or {}).get("placeholder"):
+        extra = (getattr(node, "extra", {}) or {}) if node is not None else {}
+        if extra.get("is_array"):
+            return False  # array index, not a packed bit
+        pair = self._declared_width_pair(node)
+        if pair is None or pair in ((0, 0), (1, 0)) or extra.get("placeholder"):
             return True  # unknown/placeholder width: do not prune conservatively
         return min(pair) <= bit <= max(pair)
 

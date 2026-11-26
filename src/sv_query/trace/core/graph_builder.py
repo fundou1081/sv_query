@@ -1459,6 +1459,27 @@ class GraphBuilder:
             node.extra["runtime_system_call"] = True
         self.graph._runtime_system_nodes = seen
 
+    def _mark_unpacked_arrays(self) -> None:
+        try:
+            modules = self.adapter.get_modules()
+        except Exception as e:
+            logger.debug("unpacked array scan failed: %s", e)
+            return
+        for module in modules:
+            module_name = self.adapter.get_module_name(module)
+            for member in getattr(module, "body", ()):
+                typ = getattr(member, "type", None)
+                declared = getattr(getattr(member, "declaredType", None), "type", None)
+                if not any(bool(getattr(t, "isUnpackedArray", False))
+                           for t in (typ, declared)):
+                    continue
+                name = getattr(member, "name", None)
+                if not name:
+                    continue
+                node = self.graph.get_node(f"{module_name}.{name}")
+                if node is not None:
+                    node.extra["is_array"] = True
+
     def _fix_array_element_widths(self):
         """[iter_307 / PLAN P13.6] unpacked array 元素节点宽度回填。
 
@@ -1467,6 +1488,7 @@ class GraphBuilder:
         """
         import re as _re
 
+        self._mark_unpacked_arrays()
         for node_id in list(self.graph.nodes()):
             m = _re.match(r"^(.+)\[(\d+)\]$", node_id)
             if not m:
