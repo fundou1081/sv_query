@@ -54,6 +54,8 @@ def test_manifest_declares_graph_capability_only():
     assert _identity().manifest({"graph", "mig"})["capabilities"] == ["graph", "mig"]
     assert manifest["graph_semantics"] == "1"
     assert manifest["cache_schema"] == "3.5"
+    from sv_query.trace.core.cache.ast_cache import CACHE_VERSION
+    assert CACHE_VERSION == "3.5"
     assert manifest["build_identity"]["preprocess_macros"] is True
 
 

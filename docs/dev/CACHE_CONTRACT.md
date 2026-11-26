@@ -69,7 +69,7 @@ capability; a manifest that claims MIG without `module_graph_data` is a miss.
 Class hierarchy is still not cached. P197.7 extends P195.2/P194.2a.
 
 A missing manifest or missing required capability is a **miss**, not a partial
-hit. Old entries (schema 3.2 and earlier) are rejected by the cache version. P195.1
+hit. Old entries (schema 3.4 and earlier) are rejected by the cache version. P195.1
 covers closure hashing; P195.2 covers capability enforcement; P197.7 covers MIG.
 
 ## 3. Default policy

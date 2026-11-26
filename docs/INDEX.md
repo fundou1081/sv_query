@@ -60,6 +60,7 @@
 | [validation/reviews/2026-11-25_7e66098.md](validation/reviews/2026-11-25_7e66098.md) | **P198.10c** audit: PASS WITH CAVEATS; depth=1 duplicate aggregate |
 | [validation/reviews/2026-11-26_5c5e9d8.md](validation/reviews/2026-11-26_5c5e9d8.md) | **P197.13** first audit: FAIL; ascending slice P1 |
 | [validation/reviews/2026-11-26_9057ba7.md](validation/reviews/2026-11-26_9057ba7.md) | **P197.13** re-audit: FAIL; descending slice P1 |
+| [validation/reviews/2026-11-26_e0b76e49.md](validation/reviews/2026-11-26_e0b76e49.md) | **P197.21** worker review: PASS WITH CAVEATS; IR/cache version bump |
 | [validation/reviews/2026-11-26_d162812a.md](validation/reviews/2026-11-26_d162812a.md) | **P197.20** worker review: PASS WITH CAVEATS; out-of-graph parity/CC |
 | [validation/reviews/2026-11-26_df994b8e.md](validation/reviews/2026-11-26_df994b8e.md) | **P197.19** worker review: PASS WITH CAVEATS; nested shift inverse |
 | [validation/reviews/2026-11-26_30f0b8ec.md](validation/reviews/2026-11-26_30f0b8ec.md) | **P197.18** worker review: PASS WITH CAVEATS; literal driver crash fixed |
