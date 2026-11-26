@@ -1459,26 +1459,61 @@ class GraphBuilder:
             node.extra["runtime_system_call"] = True
         self.graph._runtime_system_nodes = seen
 
-    def _mark_unpacked_arrays(self) -> None:
+    @staticmethod
+    def _array_element_type(member):
+        typ = getattr(member, "type", None)
+        declared = getattr(getattr(member, "declaredType", None), "type", None)
+        for candidate in (typ, declared):
+            if candidate is not None and bool(getattr(candidate, "isUnpackedArray", False)):
+                return getattr(candidate, "elementType", None)
+        return None
+
+    def _semantic_array_symbols(self) -> dict[str, dict[str, object]]:
+        arrays: dict[str, dict[str, object]] = {}
         try:
             modules = self.adapter.get_modules()
         except Exception as e:
             logger.debug("unpacked array scan failed: %s", e)
-            return
+            return arrays
         for module in modules:
-            module_name = self.adapter.get_module_name(module)
+            module_type = self.adapter.get_module_name(module)
             for member in getattr(module, "body", ()):
-                typ = getattr(member, "type", None)
-                declared = getattr(getattr(member, "declaredType", None), "type", None)
-                if not any(bool(getattr(t, "isUnpackedArray", False))
-                           for t in (typ, declared)):
-                    continue
+                elem = self._array_element_type(member)
                 name = getattr(member, "name", None)
-                if not name:
-                    continue
-                node = self.graph.get_node(f"{module_name}.{name}")
+                if elem is not None and name:
+                    arrays.setdefault(module_type, {})[str(name)] = elem
+        return arrays
+
+    @staticmethod
+    def _mark_array_base(node, elem) -> None:
+        node.extra["is_array"] = True
+        bw = getattr(elem, "bitWidth", None)
+        if isinstance(bw, int) and bw > 0:
+            node.width = (0, 0) if bw == 1 else (bw - 1, 0)
+            node.is_signed = bool(getattr(elem, "isSigned", False))
+
+    def _mark_unpacked_arrays(self) -> None:
+        for module_type, leaves in self._semantic_array_symbols().items():
+            for leaf, elem in leaves.items():
+                node = self.graph.get_node(f"{module_type}.{leaf}")
                 if node is not None:
-                    node.extra["is_array"] = True
+                    self._mark_array_base(node, elem)
+
+    def _fix_instance_array_metadata(self, module_graph) -> None:
+        """Mark arrays on instance-qualified nodes (`top.u1.mem`)."""
+        arrays = self._semantic_array_symbols()
+        if not arrays:
+            return
+        for inst in getattr(module_graph, "instances", {}).values():
+            leaves = arrays.get(getattr(inst, "module_type", ""))
+            if not leaves:
+                continue
+            prefix = getattr(inst, "id", "")
+            for leaf, elem in leaves.items():
+                node = self.graph.get_node(f"{prefix}.{leaf}")
+                if node is not None:
+                    self._mark_array_base(node, elem)
+        self._fix_array_element_widths()
 
     def _fix_array_element_widths(self):
         """[iter_307 / PLAN P13.6] unpacked array 元素节点宽度回填。

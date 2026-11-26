@@ -517,6 +517,7 @@ class UnifiedTracer:
         builder = GraphBuilder(adapter,
                                target_module=ctx.get("target"))
         graph = builder.build()
+        self._graph_builder = builder
         # [V2.A.2 cycle 17c] coverage_generator 需要 adapter 上的 AST 访问
         graph._adapter = adapter
         self._graph = graph
@@ -542,6 +543,8 @@ class UnifiedTracer:
         module_graph = ModuleInstanceGraph(ctx["adapter"])
         module_graph.build(ctx["adapter"])
         self._module_graph = module_graph
+        if hasattr(self, "_graph_builder"):
+            self._graph_builder._fix_instance_array_metadata(module_graph)
         return module_graph
 
     def _step_path_resolver(self, ctx):

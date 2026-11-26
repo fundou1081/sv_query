@@ -52,3 +52,23 @@ def test_driven_array_missing_element_is_not_parent_bus_bit(tmp_path):
     chain = tracer.trace_detailed("top.mem[9]")
     assert chain.drivers == []
     assert chain.confidence == "uncertain"
+
+
+def test_instance_qualified_array_metadata(tmp_path):
+    sv = tmp_path / "inst_array.sv"
+    sv.write_text(
+        "module sub(output logic [31:0] mem [0:3]);\n"
+        "  assign mem[0] = 32'h1;\n"
+        "endmodule\n"
+        "module top(input logic clk);\n"
+        "  sub u1(.mem());\n"
+        "endmodule\n")
+    tracer = UnifiedTracer(sources={str(sv): sv.read_text()}, log_level="ERROR")
+    tracer.build_graph()
+    graph = tracer.get_graph()
+    base = graph.get_node("top.u1.mem")
+    assert (base.extra or {}).get("is_array") is True
+    assert base.width == (31, 0)
+    element = graph.get_node("top.u1.mem[0]")
+    assert (element.extra or {}).get("array_element") is True
+    assert tracer.trace_detailed("top.u1.mem[9]").drivers == []
