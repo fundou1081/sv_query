@@ -1513,7 +1513,7 @@ BIT_PRECISION = {
     "markers": {
         "node.precision": "bit | bus | constant",
         "signal.precision": "bit | bus | unknown",
-        "signal.coarse_fallback": "true when a bit query mixes bit with bus/constant results",
+        "signal.coarse_fallback": "true when a packed bit query mixes bit with bus/constant results; unpacked array elements are element-level (false)",
         "signal.dynamic_index": "true when runtime index (mem[i]) affects the query; propagated through data, conditions, clock/reset, dynamic writes -> precision=unknown",
         "signal.function_call": "true when the query passes through a function call (result or condition/clock; not inlined) -> precision=unknown",
         "signal.conditions": "edge/path conditions on the queried signal; deeper nodes get multi-path OR with per-path condition_paths",
