@@ -60,6 +60,8 @@
 | [validation/reviews/2026-11-25_7e66098.md](validation/reviews/2026-11-25_7e66098.md) | **P198.10c** audit: PASS WITH CAVEATS; depth=1 duplicate aggregate |
 | [validation/reviews/2026-11-26_5c5e9d8.md](validation/reviews/2026-11-26_5c5e9d8.md) | **P197.13** first audit: FAIL; ascending slice P1 |
 | [validation/reviews/2026-11-26_9057ba7.md](validation/reviews/2026-11-26_9057ba7.md) | **P197.13** re-audit: FAIL; descending slice P1 |
+| [validation/reviews/2026-11-27_586bc4fd.md](validation/reviews/2026-11-27_586bc4fd.md) | **P197.23** first audit: FAIL; array width mutation dropped driver |
+| [validation/reviews/2026-11-27_916002aa.md](validation/reviews/2026-11-27_916002aa.md) | **P197.23** re-audit: PASS WITH CAVEATS; P1 closed |
 | [validation/reviews/2026-11-27_45e14fb0.md](validation/reviews/2026-11-27_45e14fb0.md) | **P197.22** worker review: PASS WITH CAVEATS; unpacked array range |
 | [validation/reviews/2026-11-26_e0b76e49.md](validation/reviews/2026-11-26_e0b76e49.md) | **P197.21** worker review: PASS WITH CAVEATS; IR/cache version bump |
 | [validation/reviews/2026-11-26_d162812a.md](validation/reviews/2026-11-26_d162812a.md) | **P197.20** worker review: PASS WITH CAVEATS; out-of-graph parity/CC |
