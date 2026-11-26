@@ -680,7 +680,9 @@
 ### Array element precision
 
 An unpacked array element (`mem[3]`) is a whole element, not a packed bit
-slice: `precision="bus"`, `coarse_fallback=false`. Packed bit queries keep
+slice: `precision="bus"`, `coarse_fallback=false` (P197.24). The canonical
+`capabilities --json` marker text will follow in P197.25 because the frozen
+D12 baseline must be regenerated first. Packed bit queries keep
 `precision="bit"` or `"bus"` + `coarse_fallback=true` when a bus fallback occurs.
 
 ### 3.3 `machine.unknown_kind`

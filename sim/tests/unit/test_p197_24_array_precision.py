@@ -31,6 +31,14 @@ def test_array_element_cli_precision_is_not_coarse(tmp_path):
     assert row["precision"] == "bus"
     assert row["coarse_fallback"] is False
     assert row["count"] >= 1
+    rel = subprocess.run(
+        [sys.executable, "run_cli.py", "drivers", "mem[0]",
+         "--file", str(_fixture(tmp_path)), "--json", "--no-cache"],
+        cwd=ROOT, capture_output=True, text=True, timeout=120)
+    assert rel.returncode == 0, rel.stderr[-300:]
+    rel_row = json.loads(rel.stdout)["result"]["signals"][0]
+    assert rel_row["precision"] == "bus"
+    assert rel_row["coarse_fallback"] is False
 
 
 def test_warm_cache_restores_instance_array_metadata(tmp_path, monkeypatch):
