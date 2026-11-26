@@ -410,6 +410,28 @@ class SignalTracer:
         return m.group(1) if m else node_id
 
     @staticmethod
+    def _lsb_offset_to_physical(node, offset: int) -> int:
+        """Map an LSB-based bit offset to a declared packed index."""
+        width = getattr(node, "width", None) if node is not None else None
+        if isinstance(width, (tuple, list)) and len(width) >= 2:
+            msb, lsb = int(width[0]), int(width[1])
+            if msb == lsb:
+                return lsb
+            return lsb + offset if msb > lsb else lsb - offset
+        return offset
+
+    @staticmethod
+    def _physical_to_lsb_offset(node, bit: int) -> int:
+        """Map a declared packed index to its LSB-based offset."""
+        width = getattr(node, "width", None) if node is not None else None
+        if isinstance(width, (tuple, list)) and len(width) >= 2:
+            msb, lsb = int(width[0]), int(width[1])
+            if msb == lsb:
+                return 0
+            return bit - lsb if msb > lsb else lsb - bit
+        return bit
+
+    @staticmethod
     def _node_width(node) -> int | None:
         w = getattr(node, "width", None)
         if isinstance(w, (tuple, list)) and len(w) >= 2:
@@ -774,13 +796,21 @@ class SignalTracer:
         ir = self._edge_expression_ir(edge)
         if ir is not None:
             from ..bit_mapping import output_source_bits
-            ir_bit = (self._rel_bit(dst_id, want_bit)
-                      if "[" in dst_id and ir.width == 1 else want_bit)
+            if "[" in dst_id and ir.width == 1:
+                ir_bit = self._rel_bit(dst_id, want_bit)
+            elif "[" in dst_id:
+                parent = self.graph.get_node(getattr(dst_node, "parent", "") or "")
+                ir_bit = self._physical_to_lsb_offset(parent, want_bit)
+            else:
+                ir_bit = self._physical_to_lsb_offset(dst_node, want_bit)
             mapped = output_source_bits(ir, ir_bit, edge.src)
             if mapped is None:
                 return None  # IR exists: unknown must not fall back to legacy
             base = self._bit_base(edge.src)
-            return [f"{base}[{b.bit}]" for b in mapped]
+            if "[" in edge.src:
+                return [f"{base}[{b.bit}]" for b in mapped]
+            return [f"{base}[{self._lsb_offset_to_physical(src_node, b.bit)}]"
+                    for b in mapped]
 
         abs_pos = want_bit
         rel_pos = self._rel_bit(dst_id, want_bit)
@@ -927,10 +957,16 @@ class SignalTracer:
         ir = self._edge_expression_ir(edge)
         if ir is not None:
             from ..bit_mapping import input_output_bits
-            mapped = input_output_bits(ir, edge.src, src_bit)
+            src_node = self.graph.get_node(edge.src)
+            if src_node is not None and "[" not in edge.src:
+                ir_bit = self._physical_to_lsb_offset(src_node, src_bit)
+            else:
+                ir_bit = src_bit
+            mapped = input_output_bits(ir, edge.src, ir_bit)
             if mapped is None:
                 return None
-            return [f"{dst_id}[{b}]" for b in mapped if 0 <= b < dst_w]
+            return [f"{dst_id}[{self._lsb_offset_to_physical(dst_node, b)}]"
+                    for b in mapped if 0 <= b < dst_w]
 
         src_info = getattr(edge, "source", None)
         if src_info is None:
