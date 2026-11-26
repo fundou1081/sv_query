@@ -15,7 +15,8 @@ IR_VERSION = 2
 OPS = frozenset({
     "SignalRef", "Literal", "Concat", "Slice", "Shift", "Add", "Sub", "Mul",
     "Div", "Mod", "And", "Or", "Xor", "Not", "Neg", "Cast", "Ternary", "Call",
-    "ShiftLeft", "ShiftRight", "Unknown",
+    "ShiftLeft", "ShiftRight", "ShiftLeftArithmetic", "ShiftRightArithmetic",
+    "Unknown",
 })
 
 

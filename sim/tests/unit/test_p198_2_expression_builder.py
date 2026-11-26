@@ -73,7 +73,7 @@ def test_builder_handles_ternary_condition(tmp_path):
 def test_builder_keeps_conversion_wrapper(tmp_path):
     assignment = _assignment(tmp_path, "assign y = $signed(a) >>> 4'd2;")
     rhs = _unwrap_cast(assignment.rhs)
-    assert rhs.op == "ShiftRight"
+    assert rhs.op == "ShiftRightArithmetic"
     assert rhs.children[0].op == "Cast"
     assert _unwrap_cast(rhs.children[0]).signal == "a"
 

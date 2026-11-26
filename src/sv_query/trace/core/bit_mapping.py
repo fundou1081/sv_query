@@ -28,7 +28,8 @@ def _matches(name: str, wanted: str) -> bool:
 
 
 def _shift_amount(expr: Expr) -> int | None:
-    if expr.op not in ("ShiftLeft", "ShiftRight"):
+    if expr.op not in ("ShiftLeft", "ShiftRight",
+                       "ShiftLeftArithmetic", "ShiftRightArithmetic"):
         return None
     if not expr.children:
         return None
@@ -73,6 +74,8 @@ def _res_cast(expr, out_bit, source_filter):
     if not expr.children:
         return None
     child = expr.children[0]
+    if child.op in ("ShiftLeftArithmetic", "ShiftRightArithmetic"):
+        return _result(child, out_bit, source_filter)
     if child.width is not None and out_bit >= child.width:
         if child.op == "Literal" or not (expr.signed or child.signed):
             return None  # legacy owns constant zero/sign extension
@@ -84,8 +87,13 @@ def _res_shift(expr, out_bit, source_filter):
     amount = _shift_amount(expr)
     if amount is None or not expr.children:
         return None
-    delta = out_bit - amount if expr.op == "ShiftLeft" else out_bit + amount
-    return _result(expr.children[0], delta, source_filter)
+    child = expr.children[0]
+    left = expr.op in ("ShiftLeft", "ShiftLeftArithmetic")
+    delta = out_bit - amount if left else out_bit + amount
+    if (expr.op == "ShiftRightArithmetic" and child.signed
+            and child.width is not None and delta >= child.width):
+        return _result(child, child.width - 1, source_filter)
+    return _result(child, delta, source_filter)
 
 
 def _res_ternary(expr, out_bit, source_filter):
@@ -101,6 +109,7 @@ def _res_ternary(expr, out_bit, source_filter):
 _RESULT_HANDLERS = {
     "SignalRef": _res_signal, "Concat": _res_concat, "Slice": _res_slice,
     "Cast": _res_cast, "ShiftLeft": _res_shift, "ShiftRight": _res_shift,
+    "ShiftLeftArithmetic": _res_shift, "ShiftRightArithmetic": _res_shift,
     "Ternary": _res_ternary, "Literal": lambda *_: [],
 }
 
@@ -161,15 +170,29 @@ def _cast_extends_sign(expr, child, bit):
             and expr.width > child.width)
 
 
+def _shift_sign_fill(expr, child, bit, vals, offset, amount):
+    child_sign = child.width - 1 if child.width is not None else None
+    if (expr.op != "ShiftRightArithmetic" or not child.signed
+            or child_sign is None
+            or not (bit == child_sign or child_sign in vals)):
+        return []
+    start = max(0, child.width - amount)
+    return [offset + b for b in range(start, expr.width or child.width)]
+
+
 def _in_shift(expr, source, bit, offset):
     amount = _shift_amount(expr)
     if amount is None or not expr.children:
         return None
-    vals = _input(expr.children[0], source, bit, 0)
+    child = expr.children[0]
+    vals = _input(child, source, bit, 0)
     if vals is None:
         return None
-    delta = amount if expr.op == "ShiftLeft" else -amount
-    return [offset + v + delta for v in vals]
+    left = expr.op in ("ShiftLeft", "ShiftLeftArithmetic")
+    delta = amount if left else -amount
+    out = [offset + v + delta for v in vals]
+    out += _shift_sign_fill(expr, child, bit, vals, offset, amount)
+    return out
 
 
 def _in_ternary(expr, source, bit, offset):
@@ -185,6 +208,7 @@ def _in_ternary(expr, source, bit, offset):
 _INPUT_HANDLERS = {
     "SignalRef": _in_signal, "Concat": _in_concat, "Slice": _in_slice,
     "Cast": _in_cast, "ShiftLeft": _in_shift, "ShiftRight": _in_shift,
+    "ShiftLeftArithmetic": _in_shift, "ShiftRightArithmetic": _in_shift,
     "Ternary": _in_ternary, "Literal": lambda *_: [],
 }
 

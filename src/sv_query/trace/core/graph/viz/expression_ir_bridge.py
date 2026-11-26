@@ -8,7 +8,8 @@ from .expression_tree import ExpressionTree, ExprNode
 _LABELS = {
     "Add": "+", "Sub": "-", "Mul": "*", "Div": "/", "Mod": "%",
     "And": "&", "Or": "|", "Xor": "^", "Not": "!", "Neg": "-",
-    "ShiftLeft": "<<", "ShiftRight": ">>", "Concat": "{}",
+    "ShiftLeft": "<<", "ShiftRight": ">>",
+    "ShiftLeftArithmetic": "<<<", "ShiftRightArithmetic": ">>>", "Concat": "{}",
     "Cast": "cast", "Ternary": "?:", "Slice": "[]", "Call": "call", "Shift": "shift",
 }
 

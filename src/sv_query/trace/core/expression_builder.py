@@ -12,7 +12,8 @@ _BIN_OPS = {
     "add": "Add", "subtract": "Sub", "multiply": "Mul", "divide": "Div",
     "mod": "Mod", "binaryand": "And", "binaryor": "Or", "binaryxor": "Xor",
     "logicalshiftleft": "ShiftLeft", "logicalshiftright": "ShiftRight",
-    "arithmeticshiftleft": "ShiftLeft", "arithmeticshiftright": "ShiftRight",
+    "arithmeticshiftleft": "ShiftLeftArithmetic",
+    "arithmeticshiftright": "ShiftRightArithmetic",
 }
 _UNARY_OPS = {
     "logicalnot": "Not", "bitwisenot": "Not", "negate": "Neg",
