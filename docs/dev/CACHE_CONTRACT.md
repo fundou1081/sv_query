@@ -56,7 +56,7 @@ Every entry self-describes:
 {
   "capabilities": ["graph", "mig"],
   "graph_semantics": "1",
-  "cache_schema": "3.4",
+  "cache_schema": "3.5",
   "build_identity": {...}
 }
 ```

@@ -123,7 +123,8 @@ mapping when it is fully known; a helper may parse it with unknown detection.
 - Edges keep current `source`/`expression` for display/backward compatibility.
 - Old edges without `expr_id` are explicitly "no IR": bit mapping is `unknown`
   where IR is required, not a fallback to regex.
-- Cache/snapshot schema version is bumped when IR is first persisted.
+- IR wire schema is `IR_VERSION = 3` (P197.21); cache schema is `3.5`. Ops added
+  without a version bump are rejected explicitly by `ExpressionStore.from_dict`.
 
 ## 7. Concat bit layout (P198.4)
 
@@ -226,7 +227,8 @@ function; their per-op regex/branch logic is removed.
 - **These hooks are not yet wired into production viz/const extraction.** The
   legacy syntax tree remains functionally live (including OP_TERNARY/OP_CASE
   emission) until P198.11+ performs the migration with parity tests.
-- Cache wire schema is already 3.2; no new field was added here.
+- IR wire schema is 3 (`IR_VERSION = 3`) and cache schema is 3.5; no new field was
+  added by P198.6.
 
 ## 10. Acceptance tests
 

@@ -55,7 +55,7 @@ def test_strict_errors_for_unknown_op_and_bad_store_id():
         Expr(op="Bogus")
     with pytest.raises(ValueError, match="id mismatch"):
         ExpressionStore.from_dict({
-            "version": 2,
+            "version": 3,
             "expressions": {"expr:deadbeef": Expr(op="Literal", literal="1'b0").to_dict()},
         })
 

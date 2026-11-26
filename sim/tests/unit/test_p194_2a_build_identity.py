@@ -19,7 +19,7 @@ BASE = {
     "top_modules": ("top",),
     "target_module": "top",
     "bit_bridge": "one",
-    "cache_schema": "3.4",
+    "cache_schema": "3.5",
     "pyslang_version": "11",
     "sv_query_version": "0.3.3",
 }
@@ -53,7 +53,7 @@ def test_manifest_declares_graph_capability_only():
     assert manifest["capabilities"] == ["graph"]
     assert _identity().manifest({"graph", "mig"})["capabilities"] == ["graph", "mig"]
     assert manifest["graph_semantics"] == "1"
-    assert manifest["cache_schema"] == "3.4"
+    assert manifest["cache_schema"] == "3.5"
     assert manifest["build_identity"]["preprocess_macros"] is True
 
 

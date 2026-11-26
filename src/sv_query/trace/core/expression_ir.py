@@ -11,7 +11,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
-IR_VERSION = 2
+IR_VERSION = 3
 OPS = frozenset({
     "SignalRef", "Literal", "Concat", "Slice", "Shift", "Add", "Sub", "Mul",
     "Div", "Mod", "And", "Or", "Xor", "Not", "Neg", "Cast", "Ternary", "Call",
