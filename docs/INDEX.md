@@ -60,6 +60,7 @@
 | [validation/reviews/2026-11-25_7e66098.md](validation/reviews/2026-11-25_7e66098.md) | **P198.10c** audit: PASS WITH CAVEATS; depth=1 duplicate aggregate |
 | [validation/reviews/2026-11-26_5c5e9d8.md](validation/reviews/2026-11-26_5c5e9d8.md) | **P197.13** first audit: FAIL; ascending slice P1 |
 | [validation/reviews/2026-11-26_9057ba7.md](validation/reviews/2026-11-26_9057ba7.md) | **P197.13** re-audit: FAIL; descending slice P1 |
+| [validation/reviews/2026-11-26_df994b8e.md](validation/reviews/2026-11-26_df994b8e.md) | **P197.19** worker review: PASS WITH CAVEATS; nested shift inverse |
 | [validation/reviews/2026-11-26_30f0b8ec.md](validation/reviews/2026-11-26_30f0b8ec.md) | **P197.18** worker review: PASS WITH CAVEATS; literal driver crash fixed |
 | [validation/reviews/2026-11-26_76857a21.md](validation/reviews/2026-11-26_76857a21.md) | **P197.17** worker review: PASS WITH CAVEATS; sign-fill closed |
 | [validation/reviews/2026-11-26_c903078f.md](validation/reviews/2026-11-26_c903078f.md) | **P197.16** worker review: PASS WITH CAVEATS; depth/confidence/cache env |
