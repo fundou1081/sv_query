@@ -493,7 +493,7 @@ def _trace_signal_facts(tracer, direction, sig, query_sig, depth,
         include_clock, include_reset, include_control)
     meta = _attach_trace_metadata(graph, direction, sig, query_sig, items, depth)
     stats = driver_stats(graph, meta["root"]) if direction == "fanin" else None
-    precision, coarse_fallback = query_precision(sig, list(items))
+    precision, coarse_fallback = query_precision(sig, list(items), graph)
     items, pre_filter_count, truncated = _filter_and_cap(
         items, type_filter, module_filter, width_min, width_max,
         exclude, max_results)

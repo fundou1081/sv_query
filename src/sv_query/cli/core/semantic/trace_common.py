@@ -273,7 +273,7 @@ def node_precision(node) -> str:
     return "bus"
 
 
-def query_precision(signal: str, items: list[dict]) -> tuple[str, bool]:
+def query_precision(signal: str, items: list[dict], graph=None) -> tuple[str, bool]:
     """[iter_303 / PLAN P13.2] 本次查询的粒度结论 + 是否粗粒度回退。
 
     返回 `(precision, coarse_fallback)`：
@@ -282,6 +282,10 @@ def query_precision(signal: str, items: list[dict]) -> tuple[str, bool]:
       - 位查询且结果全是位 → `("bit", False)`
       - 位查询但混入总线/常量总线 → `("bus", True)`（回落/混合，agent 应降级解读）
     """
+    node = graph.get_node(signal) if graph is not None else None
+    if node is not None and (node.extra or {}).get("array_element"):
+        # An unpacked array element is a whole element, not a packed bit slice.
+        return "bus", False
     bit_query = bool(_BIT_SUFFIX_RE.search((signal or "").strip()))
     if not bit_query:
         return "bus", False

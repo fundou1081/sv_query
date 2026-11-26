@@ -677,6 +677,12 @@
 - `resolution:not_found` 出现在 per-signal 结果里；`suggestions[]` 是
   纠错候选，不是命中结果。
 
+### Array element precision
+
+An unpacked array element (`mem[3]`) is a whole element, not a packed bit
+slice: `precision="bus"`, `coarse_fallback=false`. Packed bit queries keep
+`precision="bit"` or `"bus"` + `coarse_fallback=true` when a bus fallback occurs.
+
 ### 3.3 `machine.unknown_kind`
 - 仅 `verify claim` 且 `status:"unknown"` 时出现：
   `machine:{status:"unknown", unknown_kind:"unresolved_endpoint"|
