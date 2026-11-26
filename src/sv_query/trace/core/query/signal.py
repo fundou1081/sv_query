@@ -2030,7 +2030,10 @@ class SignalTracer:
 
                 # 尝试从 node 的驱动边获取 condition
                 # 遍历 node 的入边，找到 DRIVER 边
-                for src in self.graph.predecessors(node.id):
+                # (合成常量节点可能不在图中，不能直接问 NetworkX)
+                preds = (self.graph.predecessors(node.id)
+                         if node.id in self.graph else ())
+                for src in preds:
                     dst = node.id
                     if dst == node.id:
                         node_edge = self.graph.get_edge(src, dst)

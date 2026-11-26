@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P197.18 literal-driver NetworkXError in trace_fanin_detailed (P197.16 N6) <待做>
+current item : P197.18 literal-driver NetworkXError in trace_fanin_detailed (P197.16 N6) <进行中>
 
 ## 计划树
 
@@ -656,7 +656,7 @@ P197 independent code-smell / robustness audit follow-up (2026-11-23) <待做>
 -- P197.15 cache build_graph CC + privacy-review artifact policy + except name-substring marker <已完成>
 -- P197.16 confidence provenance + instances depth + diagnostic fallbacks + cache singleton env <已完成>
 -- P197.17 arithmetic-shift sign-fill bits (F2 from P197.13) <已完成>
--- P197.18 literal-driver NetworkXError in trace_fanin_detailed (P197.16 N6) <待做>
+-- P197.18 literal-driver NetworkXError in trace_fanin_detailed (P197.16 N6) <进行中>
 -- P197.19 nested $signed(shift) fanout inverse + unsigned >>> coarse bits + IR_VERSION vocabulary <待做>
 
 P193 external trial readiness (2026-11-21 review) <待做>
