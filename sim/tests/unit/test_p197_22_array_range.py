@@ -36,3 +36,19 @@ def test_missing_array_element_is_not_packed_bit_fallback(tmp_path):
         else:
             assert chain.drivers == []
             assert chain.confidence == "uncertain"
+
+
+def test_driven_array_missing_element_is_not_parent_bus_bit(tmp_path):
+    sv = tmp_path / "driven_array.sv"
+    sv.write_text(
+        "module sub(output logic [31:0] o [0:3]);\n"
+        "  assign o[0] = 32'h1;\n"
+        "endmodule\n"
+        "module top(input logic [31:0] a, output logic [31:0] mem [0:3]);\n"
+        "  sub u(.o(mem));\n"
+        "endmodule\n")
+    tracer = UnifiedTracer(sources={str(sv): sv.read_text()}, log_level="ERROR")
+    tracer.build_graph()
+    chain = tracer.trace_detailed("top.mem[9]")
+    assert chain.drivers == []
+    assert chain.confidence == "uncertain"

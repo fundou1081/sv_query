@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P197.22 array-element vs packed-bit range provenance <进行中>
+current item : P194.5f controlflow mixed-driver labeling + semantic inline classification <待做>
 
 ## 计划树
 
@@ -660,7 +660,8 @@ P197 independent code-smell / robustness audit follow-up (2026-11-23) <待做>
 -- P197.19 nested $signed(shift) fanout inverse + unsigned >>> coarse bits (IR_VERSION budget moved to P197.21) <已完成>
 -- P197.20 out-of-graph bit detailed-fanin asymmetry + trace_fanin_detailed CC <已完成>
 -- P197.21 IR_VERSION bump + schema/cache fixture migration <已完成>
--- P197.22 array-element vs packed-bit range provenance <进行中>
+-- P197.23 instance-qualified unpacked array metadata <待做>
+-- P197.22 array-element vs packed-bit range provenance <已完成>
 
 P193 external trial readiness (2026-11-21 review) <待做>
 -- P193.1 fix sim/tests/config absolute symlink + clone hygiene <已完成>
