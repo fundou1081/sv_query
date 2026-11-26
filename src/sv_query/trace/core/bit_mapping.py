@@ -78,7 +78,7 @@ def _res_cast(expr, out_bit, source_filter):
         return _result(child, out_bit, source_filter)
     if child.width is not None and out_bit >= child.width:
         if child.op == "Literal" or not (expr.signed or child.signed):
-            return None  # legacy owns constant zero/sign extension
+            return []  # known zero extension
         return _result(child, child.width - 1, source_filter)
     return _result(child, out_bit, source_filter)
 
@@ -90,9 +90,11 @@ def _res_shift(expr, out_bit, source_filter):
     child = expr.children[0]
     left = expr.op in ("ShiftLeft", "ShiftLeftArithmetic")
     delta = out_bit - amount if left else out_bit + amount
-    if (expr.op == "ShiftRightArithmetic" and child.signed
-            and child.width is not None and delta >= child.width):
-        return _result(child, child.width - 1, source_filter)
+    if (expr.op == "ShiftRightArithmetic" and child.width is not None
+            and delta >= child.width):
+        if child.signed:
+            return _result(child, child.width - 1, source_filter)
+        return []
     return _result(child, delta, source_filter)
 
 
@@ -154,18 +156,16 @@ def _in_cast(expr, source, bit, offset):
     if not expr.children:
         return None
     child = expr.children[0]
-    if child.width is not None and bit >= child.width:
-        return []
     vals = _input(child, source, bit, offset)
     if vals is None:
         return None
-    if not _cast_extends_sign(expr, child, bit):
+    if not _cast_extends_sign(expr, child, vals):
         return vals
     return vals + [offset + b for b in range(child.width, expr.width)]
 
 
-def _cast_extends_sign(expr, child, bit):
-    return (child.width is not None and bit == child.width - 1
+def _cast_extends_sign(expr, child, vals):
+    return (child.width is not None and child.width - 1 in vals
             and (expr.signed or child.signed) and expr.width is not None
             and expr.width > child.width)
 
@@ -190,7 +190,8 @@ def _in_shift(expr, source, bit, offset):
         return None
     left = expr.op in ("ShiftLeft", "ShiftLeftArithmetic")
     delta = amount if left else -amount
-    out = [offset + v + delta for v in vals]
+    out = [offset + v + delta for v in vals
+           if expr.width is None or 0 <= v + delta < expr.width]
     out += _shift_sign_fill(expr, child, bit, vals, offset, amount)
     return out
 
