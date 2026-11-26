@@ -431,12 +431,12 @@ class SignalTracer:
             return bit - lsb if msb > lsb else lsb - bit
         return bit
 
-    @staticmethod
-    def _slice_is_ascending(node) -> bool:
-        start = getattr(node, "parent_bit_start", None)
-        end = getattr(node, "parent_bit_end", None)
-        if start is not None and end is not None:
-            return int(start) < int(end)
+    def _slice_is_ascending(self, node) -> bool:
+        """Direction of the *parent declaration* (graph normalizes slice bounds)."""
+        parent = self.graph.get_node(getattr(node, "parent", "") or "")
+        width = getattr(parent, "width", None) if parent is not None else None
+        if isinstance(width, (tuple, list)) and len(width) >= 2:
+            return int(width[0]) < int(width[1])
         bit_range = getattr(node, "bit_range", None) or ""
         match = __import__("re").match(r"^\[(\d+):(\d+)\]$", bit_range)
         return bool(match and int(match.group(1)) < int(match.group(2)))

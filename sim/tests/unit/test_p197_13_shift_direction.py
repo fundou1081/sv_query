@@ -79,3 +79,18 @@ def test_descending_source_to_ascending_destination_fanout(tmp_path):
     edge = _edge(tracer)
     assert st._expr_dst_bits(edge, 5) == ["top.y[6]"]
     assert st._expr_dst_bits(edge, 7) == ["top.y[4]"]
+
+
+def test_descending_slice_destination_preserves_dependencies(tmp_path):
+    sv = tmp_path / "slice_desc.sv"
+    sv.write_text(
+        "module top(input logic [7:0] a, output logic [7:0] y);\n"
+        "  assign y[5:2] = a << 2;\n"
+        "endmodule\n")
+    from sv_query.trace.unified_tracer import UnifiedTracer
+    tracer = UnifiedTracer(sources={str(sv): sv.read_text()}, log_level="ERROR")
+    tracer.build_graph()
+    assert not any("top.a" in r.id for r in tracer.trace_fanin("top.y[2]"))
+    assert not any("top.a" in r.id for r in tracer.trace_fanin("top.y[3]"))
+    assert any("top.a" in r.id for r in tracer.trace_fanin("top.y[4]"))
+    assert any("top.a" in r.id for r in tracer.trace_fanin("top.y[5]"))
