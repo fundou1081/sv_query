@@ -432,6 +432,32 @@ class SignalTracer:
         return bit
 
     @staticmethod
+    def _slice_is_ascending(node) -> bool:
+        start = getattr(node, "parent_bit_start", None)
+        end = getattr(node, "parent_bit_end", None)
+        if start is not None and end is not None:
+            return int(start) < int(end)
+        bit_range = getattr(node, "bit_range", None) or ""
+        match = __import__("re").match(r"^\[(\d+):(\d+)\]$", bit_range)
+        return bool(match and int(match.group(1)) < int(match.group(2)))
+
+    def _dst_ir_bit(self, dst_node, dst_id: str, want_bit: int, ir) -> int:
+        """Map a destination query bit onto the IR root's LSB-based offset."""
+        if "[" not in dst_id:
+            return self._physical_to_lsb_offset(dst_node, want_bit)
+        if ir.width == 1:
+            return 0
+        width = self._node_width(dst_node)
+        if width == 1:
+            parent = self.graph.get_node(getattr(dst_node, "parent", "") or "")
+            pos = getattr(dst_node, "parent_bit_start", None)
+            return self._physical_to_lsb_offset(
+                parent, pos if pos is not None else want_bit)
+        if self._slice_is_ascending(dst_node):
+            return (width or ir.width or 1) - 1 - want_bit
+        return want_bit
+
+    @staticmethod
     def _node_width(node) -> int | None:
         w = getattr(node, "width", None)
         if isinstance(w, (tuple, list)) and len(w) >= 2:
@@ -796,13 +822,7 @@ class SignalTracer:
         ir = self._edge_expression_ir(edge)
         if ir is not None:
             from ..bit_mapping import output_source_bits
-            if "[" in dst_id and ir.width == 1:
-                ir_bit = self._rel_bit(dst_id, want_bit)
-            elif "[" in dst_id:
-                parent = self.graph.get_node(getattr(dst_node, "parent", "") or "")
-                ir_bit = self._physical_to_lsb_offset(parent, want_bit)
-            else:
-                ir_bit = self._physical_to_lsb_offset(dst_node, want_bit)
+            ir_bit = self._dst_ir_bit(dst_node, dst_id, want_bit, ir)
             mapped = output_source_bits(ir, ir_bit, edge.src)
             if mapped is None:
                 return None  # IR exists: unknown must not fall back to legacy

@@ -13,13 +13,13 @@
   - P195/P196 全部完成；0.3.6 已发布（release-check -> build -> publish）
   - P194.2f 已解除阻塞（P196.1/P196.2 已完成）
   - 独立复核报告: `/tmp/p195_final_review.md`
-  - 未完成叶子：P197.13–P197.16、P194.5f–P194.5h、P194.6、P194.7、P193.10
+  - 未完成叶子：P197.13–P197.17、P194.5f–P194.5h、P194.6、P194.7、P193.10
 
 
 ## 📌 当前真实基线
 
 ```text
-canonical:  3338 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  3340 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 

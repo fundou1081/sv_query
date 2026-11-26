@@ -51,3 +51,31 @@ def test_mixed_declaration_directions(tmp_path):
     edge = _edge(tracer)
     assert st._expr_source_bits(edge, "top.y", 2) == ["top.a[7]"]
     assert st._expr_source_bits(edge, "top.y", 4) == ["top.a[5]"]
+
+
+def test_ascending_slice_destination_preserves_dependencies(tmp_path):
+    tracer, st = _tracer(tmp_path, "[7:0]", "[0:7]", "a << 2")
+    # Re-bind target as a slice assignment; graph node keeps declaration [2:5].
+    sv = tmp_path / "slice_shift.sv"
+    sv.write_text(
+        "module top(input logic [7:0] a, output logic [0:7] y);\n"
+        "  assign y[2:5] = a << 2;\n"
+        "endmodule\n")
+    from sv_query.trace.unified_tracer import UnifiedTracer
+    tracer = UnifiedTracer(sources={str(sv): sv.read_text()}, log_level="ERROR")
+    tracer.build_graph()
+    st = tracer._signal_tracer
+    graph = tracer.get_graph()
+    edge = next(e for s in graph.predecessors("top.y[2:5]")
+                for e in graph.get_edges(s, "top.y[2:5]") if s == "top.a")
+    assert st._expr_source_bits(edge, "top.y[2:5]", 0) == ["top.a[1]"]
+    assert st._expr_source_bits(edge, "top.y[2:5]", 1) == ["top.a[0]"]
+    assert st._expr_source_bits(edge, "top.y[2:5]", 2) == []
+    assert any("top.a" in r.id for r in tracer.trace_fanin("top.y[2]"))
+
+
+def test_descending_source_to_ascending_destination_fanout(tmp_path):
+    tracer, st = _tracer(tmp_path, "[7:0]", "[0:9]", "a >> 2")
+    edge = _edge(tracer)
+    assert st._expr_dst_bits(edge, 5) == ["top.y[6]"]
+    assert st._expr_dst_bits(edge, 7) == ["top.y[4]"]
