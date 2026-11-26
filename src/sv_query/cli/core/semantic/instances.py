@@ -68,13 +68,8 @@ def _instances(tracer) -> list[dict]:
 
 
 def _depth_ok(path: str, root: str | None, depth: int | None) -> bool:
-    if depth is None:
-        return True
-    if root:
-        rel = path[len(root):].lstrip(".") if path.startswith(root) else path
-    else:
-        rel = path
-    return rel.count(".") < depth
+    from sv_query.trace.core.query.architecture import instance_within_depth
+    return instance_within_depth(path, root, depth)
 
 
 def _emit(data: dict, json_output: bool, pretty: bool) -> None:

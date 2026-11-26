@@ -99,7 +99,8 @@ def instances(tracer, path=None, module=None, depth=None) -> dict:
     if module:
         rows = [r for r in rows if r["parent"] == module or r["full_path"] == module]
     if depth is not None:
-        rows = [r for r in rows if r["full_path"].count(".") < depth]
+        from .architecture import instance_within_depth
+        rows = [r for r in rows if instance_within_depth(r["full_path"], module, depth)]
     return {"instances": rows, "count": len(rows)}
 
 

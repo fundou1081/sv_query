@@ -41,6 +41,16 @@ class SignalTracer:
         # [PR3 2026-06-15] ModuleInstanceGraph 是跨模块 port 映射.
         self.mig = mig
 
+    def _confidence(self, signal_id: str, drivers: list) -> str:
+        if not drivers:
+            return "uncertain"
+        node = self.graph.get_node(signal_id)
+        if "[" in signal_id and not (node and (node.extra or {}).get("array_element")):
+            ids = [getattr(d, "id", None) for d in drivers]
+            if any(i is not None and "[" not in i for i in ids):
+                return "low"
+        return "high"
+
     def trace(self, signal: str, module: str = None) -> SignalChain:
         """Trace signal drivers and loads"""
         signal_id = self.make_id(signal, module)
@@ -54,8 +64,7 @@ class SignalTracer:
         drivers = self._collect_all_drivers(signal_id, allow_cross_module=allow_cross)
         loads = self._find_loads(signal_id, allow_cross_module=allow_cross)
 
-        # [铁律3] 无驱动时返回 uncertain
-        confidence = "high" if drivers else "uncertain"
+        confidence = self._confidence(signal_id, drivers)
 
         return SignalChain(root=signal_id, drivers=drivers, loads=loads, confidence=confidence)
 
@@ -2170,6 +2179,7 @@ class SignalTracer:
         driver_infos = self.trace_fanin_detailed(signal_id, allow_cross_module=allow_cross)
         loads = self._find_loads(signal_id, allow_cross_module=allow_cross)
 
-        confidence = "high" if driver_infos else "uncertain"
+        confidence = self._confidence(
+            signal_id, [d.node for d in driver_infos])
 
         return DriverChain(root=signal_id, drivers=driver_infos, loads=loads, confidence=confidence)

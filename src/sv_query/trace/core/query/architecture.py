@@ -38,6 +38,17 @@ class Architecture:
     stats: dict = field(default_factory=dict)
 
 
+def instance_within_depth(path: str, root: str | None, depth: int | None) -> bool:
+    """Depth relative to root (or the top-level component), 0 = root itself."""
+    if depth is None:
+        return True
+    if root:
+        rel = path[len(root):].lstrip(".") if path.startswith(root) else path
+    else:
+        rel = path.split(".", 1)[1] if "." in path else ""
+    return rel.count(".") < depth
+
+
 def _depth(path: str, root: str | None) -> int:
     if root and path.startswith(root + "."):
         return path[len(root) + 1:].count(".") + 1
@@ -174,7 +185,7 @@ def to_dot(arch: Architecture, rankdir: str = "LR",
            include_boundaries: bool = False,
            include_clock_reset: bool = False) -> str:
     """Render an Architecture as Graphviz DOT (module/instance level)."""
-    lines = [f'digraph architecture {{', f'  rankdir={rankdir};',
+    lines = ['digraph architecture {', f'  rankdir={rankdir};',
              '  node [shape=box, style="rounded", fontname="monospace", fontsize=10];',
              '  edge [fontname="monospace", fontsize=8];']
     for node in arch.nodes:

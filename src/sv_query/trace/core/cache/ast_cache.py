@@ -123,6 +123,7 @@ class ASTCache:
 
     def __init__(self, cache_dir: str = None):
         self.cache_dir = Path(cache_dir) if cache_dir else resolve_cache_dir()
+        self._managed = False
         self.enabled = True  # 磁盘缓存可用性 (False = 仅内存)
         self._memory_cache: dict[str, Any] = {}  # 进程内缓存
         try:
@@ -548,9 +549,16 @@ class ASTCache:
 _global_cache: ASTCache | None = None
 
 
+_global_cache_env: str | None = None
+
+
 def get_cache() -> ASTCache:
-    """获取全局缓存实例"""
-    global _global_cache
-    if _global_cache is None:
+    """获取全局缓存实例；cache-dir 环境变化会重建实例。"""
+    global _global_cache, _global_cache_env
+    env = os.environ.get(ENV_CACHE_DIR, "")
+    if _global_cache is None or (
+            getattr(_global_cache, "_managed", False) and _global_cache_env != env):
         _global_cache = ASTCache()
+        _global_cache._managed = True
+        _global_cache_env = env
     return _global_cache
