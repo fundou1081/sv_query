@@ -269,6 +269,19 @@ class SignalTracer:
     # 6 类规则的具体实现
     # ------------------------------------------------------------------
 
+    def _bit_in_bus_range(self, signal_id: str) -> bool:
+        if ":" in signal_id or "[" not in signal_id:
+            return False
+        bit = self._bit_index_of(signal_id)
+        if bit is None:
+            return False
+        base = signal_id.rsplit("[", 1)[0]
+        node = self.graph.get_node(base)
+        width = getattr(node, "width", None) if node is not None else None
+        if not (isinstance(width, (tuple, list)) and len(width) >= 2):
+            return True
+        return min(int(width[0]), int(width[1])) <= bit <= max(int(width[0]), int(width[1]))
+
     def _trace_missing_node(self, signal_id, drivers, seen_ids,
                             current_depth, max_depth, allow_cross_module):
         """节点不在图里：part-select 范围保持空答；位查询回退到父总线。
@@ -279,7 +292,7 @@ class SignalTracer:
         if ":" in signal_id:
             return  # [iter_126] part-select 范围 [a:b] 保持空答 (locked truth)
         bit = self._bit_index_of(signal_id)
-        if bit is None:
+        if bit is None or not self._bit_in_bus_range(signal_id):
             return
         base = signal_id.rsplit("[", 1)[0]
         if base in self.graph.nodes() and base not in seen_ids:
@@ -1964,6 +1977,41 @@ class SignalTracer:
                         seen.add(src)
                     break
 
+    def _driver_full_expression(self, node, edge) -> str:
+        if edge is None:
+            full = self._resolve_full_expression(node.id)
+            if full:
+                return full
+            if node.id.startswith("4'b") or node.id.startswith("1'b"):
+                return node.id
+            return ""
+        expression = edge.expression
+        if expression == node.id or expression.startswith(node.id + "["):
+            return self._resolve_full_expression(node.id) or expression
+        return expression
+
+    def _driver_fallback_meta(self, node):
+        condition = clock_domain = assign_type = ""
+        preds = (self.graph.predecessors(node.id)
+                 if node.id in self.graph else ())
+        for src in preds:
+            node_edge = self.graph.get_edge(src, node.id)
+            if node_edge and node_edge.kind.name == "DRIVER":
+                condition = node_edge.condition
+                clock_domain = node_edge.clock_domain
+                assign_type = node_edge.assign_type
+                break
+        return condition, clock_domain, assign_type
+
+    def _driver_detail_metadata(self, node, signal_id):
+        edge = self.graph.get_edge(node.id, signal_id)
+        expression = self._driver_full_expression(node, edge)
+        if edge is not None:
+            return (expression, edge.condition, edge.clock_domain,
+                    edge.assign_type)
+        condition, clock_domain, assign_type = self._driver_fallback_meta(node)
+        return expression, condition, clock_domain, assign_type
+
     def trace_fanin_detailed(self, signal: str, module: str = None, depth: int | None = None,
                              allow_cross_module: bool | None = None) -> list[DriverInfo]:
         """[方案C] Trace signal fanin with detailed driver information
@@ -1993,58 +2041,9 @@ class SignalTracer:
                 continue
             seen_ids.add(node.id)
 
-            # 获取边的信息
             edge = self.graph.get_edge(node.id, signal_id)
-
-            # [P3-6-FIX] 当 edge 不存在时，说明 node 不是直接驱动 signal_id
-            # 需要尝试从 node 追溯到 signal_id 的完整路径获取表达式
-            expression = ""
-            condition = ""
-            clock_domain = ""
-            assign_type = ""
-
-            if edge:
-                expression = edge.expression
-                condition = edge.condition
-                clock_domain = edge.clock_domain
-                assign_type = edge.assign_type
-
-                # [P1-3 完整表达式] 如果 expression 等于驱动节点 ID 本身,
-                # 递归查找该节点的驱动源作为完整表达式
-                if expression == node.id or expression.startswith(node.id + "["):
-                    full_expr = self._resolve_full_expression(node.id)
-                    if full_expr:
-                        expression = full_expr
-            else:
-                # [FIX] edge 不存在时的处理
-                # 情况1: node 是字面量，尝试解析其完整表达式
-                # 情况2: node 是中间节点，尝试从其到 signal_id 的路径获取信息
-
-                # 首先尝试 _resolve_full_expression
-                full_expr = self._resolve_full_expression(node.id)
-                if full_expr:
-                    expression = full_expr
-                elif node.id.startswith("4'b") or node.id.startswith("1'b"):
-                    # 字面量节点直接用自己作为表达式
-                    expression = node.id
-
-                # 尝试从 node 的驱动边获取 condition
-                # 遍历 node 的入边，找到 DRIVER 边
-                # (合成常量节点可能不在图中，不能直接问 NetworkX)
-                preds = (self.graph.predecessors(node.id)
-                         if node.id in self.graph else ())
-                for src in preds:
-                    dst = node.id
-                    if dst == node.id:
-                        node_edge = self.graph.get_edge(src, dst)
-                        if node_edge and node_edge.kind.name == "DRIVER":
-                            if node_edge.condition:
-                                condition = node_edge.condition
-                            if node_edge.clock_domain:
-                                clock_domain = node_edge.clock_domain
-                            if node_edge.assign_type:
-                                assign_type = node_edge.assign_type
-                            break
+            expression, condition, clock_domain, assign_type = (
+                self._driver_detail_metadata(node, signal_id))
 
             driver_info = DriverInfo(
                 node=node,
@@ -2178,13 +2177,16 @@ class SignalTracer:
         """
         signal_id = self.make_id(signal, module)
 
-        if signal_id not in self.graph.nodes():
-            return DriverChain(root=signal_id, drivers=[], loads=[], confidence="uncertain")
+        in_graph = signal_id in self.graph.nodes()
+        if not in_graph and not self._bit_in_bus_range(signal_id):
+            return DriverChain(root=signal_id, drivers=[], loads=[],
+                               confidence="uncertain")
 
         # [iter_240] 作用域透传 (trace_detailed 也接受 module)
         allow_cross = module is None
         driver_infos = self.trace_fanin_detailed(signal_id, allow_cross_module=allow_cross)
-        loads = self._find_loads(signal_id, allow_cross_module=allow_cross)
+        loads = (self._find_loads(signal_id, allow_cross_module=allow_cross)
+                 if in_graph else [])
 
         confidence = self._confidence(
             signal_id, [d.node for d in driver_infos])
