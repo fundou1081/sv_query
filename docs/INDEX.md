@@ -60,6 +60,7 @@
 | [validation/reviews/2026-11-25_7e66098.md](validation/reviews/2026-11-25_7e66098.md) | **P198.10c** audit: PASS WITH CAVEATS; depth=1 duplicate aggregate |
 | [validation/reviews/2026-11-26_5c5e9d8.md](validation/reviews/2026-11-26_5c5e9d8.md) | **P197.13** first audit: FAIL; ascending slice P1 |
 | [validation/reviews/2026-11-26_9057ba7.md](validation/reviews/2026-11-26_9057ba7.md) | **P197.13** re-audit: FAIL; descending slice P1 |
+| [validation/reviews/2026-11-26_76857a21.md](validation/reviews/2026-11-26_76857a21.md) | **P197.17** worker review: PASS WITH CAVEATS; sign-fill closed |
 | [validation/reviews/2026-11-26_c903078f.md](validation/reviews/2026-11-26_c903078f.md) | **P197.16** worker review: PASS WITH CAVEATS; depth/confidence/cache env |
 | [validation/reviews/2026-11-26_e64f1c89.md](validation/reviews/2026-11-26_e64f1c89.md) | **P197.15** worker review: PASS WITH CAVEATS; cache CC/privacy/except policy |
 | [validation/reviews/2026-11-26_281ab86c.md](validation/reviews/2026-11-26_281ab86c.md) | **P197.14** worker review: PASS WITH CAVEATS; evidence reset/RHS tokens |

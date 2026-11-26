@@ -44,5 +44,6 @@ def test_sign_bit_fanout_covers_fill_bits(tmp_path):
 
 def test_arithmetic_left_is_zero_fill(tmp_path):
     st, edge = _edge(tmp_path, "signed [7:0]", "a <<< 4'd2")
+    assert st._edge_expression_ir(edge).op == "ShiftLeftArithmetic"
     assert st._expr_source_bits(edge, "top.y", 0) == []
     assert st._expr_source_bits(edge, "top.y", 2) == ["top.a[0]"]
