@@ -72,3 +72,18 @@ def test_instance_qualified_array_metadata(tmp_path):
     element = graph.get_node("top.u1.mem[0]")
     assert (element.extra or {}).get("array_element") is True
     assert tracer.trace_detailed("top.u1.mem[9]").drivers == []
+
+
+def test_connected_instance_array_keeps_drivers(tmp_path):
+    sv = tmp_path / "connected_array.sv"
+    sv.write_text(
+        "module sub(output logic [31:0] o [0:3]);\n"
+        "  assign o[0] = 32'h1;\n"
+        "endmodule\n"
+        "module top(output logic [31:0] mem [0:3]);\n"
+        "  sub u(.o(mem));\n"
+        "endmodule\n")
+    tracer = UnifiedTracer(sources={str(sv): sv.read_text()}, log_level="ERROR")
+    tracer.build_graph()
+    chain = tracer.trace_detailed("top.mem[0]")
+    assert chain.drivers, "instance-array driver was lost"

@@ -1469,6 +1469,9 @@ class GraphBuilder:
         return None
 
     def _semantic_array_symbols(self) -> dict[str, dict[str, object]]:
+        cached = getattr(self, "_array_symbols_cache", None)
+        if cached is not None:
+            return cached
         arrays: dict[str, dict[str, object]] = {}
         try:
             modules = self.adapter.get_modules()
@@ -1482,13 +1485,14 @@ class GraphBuilder:
                 name = getattr(member, "name", None)
                 if elem is not None and name:
                     arrays.setdefault(module_type, {})[str(name)] = elem
+        self._array_symbols_cache = arrays
         return arrays
 
     @staticmethod
-    def _mark_array_base(node, elem) -> None:
+    def _mark_array_base(node, elem, *, set_width: bool = True) -> None:
         node.extra["is_array"] = True
         bw = getattr(elem, "bitWidth", None)
-        if isinstance(bw, int) and bw > 0:
+        if set_width and isinstance(bw, int) and bw > 0:
             node.width = (0, 0) if bw == 1 else (bw - 1, 0)
             node.is_signed = bool(getattr(elem, "isSigned", False))
 
@@ -1497,7 +1501,7 @@ class GraphBuilder:
             for leaf, elem in leaves.items():
                 node = self.graph.get_node(f"{module_type}.{leaf}")
                 if node is not None:
-                    self._mark_array_base(node, elem)
+                    self._mark_array_base(node, elem, set_width=False)
 
     def _fix_instance_array_metadata(self, module_graph) -> None:
         """Mark arrays on instance-qualified nodes (`top.u1.mem`)."""

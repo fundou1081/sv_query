@@ -55,7 +55,7 @@ Every entry self-describes:
 ```json
 {
   "capabilities": ["graph", "mig"],
-  "graph_semantics": "1",
+  "graph_semantics": "2",
   "cache_schema": "3.5",
   "build_identity": {...}
 }
