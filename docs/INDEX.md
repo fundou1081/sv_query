@@ -10,9 +10,9 @@
 
 | 项 | 值 | 说明 |
 |---|---|---|
-| 源码规模 | 159 文件 / 53,395 行 | `find src -name "*.py"`（2026-11-16 实测） |
+| 源码规模 | 159 文件 / 53,398 行 | `find src -name "*.py"`（2026-11-16 实测） |
 | 测试规模 | 473 测试文件 / 72,450 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **3343 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-26 P197.10 全量复核（3343）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
+| 全量 (canonical) | **3346 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-26 P197.10 全量复核（3346）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
@@ -60,6 +60,7 @@
 | [validation/reviews/2026-11-25_7e66098.md](validation/reviews/2026-11-25_7e66098.md) | **P198.10c** audit: PASS WITH CAVEATS; depth=1 duplicate aggregate |
 | [validation/reviews/2026-11-26_5c5e9d8.md](validation/reviews/2026-11-26_5c5e9d8.md) | **P197.13** first audit: FAIL; ascending slice P1 |
 | [validation/reviews/2026-11-26_9057ba7.md](validation/reviews/2026-11-26_9057ba7.md) | **P197.13** re-audit: FAIL; descending slice P1 |
+| [validation/reviews/2026-11-26_281ab86c.md](validation/reviews/2026-11-26_281ab86c.md) | **P197.14** worker review: PASS WITH CAVEATS; evidence reset/RHS tokens |
 | [validation/reviews/2026-11-26_a0b2c73f.md](validation/reviews/2026-11-26_a0b2c73f.md) | **P197.13** re-audit 2: PASS WITH CAVEATS; both slice P1s closed |
 | [validation/reviews/2026-11-26_e65b5a2.md](validation/reviews/2026-11-26_e65b5a2.md) | **P197.12** worker review: PASS WITH CAVEATS; verify parity P2s closed |
 | [validation/reviews/2026-11-25_37bed29.md](validation/reviews/2026-11-25_37bed29.md) | **P197.10** worker review: PASS WITH CAVEATS; claims/audit reconciliation |

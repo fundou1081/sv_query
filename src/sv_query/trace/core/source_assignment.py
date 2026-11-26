@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 _RESET_CORE = r"(?:a?reset|s?rst|arst|nrst)n?"
-_RESET_SUFFIX = r"(?:_(?:n|ni|no|b|l))?"
+_RESET_SUFFIX = r"(?:_(?:n|ni|no|b|l))?(?:_i)?\d*"
 _RESET_EXACT = re.compile(rf"^{_RESET_CORE}{_RESET_SUFFIX}$")
 _RESET_TAIL = re.compile(rf"_{_RESET_CORE}{_RESET_SUFFIX}$")
 
@@ -38,6 +38,8 @@ def is_reset_condition(cond: str) -> bool:
     # `assign reset_counter = data;` from being classified as a reset branch.
     if re.search(r"(?<![=!<>])=(?!=)", c):
         return False
+    if re.match(r"^\s*(?:logic|wire|reg|bit|input|output|inout)\b", c):
+        return False
     # Whole reset tokens only: `check_reset_status` is not a reset.
     return bool(_reset_identifiers(c))
 
@@ -47,7 +49,8 @@ def source_expr_present(source_expr: str, text: str) -> bool:
     expr = " ".join((source_expr or "").split())
     if not expr or not text:
         return False
-    if re.fullmatch(r"[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)*", expr):
+    if "." not in expr and re.fullmatch(
+            r"[A-Za-z_$][A-Za-z0-9_$]*", expr):
         return signal_token_present(expr, text)
     pattern = re.escape(expr).replace(r"\ ", r"\s+")
     return bool(re.search(rf"(?<![A-Za-z0-9_$]){pattern}(?![A-Za-z0-9_$])", text))

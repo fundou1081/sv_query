@@ -62,3 +62,20 @@ def test_source_expr_does_not_match_substring():
     assert ev.matches_source_expr is False
     snippet.text = "always_comb y = data;"
     assert ev.matches_source_expr is True
+
+
+def test_reset_exotic_suffixes_are_recognized():
+    for cond in ("rst_n_i", "reset2", "rst_n1", "aresetn_i"):
+        assert is_reset_condition(cond), cond
+
+
+def test_declaration_is_not_a_reset_condition():
+    assert not is_reset_condition("logic reset;")
+
+
+def test_hierarchical_source_expr_requires_full_name():
+    snippet = SourceSnippet(
+        location=SourceLocation(file="x.sv", line_start=1, line_end=1),
+        text="assign other.z = foo.data;")
+    ev = Evidence(signal="top.y", source_expr="top.data", enclosing_assign=snippet)
+    assert ev.matches_source_expr is False
