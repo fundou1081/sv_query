@@ -54,7 +54,7 @@ opensource: 112 passed / 11 skipped / 0 failed
 - 不要在未标定的 `trace impact` 风险分上做绝对风险声明。
 ## 待修复：真实项目复审 P2（2026-11-27）
 
-- P194.5.10 `drivers --evidence` 条件边行号（R1）✅
+- P194.5.10 `drivers --evidence` 条件边行号（R1）<进行中>
 - P194.5k.2 evidence payload 体积（trap 453 KB）
 - P194.5k.3 `ports`/`connections` 开放端口 parity
 - P194.5k.4 模块输出 evidence 空结果

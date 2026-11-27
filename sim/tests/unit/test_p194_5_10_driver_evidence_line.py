@@ -35,3 +35,28 @@ def test_driver_evidence_uses_assignment_line(tmp_path):
     source = sv.read_text().splitlines()
     assert all("trap <=" in source[line - 1] for line in lines)
     assert not any('dbg = "trap"' in source[line - 1] for line in lines)
+
+
+def test_filelist_basename_and_branch_mapping(tmp_path):
+    sv = tmp_path / "trap_filelist.sv"
+    sv.write_text(
+        "module top(input logic clk, state, output reg trap);\n"
+        "  always_ff @(posedge clk) begin\n"
+        "    trap <= 0;\n"
+        "    if (state) trap <= 1;\n"
+        "    else trap <= 0;\n"
+        "  end\n"
+        "endmodule\n")
+    (tmp_path / "trap_filelist.f").write_text("trap_filelist.sv\n")
+    proc = subprocess.run(
+        [sys.executable, str(ROOT / "run_cli.py"), "drivers", "top.trap",
+         "--filelist", "trap_filelist.f", "--json", "--evidence", "--no-cache"],
+        cwd=tmp_path, capture_output=True, text=True, timeout=120)
+    assert proc.returncode == 0, proc.stderr[-400:]
+    row = json.loads(proc.stdout)["result"]["signals"][0]
+    conditioned = [d for d in row["drivers"] if d.get("condition")]
+    assert conditioned
+    source = sv.read_text().splitlines()
+    for driver in conditioned:
+        line = driver["evidence"]["line"]
+        assert line and "trap <= 1" in source[line - 1]

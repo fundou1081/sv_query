@@ -1368,22 +1368,20 @@ class DriverExtractor:
                 loc = self.adapter.get_source_location(ast_node)
                 if not loc[0]:
                     continue
+                from .edge_source_lines import find_assignment_line
                 from .graph.models import SourceLocation
-                from .source_assignment import find_functional_assignment
             except Exception as e:
                 logger.debug("%s: 忽略 Exception: %s", __name__, e)  # source_location 失败不影响 edge
                 continue
             line = loc[1]
-            try:
-                from pathlib import Path
-                text = Path(loc[0]).read_text(errors="ignore")
-                leaf = str(edge.dst).rsplit(".", 1)[-1].split("[", 1)[0]
-                found = find_functional_assignment(
-                    leaf, text, 1, len(text.splitlines()))
-                if found is not None:
-                    line = found[0]
-            except OSError as e:
-                logger.debug("%s: assignment line read failed: %s", __name__, e)
+            found = find_assignment_line(
+                self.adapter, loc[0], str(edge.dst),
+                str(getattr(edge, "expression", "") or ""),
+                str(getattr(edge, "condition", "") or ""), line)
+            if found is not None:
+                line = found
+            else:
+                logger.debug("edge assignment line unresolved: %s", edge.dst)
             edge.source_location = SourceLocation(
                 file=loc[0], line_start=line, line_end=line, column=loc[2]
             )
