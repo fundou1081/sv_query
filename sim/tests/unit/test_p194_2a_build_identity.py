@@ -85,3 +85,13 @@ def test_graph_semantics_bump_invalidates_old_assignment_cache():
     old = _identity(graph_semantics="2")
     assert old.key() != _identity().key()
     assert _identity().manifest()["graph_semantics"] == "3"
+
+
+def test_old_semantics_entry_cannot_hydrate_new_cache(tmp_path):
+    from sv_query.trace.core.cache.ast_cache import ASTCache
+
+    cache = ASTCache(cache_dir=str(tmp_path))
+    old = _identity(graph_semantics="2")
+    cache.put_by_key(old.key(), {"payload": "old"}, project_key="proj")
+    assert cache.get_by_key(old.key()) is not None
+    assert cache.get_by_key(_identity().key()) is None

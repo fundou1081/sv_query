@@ -11,8 +11,8 @@
 | 项 | 值 | 说明 |
 |---|---|---|
 | 源码规模 | 160 文件 / 53,844 行 | `find src -name "*.py"`（2026-11-16 实测） |
-| 测试规模 | 495 测试文件 / 73,811 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **3395 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-27 P194.5.10 全量复核（3395）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
+| 测试规模 | 495 测试文件 / 73,840 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
+| 全量 (canonical) | **3397 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-27 P194.5.10 全量复核（3397）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
@@ -67,6 +67,7 @@
 | [validation/reviews/2026-11-27_c0d24e56.md](validation/reviews/2026-11-27_c0d24e56.md) | Real-project P1 re-audit: PASS WITH CAVEATS |
 | [validation/reviews/2026-11-27_29b2c707.md](validation/reviews/2026-11-27_29b2c707.md) | P194.5.10 first audit: FAIL (filelist no-op, wrong branch) |
 | [validation/reviews/2026-11-27_51635691.md](validation/reviews/2026-11-27_51635691.md) | P194.5.10a first audit: FAIL (timescale off-by-one) |
+| [validation/reviews/2026-11-27_de5f17c9.md](validation/reviews/2026-11-27_de5f17c9.md) | P194.5.15/16 review: PASS WITH CAVEATS; cache/net-decl closed |
 | [validation/reviews/2026-11-27_6f38a802.md](validation/reviews/2026-11-27_6f38a802.md) | P194.5.10a re-audit: PASS; P1 closed |
 | [validation/reviews/2026-11-27_32b134ed.md](validation/reviews/2026-11-27_32b134ed.md) | P194.5.10 re-audit: FAIL (branch/bit residual); task blocked |
 | [validation/reviews/2026-11-27_48224bd1.md](validation/reviews/2026-11-27_48224bd1.md) | **0.3.8 release** independent review: PASS WITH CAVEATS |

@@ -95,3 +95,22 @@ def test_net_declaration_initializer_carries_source_location():
     for edge in edges:
         assert edge.source_location is not None
         assert edge.source_location.line_start == 3
+
+
+def test_generate_net_declaration_provenance():
+    source = (
+        "module top(input logic a, output logic y);\n"
+        "  generate\n"
+        "    if (1) begin : g\n"
+        "      wire x = a;\n"
+        "    end\n"
+        "  endgenerate\n"
+        "  assign y = g.x;\n"
+        "endmodule\n")
+    tracer = UnifiedTracer(sources={"gen_net.sv": source}, log_level="ERROR")
+    tracer.build_graph()
+    edges = _edges(tracer, ".g.x")
+    assert edges
+    for edge in edges:
+        assert edge.source_location is not None
+        assert "wire x = a" in source.splitlines()[edge.source_location.line_start - 1]
