@@ -301,9 +301,15 @@ class UnifiedTracer:
         _main_logger.info(
             f"[preprocess] 跨文件宏展开 + auto-inject imports: {len(self._sources)} files"
         )
+        before = dict(self._sources)
         self._sources = preprocess_all(
             self._sources, enable_timescale_injection=self._inject_timescale,
         )
+        self._timescale_injected = {
+            path: ("`timescale" not in before.get(path, "")[:500]
+                   and "`timescale" in text[:500])
+            for path, text in self._sources.items()
+        }
         self._preprocessed = True
 
     def _get_compiler(self) -> SVCompiler:
@@ -312,6 +318,8 @@ class UnifiedTracer:
             self._ensure_preprocessed()  # [Req-20 2026-06-12] 宏展开在 compiler 前
             self._compiler = SVCompiler(self._sources, log_level=self._log_level,
                                         top_modules=self._top_modules)  # [iter_145]
+            self._compiler.timescale_injected = dict(
+                getattr(self, "_timescale_injected", {}))
             for d in self._include_dirs:
                 self._compiler.add_include_dir(d)
             if self._files:
