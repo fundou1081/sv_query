@@ -48,7 +48,8 @@ All core queries accept `--json`; JSON mode is quiet by default:
 
 ```bash
 sv_query drivers Scheduler_minimal.s0_reg --filelist "$FL" --json > result.json
-sv_query drivers Scheduler_minimal.s0_reg --filelist "$FL" --json --verbose
+# --verbose is a global flag; place it before the subcommand for clarity
+sv_query --verbose drivers Scheduler_minimal.s0_reg --filelist "$FL" --json
 ```
 
 `--no-cache` isolates a build; `--from-snapshot <tag>` loads a saved graph.
@@ -69,8 +70,8 @@ per process.
 ## 5. If a query is empty
 
 1. Check the canonical id: `sv_query graph nodes --filelist "$FL" --json`.
-2. Check `resolution` / `unknown` in the JSON envelope; relative ids may be
-   ambiguous.
+2. Check `resolution` and any `unknown`/`unknown_checks` markers; relative
+   ids may be ambiguous.
 3. Use `trace evidence` for a driver's source line.
 4. Read [KNOWN_LIMITATIONS](KNOWN_LIMITATIONS.md) before treating an empty
    answer as proof of absence.
