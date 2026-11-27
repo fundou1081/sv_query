@@ -56,12 +56,23 @@ def source_expr_present(source_expr: str, text: str) -> bool:
     return bool(re.search(rf"(?<![A-Za-z0-9_$]){pattern}(?![A-Za-z0-9_$])", text))
 
 
+def _without_string_literals(text: str) -> str:
+    # Double-quoted SystemVerilog strings only; single quotes are number bases
+    # (`8'hFF`, `4'b10`), not string delimiters.
+    return re.sub(r'"(?:\\.|[^"\\])*"', " ", text or "")
+
+
 def signal_token_present(signal: str, text: str) -> bool:
-    """Whole-identifier match of the signal leaf (no `data` in `metadata`)."""
+    """Whole-identifier match of the signal leaf (no `data` in `metadata`).
+
+    String literals are blanked first: a debug message like ``"trap"`` must not
+    verify evidence for the signal ``trap``.
+    """
     leaf = (signal or "").rsplit(".", 1)[-1].split("[", 1)[0]
     if not leaf or not text:
         return False
-    return bool(re.search(rf"(?<![A-Za-z0-9_$]){re.escape(leaf)}(?![A-Za-z0-9_$])", text))
+    code = _without_string_literals(text)
+    return bool(re.search(rf"(?<![A-Za-z0-9_$]){re.escape(leaf)}(?![A-Za-z0-9_$])", code))
 
 
 def strip_block_comments(text: str) -> str:

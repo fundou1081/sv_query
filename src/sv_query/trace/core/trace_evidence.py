@@ -27,6 +27,7 @@ from .source_assignment import (
 from .source_assignment import (
     find_assignment_near,
     find_functional_assignment,
+    line_is_lhs,
     signal_token_present,
     source_expr_present,
 )
@@ -181,6 +182,34 @@ class TraceEvidenceResolver:
     # 主入口: resolve()
     # ==================================================================
 
+    @staticmethod
+    def _first_lhs_line(text: str, signal_id: str) -> tuple[int, str]:
+        first = ""
+        for idx, raw in enumerate(text.splitlines()):
+            if not first and raw.strip():
+                first = raw.strip()
+            if line_is_lhs(raw, signal_id):
+                return idx, raw.strip()
+        return 0, first
+
+    def _apply_syntax_location(self, ev: Evidence, syn, signal_id: str) -> None:
+        if syn is None:
+            return
+        try:
+            fname, line, col, _ = self.adapter.get_source_location(syn)
+        except Exception as e:
+            logger.debug("syntax source location failed: %s", e)
+            return
+        if not fname or not line:
+            return
+        text = self.adapter.get_source_text(syn) or ""
+        offset, first = self._first_lhs_line(text, signal_id)
+        ev.source_location = SourceLocation(
+            file=fname, line_start=line + offset, line_end=line + offset,
+            column=col)
+        if first:
+            ev.source_text = first
+
     def resolve(self, signal_id: str) -> Evidence:
         """解析单个信号的 evidence
 
@@ -232,12 +261,15 @@ class TraceEvidenceResolver:
         if edge.condition_ast is not None:
             start_syn = getattr(edge.condition_ast, "syntax", None)
         elif edge.assign_type == "continuous":
-            start_syn = self._find_continuous_assign_syntax_semantic(signal_id)
+            start_syn = (self._find_continuous_assign_syntax_semantic(signal_id)
+                         or self._find_always_block_syntax_semantic(signal_id))
         elif self._is_always_kind(edge.assign_type):
-            start_syn = self._find_always_block_syntax_semantic(signal_id)
+            start_syn = (self._find_always_block_syntax_semantic(signal_id)
+                         or self._find_continuous_assign_syntax_semantic(signal_id))
 
         if start_syn is None:
             return ev
+        self._apply_syntax_location(ev, start_syn, signal_id)
 
         # 5. 走 parent chain
         chain_syn = self._walk_parent_chain(start_syn, max_depth=8)
@@ -757,15 +789,18 @@ class TraceEvidenceResolver:
             root = comp.getRoot()
         except Exception:
             return None
-        # 走所有 topInstance.body
-        for inst in root.topInstances:
-            body = getattr(inst, 'body', None)
-            if body is None:
-                continue
-            for member in body:
-                kind_str = str(getattr(member, 'kind', ''))
-                if 'ContinuousAssign' in kind_str:
-                    # 检查 LHS 是否匹配
+        modules = []
+        try:
+            getter = getattr(self.adapter, "get_all_module_definitions",
+                             self.adapter.get_modules)
+            modules = getter()
+        except Exception as e:
+            logger.debug("module list for continuous evidence failed: %s", e)
+        if not modules:
+            modules = list(root.topInstances)
+        for module in modules:
+            for member in getattr(module, 'body', ()):
+                if 'ContinuousAssign' in str(getattr(member, 'kind', '')):
                     if self._continuous_assign_drives_name(member, lhs_name):
                         return getattr(member.assignment, 'syntax', None)
         return None
@@ -810,30 +845,26 @@ class TraceEvidenceResolver:
             root = comp.getRoot()
         except Exception:
             return None
-        for inst in root.topInstances:
-            body = getattr(inst, 'body', None)
-            if body is None:
-                continue
-            for member in body:
-                kind_str = str(getattr(member, 'kind', ''))
-                # [V4-FIX] ProceduralBlockSymbol 在 semantic API 中 kind=ProceduralBlock
-                # 不是 AlwaysCombBlock (后者只在 syntax 树)
-                if 'ProceduralBlock' not in kind_str:
+        modules = []
+        try:
+            getter = getattr(self.adapter, "get_all_module_definitions",
+                             self.adapter.get_modules)
+            modules = getter()
+        except Exception as e:
+            logger.debug("module list for always evidence failed: %s", e)
+        if not modules:
+            modules = list(root.topInstances)
+        for module in modules:
+            for member in getattr(module, 'body', ()):
+                if 'ProceduralBlock' not in str(getattr(member, 'kind', '')):
                     continue
-                # 检查 procedureKind 区分 always_comb/always_ff
-                proc_kind = getattr(member, 'procedureKind', None)
-                if proc_kind is None:
+                proc_kind = str(getattr(member, 'procedureKind', None) or "")
+                if 'Always' not in proc_kind:
                     continue
-                proc_kind_str = str(proc_kind)
-                # 只处理 always_comb / always_ff, 跳过 initial
-                if 'Always' not in proc_kind_str:
-                    continue
-                # [V4-FIX] 检查 statement (或 syntax body) 是否包含 LHS
-                stmt = getattr(member, 'statement', None)
-                stmt_str = str(stmt) if stmt is not None else ""
-                # LHS 检测
-                if lhs_name in stmt_str or self._lhs_in_always_syntax(member, lhs_name):
-                    return getattr(member, 'syntax', None)
+                syn = getattr(member, 'syntax', None)
+                text = self.adapter.get_source_text(syn) if syn is not None else ""
+                if any(line_is_lhs(raw, lhs_name) for raw in text.splitlines()):
+                    return syn
         return None
 
     def _lhs_in_always_syntax(self, proc_block_sym, lhs_name: str) -> bool:

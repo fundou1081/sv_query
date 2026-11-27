@@ -245,7 +245,9 @@ class ConnectionExtractor:
         all_module_ports = {}
         all_module_widths = {}
         all_interface_ports = {}
-        for module in self.adapter.get_modules():
+        getter = getattr(self.adapter, "get_all_module_definitions",
+                         self.adapter.get_modules)
+        for module in getter():
             name, ports, widths, ifaces = self._collect_one_module(module)
             all_module_ports[name] = ports
             all_module_widths[name] = widths
@@ -500,6 +502,35 @@ class ConnectionExtractor:
             self._connect_inout(result, inst_port_id, signal_name, parent_path,
                                 gen_parent_path, gen_locals, sig_scope)
 
+    @staticmethod
+    def _symbol_port_direction(port, fallback: str) -> str:
+        raw = str(getattr(port, "direction", "") or "").lower()
+        if "inout" in raw:
+            return "inout"
+        if "out" in raw:
+            return "output"
+        if "in" in raw:
+            return "input"
+        return fallback
+
+    @classmethod
+    def _instance_port_metadata(cls, inst, base_ports: dict, base_widths: dict):
+        """Use the elaborated instance's port symbols when module metadata is weak."""
+        ports = dict(base_ports)
+        widths = dict(base_widths)
+        symbol = getattr(inst, "_symbol", inst)
+        for conn in getattr(symbol, "portConnections", ()) or ():
+            port = getattr(conn, "port", None)
+            name = str(getattr(port, "name", "") or "")
+            if not name:
+                continue
+            ports[name] = cls._symbol_port_direction(
+                port, ports.get(name, "unknown"))
+            bw = getattr(getattr(port, "type", None), "bitWidth", None)
+            if isinstance(bw, int) and bw > 0:
+                widths[name] = (0, 0) if bw == 1 else (bw - 1, 0)
+        return ports, widths
+
     def _extract_connections(self, instances, infos, paths, all_ports,
                              all_widths, all_iface, result) -> None:
         for idx, inst in enumerate(instances):
@@ -509,7 +540,10 @@ class ConnectionExtractor:
             inst_path = paths[idx]
             gen_block = info.get("gen_block")
             sig_scope = self._instance_signal_scope(inst_path)
-            module_ports = all_ports.get(inst_module_name, {})
+            module_ports, instance_widths = self._instance_port_metadata(
+                inst, all_ports.get(inst_module_name, {}),
+                all_widths.get(inst_module_name, {}))
+            all_widths = {**all_widths, inst_module_name: instance_widths}
             conns = self.adapter.get_instance_connection(inst)
             if not module_ports and conns and not self._module_source_known(inst_module_name):
                 self._missing_module_warning(inst_module_name, inst_name)

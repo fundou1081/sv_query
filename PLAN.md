@@ -604,6 +604,7 @@ P194.2c local session/server reuse + snapshot persistence <已完成>
 -- P194.5g session paths endpoint validation + failure parity <已完成>
 -- P194.5h docs/claims/count reconciliation + P194.5d acceptance charter <已完成>
 -- P194.5i depth=1 dangling bit-range alias semantics <已完成>
+-- P194.5j real-project review P1 fixes: quiet logging, generate ports, evidence binding <已完成>
 -- P194.6 pyright/mypy + generated JSON schema <已完成>
 -- P194.7 docs slimming + human onboarding <已完成>
 

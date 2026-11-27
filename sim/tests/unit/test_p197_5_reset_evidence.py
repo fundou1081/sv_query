@@ -79,3 +79,12 @@ def test_hierarchical_source_expr_requires_full_name():
         text="assign other.z = foo.data;")
     ev = Evidence(signal="top.y", source_expr="top.data", enclosing_assign=snippet)
     assert ev.matches_source_expr is False
+
+
+def test_string_literal_does_not_verify_signal():
+    snippet = SourceSnippet(
+        location=SourceLocation(file="x.sv", line_start=1, line_end=1),
+        text='if (state == TRAP) dbg = "trap";')
+    ev = Evidence(signal="top.trap", enclosing_if=snippet)
+    assert ev.matches_signal_name is False
+    assert ev.is_verified is False

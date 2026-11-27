@@ -10,6 +10,7 @@ Usage:
 import logging
 import os
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 
 # 设置 sys.path - 允许直接运行或作为模块运行
@@ -480,6 +481,18 @@ def _run_app(args: list[str], quiet: bool) -> None:
         app(args=args)
 
 
+@contextmanager
+def _quiet_logging(enabled: bool):
+    previous = logging.root.manager.disable
+    if enabled:
+        logging.disable(logging.CRITICAL)
+    try:
+        yield
+    finally:
+        if enabled:
+            logging.disable(previous)
+
+
 def _handle_known_error(e: BaseException) -> None:
     if json_requested():
         from sv_query.cli._common import emit_json_error
@@ -518,7 +531,8 @@ def run() -> None:
     quiet = not verbose and (env_quiet or json_mode or "--quiet" in raw or "-q" in raw)
     token = set_invocation_args(raw)
     try:
-        _run_app(args, quiet)
+        with _quiet_logging(quiet):
+            _run_app(args, quiet)
     except (CompilationError, OSError, UnicodeDecodeError) as e:
         _handle_known_error(e)
     except typer.Exit:

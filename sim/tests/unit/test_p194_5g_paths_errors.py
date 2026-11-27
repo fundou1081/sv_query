@@ -61,3 +61,4 @@ def test_out_of_vocabulary_handler_code_falls_back():
     response = Session(handlers={"paths": boom}).execute({"op": "paths"})
     assert response["ok"] is False
     assert response["error_code"] == E_HANDLER_FAILED
+

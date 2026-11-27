@@ -45,6 +45,7 @@ FROZEN_METHODS = {
     'extract_data_signed': '(self, data_decl) -> bool | None',
     'extract_port_width': '(self, port_decl, scope=None) -> tuple',
     'extract_port_signed': '(self, port_decl) -> bool | None',
+    'get_all_module_definitions': '(self) -> list',
     'get_always_blocks': '(self, module) -> list',
     'get_assignments': '(self, module) -> list',
     'get_class_members': '(self, cls) -> list',

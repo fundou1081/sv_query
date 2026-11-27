@@ -5,14 +5,11 @@
 # _fixed_names/_genvar_context/_spec_members 等), 无独立状态。
 """modules 域: module/instance/generate/primitive 导航"""
 import logging
-from typing import Callable, Iterator
 
 import pyslang
 
-from ..._safe import _safe_attr, _safe_str, clean_name, safe_attr, safe_str
-from ..ast_utils import is_syntax_list, iter_syntax_list
-
-from ._wrappers import SemanticInstanceDeclWrapper, SemanticInstanceWrapper  # noqa: E402
+from ..._safe import _safe_attr, _safe_str, safe_attr, safe_str
+from ._wrappers import SemanticInstanceWrapper  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -166,6 +163,32 @@ class ModulesMixin:
         return modules
 
 
+
+    def get_all_module_definitions(self) -> list:
+        """Module definitions reachable from the elaborated instance tree.
+
+        ``get_modules()`` walks semantic instance bodies and can miss a
+        parameterized definition elaborated only through a generate branch
+        (SERV's ``serv_csr``). Add definitions carried by the native instance
+        wrappers without changing ``get_modules()`` callers.
+        """
+        modules = list(self.get_modules())
+        names = {self.get_module_name(m) for m in modules}
+        try:
+            instances = self.get_module_instances()
+        except Exception as e:
+            logger.debug("instance definition scan failed: %s", e)
+            return modules
+        for inst in instances:
+            symbol = getattr(inst, "_symbol", None)
+            definition = getattr(symbol, "definition", None)
+            if definition is None:
+                continue
+            name = self.get_module_name(symbol)
+            if name and name not in names:
+                names.add(name)
+                modules.append(symbol)
+        return modules
 
     def get_module_instances(self) -> list:
         """获取所有模块实例 (SemanticInstanceWrapper)

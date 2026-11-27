@@ -45,3 +45,17 @@ def test_quiet_context_is_thread_local():
     t.join()
     assert seen == {"inside": True, "after": False}
     assert is_quiet() is False
+
+
+def test_run_suppresses_logging_in_json_mode(monkeypatch, capsys):
+    import logging
+
+    from sv_query.cli import main as cli_main
+
+    def fake(args=None):
+        logging.getLogger("sv_query.test.quiet").warning("must be hidden")
+
+    monkeypatch.setattr(cli_main, "app", fake)
+    monkeypatch.setattr(sys, "argv", ["sv_query", "drivers", "x", "--json"])
+    cli_main.run()
+    assert capsys.readouterr().err == ""
