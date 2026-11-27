@@ -78,7 +78,7 @@ python3 -m venv /tmp/svq-pypi-smoke
 
 Tag a GitHub Release with the changelog and KNOWN_LIMITATIONS link.
 
-Published status (2026-11-20):
+Published status (2026-11-27):
 
 ```text
 sv_query 0.3.0  published (PyPI description stale README; superseded)
@@ -88,7 +88,7 @@ sv_query 0.3.3  published (CLI namespace + external trial readiness)
 sv_query 0.3.4  published (cache correctness + local graph session)
 sv_query 0.3.5  published (P195 cache/session/width/release hardening)
 sv_query 0.3.6  published (P196 snapshot/session correctness)
-sv_query 0.3.7  pending tag (P194/P197/P198 correctness + docs)
+sv_query 0.3.7  published 2026-11-27 (P194/P197/P198 correctness + docs)
 ```
 
 ## 5. Rollback
