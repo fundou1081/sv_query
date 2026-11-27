@@ -95,7 +95,7 @@
 | C-75 | bit queries with a coarse parent-bus driver report `confidence=low`; instance depth is relative to the root/top; managed cache rebuilds on `SVQ_CACHE_DIR` change (P197.16) | code/test | `test_p197_16_provenance.py` | `verified` |
 | C-76 | scoped mypy gate on errors/session/verification plus a generated result-key schema checked for drift (P194.6) | code/test | `test_p194_6_type_schema.py` | `verified` |
 | C-77 | real-project review fixes: JSON default suppresses logger stderr, generate-scoped ports use elaborated directions/widths, evidence binds the assignment line and ignores string literals (P194.5j) | code/test | `test_p197_8_quiet_context.py`, `test_p194_5g_instance_ports.py`, `test_p197_5_reset_evidence.py` | `verified` |
-| C-78 | conditional `drivers --evidence` binds the target assignment line, not condition text (P194.5.10) | code/test | `test_p194_5_10_driver_evidence_line.py` | `unverified` |
+| C-78 | conditional `drivers --evidence` binds the target assignment line, not condition text (P194.5.10) | code/test | none (blocked; text heuristics unsafe) | `unverified` |
 
 ---
 

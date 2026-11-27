@@ -10,9 +10,9 @@
 
 | 项 | 值 | 说明 |
 |---|---|---|
-| 源码规模 | 159 文件 / 53,728 行 | `find src -name "*.py"`（2026-11-16 实测） |
-| 测试规模 | 495 测试文件 / 73,744 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **3390 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-27 P194.5.10 全量复核（3390）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
+| 源码规模 | 159 文件 / 53,713 行 | `find src -name "*.py"`（2026-11-16 实测） |
+| 测试规模 | 494 测试文件 / 73,707 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
+| 全量 (canonical) | **3389 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-27 P194.5.10 全量复核（3389）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
@@ -65,6 +65,8 @@
 | [validation/reviews/2026-11-27_60dd230d.md](validation/reviews/2026-11-27_60dd230d.md) | **P194.5f** re-audit: FAIL; nested `<`/`>` P1 |
 | [validation/reviews/2026-11-27_9ecfb875.md](validation/reviews/2026-11-27_9ecfb875.md) | Real-project 0.3.7 audit: FAIL, 3 P1 |
 | [validation/reviews/2026-11-27_c0d24e56.md](validation/reviews/2026-11-27_c0d24e56.md) | Real-project P1 re-audit: PASS WITH CAVEATS |
+| [validation/reviews/2026-11-27_29b2c707.md](validation/reviews/2026-11-27_29b2c707.md) | P194.5.10 first audit: FAIL (filelist no-op, wrong branch) |
+| [validation/reviews/2026-11-27_32b134ed.md](validation/reviews/2026-11-27_32b134ed.md) | P194.5.10 re-audit: FAIL (branch/bit residual); task blocked |
 | [validation/reviews/2026-11-27_48224bd1.md](validation/reviews/2026-11-27_48224bd1.md) | **0.3.8 release** independent review: PASS WITH CAVEATS |
 | [validation/reviews/2026-11-27_cc26d1bb.md](validation/reviews/2026-11-27_cc26d1bb.md) | **0.3.7 release** independent review: PASS WITH CAVEATS; tag approved after archive |
 | [validation/reviews/2026-11-27_7cac2cfa.md](validation/reviews/2026-11-27_7cac2cfa.md) | **P194.7** worker review: PASS WITH CAVEATS; quickstart/onboarding |

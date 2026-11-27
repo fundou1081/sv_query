@@ -1355,9 +1355,8 @@ class DriverExtractor:
                 "图构建需要实例级抽取。"
             )
 
-        # [Stage 1] post-processing: 给带 condition_ast 的边填 source_location.
-        # Prefer the assignment line over the condition line: the same condition
-        # text can occur in debug strings (picorv32 trap at 1189 vs <= at 1488).
+        # [Stage 1] post-processing: 给带 condition_ast 的边填 source_location
+        # 一次性后处理比每个创建点都填更简洁
         for edge in result.edges:
             ast_node = getattr(edge, "condition_ast", None)
             if ast_node is None:
@@ -1366,25 +1365,13 @@ class DriverExtractor:
                 continue  # 已有
             try:
                 loc = self.adapter.get_source_location(ast_node)
-                if not loc[0]:
-                    continue
-                from .edge_source_lines import find_assignment_line
-                from .graph.models import SourceLocation
+                if loc[0]:  # file 非空
+                    from .graph.models import SourceLocation
+                    edge.source_location = SourceLocation(
+                        file=loc[0], line_start=loc[1], line_end=loc[1], column=loc[2]
+                    )
             except Exception as e:
                 logger.debug("%s: 忽略 Exception: %s", __name__, e)  # source_location 失败不影响 edge
-                continue
-            line = loc[1]
-            found = find_assignment_line(
-                self.adapter, loc[0], str(edge.dst),
-                str(getattr(edge, "expression", "") or ""),
-                str(getattr(edge, "condition", "") or ""), line)
-            if found is not None:
-                line = found
-            else:
-                logger.debug("edge assignment line unresolved: %s", edge.dst)
-            edge.source_location = SourceLocation(
-                file=loc[0], line_start=line, line_end=line, column=loc[2]
-            )
 
         # [REFACTOR 2026-08-07 A计划] 收集 function 宽度到 func_info
         # _store_expr_tree 的 _collect_from_tree 只记录了 Call 节点名 (func_info[name]=None)
