@@ -98,9 +98,9 @@ ops and the success/failure envelope.
  "error": {"type": "UnsupportedOperation", "message": "unsupported op: stats"}}
 ```
 
-Unknown endpoints for `paths`/`dataflow` raise
-`SignalNotFoundError` (`E_SIGNAL_NOT_FOUND`) in the session and a structured
-CLI failure with the same code.
+Unknown `paths` endpoints raise `SignalNotFoundError`
+(`E_SIGNAL_NOT_FOUND`) in the session and a structured CLI failure with the
+same code. `dataflow` endpoint parity remains P194.5h.
 
 `verify_claim` returns the same payload as CLI: `status` is
 `verified|contradicted|unknown`; `unknown` carries

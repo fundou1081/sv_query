@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from . import errors as _errors
 from .trace._safe import safe_attr
 from .trace.core.graph.dataflow import DataFlowGraph
 from .trace.core.query import session_ops
@@ -18,7 +19,7 @@ from .trace.unified_tracer import SnapshotCapabilityError, UnifiedTracer
 class SignalNotFoundError(ValueError):
     """Structured query error for a missing graph endpoint."""
 
-    error_code = "E_SIGNAL_NOT_FOUND"
+    error_code = _errors.E_SIGNAL_NOT_FOUND
 
 
 class GraphSession:

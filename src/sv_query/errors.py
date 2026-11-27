@@ -1,6 +1,6 @@
 """Layer-neutral error vocabulary for `sv_query.Session` responses (P183.4 / D12).
 
-This module is the **single source** for the three error codes the library
+This module is the **single source** for the four error codes the library
 `Session` can emit and for their envelope ``error.type`` names.  It has no
 imports at all, so it can be consumed by the library, the CLI, or an external
 transport without dragging in the CLI, Typer, the engine, or process globals.

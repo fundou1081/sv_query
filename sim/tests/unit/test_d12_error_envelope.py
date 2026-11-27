@@ -54,7 +54,7 @@ from sv_query.session import Session  # noqa: E402
 # ---------------------------------------------------------------------------
 # 1. 词表一致：sv_query.errors ↔ sv_query.cli.errors.ErrorCode
 # ---------------------------------------------------------------------------
-def test_session_error_codes_are_exactly_the_three_used_by_session():
+def test_session_error_codes_are_exactly_the_four_used_by_session():
     assert SESSION_ERROR_CODES == {
         E_INVALID_REQUEST,
         E_UNSUPPORTED_OP,

@@ -19,6 +19,7 @@ import typer
 from sv_query.cli.core.semantic._bit_args import normalize_endpoint, parse_bits
 from sv_query.cli.core.semantic._common import build_tracer, emit, fail
 from sv_query.cli.core.semantic.trace_common import _load_tracer_from_snapshot, edge_evidence_dict
+from sv_query.errors import E_SIGNAL_NOT_FOUND
 
 
 def paths_cmd(
@@ -115,7 +116,7 @@ def paths_cmd(
     unknown = [x for x in (src_id, dst_id) if x not in known]
     if unknown:
         fail("signal id not found in graph", json_output, pretty, unknown=unknown,
-             error_code="E_SIGNAL_NOT_FOUND",
+             error_code=E_SIGNAL_NOT_FOUND,
              hint="用 `sv_query graph nodes --json` 列出可用 id")
 
     def _edge_ev(path):

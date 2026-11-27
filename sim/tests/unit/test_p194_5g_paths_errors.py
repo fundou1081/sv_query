@@ -47,3 +47,17 @@ def test_cli_paths_unknown_endpoint_code_matches(tmp_path):
     payload = json.loads(proc.stdout)
     assert payload["ok"] is False
     assert payload["error_code"] == "E_SIGNAL_NOT_FOUND"
+
+
+def test_out_of_vocabulary_handler_code_falls_back():
+    from sv_query.session import E_HANDLER_FAILED, Session
+
+    class Weird(Exception):
+        error_code = "E_FROM_THE_FUTURE"
+
+    def boom(request):
+        raise Weird("boom")
+
+    response = Session(handlers={"paths": boom}).execute({"op": "paths"})
+    assert response["ok"] is False
+    assert response["error_code"] == E_HANDLER_FAILED

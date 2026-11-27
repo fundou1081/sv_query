@@ -20,7 +20,7 @@ Response shape always a plain ``dict``::
 Invalid request **data** never raises for the caller; it maps to a
 structured ``E_INVALID_REQUEST`` / ``E_UNSUPPORTED_OP`` response.  A handler
 failure (exception or non-mapping result) maps to ``E_HANDLER_FAILED``.
-The three codes and their ``error.type`` names live in
+The four codes and their ``error.type`` names live in
 :mod:`sv_query.errors` (single source, no imports); this module only
 re-exports them.
 Invalid constructor arguments (non-mapping handlers, non-callable handler,
@@ -197,6 +197,8 @@ def _run_handler(
         raw_result = handler(request)
     except Exception as exc:
         code = getattr(exc, "error_code", E_HANDLER_FAILED)
+        if code not in _ERROR_TYPES:
+            code = E_HANDLER_FAILED
         return _failure(
             op, request_id, code,
             f"handler for op {op!r} raised {type(exc).__name__}: {exc}",
