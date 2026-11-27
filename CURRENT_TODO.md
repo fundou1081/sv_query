@@ -52,3 +52,13 @@ opensource: 112 passed / 11 skipped / 0 failed
 - 不要用旧 `visualize` / `cdc` / `timing` / `sva` / `risk` 作为当前示例；
 - 不要把 123 deferred 写成 unexecuted；
 - 不要在未标定的 `trace impact` 风险分上做绝对风险声明。
+## 待修复：真实项目复审 P2（2026-11-27）
+
+- P194.5k.1 `drivers --evidence` 条件边行号（R1）
+- P194.5k.2 evidence payload 体积（trap 453 KB）
+- P194.5k.3 `ports`/`connections` 开放端口 parity
+- P194.5k.4 模块输出 evidence 空结果
+- P194.5l session `--serve` capabilities/graph_nodes 不支持
+- P194.5m SERV 4 个 bit_mapping violation 定性
+
+> 当前 item 仍是 P193.10；以上按 P194.5k → P194.5l → P194.5m 顺序逐个修复。
