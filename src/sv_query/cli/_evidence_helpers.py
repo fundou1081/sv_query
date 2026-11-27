@@ -79,17 +79,35 @@ def make_resolver(graph, adapter) -> TraceEvidenceResolver:
 # 2. 序列化: Evidence / SourceSnippet -> JSON-friendly dict
 # ----------------------------------------------------------------------------
 
-def snippet_to_dict(snippet) -> dict | None:
-    """SourceSnippet -> dict (Stage 4 offset-based slicing 输出)"""
+MAX_EVIDENCE_SNIPPET_CHARS = 1600
+MAX_EVIDENCE_CHAIN_ITEMS = 8
+MAX_EVIDENCE_SOURCE_CHARS = 4000
+
+
+def snippet_to_dict(snippet, *, limit: int = MAX_EVIDENCE_SNIPPET_CHARS) -> dict | None:
+    """SourceSnippet -> dict with a bounded text payload.
+
+    Full snippets can make one evidence payload hundreds of KB. Truncation is
+    explicit (``truncated`` + ``original_length``); verification flags are
+    computed on the full Evidence object before this projection.
+    """
     if snippet is None:
         return None
-    return {
+    text = snippet.text or ""
+    truncated = len(text) > limit
+    if truncated:
+        text = text[:limit] + "\n... [truncated]"
+    out = {
         "file": snippet.location.file,
         "line_start": snippet.location.line_start,
         "line_end": snippet.location.line_end,
         "column": snippet.location.column,
-        "text": snippet.text,
+        "text": text,
     }
+    if truncated:
+        out["truncated"] = True
+        out["original_length"] = len(snippet.text or "")
+    return out
 
 
 def evidence_to_dict(ev) -> dict | None:
@@ -117,14 +135,22 @@ def evidence_to_dict(ev) -> dict | None:
             if ev.source_location is not None
             else None
         ),
-        "source_text": ev.source_text,
+        "source_text": (
+            (ev.source_text[:MAX_EVIDENCE_SOURCE_CHARS] + "\n... [truncated]")
+            if len(ev.source_text or "") > MAX_EVIDENCE_SOURCE_CHARS
+            else ev.source_text
+        ),
+        "source_text_truncated": len(ev.source_text or "") > MAX_EVIDENCE_SOURCE_CHARS,
         "enclosing_always": snippet_to_dict(ev.enclosing_always),
         "enclosing_always_comb": snippet_to_dict(ev.enclosing_always_comb),
         "enclosing_if": snippet_to_dict(ev.enclosing_if),
         "enclosing_assign": snippet_to_dict(ev.enclosing_assign),
         "enclosing_class": snippet_to_dict(ev.enclosing_class),
         "enclosing_constraint": snippet_to_dict(ev.enclosing_constraint),
-        "enclosing_chain": [snippet_to_dict(s) for s in ev.enclosing_chain],
+        "enclosing_chain": [
+            snippet_to_dict(s) for s in ev.enclosing_chain[:MAX_EVIDENCE_CHAIN_ITEMS]
+        ],
+        "enclosing_chain_truncated": len(ev.enclosing_chain) > MAX_EVIDENCE_CHAIN_ITEMS,
         "is_verified": ev.is_verified,
         "credibility_score": ev.credibility_score,
     }

@@ -985,6 +985,8 @@ JSON_CONTRACT = {
         "enclosing_class": {"type": "string|null", "desc": "class context"},
         "enclosing_constraint": {"type": "string|null", "desc": "constraint context"},
         "enclosing_chain": {"type": "array<string>", "desc": "enclosing chain"},
+        "enclosing_chain_truncated": {"type": "boolean", "desc": "P194.5.11 chain cap applied"},
+        "source_text_truncated": {"type": "boolean", "desc": "P194.5.11 source cap applied"},
         "is_verified": {"type": "boolean", "desc": "evidence verified flag"},
         "credibility_score": {"type": "number", "desc": "0..1 heuristic score"},
     },
