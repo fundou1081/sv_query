@@ -41,13 +41,20 @@ def ports_cmd(
     rows = []
     for nid in graph.nodes():
         n = graph.get_node(nid)
-        if n is None or n.kind not in port_kinds or getattr(n, "module", None) != module:
+        if n is None or getattr(n, "module", None) != module:
             continue
+        if n.kind not in port_kinds and not getattr(n, "is_port", False):
+            continue
+        direction = {NodeKind.PORT_IN: "input", NodeKind.PORT_OUT: "output",
+                     NodeKind.PORT_INOUT: "inout"}.get(n.kind)
+        if direction is None:
+            direction = (getattr(n, "extra", {}) or {}).get("direction", "")
+            if direction not in {"input", "output", "inout"}:
+                continue
         rows.append({
             "port": n.name,
             "id": n.id,
-            "direction": {NodeKind.PORT_IN: "input", NodeKind.PORT_OUT: "output",
-                          NodeKind.PORT_INOUT: "inout"}[n.kind],
+            "direction": direction,
             "width": list(n.width) if n.width else None,
             "in_edges": len(list(graph.predecessors(nid))) if nid in graph else 0,
             "out_edges": len(list(graph.successors(nid))) if nid in graph else 0,
