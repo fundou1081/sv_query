@@ -219,11 +219,17 @@ class ControlFlowAnalyzer:
     @classmethod
     def _looks_like_inline_condition(cls, expr: str, edge=None) -> bool:
         expr = (expr or "").strip()
-        op = str(getattr(getattr(edge, "source", None), "op", "") or "")
-        if op:
-            return op in cls._INLINE_OPS
+        source = getattr(edge, "source", None)
+        op = str(getattr(source, "op", "") or "")
+        if op in cls._INLINE_OPS:
+            return True
+        inner = getattr(source, "inner_ops", ()) or ()
+        if any(str(item) in cls._INLINE_OPS for item in inner):
+            return True
         if not expr:
             return False
+        # Non-inline top-level op can still contain a nested comparison; keep
+        # the textual fallback rather than short-circuiting on the root op.
         return bool(re.search(r"(==|!=|<=|>=|&&|\|\||\?|\bcase\b)", expr))
 
     def _label_unmodeled_inline(self, result, incoming_edges) -> None:

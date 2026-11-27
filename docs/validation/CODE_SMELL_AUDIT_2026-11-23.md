@@ -54,7 +54,7 @@ P1s targeted for remediation are fixed and gate-backed; F4/F5 remain known-broke
 | F2 | fixed | C-58 | `test_p197_2_verify_parity.py` |
 | F3 | fixed | C-67 | `test_p197_3_refresh_guard.py` |
 | F4 | open (P194.5g) | C-63 known-broken | session paths endpoint parity |
-| F5 | open (P194.5f) | C-62 known-broken | controlflow mixed-driver |
+| F5 | fixed (P194.5f) | C-62 verified | `test_p194_5b_controlflow_claims.py` |
 | F6 | fixed | C-64/C-70 | `test_p194_5i_depth_alias.py` |
 | F7 | fixed | C-67 | `test_p197_3_refresh_guard.py` |
 | F8 | fixed | C-45/C-48 | `test_p197_7_mig_cache.py` |

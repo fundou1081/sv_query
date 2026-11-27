@@ -66,3 +66,24 @@ def test_mixed_if_and_inline_is_not_complete(tmp_path):
     result = json.loads(proc.stdout)["result"]
     assert result["condition_status"] == "partial"
     assert any("inline expression control" in w for w in result["warnings"])
+
+
+def test_nested_inline_comparison_is_not_complete(tmp_path):
+    sv = tmp_path / "nested.sv"
+    sv.write_text(
+        "module top(input logic en, a, b, input logic [3:0] state_q,\n"
+        "           output logic q, y);\n"
+        "  localparam logic [3:0] IDLE = 4'd0;\n"
+        "  always_comb begin\n"
+        "    if (en) q = a;\n"
+        "    else q = b;\n"
+        "  end\n"
+        "  assign q = a & (state_q == IDLE);\n"
+        "  assign y = a & (state_q == IDLE);\n"
+        "endmodule\n")
+    mixed = _run("controlflow", "analyze", "top.q", "--file", str(sv))
+    assert mixed.returncode == 0, mixed.stderr[-400:]
+    assert json.loads(mixed.stdout)["result"]["condition_status"] == "partial"
+    pure = _run("controlflow", "analyze", "top.y", "--file", str(sv))
+    assert pure.returncode == 0, pure.stderr[-400:]
+    assert json.loads(pure.stdout)["result"]["condition_status"] == "not_modeled"
