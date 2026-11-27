@@ -1,6 +1,7 @@
 # P194.5 initial local measurement (2026-11-23)
 
-> **Status**: initial evidence only; **not** an external benchmark.
+> **Status**: initial evidence only; **not** an external benchmark. P194.5d must
+> follow `P1945D_ACCEPTANCE_CHARTER_2026-11-27.md`.
 > **HEAD**: `fa8453e9` (P194.4); PyPI 0.3.6 does not include P194.2f–P194.4.
 > **Machine**: macOS arm64, Python 3.11.4, pyslang 11.0.0.
 

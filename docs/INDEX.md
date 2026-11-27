@@ -11,8 +11,8 @@
 | 项 | 值 | 说明 |
 |---|---|---|
 | 源码规模 | 159 文件 / 53,596 行 | `find src -name "*.py"`（2026-11-16 实测） |
-| 测试规模 | 490 测试文件 / 73,531 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **3380 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-27 P194.5f 全量复核（3380）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
+| 测试规模 | 491 测试文件 / 73,554 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
+| 全量 (canonical) | **3382 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-27 P194.5f 全量复核（3382）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
@@ -127,6 +127,7 @@
 | [agent/AGENT_TASK_CORPUS.md](agent/AGENT_TASK_CORPUS.md) | **P145**: 15 个可执行 agent 任务 + false-confident/found 指标 |
 | [validation/CODE_SMELL_AUDIT_2026-11-23.md](validation/CODE_SMELL_AUDIT_2026-11-23.md) | **P197**: verify/cache/semantic heuristics audit; P194.5d blocked |
 | [validation/P19810_PART_SELECT_2026-11-25.md](validation/P19810_PART_SELECT_2026-11-25.md) | **P198.10** part-select investigation; fix split into 10a/10b/10c |
+| [validation/P1945D_ACCEPTANCE_CHARTER_2026-11-27.md](validation/P1945D_ACCEPTANCE_CHARTER_2026-11-27.md) | **P194.5d** acceptance charter: dataset/oracle/token/baseline gates |
 | [validation/P1945_AUDIT_2026-11-23.md](validation/P1945_AUDIT_2026-11-23.md) | **P194.5 audit**: P1 compact/controlflow/paths defects; P194.5d blocked |
 | [validation/P1945_LOCAL_MEASURE_2026-11-23.md](validation/P1945_LOCAL_MEASURE_2026-11-23.md) | **P194.5**: local 3-corpus session/cache/token evidence; explicitly not external |
 | [validation/P145_VALIDATION_BASELINE_2026-11-10.md](validation/P145_VALIDATION_BASELINE_2026-11-10.md) | **P145**: full gate 环境 skip + agent corpus |
