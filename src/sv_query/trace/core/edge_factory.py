@@ -12,9 +12,25 @@
 # - 任何新条件字段 (如 V3 Z3 bin) 只在此处加一处
 # ==============================================================================
 
+from contextvars import ContextVar
 from typing import Any
 
-from .graph.models import EdgeKind, SignalSource, TraceEdge
+from .graph.models import EdgeKind, SignalSource, SourceLocation, TraceEdge
+
+_CURRENT_ASSIGNMENT = ContextVar("svq_assignment_location", default=None)
+
+
+def set_assignment_context(value) -> None:
+    _CURRENT_ASSIGNMENT.set(_location_from_ctx(value))
+
+
+def _location_from_ctx(value):
+    if isinstance(value, SourceLocation):
+        return value
+    if isinstance(value, tuple) and len(value) == 3:
+        return SourceLocation(file=value[0], line_start=value[1],
+                              line_end=value[1], column=value[2])
+    return None
 
 
 class TraceEdgeFactory:
@@ -38,6 +54,7 @@ class TraceEdgeFactory:
         clock_domain: str = "",
         source: SignalSource | None = None,  # [V6.5 2026-07-28] [V6.6 renamed from driver_source]
         condition_chain: list[str] | None = None,  # [V7.0 2026-08-03] 嵌套条件累积链
+        source_location: SourceLocation | None = None,
     ) -> TraceEdge:
         """[V6.6] source 参数：结构化信号源 (driver/load 共享)。
         当 source 提供时, expression/bit_slice 自动从 source 填充
@@ -52,6 +69,11 @@ class TraceEdgeFactory:
 
         c = ctx or {}
         use_ctx = ctx is not None
+        resolved_location = source_location
+        if isinstance(resolved_location, tuple) and len(resolved_location) == 3:
+            resolved_location = SourceLocation(
+                file=resolved_location[0], line_start=resolved_location[1],
+                line_end=resolved_location[1], column=resolved_location[2])
         # clock_domain 显式参数优先, 否则从 ctx 读
         effective_clock = clock_domain if clock_domain else (c.get("clock", "") if use_ctx else "")
         # [V4 fix] condition 优先级: ctx > explicit condition > sig_cond (向后兼容)
@@ -64,6 +86,15 @@ class TraceEdgeFactory:
         # [V7.0] 从 ctx 提取 condition_chain（只需传 ctx 即可自动获得）
         if condition_chain is None:
             condition_chain = c.get("condition_chain") if use_ctx else None
+        edge_location = (
+            resolved_location
+            if resolved_location is not None
+            else _location_from_ctx(c.get("source_location"))
+        )
+        if edge_location is None and kind == EdgeKind.DRIVER and assign_type in ("nonblocking", "blocking"):
+            edge_location = _CURRENT_ASSIGNMENT.get()
+        if kind != EdgeKind.DRIVER:
+            edge_location = None
         return TraceEdge(
             src=src,
             dst=dst,
@@ -79,4 +110,5 @@ class TraceEdgeFactory:
             ),
             condition_chain=list(condition_chain) if condition_chain else [],
             source=source,
+            source_location=edge_location,
         )

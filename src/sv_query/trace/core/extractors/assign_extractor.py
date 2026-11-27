@@ -69,6 +69,29 @@ class AssignHelpers:
     edge_factory: Any = None
 
 
+def _assignment_location(assign, h):
+    try:
+        loc = h.adapter.get_source_location(assign)
+    except Exception:
+        return None
+    if not loc or not loc[0]:
+        return None
+    from ..assignment_source import disk_line
+    from ..graph.models import SourceLocation
+    line = disk_line(h.adapter, loc[0], loc[1])
+    return SourceLocation(file=loc[0], line_start=line, line_end=line,
+                          column=loc[2])
+
+
+def _apply_assignment_location(result, start: int, location) -> None:
+    if location is None:
+        return
+    from ..graph.models import EdgeKind
+    for edge in result.edges[start:]:
+        if edge.kind == EdgeKind.DRIVER and edge.source_location is None:
+            edge.source_location = location
+
+
 def create_assign_edges(module, result, module_name, *, h: 'AssignHelpers'):
     """[REFACTOR 2026-06-26] 处理所有 continuous assign 语句.
 
@@ -86,13 +109,15 @@ def create_assign_edges(module, result, module_name, *, h: 'AssignHelpers'):
         except Exception:
             genvar_ctx = {}
         raw_lhs, raw_rhs = _extract_assign_lr(assign)
-        if _handle_concat_assign(assign, raw_lhs, raw_rhs, module, result, module_name, genvar_ctx, h=h):
-            continue
-        if _handle_call_assign(assign, raw_lhs, raw_rhs, module, result, module_name, genvar_ctx, h=h):
-            continue
-        if _handle_binary_invocation_assign(assign, raw_lhs, raw_rhs, module, result, module_name, genvar_ctx, h=h):
-            continue
-        _handle_normal_assign(assign, module, result, module_name, genvar_ctx, h=h)
+        start = len(result.edges)
+        handled = _handle_concat_assign(assign, raw_lhs, raw_rhs, module, result, module_name, genvar_ctx, h=h)
+        if not handled:
+            handled = _handle_call_assign(assign, raw_lhs, raw_rhs, module, result, module_name, genvar_ctx, h=h)
+        if not handled:
+            handled = _handle_binary_invocation_assign(assign, raw_lhs, raw_rhs, module, result, module_name, genvar_ctx, h=h)
+        if not handled:
+            _handle_normal_assign(assign, module, result, module_name, genvar_ctx, h=h)
+        _apply_assignment_location(result, start, _assignment_location(assign, h))
 
 
 

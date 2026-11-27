@@ -32,7 +32,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from pyslang.pyslang.ast import StatementKind  # [V6.9] semantic AST only
+from pyslang.pyslang.ast import ExpressionKind, StatementKind  # [V6.9] semantic AST only
 
 from ..ast_utils import kind_matches, unwrap
 from ..graph.models import EdgeKind, NodeKind, TraceNode
@@ -169,6 +169,8 @@ def _create_always_edges(module, result, module_name, genvar_ctx: dict | None = 
         for item in stmts_ctx:
             # [铁律29] StatementCollectorVisitor 返回 (node, ctx, ItemType)
             stmt, ctx, item_type = item
+            from ..edge_factory import set_assignment_context
+            set_assignment_context(ctx.get("source_location"))
             # [#8 2026-08-28] 把 genvar_ctx 塞进 adapter._genvar_context (id-keyed),
             # 保证 _parse_assign → adapter.get_genvar_context(stmt) 命中并 substitute.
             # _collect_stmts_with_context 返回的 stmt 与 get_assignments 遍历到的
@@ -836,6 +838,15 @@ def _collect_stmts_with_context(n, ctx=None, *, h: 'AlwaysHelpers', genvar_ctx: 
                 item_ctx["condition_ast"] = cond_ast
             if leaf_name:
                 item_ctx["leaf_name"] = leaf_name
+            if getattr(expr_node, "kind", None) == ExpressionKind.Assignment:
+                try:
+                    loc = h.adapter.get_source_location(expr_node)
+                    if loc[0]:
+                        from ..assignment_source import disk_line
+                        item_ctx["source_location"] = (
+                            loc[0], disk_line(h.adapter, loc[0], loc[1]), loc[2])
+                except Exception as e:
+                    logger.debug("assignment source location failed: %s", e)
             result.append((expr_node, item_ctx, None))
         else:
             result.append((item, ctx, None))

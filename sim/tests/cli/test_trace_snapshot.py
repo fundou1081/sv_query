@@ -158,15 +158,16 @@ def test_p3_impact_from_snapshot():
 
 
 def test_p4_evidence_from_snapshot():
-    """P4: evidence --from-snapshot 能查到 signal (graph 在, 但 source 不在, 所以 source_text 空)."""
+    """P4: evidence --from-snapshot 能查到 signal; 有 assignment provenance 时带 source."""
     r = _run("evidence", "uart_top.rx_fifo.count_q", "--from-snapshot", TEST_SNAPSHOT_TAG, "--json")
     assert r.returncode == 0, f"rc={r.returncode} stderr={r.stderr[:200]}"
     data = json.loads(r.stdout)
     ev = data["result"]["signals"][0]["evidence"]
-    # Snapshot 重建 graph 但 source_text 是空 (snapshot 不存源)
+    # P194.5.10a persists assignment provenance on DRIVER edges; snapshot
+    # evidence can use it when the source file is still available.
     assert ev["signal"] == "uart_top.rx_fifo.count_q"
-    assert ev.get("source_text") == "", "source_text should be empty in snapshot mode"
-    print("✅ P4 evidence --from-snapshot: signal found, source_text empty (snapshot limitation)")
+    assert ev.get("source_text"), "assignment provenance should survive snapshot"
+    print("✅ P4 evidence --from-snapshot: signal found with assignment source")
 
 
 def test_p5_from_snapshot_with_batch():
