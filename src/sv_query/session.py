@@ -129,6 +129,7 @@ class Session:
         failure, op, request_id = _parse_request(request)
         if failure is not None:
             return failure
+        assert op is not None
         if op == "version":
             return _success(op, request_id, _version_result())
         handler = self._handlers.get(op)

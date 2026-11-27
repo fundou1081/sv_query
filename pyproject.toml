@@ -54,6 +54,7 @@ dev = [
     "ruff>=0.1.0",
     "jsonschema>=4.0",  # test_trace_schemas.py (P171.1)
     "PyYAML>=6.0",  # P165.4 filelist closure adapter
+    "mypy>=1.8",  # P194.6 scoped static type gate
 ]
 all = [
     "scipy>=1.10",
@@ -204,3 +205,16 @@ ignore = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["sv_query"]
+
+[tool.mypy]
+python_version = "3.11"
+files = [
+    "src/sv_query/errors.py",
+    "src/sv_query/session.py",
+    "src/sv_query/trace/core/query/verification.py",
+]
+ignore_missing_imports = true
+follow_imports = "skip"
+check_untyped_defs = true
+warn_unused_ignores = true
+show_error_codes = true

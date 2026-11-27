@@ -1,0 +1,868 @@
+{
+  "$id": "https://github.com/fundou1081/sv_query/tools/generated_result_schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "commands": {
+    "capabilities": {
+      "optional": [],
+      "properties": {
+        "bit_precision": {},
+        "commands": {},
+        "core_groups": {},
+        "counts": {},
+        "json_contract": {},
+        "layers": {},
+        "planned_new": {},
+        "version": {}
+      },
+      "required": [
+        "version",
+        "layers",
+        "core_groups",
+        "counts",
+        "planned_new",
+        "bit_precision",
+        "json_contract",
+        "commands"
+      ]
+    },
+    "class": {
+      "optional": [
+        "candidate_count",
+        "candidates",
+        "class",
+        "classes",
+        "count",
+        "instance_count",
+        "instances",
+        "member",
+        "member_count",
+        "members",
+        "note",
+        "ok",
+        "relations"
+      ],
+      "properties": {
+        "candidate_count": {},
+        "candidates": {},
+        "class": {},
+        "classes": {},
+        "count": {},
+        "instance_count": {},
+        "instances": {},
+        "member": {},
+        "member_count": {},
+        "members": {},
+        "note": {},
+        "ok": {},
+        "relations": {}
+      },
+      "required": []
+    },
+    "connections": {
+      "optional": [
+        "instance",
+        "module_type",
+        "ok",
+        "parent",
+        "port_count",
+        "ports",
+        "resolved_as"
+      ],
+      "properties": {
+        "instance": {},
+        "module_type": {},
+        "ok": {},
+        "parent": {},
+        "port_count": {},
+        "ports": {},
+        "resolved_as": {}
+      },
+      "required": []
+    },
+    "controlflow analyze": {
+      "optional": [],
+      "properties": {
+        "condition_scope": {},
+        "condition_status": {},
+        "conditioned_drivers": {},
+        "signal": {},
+        "warnings": {}
+      },
+      "required": [
+        "signal",
+        "conditioned_drivers",
+        "condition_status",
+        "condition_scope",
+        "warnings"
+      ]
+    },
+    "controlflow list-conditioned": {
+      "optional": [],
+      "properties": {
+        "count": {},
+        "signals": {}
+      },
+      "required": [
+        "signals",
+        "count"
+      ]
+    },
+    "dataflow analyze": {
+      "optional": [],
+      "properties": {
+        "all_conditions": {},
+        "bits": {},
+        "clock_domain": {},
+        "elapsed_s": {},
+        "expansions": {},
+        "from_resolved": {},
+        "from_signal": {},
+        "intermediate_signals": {},
+        "is_reachable": {},
+        "paths": {},
+        "paths_count": {},
+        "primary_is_async": {},
+        "primary_latency_cycles": {},
+        "risk_model": {},
+        "search_status": {},
+        "timing_risk": {},
+        "to_resolved": {},
+        "to_signal": {},
+        "truncated": {},
+        "truncation_reason": {}
+      },
+      "required": [
+        "from_signal",
+        "to_signal",
+        "from_resolved",
+        "to_resolved",
+        "bits",
+        "is_reachable",
+        "search_status",
+        "truncated",
+        "truncation_reason",
+        "expansions",
+        "elapsed_s",
+        "paths_count",
+        "intermediate_signals",
+        "primary_latency_cycles",
+        "primary_is_async",
+        "all_conditions",
+        "clock_domain",
+        "timing_risk",
+        "risk_model",
+        "paths"
+      ]
+    },
+    "drivers": {
+      "optional": [],
+      "properties": {
+        "failed_signals": {},
+        "signals": {},
+        "total_count": {},
+        "total_pre_filter": {},
+        "total_signals": {},
+        "truncated": {}
+      },
+      "required": [
+        "signals",
+        "total_signals",
+        "total_count",
+        "total_pre_filter",
+        "truncated",
+        "failed_signals"
+      ]
+    },
+    "filelist prune": {
+      "optional": [
+        "backup",
+        "dry_run",
+        "output",
+        "requires_apply",
+        "written"
+      ],
+      "properties": {
+        "backup": {},
+        "declarations": {},
+        "dropped": {},
+        "dry_run": {},
+        "output": {},
+        "reason": {},
+        "requires_apply": {},
+        "selected_count": {},
+        "selected_files": {},
+        "top": {},
+        "total_files": {},
+        "written": {}
+      },
+      "required": [
+        "top",
+        "total_files",
+        "selected_files",
+        "selected_count",
+        "dropped",
+        "reason",
+        "declarations"
+      ]
+    },
+    "graph edges": {
+      "optional": [],
+      "properties": {
+        "edges": {},
+        "total": {}
+      },
+      "required": [
+        "edges",
+        "total"
+      ]
+    },
+    "graph nodes": {
+      "optional": [],
+      "properties": {
+        "nodes": {},
+        "total": {}
+      },
+      "required": [
+        "nodes",
+        "total"
+      ]
+    },
+    "graph subgraph": {
+      "optional": [],
+      "properties": {
+        "boundary": {},
+        "edges": {},
+        "nodes": {},
+        "stats": {},
+        "truncated": {}
+      },
+      "required": [
+        "nodes",
+        "edges",
+        "boundary",
+        "truncated",
+        "stats"
+      ]
+    },
+    "hierarchy": {
+      "optional": [
+        "depth",
+        "instance_count",
+        "ok",
+        "root",
+        "root_count",
+        "tree",
+        "tree_node_count"
+      ],
+      "properties": {
+        "depth": {},
+        "instance_count": {},
+        "ok": {},
+        "root": {},
+        "root_count": {},
+        "tree": {},
+        "tree_node_count": {}
+      },
+      "required": []
+    },
+    "instances": {
+      "optional": [
+        "count",
+        "instances",
+        "module",
+        "ok"
+      ],
+      "properties": {
+        "count": {},
+        "instances": {},
+        "module": {},
+        "ok": {}
+      },
+      "required": []
+    },
+    "loads": {
+      "optional": [],
+      "properties": {
+        "failed_signals": {},
+        "signals": {},
+        "total_count": {},
+        "total_pre_filter": {},
+        "total_signals": {},
+        "truncated": {}
+      },
+      "required": [
+        "signals",
+        "total_signals",
+        "total_count",
+        "total_pre_filter",
+        "truncated",
+        "failed_signals"
+      ]
+    },
+    "params": {
+      "optional": [
+        "count",
+        "instance",
+        "module_type",
+        "ok",
+        "parameters"
+      ],
+      "properties": {
+        "count": {},
+        "instance": {},
+        "module_type": {},
+        "ok": {},
+        "parameters": {}
+      },
+      "required": []
+    },
+    "paths": {
+      "optional": [
+        "all_paths",
+        "candidate_count",
+        "candidate_truncated",
+        "canonical",
+        "canonical_policy",
+        "count",
+        "expansions",
+        "found",
+        "hop_count",
+        "path",
+        "truncated",
+        "truncation_reason"
+      ],
+      "properties": {
+        "all_paths": {},
+        "bits": {},
+        "candidate_count": {},
+        "candidate_truncated": {},
+        "canonical": {},
+        "canonical_policy": {},
+        "count": {},
+        "directed": {},
+        "dst": {},
+        "dst_resolved": {},
+        "expansions": {},
+        "found": {},
+        "hop_count": {},
+        "mode": {},
+        "ok": {},
+        "path": {},
+        "src": {},
+        "src_resolved": {},
+        "truncated": {},
+        "truncation_reason": {}
+      },
+      "required": [
+        "ok",
+        "src",
+        "dst",
+        "src_resolved",
+        "dst_resolved",
+        "bits",
+        "directed",
+        "mode"
+      ]
+    },
+    "ports": {
+      "optional": [
+        "by_direction",
+        "count",
+        "module",
+        "ok",
+        "ports"
+      ],
+      "properties": {
+        "by_direction": {},
+        "count": {},
+        "module": {},
+        "ok": {},
+        "ports": {}
+      },
+      "required": []
+    },
+    "scope": {
+      "optional": [],
+      "properties": {
+        "canonical_id": {},
+        "children": {},
+        "instances": {},
+        "kind": {},
+        "members": {},
+        "module_type": {},
+        "parameters": {},
+        "parent": {},
+        "ports": {},
+        "scope": {},
+        "signals": {}
+      },
+      "required": [
+        "scope",
+        "canonical_id",
+        "kind",
+        "module_type",
+        "parent",
+        "children",
+        "ports",
+        "parameters",
+        "signals",
+        "members",
+        "instances"
+      ]
+    },
+    "search": {
+      "optional": [
+        "case_insensitive",
+        "file_count",
+        "files",
+        "keyword",
+        "regex",
+        "target",
+        "total_matches"
+      ],
+      "properties": {
+        "case_insensitive": {},
+        "file_count": {},
+        "files": {},
+        "keyword": {},
+        "regex": {},
+        "target": {},
+        "total_matches": {}
+      },
+      "required": []
+    },
+    "snapshot compare": {
+      "optional": [],
+      "properties": {
+        "added_edges": {},
+        "added_nodes": {},
+        "coupling_warning": {},
+        "health_delta": {},
+        "health_score_new": {},
+        "health_score_old": {},
+        "identical": {},
+        "removed_edges": {},
+        "removed_nodes": {},
+        "stable_core": {},
+        "tag1": {},
+        "tag2": {}
+      },
+      "required": [
+        "tag1",
+        "tag2",
+        "stable_core",
+        "health_score_old",
+        "health_score_new",
+        "health_delta",
+        "coupling_warning",
+        "added_nodes",
+        "removed_nodes",
+        "added_edges",
+        "removed_edges",
+        "identical"
+      ]
+    },
+    "snapshot delete": {
+      "optional": [],
+      "properties": {
+        "deleted": {},
+        "error": {},
+        "ok": {},
+        "tag": {}
+      },
+      "required": [
+        "ok",
+        "tag",
+        "deleted",
+        "error"
+      ]
+    },
+    "snapshot list": {
+      "optional": [],
+      "properties": {
+        "created_at": {},
+        "edge_count": {},
+        "error": {},
+        "file": {},
+        "files": {},
+        "git_commit": {},
+        "module_graph_instances": {},
+        "module_graph_ports": {},
+        "module_graph_present": {},
+        "node_count": {},
+        "tag": {},
+        "tag_mismatch": {}
+      },
+      "required": [
+        "tag",
+        "file",
+        "created_at",
+        "git_commit",
+        "files",
+        "node_count",
+        "edge_count",
+        "module_graph_present",
+        "module_graph_instances",
+        "module_graph_ports",
+        "tag_mismatch",
+        "error"
+      ]
+    },
+    "snapshot save": {
+      "optional": [],
+      "properties": {
+        "edge_count": {},
+        "elaboration_errors": {},
+        "failed_files": {},
+        "files": {},
+        "node_count": {},
+        "ok": {},
+        "path": {},
+        "tag": {}
+      },
+      "required": [
+        "ok",
+        "tag",
+        "path",
+        "files",
+        "node_count",
+        "edge_count",
+        "elaboration_errors",
+        "failed_files"
+      ]
+    },
+    "stats": {
+      "optional": [],
+      "properties": {
+        "edges": {},
+        "elaboration_errors": {},
+        "modules": {},
+        "nodes": {},
+        "total_edges": {},
+        "total_nodes": {}
+      },
+      "required": [
+        "total_nodes",
+        "total_edges",
+        "nodes",
+        "edges",
+        "modules",
+        "elaboration_errors"
+      ]
+    },
+    "trace constraint-chain": {
+      "optional": [],
+      "properties": {
+        "blocks": {},
+        "chain": {},
+        "found": {},
+        "hop_count": {},
+        "note": {},
+        "rand": {},
+        "segments": {},
+        "source": {},
+        "summary": {},
+        "target": {}
+      },
+      "required": [
+        "found",
+        "source",
+        "target",
+        "rand",
+        "hop_count",
+        "chain",
+        "segments",
+        "blocks",
+        "summary",
+        "note"
+      ]
+    },
+    "trace constraint-neighborhood": {
+      "optional": [],
+      "properties": {
+        "nodes": {},
+        "paths": {},
+        "relations": {},
+        "root": {},
+        "summary": {}
+      },
+      "required": [
+        "root",
+        "nodes",
+        "relations",
+        "paths",
+        "summary"
+      ]
+    },
+    "trace constraints": {
+      "optional": [],
+      "properties": {
+        "constraints": {},
+        "count": {},
+        "property": {},
+        "resolved": {}
+      },
+      "required": [
+        "property",
+        "resolved",
+        "count",
+        "constraints"
+      ]
+    },
+    "trace covergroup": {
+      "optional": [
+        "links",
+        "samples"
+      ],
+      "properties": {
+        "complete": {},
+        "count": {},
+        "covergroup": {},
+        "links": {},
+        "mode": {},
+        "reason": {},
+        "samples": {}
+      },
+      "required": [
+        "mode",
+        "covergroup",
+        "count",
+        "complete",
+        "reason"
+      ]
+    },
+    "trace covergroups": {
+      "optional": [],
+      "properties": {
+        "complete": {},
+        "count": {},
+        "covergroups": {},
+        "reason": {}
+      },
+      "required": [
+        "count",
+        "covergroups",
+        "complete",
+        "reason"
+      ]
+    },
+    "trace coverpoints": {
+      "optional": [],
+      "properties": {
+        "complete": {},
+        "count": {},
+        "matches": {},
+        "reason": {},
+        "signal": {}
+      },
+      "required": [
+        "signal",
+        "count",
+        "matches",
+        "complete",
+        "reason"
+      ]
+    },
+    "trace evidence": {
+      "optional": [],
+      "properties": {
+        "failed_signals": {},
+        "signals": {},
+        "total_signals": {}
+      },
+      "required": [
+        "signals",
+        "total_signals",
+        "failed_signals"
+      ]
+    },
+    "trace fanin": {
+      "optional": [],
+      "properties": {
+        "failed_signals": {},
+        "signals": {},
+        "total_count": {},
+        "total_pre_filter": {},
+        "total_signals": {},
+        "truncated": {}
+      },
+      "required": [
+        "signals",
+        "total_signals",
+        "total_count",
+        "total_pre_filter",
+        "truncated",
+        "failed_signals"
+      ]
+    },
+    "trace fanout": {
+      "optional": [],
+      "properties": {
+        "failed_signals": {},
+        "signals": {},
+        "total_count": {},
+        "total_pre_filter": {},
+        "total_signals": {},
+        "truncated": {}
+      },
+      "required": [
+        "signals",
+        "total_signals",
+        "total_count",
+        "total_pre_filter",
+        "truncated",
+        "failed_signals"
+      ]
+    },
+    "trace frontier": {
+      "optional": [],
+      "properties": {
+        "frontier": {},
+        "note": {},
+        "signal": {},
+        "summary": {}
+      },
+      "required": [
+        "signal",
+        "frontier",
+        "summary",
+        "note"
+      ]
+    },
+    "trace impact": {
+      "optional": [],
+      "properties": {
+        "failed_signals": {},
+        "risk_model": {},
+        "signals": {},
+        "total_high_risk_count": {},
+        "total_paths": {},
+        "total_signals": {}
+      },
+      "required": [
+        "signals",
+        "total_signals",
+        "total_paths",
+        "total_high_risk_count",
+        "failed_signals",
+        "risk_model"
+      ]
+    },
+    "trace lookup": {
+      "optional": [],
+      "properties": {
+        "failed": {},
+        "found": {},
+        "paths": {},
+        "total": {}
+      },
+      "required": [
+        "paths",
+        "total",
+        "found",
+        "failed"
+      ]
+    },
+    "trace manifest": {
+      "optional": [],
+      "properties": {
+        "entries": {},
+        "failed": {},
+        "found": {},
+        "total": {}
+      },
+      "required": [
+        "entries",
+        "total",
+        "found",
+        "failed"
+      ]
+    },
+    "trace profile": {
+      "optional": [],
+      "properties": {
+        "failed_signals": {},
+        "signals": {},
+        "total_signals": {}
+      },
+      "required": [
+        "signals",
+        "total_signals",
+        "failed_signals"
+      ]
+    },
+    "trace tb-join": {
+      "optional": [],
+      "properties": {
+        "constraints": {},
+        "join_status": {},
+        "leaf": {},
+        "note": {},
+        "rtl_candidates": {},
+        "tb_field": {}
+      },
+      "required": [
+        "tb_field",
+        "leaf",
+        "constraints",
+        "join_status",
+        "rtl_candidates",
+        "note"
+      ]
+    },
+    "verify claim": {
+      "optional": [],
+      "properties": {
+        "claim": {},
+        "counterevidence": {},
+        "evidence": {},
+        "reason": {},
+        "status": {}
+      },
+      "required": [
+        "claim",
+        "status",
+        "reason",
+        "evidence",
+        "counterevidence"
+      ]
+    },
+    "verify consistency": {
+      "optional": [],
+      "properties": {
+        "checks": {},
+        "coverage_complete": {},
+        "partial_checks": {},
+        "total_violations": {},
+        "unknown_checks": {},
+        "verified": {}
+      },
+      "required": [
+        "verified",
+        "coverage_complete",
+        "partial_checks",
+        "total_violations",
+        "unknown_checks",
+        "checks"
+      ]
+    },
+    "verify structural": {
+      "optional": [],
+      "properties": {
+        "checks": {},
+        "findings": {},
+        "total": {},
+        "truncated": {}
+      },
+      "required": [
+        "findings",
+        "total",
+        "truncated",
+        "checks"
+      ]
+    }
+  },
+  "description": "Generated by tools/gen_result_schema.py from JSON_CONTRACT; do not edit.",
+  "schema_version": "1",
+  "title": "sv_query command result keys (generated)"
+}

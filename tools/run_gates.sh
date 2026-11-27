@@ -6,6 +6,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 python3 -m pytest sim/tests/ -m "not opensource" -q -p no:randomly
+python3 -m mypy
+python3 tools/gen_result_schema.py --check
 python3 tools/check_docs.py --strict
 python3 tools/check_agent_docs.py
 python3 tools/check_stats_completeness.py

@@ -172,7 +172,7 @@ def verify_claim(tracer, claim: object, resolve, *, strict_type: bool = False) -
     typ = claim.get("type")
     handlers = {"driver": verify_driver, "path": verify_path,
                 "connection": verify_connection, "bit": verify_bit}
-    fn = handlers.get(typ)
+    fn = handlers.get(typ) if isinstance(typ, str) else None
     if fn is None:
         if strict_type:
             raise ValueError(f"unknown claim type: {typ!r} (driver|path|connection|bit)")
