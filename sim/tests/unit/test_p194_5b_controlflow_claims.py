@@ -80,6 +80,7 @@ def test_nested_inline_comparison_is_not_complete(tmp_path):
         "  end\n"
         "  assign q = a & (state_q == IDLE);\n"
         "  assign y = a & (state_q == IDLE);\n"
+        "  assign z = a & (state_q > IDLE);\n"
         "endmodule\n")
     mixed = _run("controlflow", "analyze", "top.q", "--file", str(sv))
     assert mixed.returncode == 0, mixed.stderr[-400:]
@@ -87,3 +88,6 @@ def test_nested_inline_comparison_is_not_complete(tmp_path):
     pure = _run("controlflow", "analyze", "top.y", "--file", str(sv))
     assert pure.returncode == 0, pure.stderr[-400:]
     assert json.loads(pure.stdout)["result"]["condition_status"] == "not_modeled"
+    gt = _run("controlflow", "analyze", "top.z", "--file", str(sv))
+    assert gt.returncode == 0, gt.stderr[-400:]
+    assert json.loads(gt.stdout)["result"]["condition_status"] == "not_modeled"

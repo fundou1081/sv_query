@@ -214,6 +214,8 @@ class ControlFlowAnalyzer:
         "Equality", "Inequality", "LessThan", "LessThanEqual",
         "GreaterThan", "GreaterThanEqual", "LogicalAnd", "LogicalOr",
         "LogicalNot", "Conditional", "Ternary",
+        # driver_extractor.inner_ops stores symbols, not enum names
+        "==", "!=", "<", ">", "<=", ">=", "&&", "||", "?",
     })
 
     @classmethod
@@ -230,7 +232,10 @@ class ControlFlowAnalyzer:
             return False
         # Non-inline top-level op can still contain a nested comparison; keep
         # the textual fallback rather than short-circuiting on the root op.
-        return bool(re.search(r"(==|!=|<=|>=|&&|\|\||\?|\bcase\b)", expr))
+        if re.search(r"(==|!=|<=|>=|&&|\|\||\?|\bcase\b)", expr):
+            return True
+        # bare comparisons, but not shift operators `<<`/`>>`
+        return bool(re.search(r"(?<![<>])(?:<|>)(?![<>])", expr))
 
     def _label_unmodeled_inline(self, result, incoming_edges) -> None:
         """Never call a signal complete when any inline condition is unmodeled."""

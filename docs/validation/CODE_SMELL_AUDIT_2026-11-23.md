@@ -46,7 +46,7 @@ and the P194.5e-h items land.
 
 ## P197.10 remediation reconciliation (2026-11-25)
 
-P1s targeted for remediation are fixed and gate-backed; F4/F5 remain known-broken/tracked (P194.5g/P194.5f) and F10 tracked (P197.12/P194.5f); no P1 is silently verified.
+P1s targeted for remediation are fixed and gate-backed; F4 remains known-broken/tracked (P194.5g) and F10 tracked (P197.12/P194.5f); F5 is fixed by P194.5f; no P1 is silently verified.
 
 | ID | Status | Claim | Regression |
 |---|---|---|---|
