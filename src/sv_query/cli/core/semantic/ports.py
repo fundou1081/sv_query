@@ -15,6 +15,30 @@ from sv_query.cli.core.semantic._common import build_tracer, emit, fail
 from sv_query.cli.core.semantic.trace_common import _load_tracer_from_snapshot
 
 
+def _module_port_directions(tracer, module: str) -> dict[str, str]:
+    """Fallback directions for top-level output-reg ports without extra metadata."""
+    try:
+        adapter = tracer._get_adapter()
+        for mod in adapter.get_modules():
+            if adapter.get_module_name(mod) != module:
+                continue
+            out = {}
+            for port in adapter.get_port_declarations(mod):
+                name, direction = adapter.get_port_name_and_direction(port)
+                raw = str(direction).lower()
+                if "inout" in raw:
+                    out[name] = "inout"
+                elif "out" in raw:
+                    out[name] = "output"
+                elif "in" in raw:
+                    out[name] = "input"
+            return out
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).debug("port direction fallback failed: %s", e)
+    return {}
+
+
 def ports_cmd(
     module: str = typer.Argument(..., help="模块名 (如 dma_top)"),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
@@ -38,6 +62,7 @@ def ports_cmd(
 
     graph = tracer.get_graph()
     port_kinds = {NodeKind.PORT_IN, NodeKind.PORT_OUT, NodeKind.PORT_INOUT}
+    declared = _module_port_directions(tracer, module)
     rows = []
     for nid in graph.nodes():
         n = graph.get_node(nid)
@@ -49,8 +74,10 @@ def ports_cmd(
                      NodeKind.PORT_INOUT: "inout"}.get(n.kind)
         if direction is None:
             direction = (getattr(n, "extra", {}) or {}).get("direction", "")
-            if direction not in {"input", "output", "inout"}:
-                continue
+        if direction not in {"input", "output", "inout"}:
+            direction = declared.get(n.name, "")
+        if direction not in {"input", "output", "inout"}:
+            continue
         rows.append({
             "port": n.name,
             "id": n.id,
