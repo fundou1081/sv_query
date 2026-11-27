@@ -278,7 +278,8 @@
   condition 为 `{expr, edge{src,dst,kind,condition}}`),
   `condition_status`, `warnings[]`。
   `--conditions-only` 输出扁平条件列表（原 `controlflow conditions` 视图）。
-- **坑**: `condition_status` 非 `complete` 时条件集合可能不完整；
+- **坑**: `condition_status` 非 `complete` 时条件集合可能不完整；混合 if/case +
+  inline 驱动返回 `partial`；纯 inline 返回 `not_modeled`。
   `warnings[]` 必须读。条件文本是显示字符串，不是规范化布尔 AST。
 - **例**: `sv_query controlflow analyze top.u.s3 --filelist rtl.f --json`
 

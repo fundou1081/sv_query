@@ -82,7 +82,7 @@ def output_text(data: dict, human: bool = False, tree: bool = False) -> None:
                         if summary:
                             print(f"      {summary.lstrip()}")
 
-        if result.get("condition_status") == "not_modeled":
+        if result.get("condition_status") in ("not_modeled", "partial"):
             print("  (inline condition not modeled; only if/case drivers are covered)")
         if warnings:
             print("\n  Warnings:")

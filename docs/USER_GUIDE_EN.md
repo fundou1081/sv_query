@@ -225,7 +225,8 @@ verified / contradicted / unknown
 
 `controlflow analyze` covers **if/case-conditioned drivers only**. An inline
 continuous-assign condition (for example `assign ready_o = (state_q == IDLE)`)
-is labeled `condition_status="not_modeled"` with a warning; it is not reported
+is labeled `condition_status="not_modeled"` with a warning; mixed if/case +
+inline drivers are labeled `partial`. It is not reported
 as `complete`. Use `trace evidence` for that source expression.
 
 `unknown` is **not** false. Search-budget exhaustion and unsupported endpoints

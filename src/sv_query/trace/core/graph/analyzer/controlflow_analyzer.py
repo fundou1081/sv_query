@@ -210,29 +210,43 @@ class ControlFlowAnalyzer:
 
         return conditions
 
-    @staticmethod
-    def _looks_like_inline_condition(expr: str) -> bool:
+    _INLINE_OPS = frozenset({
+        "Equality", "Inequality", "LessThan", "LessThanEqual",
+        "GreaterThan", "GreaterThanEqual", "LogicalAnd", "LogicalOr",
+        "LogicalNot", "Conditional", "Ternary",
+    })
+
+    @classmethod
+    def _looks_like_inline_condition(cls, expr: str, edge=None) -> bool:
         expr = (expr or "").strip()
+        op = str(getattr(getattr(edge, "source", None), "op", "") or "")
+        if op:
+            return op in cls._INLINE_OPS
         if not expr:
             return False
         return bool(re.search(r"(==|!=|<=|>=|&&|\|\||\?|\bcase\b)", expr))
 
     def _label_unmodeled_inline(self, result, incoming_edges) -> None:
-        """Do not call inline continuous-assign conditions 'complete'."""
-        if result.conditioned_drivers:
-            return
+        """Never call a signal complete when any inline condition is unmodeled."""
         inline = [
             edge for edge in incoming_edges
             if not getattr(edge, "condition", "")
-            and self._looks_like_inline_condition(getattr(edge, "expression", ""))
+            and self._looks_like_inline_condition(
+                getattr(edge, "expression", ""), edge)
         ]
         if not inline:
             return
-        result.condition_status = "not_modeled"
-        result.warnings.append(
-            "inline expression condition not modeled by controlflow; "
-            "controlflow covers if/case-conditioned drivers only "
-            "(use trace evidence for the inline source)")
+        if result.conditioned_drivers:
+            result.condition_status = "partial"
+            result.warnings.append(
+                "mixed controlflow: some drivers are if/case-conditioned, but "
+                "inline expression control is not modeled")
+        else:
+            result.condition_status = "not_modeled"
+            result.warnings.append(
+                "inline expression condition not modeled by controlflow; "
+                "controlflow covers if/case-conditioned drivers only "
+                "(use trace evidence for the inline source)")
 
     @staticmethod
     def _mark_unmodeled_control(incoming_edges, result) -> None:

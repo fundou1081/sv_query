@@ -47,3 +47,22 @@ def test_claim_schema_is_in_capabilities_and_compact():
     compact = json.loads(_run("capabilities", "--compact").stdout)
     assert compact["claim_types"] == ["driver", "path", "connection", "bit"]
     assert compact["claim_verdicts"] == ["verified", "contradicted", "unknown"]
+
+
+def test_mixed_if_and_inline_is_not_complete(tmp_path):
+    sv = tmp_path / "mixed.sv"
+    sv.write_text(
+        "module top(input logic en, a, b, input logic [3:0] state_q,\n"
+        "           output logic q);\n"
+        "  localparam logic [3:0] IDLE = 4'd0;\n"
+        "  always_comb begin\n"
+        "    if (en) q = a;\n"
+        "    else q = b;\n"
+        "  end\n"
+        "  assign q = (state_q == IDLE);\n"
+        "endmodule\n")
+    proc = _run("controlflow", "analyze", "top.q", "--file", str(sv))
+    assert proc.returncode == 0, proc.stderr[-400:]
+    result = json.loads(proc.stdout)["result"]
+    assert result["condition_status"] == "partial"
+    assert any("inline expression control" in w for w in result["warnings"])
