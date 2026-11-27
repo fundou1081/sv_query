@@ -63,6 +63,9 @@
 | [validation/reviews/2026-11-27_586bc4fd.md](validation/reviews/2026-11-27_586bc4fd.md) | **P197.23** first audit: FAIL; array width mutation dropped driver |
 | [validation/reviews/2026-11-27_4c8d3533.md](validation/reviews/2026-11-27_4c8d3533.md) | **P194.5f** first audit: FAIL; nested == P1 |
 | [validation/reviews/2026-11-27_60dd230d.md](validation/reviews/2026-11-27_60dd230d.md) | **P194.5f** re-audit: FAIL; nested `<`/`>` P1 |
+| [validation/reviews/2026-11-27_9ecfb875.md](validation/reviews/2026-11-27_9ecfb875.md) | Real-project 0.3.7 audit: FAIL, 3 P1 |
+| [validation/reviews/2026-11-27_c0d24e56.md](validation/reviews/2026-11-27_c0d24e56.md) | Real-project P1 re-audit: PASS WITH CAVEATS |
+| [validation/reviews/2026-11-27_48224bd1.md](validation/reviews/2026-11-27_48224bd1.md) | **0.3.8 release** independent review: PASS WITH CAVEATS |
 | [validation/reviews/2026-11-27_cc26d1bb.md](validation/reviews/2026-11-27_cc26d1bb.md) | **0.3.7 release** independent review: PASS WITH CAVEATS; tag approved after archive |
 | [validation/reviews/2026-11-27_7cac2cfa.md](validation/reviews/2026-11-27_7cac2cfa.md) | **P194.7** worker review: PASS WITH CAVEATS; quickstart/onboarding |
 | [validation/reviews/2026-11-27_076e9e1d.md](validation/reviews/2026-11-27_076e9e1d.md) | **P194.6** worker review: PASS WITH CAVEATS; mypy + generated schema |

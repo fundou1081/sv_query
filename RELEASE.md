@@ -4,6 +4,12 @@
 
 ## 1. Preconditions
 
+- Review artifacts for this release:
+  - `docs/validation/reviews/2026-11-27_9ecfb875.md` (0.3.7 real-project audit, FAIL)
+  - `docs/validation/reviews/2026-11-27_c0d24e56.md` (P1 re-audit, PASS WITH CAVEATS)
+  - `docs/validation/reviews/2026-11-27_48224bd1.md` (0.3.8 release review, PASS WITH CAVEATS)
+  - reviewer: independent OpenCode worker (`hy4-flash-free`), read-only.
+
 - [x] `PLAN.md` current item and release scope agree.
 - [x] `CHANGELOG.md` has the release entry.
 - [x] Independent worker review artifact exists for HEAD, with no open P0/P1
