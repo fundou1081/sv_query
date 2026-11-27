@@ -42,7 +42,7 @@ def test_key_changes_when_any_graph_input_changes():
         _identity(cache_schema="4.0"),
         _identity(graph_semantics="3"),
         _identity(pyslang_version="12"),
-        _identity(sv_query_version="0.3.6"),
+        _identity(sv_query_version="0.3.7"),
     ]
     assert base.key() == _identity().key()  # stable for equal inputs
     assert all(base.key() != v.key() for v in variants)

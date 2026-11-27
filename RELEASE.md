@@ -8,7 +8,7 @@
 - [x] `CHANGELOG.md` has the release entry.
 - [ ] Independent worker review artifact exists for HEAD, with no open P0/P1
   (see [CODE_REVIEW_PROTOCOL](docs/dev/CODE_REVIEW_PROTOCOL.md)).
-- [x] Version in `pyproject.toml` is final (`0.3.6` for the current beta).
+- [x] Version in `pyproject.toml` is final (`0.3.7` for the current beta).
 - [x] `docs/KNOWN_LIMITATIONS.md` is linked from README.
 - [x] No `package.json` / `package-lock.json` at the repository root.
 - [x] Dependency ranges are compatible ranges, not exact runtime pins.
@@ -57,8 +57,8 @@ python3 -m venv /tmp/svq-release-venv
 ```bash
 git checkout main
 git pull
-git tag -a v0.3.6 -m "sv_query 0.3.6 beta"
-git push origin v0.3.6
+git tag -a v0.3.7 -m "sv_query 0.3.7 beta"
+git push origin v0.3.7
 ```
 
 Pushing a `v*` tag triggers `.github/workflows/release.yml`:
@@ -72,7 +72,7 @@ After publish:
 ```bash
 pip index versions sv_query
 python3 -m venv /tmp/svq-pypi-smoke
-/tmp/svq-pypi-smoke/bin/pip install sv_query==0.3.6
+/tmp/svq-pypi-smoke/bin/pip install sv_query==0.3.7
 /tmp/svq-pypi-smoke/bin/sv_query capabilities --json
 ```
 
@@ -87,6 +87,8 @@ sv_query 0.3.2  published (MissingTimeScale diagnostic fix)
 sv_query 0.3.3  published (CLI namespace + external trial readiness)
 sv_query 0.3.4  published (cache correctness + local graph session)
 sv_query 0.3.5  published (P195 cache/session/width/release hardening)
+sv_query 0.3.6  published (P196 snapshot/session correctness)
+sv_query 0.3.7  pending tag (P194/P197/P198 correctness + docs)
 ```
 
 ## 5. Rollback

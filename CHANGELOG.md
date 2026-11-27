@@ -3,6 +3,18 @@
 > 完整历史 changelog. README 短版只展示"为什么用 sv_query" + 5 分钟上手.
 > 详细 release notes 看这里.
 
+## 2026-11-27 (0.3.7 beta — P194/P197/P198 correctness + docs)
+
+- P198: typed expression IR concat bit mapping, declared-direction ranges,
+  part-select bit authority; 3306→3386 canonical growth.
+- P197: verify/cache/session/evidence semantics from the 2026-11-23 audit,
+  scoped mypy gate, generated result-key schema, unpacked-array precision.
+- P194.5f–h: mixed controlflow `partial`, structured `E_SIGNAL_NOT_FOUND`
+  paths failures, P194.5d acceptance charter and onboarding quickstart.
+- P194.6: scoped mypy + generated result schema gate.
+- P194.7: 5-minute quickstart; README slimmed.
+- Canonical 3386 passed / 0 failed / 123 deferred.
+
 ## 2026-11-23 (0.3.6 beta — P196 snapshot/session correctness)
 
 - P196.1: legacy snapshot without MIG raises `SnapshotCapabilityError`; MIG
