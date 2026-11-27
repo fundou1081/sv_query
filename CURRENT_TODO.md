@@ -9,11 +9,11 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P194.5h docs/claims/count reconciliation + P194.5d acceptance charter** `<进行中>`
+- **当前 item**: **P194.6 pyright/mypy + generated JSON schema** `<待做>`
   - P195/P196 全部完成；0.3.6 已发布（release-check -> build -> publish）
   - P194.2f 已解除阻塞（P196.1/P196.2 已完成）
   - 独立复核报告: `/tmp/p195_final_review.md`
-  - 未完成叶子：P194.5h、P194.6、P194.7、P193.10
+  - 未完成叶子：P194.5d(blocked)、P194.6、P194.7、P193.10
 
 
 ## 📌 当前真实基线

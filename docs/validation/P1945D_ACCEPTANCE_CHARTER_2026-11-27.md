@@ -82,7 +82,7 @@ A clean-room rerun from the manifest must reproduce the aggregate table.
 
 ## 8. Dependencies and exit
 
-P194.5d can start only after P194.5f–P194.5h are complete and the green gate at
-`3380 passed / 0 failed` (or a documented successor) exists. It exits complete
+P194.5d can start only after P194.5e–P194.5h are complete and the green gate at
+`3382 passed / 0 failed` (or a documented successor) exists. It exits complete
 only when §6 passes and the artifacts in §7 are present; otherwise it stays
 blocked with the measured negative result.
