@@ -6,7 +6,7 @@
 
 - [x] `PLAN.md` current item and release scope agree.
 - [x] `CHANGELOG.md` has the release entry.
-- [ ] Independent worker review artifact exists for HEAD, with no open P0/P1
+- [x] Independent worker review artifact exists for HEAD, with no open P0/P1
   (see [CODE_REVIEW_PROTOCOL](docs/dev/CODE_REVIEW_PROTOCOL.md)).
 - [x] Version in `pyproject.toml` is final (`0.3.7` for the current beta).
 - [x] `docs/KNOWN_LIMITATIONS.md` is linked from README.

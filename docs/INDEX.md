@@ -63,6 +63,7 @@
 | [validation/reviews/2026-11-27_586bc4fd.md](validation/reviews/2026-11-27_586bc4fd.md) | **P197.23** first audit: FAIL; array width mutation dropped driver |
 | [validation/reviews/2026-11-27_4c8d3533.md](validation/reviews/2026-11-27_4c8d3533.md) | **P194.5f** first audit: FAIL; nested == P1 |
 | [validation/reviews/2026-11-27_60dd230d.md](validation/reviews/2026-11-27_60dd230d.md) | **P194.5f** re-audit: FAIL; nested `<`/`>` P1 |
+| [validation/reviews/2026-11-27_cc26d1bb.md](validation/reviews/2026-11-27_cc26d1bb.md) | **0.3.7 release** independent review: PASS WITH CAVEATS; tag approved after archive |
 | [validation/reviews/2026-11-27_7cac2cfa.md](validation/reviews/2026-11-27_7cac2cfa.md) | **P194.7** worker review: PASS WITH CAVEATS; quickstart/onboarding |
 | [validation/reviews/2026-11-27_076e9e1d.md](validation/reviews/2026-11-27_076e9e1d.md) | **P194.6** worker review: PASS WITH CAVEATS; mypy + generated schema |
 | [validation/reviews/2026-11-27_45d4a69.md](validation/reviews/2026-11-27_45d4a69.md) | **P194.5h** worker review: PASS WITH CAVEATS; charter/reconciliation |
