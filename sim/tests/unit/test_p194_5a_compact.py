@@ -49,7 +49,8 @@ def test_evidence_compact_keeps_only_source_projection(tmp_path):
     assert data["result"]["compact"] is True
     ev = data["evidence"]
     assert set(ev) == {"signal", "source_location", "source_text",
-                       "is_verified", "credibility_score"}
+                       "source_text_truncated", "is_verified",
+                       "credibility_score"}
     assert "enclosing_chain" not in ev
 
 

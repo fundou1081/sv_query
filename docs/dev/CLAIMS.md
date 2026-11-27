@@ -98,6 +98,7 @@
 | C-78 | conditional `drivers --evidence` binds the target assignment line, not condition text (P194.5.10) | code/test | `test_p194_5_10a_assignment_provenance.py` (5 tests; timescale/filelist/ifdef/net-decl/generate) + real picorv32/SERV audit | `verified` |
 | C-79 | graph cache identity is bumped to graph_semantics=3; old cache entries cannot hydrate post-provenance graphs (P194.5.15) | code/test | `test_p194_2a_build_identity.py` | `verified` |
 | C-80 | net-declaration initializers (`wire x = y;`) carry assignment-line provenance, including generate/ifdef (P194.5.16) | code/test | `test_p194_5_10a_assignment_provenance.py` | `verified` |
+| C-81 | trace-evidence payload is bounded (snippet 1600, source 4000, chain 8) with explicit truncation markers while preserving `is_verified` (P194.5.11) | code/test | `test_p194_5_11_evidence_budget.py` + real picorv32 audit | `verified` |
 
 ---
 

@@ -208,8 +208,8 @@ def _resolve_evidence_dict(resolver, graph, signal: str, sources=None) -> dict |
 def _compact_evidence(entry):
     if not isinstance(entry, dict):
         return entry
-    keep = ("signal", "source_location", "source_text", "is_verified",
-            "credibility_score")
+    keep = ("signal", "source_location", "source_text",
+            "source_text_truncated", "is_verified", "credibility_score")
     return {k: entry[k] for k in keep if k in entry}
 
 

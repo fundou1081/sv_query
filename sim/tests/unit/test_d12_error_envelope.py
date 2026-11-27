@@ -362,9 +362,12 @@ def _normalise_intentional_paths_metadata(stdout: str) -> dict:
                 "trace covergroup", "filelist prune", "controlflow analyze"):
         commands.pop(key, None)
     data.get("json_contract", {}).pop("dataflow_result", None)
-    # P194.5.11 adds additive evidence-payload truncation markers; the frozen
-    # D12 baseline predates them. Keep the rest of the contract compared.
-    data.get("json_contract", {}).pop("evidence_payload", None)
+    # P194.5.11 adds two additive evidence-payload truncation markers; drop
+    # only those, keeping the rest of the frozen contract comparable.
+    payload = data.get("json_contract", {}).get("evidence_payload")
+    if isinstance(payload, dict):
+        payload.pop("source_text_truncated", None)
+        payload.pop("enclosing_chain_truncated", None)
     data.get("json_contract", {}).pop("stats_result", None)
     return data
 

@@ -67,6 +67,7 @@
 | [validation/reviews/2026-11-27_c0d24e56.md](validation/reviews/2026-11-27_c0d24e56.md) | Real-project P1 re-audit: PASS WITH CAVEATS |
 | [validation/reviews/2026-11-27_29b2c707.md](validation/reviews/2026-11-27_29b2c707.md) | P194.5.10 first audit: FAIL (filelist no-op, wrong branch) |
 | [validation/reviews/2026-11-27_51635691.md](validation/reviews/2026-11-27_51635691.md) | P194.5.10a first audit: FAIL (timescale off-by-one) |
+| [validation/reviews/2026-11-28_60f09310.md](validation/reviews/2026-11-28_60f09310.md) | P194.5.11 review: PASS WITH CAVEATS; payload bounded |
 | [validation/reviews/2026-11-27_de5f17c9.md](validation/reviews/2026-11-27_de5f17c9.md) | P194.5.15/16 review: PASS WITH CAVEATS; cache/net-decl closed |
 | [validation/reviews/2026-11-27_6f38a802.md](validation/reviews/2026-11-27_6f38a802.md) | P194.5.10a re-audit: PASS; P1 closed |
 | [validation/reviews/2026-11-27_32b134ed.md](validation/reviews/2026-11-27_32b134ed.md) | P194.5.10 re-audit: FAIL (branch/bit residual); task blocked |
