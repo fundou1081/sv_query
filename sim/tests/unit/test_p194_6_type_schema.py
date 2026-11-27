@@ -21,9 +21,26 @@ def test_generated_result_schema_matches_registry():
             required = [f for f in row["result_fields"] if f not in optional]
             assert generated["commands"][name]["required"] == required
             assert generated["commands"][name]["optional"] == sorted(optional)
+        elif "base_fields" in row:
+            base = list(row["base_fields"])
+            all_fields = list(base)
+            for fields in row.get("modes", {}).values():
+                all_fields.extend(f for f in fields if f not in all_fields)
+            all_fields.extend(f for f in row.get("optional_fields", ())
+                              if f not in all_fields)
+            generated_row = generated["commands"][name]
+            assert generated_row["required"] == base
+            assert generated_row["optional"] == sorted(
+                f for f in all_fields if f not in base)
+            assert "edge_evidence" in generated_row["properties"]
         else:
-            props = generated["commands"][name]["properties"]
-            assert props, f"{name} has no generated properties"
+            ref = row.get("fields")
+            definition = JSON_CONTRACT.get(ref, {}) if isinstance(ref, str) else {}
+            expected = sorted(definition) if isinstance(definition, dict) else []
+            generated_row = generated["commands"][name]
+            assert sorted(generated_row["properties"]) == expected
+            assert generated_row["required"] == []
+            assert generated_row["optional"] == expected
 
 
 def test_mypy_scope_passes():

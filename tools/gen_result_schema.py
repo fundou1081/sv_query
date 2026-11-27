@@ -32,6 +32,7 @@ def build() -> dict:
             props = list(required)
             for fields in contract.get("modes", {}).values():
                 props.extend(f for f in fields if f not in props)
+            props.extend(f for f in contract.get("optional_fields", ()) if f not in props)
             optional = sorted(f for f in props if f not in required)
         else:
             ref = contract.get("fields")

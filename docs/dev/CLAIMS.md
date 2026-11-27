@@ -93,6 +93,7 @@
 | C-73 | P197.10 reconciles audit P1/P2 dispositions with claims/tests and records remaining P2 debt | doc/test | `test_p197_10_claims.py` | `scoped`（doc reconciliation, not a semantic capability） |
 | C-74 | shift/part-select IR bit mapping preserves declared ascending/descending direction for full buses and legal slices; signed `>>>` sign fill is mapped (P197.17); nested signed shift inverse and unsigned `>>>` zero-fill are mapped (P197.19); **scoped: CLI slice-bit drivers may report bus precision** | code/test | `test_p197_13_shift_direction.py`, `test_p197_17_sign_fill.py`, `test_p197_19_nested_shift.py` | `scoped` |
 | C-75 | bit queries with a coarse parent-bus driver report `confidence=low`; instance depth is relative to the root/top; managed cache rebuilds on `SVQ_CACHE_DIR` change (P197.16) | code/test | `test_p197_16_provenance.py` | `verified` |
+| C-76 | scoped mypy gate on errors/session/verification plus a generated result-key schema checked for drift (P194.6) | code/test | `test_p194_6_type_schema.py` | `verified` |
 
 ---
 
