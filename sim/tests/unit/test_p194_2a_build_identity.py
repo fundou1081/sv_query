@@ -40,7 +40,7 @@ def test_key_changes_when_any_graph_input_changes():
         _identity(target_module="other"),
         _identity(bit_bridge="full"),
         _identity(cache_schema="4.0"),
-        _identity(graph_semantics="3"),
+        _identity(graph_semantics="4"),
         _identity(pyslang_version="12"),
         _identity(sv_query_version="0.3.8"),
     ]
@@ -52,7 +52,7 @@ def test_manifest_declares_graph_capability_only():
     manifest = _identity().manifest()
     assert manifest["capabilities"] == ["graph"]
     assert _identity().manifest({"graph", "mig"})["capabilities"] == ["graph", "mig"]
-    assert manifest["graph_semantics"] == "2"
+    assert manifest["graph_semantics"] == "3"
     assert manifest["cache_schema"] == "3.5"
     from sv_query.trace.core.cache.ast_cache import CACHE_VERSION
     assert CACHE_VERSION == "3.5"
@@ -79,3 +79,9 @@ def test_cache_entry_without_manifest_is_not_hydrated(tmp_path, monkeypatch):
     fresh = UnifiedTracer(filelist=fl, log_level="ERROR")
     fresh.build_graph(use_cache=True)
     assert fresh._build_phase == "ready"  # rebuilt, not hydrated from partial entry
+
+
+def test_graph_semantics_bump_invalidates_old_assignment_cache():
+    old = _identity(graph_semantics="2")
+    assert old.key() != _identity().key()
+    assert _identity().manifest()["graph_semantics"] == "3"

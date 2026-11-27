@@ -476,6 +476,10 @@ class ExprsDriversMixin:
                 "width": self.extract_data_width(child),
                 # [iter_297 / PLAN P9.1] signedness（加宽扩展方向）
                 "signed": self.extract_data_signed(child),
+                "source_location": (
+                    (self.get_source_location(child)[:3])
+                    if self.get_source_location(child)[0] else None
+                ),
             })
         return results
 

@@ -79,3 +79,19 @@ def test_filelist_bare_basename_with_timescale(tmp_path):
     tracer.build_graph()
     edges = _edges(tracer, "top.y")
     assert edges and edges[0].source_location.line_start == 3
+
+
+def test_net_declaration_initializer_carries_source_location():
+    source = (
+        "`timescale 1ns/1ps\n"
+        "module top(input logic a, output logic y);\n"
+        "  wire x = a;\n"
+        "  assign y = x;\n"
+        "endmodule\n")
+    tracer = UnifiedTracer(sources={"net_decl.sv": source}, log_level="ERROR")
+    tracer.build_graph()
+    edges = _edges(tracer, "top.x")
+    assert edges
+    for edge in edges:
+        assert edge.source_location is not None
+        assert edge.source_location.line_start == 3

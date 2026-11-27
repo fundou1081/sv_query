@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P194.5.11 P2: trace evidence payload bloat (trap 453 KB, instr_trap 373 KB); cap/compact enclosing_chain while preserving verification <待做>
+current item : P194.5.15 P2: bump GRAPH_SEMANTICS_VERSION for assignment provenance (warm-cache poisoning) <进行中>
 
 ## 计划树
 
@@ -605,7 +605,7 @@ P194.2c local session/server reuse + snapshot persistence <已完成>
 -- P194.5h docs/claims/count reconciliation + P194.5d acceptance charter <已完成>
 -- P194.5i depth=1 dangling bit-range alias semantics <已完成>
 -- P194.5j real-project review P1 fixes: quiet logging, generate ports, evidence binding <已完成>
--- P194.5.15 P2: bump GRAPH_SEMANTICS_VERSION for assignment provenance (warm-cache poisoning) <待做>
+-- P194.5.15 P2: bump GRAPH_SEMANTICS_VERSION for assignment provenance (warm-cache poisoning) <进行中>
 -- P194.5.16 P2: net-declaration continuous DRIVER provenance (wire x = y) <待做>
 -- P194.5k real-project evidence projection hardening (2026-11-27 audit P2) <待做>
 -- P194.5.10 P2: drivers --evidence conditional edge uses condition line (picorv32 trap: 1189) instead of assignment line; fixed via P194.5.10a semantic provenance <已完成>

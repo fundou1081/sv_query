@@ -30,7 +30,7 @@
 # ==============================================================================
 from typing import Any, Callable
 
-from ..graph.models import EdgeKind, NodeKind, SignalSource, TraceNode
+from ..graph.models import EdgeKind, NodeKind, SignalSource, SourceLocation, TraceNode
 
 
 def create_net_decl_edges(
@@ -110,6 +110,7 @@ def create_net_decl_edges(
         store_expr_tree(lhs_name, init, module_name, result, genvar_ctx=net_decl_ctx)
         rhs_expr_str = get_signal(init) or ""
         rhs_signals = get_all_real_signals(init, module=module, genvar_ctx=genvar_ctx) if init else []
+        location = _net_location(adapter, net_decl)
         edge_count += _emit_driver_edges(
             result=result,
             module_name=module_name,
@@ -120,6 +121,7 @@ def create_net_decl_edges(
             ensure_signal_node=ensure_signal_node,
             build_signal_source=build_signal_source,
             append_edge=append_edge,
+            source_location=location,
         )
 
     # ── 循环 2: generate-for 内展开的带 init wire decl ───────────────────────
@@ -154,6 +156,13 @@ def create_net_decl_edges(
         store_expr_tree(g_lhs_id, g_init, "", result, genvar_ctx=g_ctx)
         g_rhs_str = get_signal(g_init) or ""
         g_signals = get_all_real_signals(g_init, module=module, genvar_ctx=g_ctx) if g_init else []
+        loc = g_decl.get("source_location")
+        location = None
+        if loc and loc[0]:
+            from ..assignment_source import disk_line
+            line = disk_line(adapter, loc[0], loc[1])
+            location = SourceLocation(file=loc[0], line_start=line,
+                                      line_end=line, column=loc[2])
         edge_count += _emit_driver_edges(
             result=result,
             module_name=module_name,
@@ -164,9 +173,23 @@ def create_net_decl_edges(
             ensure_signal_node=ensure_signal_node,
             build_signal_source=build_signal_source,
             append_edge=append_edge,
+            source_location=location,
         )
 
     return edge_count
+
+
+def _net_location(adapter, net_decl):
+    try:
+        loc = adapter.get_source_location(net_decl)
+    except Exception:
+        return None
+    if not loc or not loc[0]:
+        return None
+    from ..assignment_source import disk_line
+    line = disk_line(adapter, loc[0], loc[1])
+    return SourceLocation(file=loc[0], line_start=line, line_end=line,
+                          column=loc[2])
 
 
 def _ensure_net_node(result, node_id: str, name: str, module_name: str, width,
@@ -205,6 +228,7 @@ def _emit_driver_edges(
     ensure_signal_node: Callable,
     build_signal_source: Callable,
     append_edge: Callable,
+    source_location: SourceLocation | None = None,
 ) -> int:
     """[2026-08-28 Step 3b] 两段循环共用的边发射逻辑.
 
@@ -239,6 +263,7 @@ def _emit_driver_edges(
                 casts=list(ds.casts) if ds.casts else [],
                 is_decomposed=True,
             ),
+            source_location=source_location,
         )
         count += 1
     return count

@@ -12,7 +12,7 @@ from importlib import metadata
 
 from sv_query.session import PACKAGE_VERSION
 
-GRAPH_SEMANTICS_VERSION = "2"
+GRAPH_SEMANTICS_VERSION = "3"
 GRAPH_CAPABILITY = "graph"
 
 
