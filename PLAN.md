@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P194.7 docs slimming + human onboarding <待做>
+current item : P194.7 docs slimming + human onboarding <进行中>
 
 ## 计划树
 
@@ -605,7 +605,7 @@ P194.2c local session/server reuse + snapshot persistence <已完成>
 -- P194.5h docs/claims/count reconciliation + P194.5d acceptance charter <已完成>
 -- P194.5i depth=1 dangling bit-range alias semantics <已完成>
 -- P194.6 pyright/mypy + generated JSON schema <已完成>
--- P194.7 docs slimming + human onboarding <待做>
+-- P194.7 docs slimming + human onboarding <进行中>
 
 P195 external user + maintainer review follow-up (2026-11-22) <已完成>
 -- P195.1 cache closure correctness: hash resolved files + +define+ + +incdir+ headers; unreadable => explicit miss <已完成>

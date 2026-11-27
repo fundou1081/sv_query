@@ -46,24 +46,15 @@ cd sv_query
 pip install -e ".[dev]"
 ```
 
-## CVA6 真实历史案例（non-blind）
+## Real-project evidence (non-blind)
 
-已用两个 CVA6 历史 fix 做 grep vs `sv_query` 对照：
+Two CVA6 historical fixes were compared with grep, not blind-discovered:
+`_i → _q` cycle mismatch and a DTLB PPN bit-select gating defect. The durable
+conclusion: `drivers --evidence` binds the source expression; bus-level answers
+can miss bit-select defects and need `graph nodes` down-drill.
 
-- canonical address check 的 `_i → _q` 周期错位（CVA6 #3410）；
-- DTLB PPN 位选 + `dtlb_is_page_q → _n` 门控（CVA6 #3347）。
-
-结论不是“自动发现 bug”，而是：
-
-- `drivers --evidence` 能直接绑定驱动表达式；
-- 总线级查询会漏掉位选缺陷，需要 `graph nodes --match` 下钻；
-- 案例按 fix diff 选取，不是盲测；动态 oracle 未本地重跑。
-
-完整报告与可复现归档：
-
-- [P187_VALUE_CASES_CVA6_2026-11-19.md](docs/validation/P187_VALUE_CASES_CVA6_2026-11-19.md)
-- [p187_cva6_2026-11-19/README.md](docs/validation/p187_cva6_2026-11-19/README.md)
-- [P187_FOLLOWUPS_2026-11-19.md](docs/validation/P187_FOLLOWUPS_2026-11-19.md)
+Reports: [value cases](docs/validation/P187_VALUE_CASES_CVA6_2026-11-19.md) ·
+[follow-ups](docs/validation/P187_FOLLOWUPS_2026-11-19.md).
 
 ## English summary
 
@@ -105,66 +96,20 @@ claims remain limited; see [KNOWN_LIMITATIONS](docs/KNOWN_LIMITATIONS.md).
 
 ---
 
-## 5 分钟快速上手
+## 5-minute quickstart
+
+New here? Follow [docs/QUICKSTART.md](docs/QUICKSTART.md). The short version:
 
 ```bash
 pip install sv_query
+export FL=sim/tests/fixtures/scheduler_minimal/filelist.f
 sv_query capabilities --json
+sv_query graph nodes --filelist "$FL" --json
+sv_query drivers Scheduler_minimal.s0_reg --filelist "$FL" --json
 ```
 
-From a source checkout:
-
-```bash
-git clone https://github.com/fundou1081/sv_query.git
-cd sv_query
-pip install -e ".[dev]"
-```
-
-### 查询信号驱动
-
-```bash
-# 谁驱动 result
-sv_query drivers top.result -f top.sv --json
-
-# 下游负载
-sv_query loads top.result -f top.sv --json
-
-# 跨模块路径
-sv_query paths top.a top.y -f top.sv --json
-
-# 结构一致性
-sv_query verify consistency --full --checks reciprocity,bit -f top.sv --json
-```
-
-### 波形 / 类型元数据
-
-```bash
-sv_query trace profile top.data -f top.sv --json
-sv_query trace manifest --path top.data -f top.sv --json
-```
-
-### 5 分钟反幻觉 walkthrough：单级 CDC
-
-一个常见错误结论：
-
-> “`dst_valid` 在 `dst_clk` 域寄存过，所以有两级同步器，CDC 安全。”
-
-```bash
-sv_query trace profile cdc_bug.dst_valid   -f examples/anti_hallucination_cdc/cdc_bug.sv --json
-# clock_domains = ["dst_clk"]  ← 只能说明域，不证明同步链
-
-sv_query trace fanin cdc_bug.dst_valid   -f examples/anti_hallucination_cdc/cdc_bug.sv --json
-# drivers: src_valid (distance=1), 1'b0  ← 没有 meta 中间级
-```
-
-结构证据直接反驳“两级同步器”：`src_valid → dst_valid` 只有一拍。  
-完整命令、输出与 ground truth：  
-[examples/anti_hallucination_cdc/README.md](examples/anti_hallucination_cdc/README.md)。
-
-性能数据（单机实测、构图 vs 图内查询拆分）：  
-[docs/validation/QUERY_PERF_2026-11-04.md](docs/validation/QUERY_PERF_2026-11-04.md)。
-
----
+JSON mode is quiet by default; use `--verbose` to keep stderr. Empty results
+are `unknown`, not proof of absence; see [KNOWN_LIMITATIONS](docs/KNOWN_LIMITATIONS.md).
 
 ## 功能分层
 

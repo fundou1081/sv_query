@@ -11,8 +11,8 @@
 | 项 | 值 | 说明 |
 |---|---|---|
 | 源码规模 | 159 文件 / 53,597 行 | `find src -name "*.py"`（2026-11-16 实测） |
-| 测试规模 | 492 测试文件 / 73,594 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **3384 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-27 P194.5f 全量复核（3384）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
+| 测试规模 | 493 测试文件 / 73,652 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
+| 全量 (canonical) | **3386 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-27 P194.5f 全量复核（3386）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
@@ -378,6 +378,7 @@
 | [MISS_REPORT_GUIDE.md](MISS_REPORT_GUIDE.md) | **P193.7**: desensitized miss report / minimal fixture / privacy checklist |
 | [USER_GUIDE_EN.md](USER_GUIDE_EN.md) | English user guide: install → first query → evidence boundaries |
 | [KNOWN_LIMITATIONS_EN.md](KNOWN_LIMITATIONS_EN.md) | English limitations summary; full Chinese doc is canonical |
+| [QUICKSTART.md](QUICKSTART.md) | **P194.7**: 5-minute human onboarding (install, first queries, session, empty answers) |
 | [USER_GUIDE.md](USER_GUIDE.md) | 用户指南 |
 | [FILELIST.md](FILELIST.md) | filelist 格式支持 |
 | [GLOSSARY.md](GLOSSARY.md) | **术语表** (领域术语的唯一命名处: 分层/查询/门禁/工具四组) |
