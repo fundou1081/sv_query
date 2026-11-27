@@ -46,14 +46,14 @@ and the P194.5e-h items land.
 
 ## P197.10 remediation reconciliation (2026-11-25)
 
-P1s targeted for remediation are fixed and gate-backed; F4 remains known-broken/tracked (P194.5g) and F10 tracked (P197.12/P194.5f); F5 is fixed by P194.5f; no P1 is silently verified.
+P1s targeted for remediation are fixed and gate-backed; F4 is fixed by P194.5g; F5 by P194.5f; F10 remains tracked (P197.12/P194.5f); no P1 is silently verified.
 
 | ID | Status | Claim | Regression |
 |---|---|---|---|
 | F1 | fixed | C-07 | `test_verify_coverage.py` |
 | F2 | fixed | C-58 | `test_p197_2_verify_parity.py` |
 | F3 | fixed | C-67 | `test_p197_3_refresh_guard.py` |
-| F4 | open (P194.5g) | C-63 known-broken | session paths endpoint parity |
+| F4 | fixed (P194.5g) | C-63 verified | `test_p194_5g_paths_errors.py` |
 | F5 | fixed (P194.5f) | C-62 verified | `test_p194_5b_controlflow_claims.py` |
 | F6 | fixed | C-64/C-70 | `test_p194_5i_depth_alias.py` |
 | F7 | fixed | C-67 | `test_p197_3_refresh_guard.py` |

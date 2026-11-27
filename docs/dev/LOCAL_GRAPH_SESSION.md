@@ -98,6 +98,10 @@ ops and the success/failure envelope.
  "error": {"type": "UnsupportedOperation", "message": "unsupported op: stats"}}
 ```
 
+Unknown endpoints for `paths`/`dataflow` raise
+`SignalNotFoundError` (`E_SIGNAL_NOT_FOUND`) in the session and a structured
+CLI failure with the same code.
+
 `verify_claim` returns the same payload as CLI: `status` is
 `verified|contradicted|unknown`; `unknown` carries
 `machine:{status,unknown_kind,unresolved_endpoint}`, while `verified` and

@@ -15,9 +15,8 @@ def test_claims_cover_p197_remediation_and_audit_links_them():
     assert "P197.10 remediation reconciliation" in audit
     for finding in ("F1", "F6", "F8", "F9", "S1", "S2", "S3"):
         assert f"| {finding} | fixed |" in audit
-    for finding in ("F4", "F10"):
-        assert f"| {finding} | open" in audit
-    assert "| F5 | fixed" in audit
+    assert "| F10 | open" in audit
+    assert "| F4 | fixed" in audit and "| F5 | fixed" in audit
     c62 = next(line for line in claims.splitlines() if line.startswith("| C-62 |"))
     assert c62.rstrip().endswith("| `verified` |")
     assert "C-63 |" in claims

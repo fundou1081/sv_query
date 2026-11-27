@@ -46,6 +46,7 @@ PACKAGE_VERSION = "0.3.6"
 E_INVALID_REQUEST = _errors.E_INVALID_REQUEST
 E_UNSUPPORTED_OP = _errors.E_UNSUPPORTED_OP
 E_HANDLER_FAILED = _errors.E_HANDLER_FAILED
+E_SIGNAL_NOT_FOUND = _errors.E_SIGNAL_NOT_FOUND
 _ERROR_TYPES = _errors.ERROR_TYPES
 
 logger = logging.getLogger(__name__)
@@ -77,7 +78,7 @@ SESSION_CONTRACT = {
     "failure": {
         "ok": False,
         "op": "string when known; omitted when the request cannot be parsed",
-        "error_code": "E_INVALID_REQUEST|E_UNSUPPORTED_OP|E_HANDLER_FAILED",
+        "error_code": "E_INVALID_REQUEST|E_UNSUPPORTED_OP|E_HANDLER_FAILED|E_SIGNAL_NOT_FOUND",
         "error": {"type": "string", "message": "string"},
     },
     "notes": [
@@ -195,8 +196,9 @@ def _run_handler(
     try:
         raw_result = handler(request)
     except Exception as exc:
+        code = getattr(exc, "error_code", E_HANDLER_FAILED)
         return _failure(
-            op, request_id, E_HANDLER_FAILED,
+            op, request_id, code,
             f"handler for op {op!r} raised {type(exc).__name__}: {exc}",
         )
 

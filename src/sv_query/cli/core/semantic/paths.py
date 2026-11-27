@@ -115,6 +115,7 @@ def paths_cmd(
     unknown = [x for x in (src_id, dst_id) if x not in known]
     if unknown:
         fail("signal id not found in graph", json_output, pretty, unknown=unknown,
+             error_code="E_SIGNAL_NOT_FOUND",
              hint="用 `sv_query graph nodes --json` 列出可用 id")
 
     def _edge_ev(path):

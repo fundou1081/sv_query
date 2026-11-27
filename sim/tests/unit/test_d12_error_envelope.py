@@ -44,6 +44,7 @@ from sv_query.cli.errors import ErrorCode  # noqa: E402
 from sv_query.errors import (  # noqa: E402
     E_HANDLER_FAILED,
     E_INVALID_REQUEST,
+    E_SIGNAL_NOT_FOUND,
     E_UNSUPPORTED_OP,
     SESSION_ERROR_CODES,
 )
@@ -58,14 +59,15 @@ def test_session_error_codes_are_exactly_the_three_used_by_session():
         E_INVALID_REQUEST,
         E_UNSUPPORTED_OP,
         E_HANDLER_FAILED,
+        E_SIGNAL_NOT_FOUND,
     }
     assert session_errors.ERROR_TYPES.keys() == SESSION_ERROR_CODES
 
 
 @pytest.mark.parametrize(
     "code",
-    [E_INVALID_REQUEST, E_UNSUPPORTED_OP, E_HANDLER_FAILED],
-    ids=[E_INVALID_REQUEST, E_UNSUPPORTED_OP, E_HANDLER_FAILED],
+    [E_INVALID_REQUEST, E_UNSUPPORTED_OP, E_HANDLER_FAILED, E_SIGNAL_NOT_FOUND],
+    ids=[E_INVALID_REQUEST, E_UNSUPPORTED_OP, E_HANDLER_FAILED, E_SIGNAL_NOT_FOUND],
 )
 def test_cli_error_code_accepts_every_session_code_with_the_same_value(code):
     assert code in set(ErrorCode)
@@ -75,12 +77,14 @@ def test_cli_error_code_accepts_every_session_code_with_the_same_value(code):
 def test_session_module_reexports_the_same_code_objects():
     import sv_query.session as session_module
 
-    for name in ("E_INVALID_REQUEST", "E_UNSUPPORTED_OP", "E_HANDLER_FAILED"):
+    for name in ("E_INVALID_REQUEST", "E_UNSUPPORTED_OP", "E_HANDLER_FAILED",
+                 "E_SIGNAL_NOT_FOUND"):
         assert getattr(session_module, name) == getattr(session_errors, name)
 
 
 @pytest.mark.parametrize(
-    "code", [E_INVALID_REQUEST, E_UNSUPPORTED_OP, E_HANDLER_FAILED]
+    "code", [E_INVALID_REQUEST, E_UNSUPPORTED_OP, E_HANDLER_FAILED,
+             E_SIGNAL_NOT_FOUND]
 )
 def test_session_does_not_redefine_error_code_literals(code):
     """码值只允许在 sv_query/errors.py 写一遍，session.py 只引用名字。"""
@@ -475,3 +479,4 @@ def test_cli_error_code_references_session_names_not_literal_only():
     for name in ("E_INVALID_REQUEST", "E_UNSUPPORTED_OP", "E_HANDLER_FAILED"):
         assert f'"{name}"' not in cli_errors
     assert ErrorCode.E_HANDLER_FAILED.value == session_errors.E_HANDLER_FAILED
+    assert ErrorCode.E_SIGNAL_NOT_FOUND.value == session_errors.E_SIGNAL_NOT_FOUND

@@ -15,6 +15,12 @@ from .trace.core.snapshot_manager import SnapshotManager
 from .trace.unified_tracer import SnapshotCapabilityError, UnifiedTracer
 
 
+class SignalNotFoundError(ValueError):
+    """Structured query error for a missing graph endpoint."""
+
+    error_code = "E_SIGNAL_NOT_FOUND"
+
+
 class GraphSession:
     """One built graph, reusable graph queries, optional snapshot hydration."""
 
@@ -223,6 +229,11 @@ class GraphSession:
     def paths(self, src: str, dst: str, *, directed: bool = False) -> dict:
         self._ensure_open()
         self._require_mig()
+        graph = self.tracer.get_graph()
+        unknown = [x for x in (src, dst) if x not in graph.nodes()]
+        if unknown:
+            raise SignalNotFoundError(
+                f"signal id not found in graph: {', '.join(unknown)}")
         resolver = self.tracer.get_path_resolver()
         if resolver is None:
             raise ValueError("path resolver unavailable")

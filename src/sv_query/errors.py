@@ -24,11 +24,15 @@ E_UNSUPPORTED_OP = "E_UNSUPPORTED_OP"
 #: An injected handler raised, or returned a non-mapping result.
 E_HANDLER_FAILED = "E_HANDLER_FAILED"
 
+#: A graph query endpoint does not exist (paths/dataflow). (P194.5g)
+E_SIGNAL_NOT_FOUND = "E_SIGNAL_NOT_FOUND"
+
 #: The complete vocabulary the library `Session` may emit.
 SESSION_ERROR_CODES = frozenset({
     E_INVALID_REQUEST,
     E_UNSUPPORTED_OP,
     E_HANDLER_FAILED,
+    E_SIGNAL_NOT_FOUND,
 })
 
 #: Public ``error.type`` name for each code (locked by contract test).
@@ -36,4 +40,5 @@ ERROR_TYPES = {
     E_INVALID_REQUEST: "InvalidRequest",
     E_UNSUPPORTED_OP: "UnsupportedOperation",
     E_HANDLER_FAILED: "HandlerFailed",
+    E_SIGNAL_NOT_FOUND: "SignalNotFound",
 }
