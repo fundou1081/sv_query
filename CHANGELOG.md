@@ -3,6 +3,18 @@
 > 完整历史 changelog. README 短版只展示"为什么用 sv_query" + 5 分钟上手.
 > 详细 release notes 看这里.
 
+## 2026-11-27 (0.3.8 beta — real-project P1 fixes)
+
+- P194.5j: JSON/`--quiet` now suppresses logger stderr; SERV
+  `stats --filelist --json` 24 KB warning flood → 0 B.
+- Generate-scoped parameterized instances use elaborated port directions and
+  widths (`serv_csr.o_q` output, not fallback input; 8-bit override correct).
+- `trace evidence` binds the driver assignment line instead of a condition
+  line, searches nested module definitions, and ignores string literals.
+  picorv32 `trap` → line 1488, `instr_trap` → line 679, SERV `mcause` →
+  `serv_csr.v:92`; no false `is_verified` from `"trap"` debug text.
+- Canonical 3389 passed / 0 failed / 123 deferred.
+
 ## 2026-11-27 (0.3.7 beta — P194/P197/P198 correctness + docs)
 
 - P198: typed expression IR concat bit mapping, declared-direction ranges,

@@ -257,15 +257,18 @@ class TraceEvidenceResolver:
 
         # 4. 找 start_syn (用于 walk parent chain)
         # V4: 优先用 condition_ast.syntax, fallback 用 semantic API
+        # Prefer the assignment line over the condition expression line: the
+        # same condition text (`cpu_state == cpu_state_trap`) also appears in
+        # debug statements and must not become the driver's source location.
         start_syn = None
-        if edge.condition_ast is not None:
-            start_syn = getattr(edge.condition_ast, "syntax", None)
-        elif edge.assign_type == "continuous":
+        if edge.assign_type == "continuous":
             start_syn = (self._find_continuous_assign_syntax_semantic(signal_id)
                          or self._find_always_block_syntax_semantic(signal_id))
         elif self._is_always_kind(edge.assign_type):
             start_syn = (self._find_always_block_syntax_semantic(signal_id)
                          or self._find_continuous_assign_syntax_semantic(signal_id))
+        if start_syn is None and edge.condition_ast is not None:
+            start_syn = getattr(edge.condition_ast, "syntax", None)
 
         if start_syn is None:
             return ev

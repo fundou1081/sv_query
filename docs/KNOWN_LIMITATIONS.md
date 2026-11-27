@@ -717,3 +717,11 @@ P182.5 评估记录、P182.6 未改行为。需要 cache 语义时应先接线�
 - 动态 Verilator/Spike oracle 未本地重跑；
 - C2 总线级查询漏报，位选节点下钻后才命中；
 - 不对外宣称“真实历史 bug 上普遍优于 grep”。
+
+### 3.27 `drivers --evidence` conditional edge line (P194.5j R1)
+
+For conditional nonblocking drivers, `drivers --evidence` can report the
+condition line rather than the assignment line (picorv32 `trap`: line 1189
+debug text instead of `trap <= 1` at 1488). `trace evidence <signal>` is
+authoritative and now resolves the assignment line. Do not infer the driver
+line from `drivers --evidence` for conditional edges.
