@@ -1355,8 +1355,9 @@ class DriverExtractor:
                 "图构建需要实例级抽取。"
             )
 
-        # [Stage 1] post-processing: 给带 condition_ast 的边填 source_location
-        # 一次性后处理比每个创建点都填更简洁
+        # [Stage 1] post-processing: 给带 condition_ast 的边填 source_location.
+        # Prefer the assignment line over the condition line: the same condition
+        # text can occur in debug strings (picorv32 trap at 1189 vs <= at 1488).
         for edge in result.edges:
             ast_node = getattr(edge, "condition_ast", None)
             if ast_node is None:
@@ -1365,13 +1366,27 @@ class DriverExtractor:
                 continue  # 已有
             try:
                 loc = self.adapter.get_source_location(ast_node)
-                if loc[0]:  # file 非空
-                    from .graph.models import SourceLocation
-                    edge.source_location = SourceLocation(
-                        file=loc[0], line_start=loc[1], line_end=loc[1], column=loc[2]
-                    )
+                if not loc[0]:
+                    continue
+                from .graph.models import SourceLocation
+                from .source_assignment import find_functional_assignment
             except Exception as e:
                 logger.debug("%s: 忽略 Exception: %s", __name__, e)  # source_location 失败不影响 edge
+                continue
+            line = loc[1]
+            try:
+                from pathlib import Path
+                text = Path(loc[0]).read_text(errors="ignore")
+                leaf = str(edge.dst).rsplit(".", 1)[-1].split("[", 1)[0]
+                found = find_functional_assignment(
+                    leaf, text, 1, len(text.splitlines()))
+                if found is not None:
+                    line = found[0]
+            except OSError as e:
+                logger.debug("%s: assignment line read failed: %s", __name__, e)
+            edge.source_location = SourceLocation(
+                file=loc[0], line_start=line, line_end=line, column=loc[2]
+            )
 
         # [REFACTOR 2026-08-07 A计划] 收集 function 宽度到 func_info
         # _store_expr_tree 的 _collect_from_tree 只记录了 Call 节点名 (func_info[name]=None)
