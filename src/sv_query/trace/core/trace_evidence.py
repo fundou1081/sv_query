@@ -210,13 +210,30 @@ class TraceEvidenceResolver:
         if first:
             ev.source_text = first
 
-    def resolve(self, signal_id: str) -> Evidence:
+    def _source_line_from_file(self, ev: Evidence) -> None:
+        if ev.source_text or ev.source_location is None:
+            return
+        loc = ev.source_location
+        try:
+            from pathlib import Path
+            text = Path(loc.file).read_text(errors="ignore")
+            lines = text.splitlines()
+            if 1 <= loc.line_start <= len(lines):
+                ev.source_text = lines[loc.line_start - 1].strip()
+        except OSError as e:
+            logger.debug("evidence source line read failed: %s", e)
+
+    def resolve(self, signal_id: str, _seen: set[str] | None = None) -> Evidence:
         """解析单个信号的 evidence
 
         步骤 (V4 重构):
         1. class/constraint 节点 → semantic API 路径
         2. 其他 → edge + semantic API 路径
         """
+        seen = _seen or set()
+        if signal_id in seen:
+            return Evidence(signal=signal_id)
+        seen = {*seen, signal_id}
         ev = Evidence(signal=signal_id)
 
         # 0. [V4] class/constraint 节点特殊处理
@@ -227,6 +244,13 @@ class TraceEvidenceResolver:
         edge = self._find_incoming_edge(signal_id)
         if edge is None:
             return ev
+
+        # 1b. CONNECTION edge: follow the source port to the actual driver.
+        if getattr(edge, "assign_type", "") == "connection" and getattr(edge, "src", ""):
+            source_ev = self.resolve(edge.src, seen)
+            if source_ev.source_location is not None or source_ev.source_text:
+                source_ev.signal = signal_id
+                return source_ev
 
         # 2. 存 source_expr 供 cross-validation 用
         # [V6.9] 优先从 edge.source.full_expression 取 (semantic AST signal source)
@@ -271,6 +295,7 @@ class TraceEvidenceResolver:
             start_syn = getattr(edge.condition_ast, "syntax", None)
 
         if start_syn is None:
+            self._source_line_from_file(ev)
             return ev
         self._apply_syntax_location(ev, start_syn, signal_id)
 

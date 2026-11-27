@@ -86,7 +86,7 @@ def line_is_lhs(text: str, signal: str) -> bool:
     code = strip_block_comments(text or "").split("//")[0].strip()
     pat = re.compile(
         rf"^(?:else\s+)?(?:if\s*\([^)]*\)\s*)?"
-        rf"(?:always(?:_comb|_ff|_latch)?\s+)?(?:begin\s+)?"
+        rf"(?:always(?:_comb|_ff|_latch)?\s+)?(?:@\s*\([^)]*\)\s*)?(?:begin\s+)?"
         rf"(?:[^:;]+:\s*)?(?:begin\s+)?(?:assign\s+)?"
         rf"{re.escape(leaf)}\b\s*(?:\[[^\]]+\])?\s*(?:<=|=(?!=))")
     return bool(pat.search(code))
