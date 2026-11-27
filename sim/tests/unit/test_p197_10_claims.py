@@ -18,6 +18,7 @@ def test_claims_cover_p197_remediation_and_audit_links_them():
     for finding in ("F4", "F10"):
         assert f"| {finding} | open" in audit
     assert "| F5 | fixed" in audit
-    assert "| C-62 |" in claims and "| `verified` |" in claims
+    c62 = next(line for line in claims.splitlines() if line.startswith("| C-62 |"))
+    assert c62.rstrip().endswith("| `verified` |")
     assert "C-63 |" in claims
     assert "P197.14" in audit and "P197.16" in audit

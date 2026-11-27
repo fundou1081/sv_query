@@ -72,15 +72,16 @@ def test_nested_inline_comparison_is_not_complete(tmp_path):
     sv = tmp_path / "nested.sv"
     sv.write_text(
         "module top(input logic en, a, b, input logic [3:0] state_q,\n"
-        "           output logic q, y);\n"
+        "           output logic q, y, z, lt);\n"
         "  localparam logic [3:0] IDLE = 4'd0;\n"
         "  always_comb begin\n"
         "    if (en) q = a;\n"
         "    else q = b;\n"
         "  end\n"
-        "  assign q = a & (state_q == IDLE);\n"
+        "  assign q = a & (state_q > IDLE);\n"
         "  assign y = a & (state_q == IDLE);\n"
         "  assign z = a & (state_q > IDLE);\n"
+        "  assign lt = a & (state_q < IDLE);\n"
         "endmodule\n")
     mixed = _run("controlflow", "analyze", "top.q", "--file", str(sv))
     assert mixed.returncode == 0, mixed.stderr[-400:]
@@ -91,3 +92,6 @@ def test_nested_inline_comparison_is_not_complete(tmp_path):
     gt = _run("controlflow", "analyze", "top.z", "--file", str(sv))
     assert gt.returncode == 0, gt.stderr[-400:]
     assert json.loads(gt.stdout)["result"]["condition_status"] == "not_modeled"
+    lt = _run("controlflow", "analyze", "top.lt", "--file", str(sv))
+    assert lt.returncode == 0, lt.stderr[-400:]
+    assert json.loads(lt.stdout)["result"]["condition_status"] == "not_modeled"
