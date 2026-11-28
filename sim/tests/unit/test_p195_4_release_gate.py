@@ -24,9 +24,9 @@ def _load_checker():
 
 def test_version_checker_accepts_current_tag_and_rejects_mismatch():
     checker = _load_checker()
-    version, tag = checker.check_versions(ROOT, "v0.3.8")
-    assert version == "0.3.8"
-    assert tag == "v0.3.8"
+    version, tag = checker.check_versions(ROOT, "v0.3.9")
+    assert version == "0.3.9"
+    assert tag == "v0.3.9"
     try:
         checker.check_versions(ROOT, "v9.9.9")
     except ValueError as exc:
@@ -67,4 +67,4 @@ def test_release_checker_compares_build_identity(monkeypatch):
     checker = _load_checker()
     monkeypatch.setattr(checker, "_identity_version", lambda _root: "9.9.9")
     with pytest.raises(ValueError, match="BuildIdentity"):
-        checker.check_versions(ROOT, "v0.3.8")
+        checker.check_versions(ROOT, "v0.3.9")

@@ -6,7 +6,7 @@
 
 **让 agent 查询并验证 RTL 事实，而不是靠读源码猜。**
 
-> **Beta（0.3.8）**: 质量足以试用，但明确不宣称 1.0 的语义完整性/外部准确率。
+> **Beta（0.3.9）**: 质量足以试用，但明确不宣称 1.0 的语义完整性/外部准确率。
 > 发布前已知限制见 [KNOWN_LIMITATIONS](docs/KNOWN_LIMITATIONS.md)；
 > 发布流程见 [RELEASE.md](RELEASE.md)。
 
@@ -15,7 +15,7 @@
 
 > 回归基线见 [docs/INDEX.md 当前基线](docs/INDEX.md#-当前基线-单一真相源--计数只写在这里) | Python 3.11+ | pyslang 语义 AST | NetworkX graph | 真实项目 + 性能基准 + agent 对照（内部）
 
-> 更新日期: 2026-11-27（0.3.8 beta；P194.5j real-project fixes；基线计数统一引用 INDEX）
+> 更新日期: 2026-11-28（0.3.9 beta；P194.5 provenance/cache/evidence；基线计数统一引用 INDEX）
 
 ---
 

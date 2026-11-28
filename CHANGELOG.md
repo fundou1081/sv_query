@@ -3,6 +3,26 @@
 > 完整历史 changelog. README 短版只展示"为什么用 sv_query" + 5 分钟上手.
 > 详细 release notes 看这里.
 
+## 2026-11-28 (0.3.9 beta — P194.5 provenance/cache/evidence)
+
+- P194.5.10a/10: semantic assignment provenance on DRIVER edges; `drivers
+  --evidence` and `trace evidence` bind assignment lines (picorv32 trap 1488,
+  cpuregs active branch 1344).
+- P194.5.11: bounded evidence payload (snippet 1600, source 4000, chain 8)
+  with explicit truncation flags; picorv32 trap 453 KB → 17 KB without losing
+  `is_verified`.
+- P194.5.12: `ports` includes output-reg ports via is_port/direction fallback;
+  SERV csr 28 = connections 28.
+- P194.5.13: connection-edge evidence follows the source port driver, including
+  snapshot mode.
+- P194.5.15/16: graph cache semantics 3 invalidates old keys; net-decl
+  initializers carry assignment provenance.
+- P194.5.17–19: nested bit-selects anchored under elaborated instance paths;
+  inactive generate branches skipped via semantic `isUninstantiated` +
+  `VisitAction.Skip`; active OOB RangeSelect still reported.
+- P194.5l: `session --serve` exposes `capabilities`.
+- Canonical 3406 passed / 0 failed / 123 deferred.
+
 ## 2026-11-27 (0.3.8 beta — real-project P1 fixes)
 
 - P194.5j: JSON/`--quiet` now suppresses logger stderr; SERV

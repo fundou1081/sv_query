@@ -14,7 +14,7 @@
 - [x] `CHANGELOG.md` has the release entry.
 - [x] Independent worker review artifact exists for HEAD, with no open P0/P1
   (see [CODE_REVIEW_PROTOCOL](docs/dev/CODE_REVIEW_PROTOCOL.md)).
-- [x] Version in `pyproject.toml` is final (`0.3.8` for the current beta).
+- [x] Version in `pyproject.toml` is final (`0.3.9` for the current beta).
 - [x] `docs/KNOWN_LIMITATIONS.md` is linked from README.
 - [x] No `package.json` / `package-lock.json` at the repository root.
 - [x] Dependency ranges are compatible ranges, not exact runtime pins.
@@ -63,8 +63,8 @@ python3 -m venv /tmp/svq-release-venv
 ```bash
 git checkout main
 git pull
-git tag -a v0.3.8 -m "sv_query 0.3.8 beta"
-git push origin v0.3.8
+git tag -a v0.3.9 -m "sv_query 0.3.9 beta"
+git push origin v0.3.9
 ```
 
 Pushing a `v*` tag triggers `.github/workflows/release.yml`:
@@ -78,13 +78,13 @@ After publish:
 ```bash
 pip index versions sv_query
 python3 -m venv /tmp/svq-pypi-smoke
-/tmp/svq-pypi-smoke/bin/pip install sv_query==0.3.8
+/tmp/svq-pypi-smoke/bin/pip install sv_query==0.3.9
 /tmp/svq-pypi-smoke/bin/sv_query capabilities --json
 ```
 
 Tag a GitHub Release with the changelog and KNOWN_LIMITATIONS link.
 
-Published status (2026-11-27):
+Published status (2026-11-28):
 
 ```text
 sv_query 0.3.0  published (PyPI description stale README; superseded)
@@ -96,6 +96,7 @@ sv_query 0.3.5  published (P195 cache/session/width/release hardening)
 sv_query 0.3.6  published (P196 snapshot/session correctness)
 sv_query 0.3.7  published 2026-11-27 (P194/P197/P198 correctness + docs)
 sv_query 0.3.8  published 2026-11-27 (P194.5j real-project P1 fixes)
+sv_query 0.3.9  pending tag (P194.5 provenance/cache/evidence)
 ```
 
 ## 5. Rollback

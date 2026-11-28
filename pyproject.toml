@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sv_query"
-version = "0.3.8"
+version = "0.3.9"
 description = "SystemVerilog 信号追踪查询引擎 - 让验证工程师直接问'这个信号谁驱动的'"
 readme = "README.md"
 license = {text = "MIT OR Apache-2.0"}
