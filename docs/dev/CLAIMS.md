@@ -101,6 +101,7 @@
 | C-81 | trace-evidence payload is bounded (snippet 1600, source 4000, chain 8) with explicit truncation markers while preserving `is_verified` (P194.5.11) | code/test | `test_p194_5_11_evidence_budget.py` + real picorv32 audit | `verified` |
 | C-82 | `ports` includes output-reg ports (is_port + declared direction fallback), matching `connections` on SERV csr (28=28) and top-level clocked output regs (P194.5.12) | code/test | `test_p194_5_12_ports_reg.py` + SERV audit | `verified` |
 | C-83 | module-output evidence follows CONNECTION edges to the driver (direct-file and snapshot); multi-driver ambiguity remains scoped out (P194.5.13) | code/test | `test_p194_5_13_module_output_evidence.py` (2 tests) | `verified` |
+| C-84 | `session --serve` exposes `capabilities` with the same provider/result as `session --request`; graph ops unchanged (P194.5l) | code/test | `test_p194_5l_serve_capabilities.py` (4 variants) | `verified` |
 
 ---
 

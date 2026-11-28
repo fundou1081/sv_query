@@ -9,7 +9,7 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P194.5.1 session --serve parity** `<待做>`
+- **当前 item**: **P194.5m SERV bit_mapping triage** `<待做>`
   - P195/P196 全部完成；0.3.6 已发布（release-check -> build -> publish）
   - P194.2f 已解除阻塞（P196.1/P196.2 已完成）
   - 独立复核报告: `/tmp/p195_final_review.md`
@@ -61,4 +61,4 @@ opensource: 112 passed / 11 skipped / 0 failed
 - P194.5l session `--serve` capabilities/graph_nodes 不支持
 - P194.5m SERV 4 个 bit_mapping violation 定性
 
-> 当前 item 仍是 P193.10；以上按 P194.5k → P194.5l → P194.5m 顺序逐个修复。
+> P194.5k、P194.5l 已完成；下一步 P194.5m。

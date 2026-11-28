@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P194.5l P2: session `--serve` op parity for `capabilities` / `graph_nodes` (E_UNSUPPORTED_OP) <进行中>
+current item : P194.5m P2: SERV 4 pre-existing `bit_mapping` violations triage: tool false positive vs RTL <待做>
 
 ## 计划树
 
@@ -613,7 +613,7 @@ P194.2c local session/server reuse + snapshot persistence <已完成>
 -- P194.5.11 P2: trace evidence payload bloat (trap 453 KB, instr_trap 373 KB); cap/compact enclosing_chain while preserving verification <已完成>
 -- P194.5.12 P2: ports vs connections parity for open/generate outputs (SERV csr o_new_irq: 27 vs 28) <已完成>
 -- P194.5.13 P2: module-output evidence (e.g. top.u.q) returns empty; bind connection/assignment line or explicit unknown <已完成>
--- P194.5l P2: session `--serve` op parity for `capabilities` / `graph_nodes` (E_UNSUPPORTED_OP) <进行中>
+-- P194.5l P2: session `--serve` op parity for `capabilities` / `graph_nodes` (E_UNSUPPORTED_OP) <已完成>
 -- P194.5m P2: SERV 4 pre-existing `bit_mapping` violations triage: tool false positive vs RTL <待做>
 -- P194.6 pyright/mypy + generated JSON schema <已完成>
 -- P194.7 docs slimming + human onboarding <已完成>

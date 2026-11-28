@@ -17,6 +17,9 @@ def test_serve_capabilities_and_graph_nodes(tmp_path):
         "endmodule\n")
     requests = [
         {"op": "capabilities", "compact": True},
+        {"op": "capabilities"},
+        {"op": "capabilities", "recommended": True},
+        {"op": "capabilities", "include_exp": True},
         {"op": "graph_nodes", "match": "top.y"},
         {"op": "version"},
     ]
@@ -26,7 +29,9 @@ def test_serve_capabilities_and_graph_nodes(tmp_path):
         capture_output=True, text=True, timeout=120)
     assert proc.returncode == 0, proc.stderr[-400:]
     rows = [json.loads(line) for line in proc.stdout.splitlines() if line.strip()]
-    assert [r["op"] for r in rows] == ["capabilities", "graph_nodes", "version"]
+    assert [r["op"] for r in rows] == [
+        "capabilities", "capabilities", "capabilities", "capabilities",
+        "graph_nodes", "version"]
     assert all(r["ok"] is True for r in rows), rows
-    assert rows[0]["result"]["schema_version"] == "1"
-    assert any(n["id"].endswith("top.y") for n in rows[1]["result"]["nodes"])
+    assert all(r["result"]["schema_version"] == "1" for r in rows[:4])
+    assert any(n["id"].endswith("top.y") for n in rows[4]["result"]["nodes"])
