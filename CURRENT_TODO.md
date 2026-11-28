@@ -9,7 +9,7 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P199.1 data-edge authority** `<进行中>`
+- **当前 item**: **P199.2 evidence authority** `<待做>`
 - **发布**: 0.3.9 已上 PyPI/GitHub；0.3.10 为 P1 修复 fast-follow，未发布。
 - **架构复审**: [P199_ARCH_REVIEW_2026-11-28.md](docs/validation/P199_ARCH_REVIEW_2026-11-28.md)
 - **worker 原始报告**: [2026-11-28_fe379c03.md](docs/validation/reviews/2026-11-28_fe379c03.md)

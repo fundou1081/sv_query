@@ -11,7 +11,7 @@
 | 项 | 值 | 说明 |
 |---|---|---|
 | 源码规模 | 160 文件 / 54,014 行 | `find src -name "*.py"`（2026-11-16 实测） |
-| 测试规模 | 501 测试文件 / 74,161 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
+| 测试规模 | 501 测试文件 / 74,162 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
 | 全量 (canonical) | **3410 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-28 P194.5.19 全量复核（3410）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
@@ -151,6 +151,7 @@
 | [validation/CODE_SMELL_AUDIT_2026-11-23.md](validation/CODE_SMELL_AUDIT_2026-11-23.md) | **P197**: verify/cache/semantic heuristics audit; P194.5d blocked |
 | [validation/P19810_PART_SELECT_2026-11-25.md](validation/P19810_PART_SELECT_2026-11-25.md) | **P198.10** part-select investigation; fix split into 10a/10b/10c |
 | [validation/P199_ARCH_REVIEW_2026-11-28.md](validation/P199_ARCH_REVIEW_2026-11-28.md) | **0.3.9 architecture review**: requirement→gap and P1/P2 table |
+| [validation/reviews/2026-11-28_93078f13.md](validation/reviews/2026-11-28_93078f13.md) | P199.1 review: PASS; data-edge authority |
 | [validation/reviews/2026-11-28_fe379c03.md](validation/reviews/2026-11-28_fe379c03.md) | **0.3.9** independent architecture audit: 3 P1, 7 P2 |
 | [validation/P1945M_SERV_BIT_TRIAGE_2026-11-28.md](validation/P1945M_SERV_BIT_TRIAGE_2026-11-28.md) | **P194.5m**: SERV bit_mapping false-positive triage |
 | [validation/P1945D_ACCEPTANCE_CHARTER_2026-11-27.md](validation/P1945D_ACCEPTANCE_CHARTER_2026-11-27.md) | **P194.5d** acceptance charter: dataset/oracle/token/baseline gates |

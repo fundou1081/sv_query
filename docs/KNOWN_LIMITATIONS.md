@@ -744,12 +744,11 @@ width/text heuristics. This limitation is closed.
 
 ### 3.30 0.3.9 architecture review — known P1s (W039-01/02/03)
 
-- `drivers --depth 1` / `verify claim type=driver` can accept a CLOCK edge;
-  `paths --directed` rejects it.
-- `trace evidence is_verified` can be true on a condition line, not the LHS
-  assignment.
+- W039-01/04 (CLOCK on `drivers --depth 1` / snapshot evidence) are **fixed**
+  by P199.1; all default fanin surfaces use `DATA_EDGE_KINDS`.
+- `trace evidence is_verified` can still be true on a condition line, not the
+  LHS assignment (W039-02 / P199.2).
 - `verify consistency` classifies `32'dx`/`1'bx` literals by ID regex and emits
-  false reciprocity violations on picorv32.
+  false reciprocity violations on picorv32 (W039-03 / P199.3).
 
-These are pre-existing and scheduled for 0.3.10 (P199.1–P199.3). Do not treat
-`drivers --depth 1` / `is_verified` as authoritative for those cases until fixed.
+Do not treat `is_verified` as assignment authority until P199.2 lands.
