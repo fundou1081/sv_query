@@ -1,6 +1,7 @@
 # P194.5m — SERV `bit_mapping` violation triage
 
 **Status**: triage complete; **tool false positive**, not an RTL bug.
+> **Update (P194.5.17)**: fixed; the workaround below is historical/obsolete.
 **Project**: SERV `/tmp/serv.f` (25 files), 2026-11-28.
 **Command**: `verify consistency --checks bit --filelist /tmp/serv.f --json` on a fresh cache.
 
@@ -50,12 +51,12 @@ The top `rdata0` is only 1 bit, so the checker flags the artifact.
 - RTL is valid; the `W=1` top net is not indexed at bit 1.
 - The 4 violations are a **tool false positive** from nested bit-select
   parent-path scoping.
-- Workaround: `verify consistency --checks reciprocity,connection` for SERV,
-  or ignore these four nodes until the walker is fixed.
+- Historical workaround (obsolete after P194.5.17): `verify consistency
+  --checks reciprocity,connection` for SERV.
 
 ## Follow-up
 
-Tracked as **P194.5.17**: hierarchy-aware bit-select walker must anchor
-nested selects under their elaborated instance path (`...rf_ram_if.rdata0`),
-not the top module prefix. A regression must reproduce SERV's
-`rdata0[1:1]` without requiring the external checkout.
+**P194.5.17 fixed** the semantic nested path (`RangeSelect.value` +
+symbol hierarchicalPath), so SERV `verify --checks bit` is green. Residual
+P2: absolute-range width filtering (P194.5.18) and active OOB RangeSelect
+walker coverage (P194.5.19).

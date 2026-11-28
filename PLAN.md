@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P194.5.17 P2: hierarchy-aware bit-select parent path (SERV rdata0[1:1]); blocked: true base is RangeSelect.value (not .left); path fix alone shifts 14 violations to width propagation gaps, needs semantic width provenance <阻塞>
+current item : P194.5.18 P2: bit-select width filter uses declared range, not bitWidth (absolute [7:4]) <待做>
 
 ## 计划树
 
@@ -615,7 +615,9 @@ P194.2c local session/server reuse + snapshot persistence <已完成>
 -- P194.5.13 P2: module-output evidence (e.g. top.u.q) returns empty; bind connection/assignment line or explicit unknown <已完成>
 -- P194.5l P2: session `--serve` op parity for `capabilities` / `graph_nodes` (E_UNSUPPORTED_OP) <已完成>
 -- P194.5m P2: SERV 4 pre-existing `bit_mapping` violations triage: tool false positive vs RTL <已完成>
--- P194.5.17 P2: hierarchy-aware bit-select parent path (SERV rdata0[1:1]); fixed via value-based path + width filter + parent width <待做>
+-- P194.5.17 P2: hierarchy-aware bit-select parent path (SERV rdata0[1:1]); fixed via value-based path + width filter + parent width <已完成>
+-- P194.5.18 P2: bit-select width filter uses declared range, not bitWidth (absolute [7:4]) <待做>
+-- P194.5.19 P2: active OOB RangeSelect walker coverage (width filter dependency) <待做>
 -- P194.6 pyright/mypy + generated JSON schema <已完成>
 -- P194.7 docs slimming + human onboarding <已完成>
 

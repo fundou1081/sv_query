@@ -726,11 +726,12 @@ debug text instead of `trap <= 1` at 1488). `trace evidence <signal>` is
 authoritative and now resolves the assignment line. Do not infer the driver
 line from `drivers --evidence` for conditional edges.
 
-### 3.28 SERV bit_mapping false positives (P194.5m)
+### 3.28 SERV bit_mapping shadows (P194.5m / P194.5.17)
 
-`verify consistency --checks bit` reports four `parent_range_out_of_bounds`
-violations for `serv_rf_top.rdata0[1:1]`, `rdata1[0:1]` and the synth-wrapper
-variants. They are tool false positives: the nested `rf_ram_if.rdata0` is
-2 bits (`RF_WIDTH=2`) but the hierarchical bit-select walker also anchors the
-same select under the 1-bit top `rdata0`. The RTL is valid. Use
-`--checks reciprocity,connection` for SERV until P194.5.17 fixes the walker.
+The four `parent_range_out_of_bounds` shadows for `serv_rf_top.rdata0[1:1]`,
+`rdata1[0:1]` and synth-wrapper variants are fixed by P194.5.17: nested
+bit-selects now anchor under the elaborated instance path. Residual P2 scope:
+the width filter uses `bitWidth` rather than the declared range for absolute
+`[7:4]`-style nets (P194.5.18), and active OOB RangeSelect walker hits depend
+on driver bit expansion (P194.5.19). Re-run `verify consistency --checks bit`
+for SERV; do not use the old workaround.
