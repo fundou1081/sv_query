@@ -524,21 +524,6 @@ def _base_symbol_value(node):
     return getattr(node, "value", None)
 
 
-def _base_symbol_bounds(node) -> tuple[int, int] | None:
-    """Declared index bounds of the select base, not just the bit count."""
-    value = _base_symbol_value(node)
-    typ = getattr(value, "type", None)
-    rng = getattr(typ, "range", None)
-    left = getattr(rng, "left", None)
-    right = getattr(rng, "right", None)
-    if isinstance(left, int) and isinstance(right, int):
-        return min(left, right), max(left, right)
-    width = getattr(typ, "bitWidth", None)
-    if isinstance(width, int) and width > 0:
-        return 0, width - 1
-    return None
-
-
 def _base_symbol_path(node) -> str:
     """Hierarchical path of a select's root signal (parameters excluded)."""
     expr = _base_symbol_value(node) or node
@@ -597,6 +582,11 @@ class _PyslangSelectWalker:
         kind = getattr(node, 'kind', None)
         if kind is None:
             return True
+        # [P194.5.19] Compiled semantic AST marks inactive generate branches.
+        # Do not descend into them; no width/text heuristic needed.
+        if ('GenerateBlock' in str(kind)
+                and getattr(node, 'isUninstantiated', False)):
+            return False
 
         # RangeSelectExpression: data[msb:lsb]
         if kind == ExpressionKind.RangeSelect:
@@ -627,15 +617,6 @@ class _PyslangSelectWalker:
                 else:
                     msb = left_val
                     lsb = right_val
-
-                # [P194.5.17] Inactive generate branches still appear in the
-                # syntax walk; a select beyond the elaborated base width cannot
-                # be active. Skip it instead of creating a shadow bit node.
-                bounds = _base_symbol_bounds(node)
-                if (bounds is not None and msb is not None and lsb is not None
-                        and (max(msb, lsb) > bounds[1]
-                             or min(msb, lsb) < bounds[0])):
-                    return True
 
                 # [FIX 2026-08-28 07:24] 从 prefixed[-1] 拆 sel 后缀取 immediate
                 # 修复 'full_id=[3:0]' (空 immediate) 和 doubled 拼接 (如 'top.data[3:0][3:0]')

@@ -10,9 +10,9 @@
 
 | 项 | 值 | 说明 |
 |---|---|---|
-| 源码规模 | 160 文件 / 54,024 行 | `find src -name "*.py"`（2026-11-16 实测） |
-| 测试规模 | 500 测试文件 / 74,035 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **3404 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-28 P194.5.18 全量复核（3404）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
+| 源码规模 | 160 文件 / 54,005 行 | `find src -name "*.py"`（2026-11-16 实测） |
+| 测试规模 | 500 测试文件 / 74,058 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
+| 全量 (canonical) | **3405 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-28 P194.5.18 全量复核（3405）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
@@ -320,13 +320,13 @@
 | [validation/p187_cva6_2026-11-19/README.md](validation/p187_cva6_2026-11-19/README.md) | **P187 local archive**: CVA6 parent/fix blobs, portable filelists, scripts, results, checksums |
 | [validation/P187_VALUE_CASES_CVA6_2026-11-19.md](validation/P187_VALUE_CASES_CVA6_2026-11-19.md) |
 | [validation/P187_FOLLOWUPS_2026-11-19.md](validation/P187_FOLLOWUPS_2026-11-19.md) |
-| [validation/P192_blind_3404/README.md](validation/P192_blind_3404/README.md) |
-| [validation/P192_blind_3404/TASK.md](validation/P192_blind_3404/TASK.md) |
+| [validation/P192_blind_3405/README.md](validation/P192_blind_3405/README.md) |
+| [validation/P192_blind_3405/TASK.md](validation/P192_blind_3405/TASK.md) |
 | [validation/P192_BLIND_COMPARE_2026-11-20.md](validation/P192_BLIND_COMPARE_2026-11-20.md) |
 | [validation/p192_blind_compare_2026-11-20/source_only/ANSWER.md](validation/p192_blind_compare_2026-11-20/source_only/ANSWER.md) | **P192.2 source-only** 盲解答案与证据 |
 | [validation/p192_blind_compare_2026-11-20/sv_query/ANSWER.md](validation/p192_blind_compare_2026-11-20/sv_query/ANSWER.md) | **P192.2 sv_query** 盲解答案与证据 | **P192.2**: source-only vs sv_query 盲对照；两臂精确 root cause，sv_query 最小 patch，source-only 动态验证 |
- **P192.1 blind task**: issue #3404 symptom-only task statement（无 fix） |
- **P192.1 blind package**: issue #3404 symptom-only, parent RTL, portable filelist, checksums |
+ **P192.1 blind task**: issue #3405 symptom-only task statement（无 fix） |
+ **P192.1 blind package**: issue #3405 symptom-only, parent RTL, portable filelist, checksums |
  **P187 follow-ups**: bit-select 查询、dataflow unknown、evidence source、snapshot/filelist 建议 |
  **P187 CVA6 value cases**: 2 个历史 fix 的 grep vs sv_query 对照；位选下钻命中 / 总线级漏报 |
 | [architecture/long_range_structural_benchmark_2026-11-05.md](architecture/long_range_structural_benchmark_2026-11-05.md) | **长程结构查询对照基准**: B0/B1/T1/T2 对照、任务族、ground truth 冻结与准确度/成本指标 |

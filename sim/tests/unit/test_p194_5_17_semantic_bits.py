@@ -35,3 +35,26 @@ def test_absolute_range_select_keeps_parent_metadata():
     assert node.bit_range == "[5:4]"
     assert any(e.kind.name == "BIT_SELECT"
                for e in graph.get_edges("top.data[5:4]", "top.data"))
+
+
+def test_active_oob_range_select_is_reported(tmp_path):
+    import json
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[3]
+    sv = tmp_path / "oob_range.sv"
+    sv.write_text(
+        "module top(input logic [1:0] data, output logic [3:0] y);\n"
+        "  assign y = data[3:0];\n"
+        "endmodule\n")
+    proc = subprocess.run(
+        [sys.executable, "run_cli.py", "verify", "consistency",
+         "--checks", "bit", "-f", str(sv), "--json"],
+        cwd=root, capture_output=True, text=True, timeout=120)
+    assert proc.returncode == 0, proc.stderr[-400:]
+    result = json.loads(proc.stdout)["result"]
+    assert result["verified"] is False
+    nodes = [v["node"] for c in result["checks"] for v in c.get("violations", [])]
+    assert "top.data[3:0]" in nodes
