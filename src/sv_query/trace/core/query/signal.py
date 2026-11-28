@@ -5,6 +5,7 @@ import logging
 # ==============================================================================
 from dataclasses import dataclass
 
+from ..graph.contracts import DATA_EDGE_KINDS
 from ..graph.models import DriverInfo, EdgeKind, NodeKind, SignalGraph, TraceNode
 
 logger = logging.getLogger(__name__)
@@ -1421,7 +1422,11 @@ class SignalTracer:
         # [iter_272] 不再注入 MIG 虚拟对端 (实例级图跨模块是普通图边)。
         for src, dst in self._incoming_pairs(signal_id):
             if dst == signal_id:
-                _edge = self.graph.get_edge(src, dst)
+                _edges = self.graph.get_edges(src, dst)
+                if not any(e.kind in DATA_EDGE_KINDS for e in _edges):
+                    continue
+                _edge = next((e for e in _edges if e.kind == EdgeKind.DRIVER),
+                             _edges[0])
                 if self._is_dangling_bit_alias(signal_id, src, _edge):
                     continue
                 # [iter_127 A3] 与 _trace_drivers_recursive 同规则: 跳过
@@ -1437,7 +1442,7 @@ class SignalTracer:
                 # [iter_294 / PLAN P6.1] 位查询的直接驱动也按运算符映射到操作数位
                 want_bit = self._bit_index_of(signal_id)
                 if want_bit is not None:
-                    edge = self.graph.get_edge(src, dst)
+                    edge = _edge
                     if edge is not None and edge.kind == EdgeKind.DRIVER:
                         mapped = self._expr_source_bits(edge, signal_id, want_bit)
                         if mapped is not None:

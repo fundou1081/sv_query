@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P199.1 data-edge authority for all fanin surfaces (drivers depth=1, verify_driver, snapshot evidence; W039-01/04) <待做>
+current item : P199.1 data-edge authority for all fanin surfaces (drivers depth=1, verify_driver, snapshot evidence; W039-01/04) <进行中>
 
 ## 计划树
 
@@ -641,7 +641,7 @@ P196 independent review follow-up (2026-11-22) <已完成>
 
 P199 requirements → architecture hardening (0.3.9 worker review) <待做>
 -- P199.0 0.3.10 fast-follow release gate: P199.1–P199.3 P1 closed + independent review <待做>
--- P199.1 data-edge authority for all fanin surfaces (drivers depth=1, verify_driver, snapshot evidence; W039-01/04) <待做>
+-- P199.1 data-edge authority for all fanin surfaces (drivers depth=1, verify_driver, snapshot evidence; W039-01/04) <进行中>
 -- P199.2 evidence is_verified requires assignment/semantic assignment_id, not token/condition (W039-02) <待做>
 -- P199.3 semantic NodeKind.CONST literal classification (no id regex) in verification (W039-03) <待做>
 -- P199.4 session contract: documented `arguments` shape + verify_consistency check support (W039-06/07) <待做>

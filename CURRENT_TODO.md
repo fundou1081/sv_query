@@ -9,7 +9,7 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P199.1 data-edge authority** `<待做>`
+- **当前 item**: **P199.1 data-edge authority** `<进行中>`
 - **发布**: 0.3.9 已上 PyPI/GitHub；0.3.10 为 P1 修复 fast-follow，未发布。
 - **架构复审**: [P199_ARCH_REVIEW_2026-11-28.md](docs/validation/P199_ARCH_REVIEW_2026-11-28.md)
 - **worker 原始报告**: [2026-11-28_fe379c03.md](docs/validation/reviews/2026-11-28_fe379c03.md)
@@ -35,7 +35,7 @@
 ## 📌 当前真实基线
 
 ```text
-canonical:  3406 passed / 0 failed / 123 deferred / 0 unexecuted
+canonical:  3410 passed / 0 failed / 123 deferred / 0 unexecuted
 opensource: 112 passed / 11 skipped / 0 failed
 ```
 

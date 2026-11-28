@@ -102,6 +102,10 @@ def _edge_line_ok(text: str, signal: str) -> bool:
 
 
 def _snapshot_edge_candidate(graph, edge, seen):
+    # [P199.1] snapshot evidence obeys the shared data-edge policy.
+    from sv_query.trace.core.graph.contracts import is_data_edge
+    if not is_data_edge(edge):
+        return []
     loc = getattr(edge, "source_location", None)
     if loc is not None and getattr(loc, "file", ""):
         return [(edge, loc)]

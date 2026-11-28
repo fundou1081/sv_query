@@ -223,13 +223,14 @@ class TestLocalparamInContinuousAssignTernary:
     module assign_ternary(
         input  wire        clk,
         input  wire [1:0]  sel,
+        input  wire [3:0]  a,
         output reg  [3:0]  result
     );
         localparam S0 = 4'd5;
         localparam S1 = 4'd7;
         always @(posedge clk) begin
             result <= (sel == 2'b00) ? S0 :
-                      (sel == 2'b01) ? S1 : 4'd15;
+                      (sel == 2'b01) ? S1 : a;
         end
     endmodule
     """
