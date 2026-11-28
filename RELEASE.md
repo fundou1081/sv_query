@@ -97,7 +97,7 @@ sv_query 0.3.5  published (P195 cache/session/width/release hardening)
 sv_query 0.3.6  published (P196 snapshot/session correctness)
 sv_query 0.3.7  published 2026-11-27 (P194/P197/P198 correctness + docs)
 sv_query 0.3.8  published 2026-11-27 (P194.5j real-project P1 fixes)
-sv_query 0.3.9  pending tag (P194.5 provenance/cache/evidence)
+sv_query 0.3.9  published 2026-11-28 (P194.5 provenance/cache/evidence)
 ```
 
 ## 5. Rollback
