@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P194.5.1 P2: session `--serve` op parity for `capabilities` / `graph_nodes` (E_UNSUPPORTED_OP) <待做>
+current item : P194.5l P2: session `--serve` op parity for `capabilities` / `graph_nodes` (E_UNSUPPORTED_OP) <待做>
 
 ## 计划树
 
