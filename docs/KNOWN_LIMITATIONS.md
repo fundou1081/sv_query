@@ -734,3 +734,13 @@ bit-selects now anchor under the elaborated instance path. Residual P2 scope:
 active OOB RangeSelect walker hits depend on driver bit expansion
 (P194.5.19). Declared absolute ranges are handled correctly since P194.5.18. Re-run `verify consistency --checks bit`
 for SERV; do not use the old workaround.
+
+### 3.29 active OOB RangeSelect in non-driver contexts (P194.5.19)
+
+The semantic tree walker also sees selects inside inactive generate branches with
+default parameter widths; it cannot distinguish those from a genuinely active
+out-of-range part-select (`data[3:0]` on 2-bit `data`). The width filter therefore
+skips both. Driver expressions still build bit nodes and report the OOB; a select
+that appears only in a condition/non-driver context may be absent from the graph,
+and `verify --checks bit` returns `unknown`, never `verified`. Fixing this needs
+pyslang generate-elaboration status, not a textual/width heuristic.
