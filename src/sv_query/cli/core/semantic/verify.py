@@ -239,22 +239,6 @@ def _check_reciprocity(tracer, graph, signals: list[str] | None,
     return result
 
 
-def _has_deeper_same_leaf(graph, node) -> bool:
-    """A nested-instance node with the same leaf name exists.
-
-    Hierarchical bit-select walking can leave a duplicate under a narrower
-    top-level net (SERV rdata0/rdata1). The nested node is authoritative.
-    """
-    leaf = node.id.rsplit(".", 1)[-1].split("[", 1)[0]
-    for nid in graph.nodes():
-        if nid == node.id or nid.count(".") <= node.id.count("."):
-            continue
-        if graph.get_node(nid) is not None and (
-                nid.rsplit(".", 1)[-1].split("[", 1)[0] == leaf):
-            return True
-    return False
-
-
 def _check_bit_mapping(graph, signals: list[str] | None) -> dict:
     violations = []
     checked = skipped = index_like = range_checked = 0
@@ -312,8 +296,6 @@ def _check_bit_mapping(graph, signals: list[str] | None) -> dict:
                 hi = max(int(parent.width[0]), int(parent.width[1]))
                 for v in (node.parent_bit_start, node.parent_bit_end):
                     if v < lo or v > hi:
-                        if _has_deeper_same_leaf(graph, node):
-                            break
                         violations.append({"check": "bit_mapping",
                                            "kind": "parent_range_out_of_bounds",
                                            "node": n, "bit": v,
