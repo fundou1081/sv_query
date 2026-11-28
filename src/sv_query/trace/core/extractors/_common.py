@@ -460,7 +460,7 @@ from typing import Any, Iterator, NamedTuple  # noqa: E402
 # 讽刺的是本次改造 (#2 G3 选项 3) 的目的正是消除 regex, 却内置了一条回到 regex 的静默退路。
 #
 # 现改为与全项目一致的直接 import: pyslang 缺失时 ImportError 立刻显式暴露, 而非静默降级。
-from pyslang import EvalContext, ExpressionKind  # type: ignore  # noqa: E402
+from pyslang import EvalContext, ExpressionKind, VisitAction  # type: ignore  # noqa: E402
 
 
 class BitSelectHit(NamedTuple):
@@ -583,10 +583,10 @@ class _PyslangSelectWalker:
         if kind is None:
             return True
         # [P194.5.19] Compiled semantic AST marks inactive generate branches.
-        # Do not descend into them; no width/text heuristic needed.
+        # VisitAction.Skip is required: pyslang v11 ignores plain False.
         if ('GenerateBlock' in str(kind)
                 and getattr(node, 'isUninstantiated', False)):
-            return False
+            return VisitAction.Skip
 
         # RangeSelectExpression: data[msb:lsb]
         if kind == ExpressionKind.RangeSelect:

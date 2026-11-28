@@ -58,3 +58,31 @@ def test_active_oob_range_select_is_reported(tmp_path):
     assert result["verified"] is False
     nodes = [v["node"] for c in result["checks"] for v in c.get("violations", [])]
     assert "top.data[3:0]" in nodes
+
+
+def test_inactive_generate_oob_select_is_not_reported(tmp_path):
+    import json
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[3]
+    sv = tmp_path / "inactive_oob.sv"
+    sv.write_text(
+        "module top #(parameter P = 0)(input logic [1:0] d, output logic [1:0] y);\n"
+        "  generate\n"
+        "    if (P == 0) begin : g_active\n"
+        "      assign y = d[1:0];\n"
+        "    end else begin : g_inactive\n"
+        "      assign y = d[3:0];\n"
+        "    end\n"
+        "  endgenerate\n"
+        "endmodule\n")
+    proc = subprocess.run(
+        [sys.executable, "run_cli.py", "verify", "consistency",
+         "--checks", "bit", "-f", str(sv), "--json"],
+        cwd=root, capture_output=True, text=True, timeout=120)
+    assert proc.returncode == 0, proc.stderr[-400:]
+    result = json.loads(proc.stdout)["result"]
+    assert result["verified"] is True
+    assert result["total_violations"] == 0

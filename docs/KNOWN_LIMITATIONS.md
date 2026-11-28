@@ -730,17 +730,14 @@ line from `drivers --evidence` for conditional edges.
 
 The four `parent_range_out_of_bounds` shadows for `serv_rf_top.rdata0[1:1]`,
 `rdata1[0:1]` and synth-wrapper variants are fixed by P194.5.17: nested
-bit-selects now anchor under the elaborated instance path. Residual P2 scope:
-active OOB RangeSelect walker hits depend on driver bit expansion
+bit-selects now anchor under the elaborated instance path. Active OOB RangeSelects are reported and inactive generate branches are skipped
+using pyslang's semantic ``GenerateBlockSymbol.isUninstantiated``
 (P194.5.19). Declared absolute ranges are handled correctly since P194.5.18. Re-run `verify consistency --checks bit`
 for SERV; do not use the old workaround.
 
-### 3.29 active OOB RangeSelect in non-driver contexts (P194.5.19)
+### 3.29 active OOB RangeSelect in non-driver contexts (P194.5.19 — fixed)
 
-The semantic tree walker also sees selects inside inactive generate branches with
-default parameter widths; it cannot distinguish those from a genuinely active
-out-of-range part-select (`data[3:0]` on 2-bit `data`). The width filter therefore
-skips both. Driver expressions still build bit nodes and report the OOB; a select
-that appears only in a condition/non-driver context may be absent from the graph,
-and `verify --checks bit` returns `unknown`, never `verified`. Fixing this needs
-pyslang generate-elaboration status, not a textual/width heuristic.
+The walker now uses the compiled semantic AST's
+``GenerateBlockSymbol.isUninstantiated`` to skip inactive generate branches
+(``VisitAction.Skip``), so active OOB RangeSelects are reported without
+width/text heuristics. This limitation is closed.
