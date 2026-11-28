@@ -741,3 +741,15 @@ The walker now uses the compiled semantic AST's
 ``GenerateBlockSymbol.isUninstantiated`` to skip inactive generate branches
 (``VisitAction.Skip``), so active OOB RangeSelects are reported without
 width/text heuristics. This limitation is closed.
+
+### 3.30 0.3.9 architecture review — known P1s (W039-01/02/03)
+
+- `drivers --depth 1` / `verify claim type=driver` can accept a CLOCK edge;
+  `paths --directed` rejects it.
+- `trace evidence is_verified` can be true on a condition line, not the LHS
+  assignment.
+- `verify consistency` classifies `32'dx`/`1'bx` literals by ID regex and emits
+  false reciprocity violations on picorv32.
+
+These are pre-existing and scheduled for 0.3.10 (P199.1–P199.3). Do not treat
+`drivers --depth 1` / `is_verified` as authoritative for those cases until fixed.

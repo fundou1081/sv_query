@@ -9,11 +9,11 @@
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前 item**: **P193.10 external trial users** `<待做>`
+- **当前 item**: **P199.1 data-edge authority** `<待做>`
   - P195/P196 全部完成；0.3.6 已发布（release-check -> build -> publish）
   - P194.2f 已解除阻塞（P196.1/P196.2 已完成）
   - 独立复核报告: `/tmp/p195_final_review.md`
-  - 未完成叶子：P194.5d(blocked)、P193.10
+  - 未完成叶子：P194.5d(blocked)、P193.10、P199.1–P199.7
 
 
 ## 📌 当前真实基线

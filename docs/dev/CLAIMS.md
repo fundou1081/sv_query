@@ -104,6 +104,9 @@
 | C-84 | `session --serve` exposes `capabilities` with the same provider/result as `session --request`; graph ops unchanged (P194.5l) | code/test | `test_p194_5l_serve_capabilities.py` (4 variants) | `verified` |
 | C-85 | nested bit-select nodes anchor under elaborated instance paths (RangeSelect.value), shadow nodes removed, SERV bit verify 0 (P194.5.17) | code/test | `test_p194_5_17_semantic_bits.py` + SERV audit | `verified` |
 | C-86 | bit-select walker skips inactive generate branches via semantic `GenerateBlockSymbol.isUninstantiated` + `VisitAction.Skip`; active OOB RangeSelect and absolute `[7:4]` selects are reported (P194.5.18/19) | code/test | `test_p194_5_17_semantic_bits.py` (active OOB, inactive OOB, [7:4]) | `verified` |
+| C-87 | all default fanin surfaces exclude CLOCK/RESET; `drivers --depth 1` and `verify claim type=driver` must agree with `paths --directed` (W039-01) | fixture | none (known-broken) | `known-broken` |
+| C-88 | `trace evidence is_verified=true` requires an authoritative LHS assignment, not condition/token text (W039-02) | fixture | none (known-broken) | `known-broken` |
+| C-89 | verification classifies literals by semantic `NodeKind.CONST`, not ID regex (W039-03) | fixture | none (known-broken) | `known-broken` |
 
 ---
 
