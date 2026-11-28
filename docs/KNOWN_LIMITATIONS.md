@@ -725,3 +725,12 @@ condition line rather than the assignment line (picorv32 `trap`: line 1189
 debug text instead of `trap <= 1` at 1488). `trace evidence <signal>` is
 authoritative and now resolves the assignment line. Do not infer the driver
 line from `drivers --evidence` for conditional edges.
+
+### 3.28 SERV bit_mapping false positives (P194.5m)
+
+`verify consistency --checks bit` reports four `parent_range_out_of_bounds`
+violations for `serv_rf_top.rdata0[1:1]`, `rdata1[0:1]` and the synth-wrapper
+variants. They are tool false positives: the nested `rf_ram_if.rdata0` is
+2 bits (`RF_WIDTH=2`) but the hierarchical bit-select walker also anchors the
+same select under the 1-bit top `rdata0`. The RTL is valid. Use
+`--checks reciprocity,connection` for SERV until P194.5.17 fixes the walker.
