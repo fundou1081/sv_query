@@ -67,6 +67,7 @@
 | [validation/reviews/2026-11-27_c0d24e56.md](validation/reviews/2026-11-27_c0d24e56.md) | Real-project P1 re-audit: PASS WITH CAVEATS |
 | [validation/reviews/2026-11-27_29b2c707.md](validation/reviews/2026-11-27_29b2c707.md) | P194.5.10 first audit: FAIL (filelist no-op, wrong branch) |
 | [validation/reviews/2026-11-27_51635691.md](validation/reviews/2026-11-27_51635691.md) | P194.5.10a first audit: FAIL (timescale off-by-one) |
+| [validation/reviews/2026-11-28_664dc7f2.md](validation/reviews/2026-11-28_664dc7f2.md) | **0.3.9 release** independent review: PASS WITH CAVEATS |
 | [validation/reviews/2026-11-28_c2e888c9.md](validation/reviews/2026-11-28_c2e888c9.md) | P194.5.19 re-audit: PASS; semantic generate skip |
 | [validation/reviews/2026-11-28_46ef7bd6.md](validation/reviews/2026-11-28_46ef7bd6.md) | P194.5.18 review: PASS WITH CAVEATS; declared bounds |
 | [validation/reviews/2026-11-28_03067d79_f4.md](validation/reviews/2026-11-28_03067d79_f4.md) | P194.5.17 F4 closure re-audit: PASS |
