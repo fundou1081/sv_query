@@ -58,5 +58,5 @@ The top `rdata0` is only 1 bit, so the checker flags the artifact.
 
 **P194.5.17 fixed** the semantic nested path (`RangeSelect.value` +
 symbol hierarchicalPath), so SERV `verify --checks bit` is green. Residual
-P2: absolute-range width filtering (P194.5.18) and active OOB RangeSelect
-walker coverage (P194.5.19).
+P2: active OOB RangeSelect walker coverage (P194.5.19);
+absolute-range filtering was fixed in P194.5.18.

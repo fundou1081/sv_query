@@ -731,7 +731,6 @@ line from `drivers --evidence` for conditional edges.
 The four `parent_range_out_of_bounds` shadows for `serv_rf_top.rdata0[1:1]`,
 `rdata1[0:1]` and synth-wrapper variants are fixed by P194.5.17: nested
 bit-selects now anchor under the elaborated instance path. Residual P2 scope:
-the width filter uses `bitWidth` rather than the declared range for absolute
-`[7:4]`-style nets (P194.5.18), and active OOB RangeSelect walker hits depend
-on driver bit expansion (P194.5.19). Re-run `verify consistency --checks bit`
+active OOB RangeSelect walker hits depend on driver bit expansion
+(P194.5.19). Declared absolute ranges are handled correctly since P194.5.18. Re-run `verify consistency --checks bit`
 for SERV; do not use the old workaround.

@@ -12,7 +12,7 @@
 |---|---|---|
 | 源码规模 | 160 文件 / 54,024 行 | `find src -name "*.py"`（2026-11-16 实测） |
 | 测试规模 | 500 测试文件 / 74,035 行 + 192 SV fixture | `find sim/tests -name "*.py"` / `-name "*.sv"`（2026-11-16 实测） |
-| 全量 (canonical) | **3404 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-27 P194.5.10 全量复核（3404）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
+| 全量 (canonical) | **3404 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; **0 skipped** / **0 unexecuted** / 123 `deferred` (opensource suite); 35 subtests) | **2026-11-28 P194.5.18 全量复核（3404）**（本机；deferred 口径）。**0 skipped 与 0 failed 都不是健康指标**，状态口径见 TESTING §语义测试 |
 | CLI / integration 子集 | 不再单独维护 | 旧 `2129` / `810` 是 2026-09-08 的子集快照，已过期；一律看全量行 |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
@@ -67,6 +67,7 @@
 | [validation/reviews/2026-11-27_c0d24e56.md](validation/reviews/2026-11-27_c0d24e56.md) | Real-project P1 re-audit: PASS WITH CAVEATS |
 | [validation/reviews/2026-11-27_29b2c707.md](validation/reviews/2026-11-27_29b2c707.md) | P194.5.10 first audit: FAIL (filelist no-op, wrong branch) |
 | [validation/reviews/2026-11-27_51635691.md](validation/reviews/2026-11-27_51635691.md) | P194.5.10a first audit: FAIL (timescale off-by-one) |
+| [validation/reviews/2026-11-28_46ef7bd6.md](validation/reviews/2026-11-28_46ef7bd6.md) | P194.5.18 review: PASS WITH CAVEATS; declared bounds |
 | [validation/reviews/2026-11-28_03067d79_f4.md](validation/reviews/2026-11-28_03067d79_f4.md) | P194.5.17 F4 closure re-audit: PASS |
 | [validation/reviews/2026-11-28_03067d79.md](validation/reviews/2026-11-28_03067d79.md) | P194.5.17 semantic fix review: gate F4; behavior PASS |
 | [validation/reviews/2026-11-28_aa91c613.md](validation/reviews/2026-11-28_aa91c613.md) | P194.5.17 review: FAIL P1 heuristic; reverted/blocked |
