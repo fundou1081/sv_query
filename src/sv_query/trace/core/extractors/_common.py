@@ -524,11 +524,19 @@ def _base_symbol_value(node):
     return getattr(node, "value", None)
 
 
-def _base_symbol_width(node) -> int | None:
+def _base_symbol_bounds(node) -> tuple[int, int] | None:
+    """Declared index bounds of the select base, not just the bit count."""
     value = _base_symbol_value(node)
     typ = getattr(value, "type", None)
+    rng = getattr(typ, "range", None)
+    left = getattr(rng, "left", None)
+    right = getattr(rng, "right", None)
+    if isinstance(left, int) and isinstance(right, int):
+        return min(left, right), max(left, right)
     width = getattr(typ, "bitWidth", None)
-    return int(width) if isinstance(width, int) and width > 0 else None
+    if isinstance(width, int) and width > 0:
+        return 0, width - 1
+    return None
 
 
 def _base_symbol_path(node) -> str:
@@ -623,10 +631,10 @@ class _PyslangSelectWalker:
                 # [P194.5.17] Inactive generate branches still appear in the
                 # syntax walk; a select beyond the elaborated base width cannot
                 # be active. Skip it instead of creating a shadow bit node.
-                base_width = _base_symbol_width(node)
-                if (base_width is not None and msb is not None
-                        and lsb is not None
-                        and (max(msb, lsb) >= base_width or min(msb, lsb) < 0)):
+                bounds = _base_symbol_bounds(node)
+                if (bounds is not None and msb is not None and lsb is not None
+                        and (max(msb, lsb) > bounds[1]
+                             or min(msb, lsb) < bounds[0])):
                     return True
 
                 # [FIX 2026-08-28 07:24] 从 prefixed[-1] 拆 sel 后缀取 immediate
