@@ -1862,6 +1862,19 @@ class GraphBuilder:
                         )
                         self.graph.add_trace_node(parent_node)
 
+                    # [P194.5.17] The elaborated select proves the parent is at
+                    # least this wide; driver width extraction can miss
+                    # parameterized generate widths (SERV cnt_lsb[2:0]).
+                    if (j == len(chain) - 1 and hit.msb is not None
+                            and hit.lsb is not None):
+                        parent_node = self.graph.get_node(parent_id)
+                        want = max(hit.msb, hit.lsb)
+                        if parent_node is not None and parent_node.width:
+                            have = abs(int(parent_node.width[0])
+                                       - int(parent_node.width[1])) + 1
+                            if want + 1 > have:
+                                parent_node.width = (want, 0)
+
                     # 确保 child 节点存在
                     child_node = self.graph.get_node(child_id)
                     if child_node is None:

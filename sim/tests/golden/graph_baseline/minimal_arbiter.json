@@ -358,6 +358,90 @@
       "confidence": "high",
       "dst": "sm2cluster_arb.arb_inst",
       "effective_condition": "",
+      "expression": "req_i[ptr+1]",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "BIT_SELECT",
+      "src": "sm2cluster_arb.arb_inst.req_i[ptr+1]"
+    },
+    {
+      "assign_type": "",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "sm2cluster_arb.arb_inst.req_i",
+      "effective_condition": "",
+      "expression": "",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "BIT_SELECT",
+      "src": "sm2cluster_arb.arb_inst.req_i[ptr+1]"
+    },
+    {
+      "assign_type": "internal",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "sm2cluster_arb.arb_inst",
+      "effective_condition": "",
+      "expression": "req_i[ptr+2]",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "BIT_SELECT",
+      "src": "sm2cluster_arb.arb_inst.req_i[ptr+2]"
+    },
+    {
+      "assign_type": "",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "sm2cluster_arb.arb_inst.req_i",
+      "effective_condition": "",
+      "expression": "",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "BIT_SELECT",
+      "src": "sm2cluster_arb.arb_inst.req_i[ptr+2]"
+    },
+    {
+      "assign_type": "internal",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "sm2cluster_arb.arb_inst",
+      "effective_condition": "",
+      "expression": "req_i[ptr]",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "BIT_SELECT",
+      "src": "sm2cluster_arb.arb_inst.req_i[ptr]"
+    },
+    {
+      "assign_type": "",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "sm2cluster_arb.arb_inst.req_i",
+      "effective_condition": "",
+      "expression": "",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "BIT_SELECT",
+      "src": "sm2cluster_arb.arb_inst.req_i[ptr]"
+    },
+    {
+      "assign_type": "internal",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "sm2cluster_arb.arb_inst",
+      "effective_condition": "",
       "expression": "rst_n",
       "function_return": false,
       "is_function_call": false,
@@ -519,48 +603,6 @@
       "src": "sm2cluster_arb.cluster_req_i"
     },
     {
-      "assign_type": "",
-      "bit_slice": "",
-      "clock_domain": "",
-      "condition": "",
-      "confidence": "high",
-      "dst": "sm2cluster_arb.req_i",
-      "effective_condition": "",
-      "expression": "",
-      "function_return": false,
-      "is_function_call": false,
-      "kind": "BIT_SELECT",
-      "src": "sm2cluster_arb.req_i[ptr+1]"
-    },
-    {
-      "assign_type": "",
-      "bit_slice": "",
-      "clock_domain": "",
-      "condition": "",
-      "confidence": "high",
-      "dst": "sm2cluster_arb.req_i",
-      "effective_condition": "",
-      "expression": "",
-      "function_return": false,
-      "is_function_call": false,
-      "kind": "BIT_SELECT",
-      "src": "sm2cluster_arb.req_i[ptr+2]"
-    },
-    {
-      "assign_type": "",
-      "bit_slice": "",
-      "clock_domain": "",
-      "condition": "",
-      "confidence": "high",
-      "dst": "sm2cluster_arb.req_i",
-      "effective_condition": "",
-      "expression": "",
-      "function_return": false,
-      "is_function_call": false,
-      "kind": "BIT_SELECT",
-      "src": "sm2cluster_arb.req_i[ptr]"
-    },
-    {
       "assign_type": "connection",
       "bit_slice": "",
       "clock_domain": "",
@@ -701,6 +743,57 @@
     },
     {
       "bit_range": null,
+      "id": "sm2cluster_arb.arb_inst.req_i[ptr+1]",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": false,
+      "is_reset": false,
+      "is_signed": null,
+      "kind": "SIGNAL",
+      "modport_dir": null,
+      "module": "sm2cluster_arb",
+      "parent": "sm2cluster_arb.arb_inst.req_i",
+      "width": [
+        0,
+        0
+      ]
+    },
+    {
+      "bit_range": null,
+      "id": "sm2cluster_arb.arb_inst.req_i[ptr+2]",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": false,
+      "is_reset": false,
+      "is_signed": null,
+      "kind": "SIGNAL",
+      "modport_dir": null,
+      "module": "sm2cluster_arb",
+      "parent": "sm2cluster_arb.arb_inst.req_i",
+      "width": [
+        0,
+        0
+      ]
+    },
+    {
+      "bit_range": null,
+      "id": "sm2cluster_arb.arb_inst.req_i[ptr]",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": false,
+      "is_reset": false,
+      "is_signed": null,
+      "kind": "SIGNAL",
+      "modport_dir": null,
+      "module": "sm2cluster_arb",
+      "parent": "sm2cluster_arb.arb_inst.req_i",
+      "width": [
+        0,
+        0
+      ]
+    },
+    {
+      "bit_range": null,
       "id": "sm2cluster_arb.arb_inst.rst_n",
       "is_clock": false,
       "is_enable": false,
@@ -769,74 +862,6 @@
     },
     {
       "bit_range": null,
-      "id": "sm2cluster_arb.req_i",
-      "is_clock": false,
-      "is_enable": false,
-      "is_port": false,
-      "is_reset": false,
-      "is_signed": null,
-      "kind": "SIGNAL",
-      "modport_dir": null,
-      "module": "sm2cluster_arb",
-      "parent": null,
-      "width": [
-        0,
-        0
-      ]
-    },
-    {
-      "bit_range": null,
-      "id": "sm2cluster_arb.req_i[ptr+1]",
-      "is_clock": false,
-      "is_enable": false,
-      "is_port": false,
-      "is_reset": false,
-      "is_signed": null,
-      "kind": "SIGNAL",
-      "modport_dir": null,
-      "module": "sm2cluster_arb",
-      "parent": "sm2cluster_arb.req_i",
-      "width": [
-        0,
-        0
-      ]
-    },
-    {
-      "bit_range": null,
-      "id": "sm2cluster_arb.req_i[ptr+2]",
-      "is_clock": false,
-      "is_enable": false,
-      "is_port": false,
-      "is_reset": false,
-      "is_signed": null,
-      "kind": "SIGNAL",
-      "modport_dir": null,
-      "module": "sm2cluster_arb",
-      "parent": "sm2cluster_arb.req_i",
-      "width": [
-        0,
-        0
-      ]
-    },
-    {
-      "bit_range": null,
-      "id": "sm2cluster_arb.req_i[ptr]",
-      "is_clock": false,
-      "is_enable": false,
-      "is_port": false,
-      "is_reset": false,
-      "is_signed": null,
-      "kind": "SIGNAL",
-      "modport_dir": null,
-      "module": "sm2cluster_arb",
-      "parent": "sm2cluster_arb.req_i",
-      "width": [
-        0,
-        0
-      ]
-    },
-    {
-      "bit_range": null,
       "id": "sm2cluster_arb.rst_n",
       "is_clock": false,
       "is_enable": false,
@@ -872,22 +897,22 @@
   ],
   "summary": {
     "edge_kinds": {
-      "BIT_SELECT": 9,
+      "BIT_SELECT": 12,
       "CLOCK": 9,
       "CONNECTION": 5,
       "DRIVER": 9,
       "RESET": 9
     },
-    "edges": 41,
+    "edges": 44,
     "node_kinds": {
       "CONST": 1,
       "INSTANTIATED_MODULE": 1,
       "PORT_IN": 6,
       "PORT_OUT": 2,
       "REG": 3,
-      "SIGNAL": 4
+      "SIGNAL": 3
     },
-    "nodes": 17
+    "nodes": 16
   },
   "target": null,
   "version": 1

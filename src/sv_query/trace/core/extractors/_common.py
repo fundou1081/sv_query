@@ -13,7 +13,7 @@
 #                    helper, 必须共享而非复制.
 # ==============================================================================
 import logging
-from typing import Any, Callable, Optional, Protocol
+from typing import Any, Callable, Protocol
 
 from ..._safe import safe_attr, safe_str  # [iter_141] 非 utf8 pyslang 属性防崩
 
@@ -103,7 +103,7 @@ AppendEdgeFn = Callable[..., None]
 # get_signal 接收 current_module 参数替代原 self._current_module.
 # ==============================================================================
 
-def fold_constant(expr: Any, ctx: Optional[dict] = None) -> Optional[int]:
+def fold_constant(expr: Any, ctx: dict | None = None) -> int | None:
     """[Plan F1 2026-08-12] 对含 genvar substitute 后的表达式求 constant.
 
     [Step 3 2026-08-27] 从 driver_extractor._fold_constant 改为纯函数.
@@ -182,7 +182,7 @@ def fold_constant(expr: Any, ctx: Optional[dict] = None) -> Optional[int]:
     return None
 
 
-def safe_symbol_name(sym: Any) -> Optional[str]:
+def safe_symbol_name(sym: Any) -> str | None:
     """[iter_141] 安全提取 pyslang symbol 名.
 
     hasattr(sym, 'name') / str(sym.name) 在非 utf8 identifier (大设计如
@@ -205,9 +205,9 @@ def safe_symbol_name(sym: Any) -> Optional[str]:
 
 def get_signal(
     signal: Any,
-    ctx: Optional[dict] = None,
+    ctx: dict | None = None,
     current_module: Any = None,
-) -> Optional[str]:
+) -> str | None:
     """[V6.9] 获取信号名 — 优先用 semantic API, fallback 到 str().
 
     [Step 3 2026-08-27] 从 driver_extractor._get_signal 改为纯函数.
@@ -447,7 +447,7 @@ def get_signal(
 # - root.visit(callback) 是 11.0 真实遍历 API, callback 返回 True/False 控制深入
 # - node.kind == ExpressionKind.RangeSelect / ElementSelect
 # ==============================================================================
-from typing import Any, Iterator, NamedTuple
+from typing import Any, Iterator, NamedTuple  # noqa: E402
 
 # [2026-08-28 纪律修正] pyslang 是**核心依赖**, 不是可选依赖:
 #   pyproject.toml [project.dependencies] / requirements.txt 都硬声明 pyslang>=10.0.0,<12.0.0
@@ -460,7 +460,7 @@ from typing import Any, Iterator, NamedTuple
 # 讽刺的是本次改造 (#2 G3 选项 3) 的目的正是消除 regex, 却内置了一条回到 regex 的静默退路。
 #
 # 现改为与全项目一致的直接 import: pyslang 缺失时 ImportError 立刻显式暴露, 而非静默降级。
-from pyslang import ExpressionKind, EvalContext  # type: ignore
+from pyslang import EvalContext, ExpressionKind  # type: ignore  # noqa: E402
 
 
 class BitSelectHit(NamedTuple):
@@ -520,6 +520,51 @@ def iter_bit_selects(module: Any, instance_path: str = '') -> Iterator[BitSelect
     yield from walker.results
 
 
+def _base_symbol_value(node):
+    return getattr(node, "value", None)
+
+
+def _base_symbol_width(node) -> int | None:
+    value = _base_symbol_value(node)
+    typ = getattr(value, "type", None)
+    width = getattr(typ, "bitWidth", None)
+    return int(width) if isinstance(width, int) and width > 0 else None
+
+
+def _base_symbol_path(node) -> str:
+    """Hierarchical path of a select's root signal (parameters excluded)."""
+    expr = _base_symbol_value(node) or node
+    for _ in range(24):
+        symbol = getattr(expr, "symbol", None)
+        if symbol is not None:
+            kind = str(getattr(symbol, "kind", "")).lower()
+            if any(word in kind for word in ("parameter", "enum", "genvar", "type", "formalargument")):
+                return ""
+            try:
+                path = getattr(symbol, "hierarchicalPath", None)
+                if path:
+                    return str(path).strip()
+            except (UnicodeDecodeError, TypeError):
+                return ""
+        expr = getattr(expr, "value", None) or getattr(expr, "left", None)
+        if expr is None:
+            break
+    return ""
+
+
+def _prefixed_chain(chain, node, instance_path: str) -> list[str]:
+    symbol_path = _base_symbol_path(node)
+    nested = (symbol_path
+              and symbol_path.count(".") > instance_path.count(".") + 1)
+    root_name = chain[0]
+    if nested:
+        return [
+            symbol_path + (c[len(root_name):] if c.startswith(root_name) else "")
+            for c in chain
+        ]
+    return [f"{instance_path}.{c}" if instance_path else c for c in chain]
+
+
 class _PyslangSelectWalker:
     """[2026-08-28 07:00] pyslang AST walker (基于 visit() callback).
 
@@ -550,9 +595,9 @@ class _PyslangSelectWalker:
             # 提 base_chain (递归走 RangeSelect -> MemberAccess -> NamedValue)
             chain = _extract_base_chain(node)
             if chain:
-                # chain[0] 是顶层 (e.g. 'pkt'), chain[-1] 是 immediate parent 含 sel 后缀 (e.g. 'pkt.addr[3:0]')
-                # 加 instance_path 前缀
-                prefixed = [f"{self.instance_path}.{c}" if self.instance_path else c for c in chain]
+                # [P194.5.17] RangeSelect.value is the base signal; .left is the
+                # range bound. Anchor nested selects under the elaborated path.
+                prefixed = _prefixed_chain(chain, node, self.instance_path)
 
                 # msb/lsb 走 pyslang eval (parameter/fn call 也能 handle)
                 # [iter_352 / PLAN P51] 区分普通 [msb:lsb] 与 indexed part-select
@@ -574,6 +619,15 @@ class _PyslangSelectWalker:
                 else:
                     msb = left_val
                     lsb = right_val
+
+                # [P194.5.17] Inactive generate branches still appear in the
+                # syntax walk; a select beyond the elaborated base width cannot
+                # be active. Skip it instead of creating a shadow bit node.
+                base_width = _base_symbol_width(node)
+                if (base_width is not None and msb is not None
+                        and lsb is not None
+                        and (max(msb, lsb) >= base_width or min(msb, lsb) < 0)):
+                    return True
 
                 # [FIX 2026-08-28 07:24] 从 prefixed[-1] 拆 sel 后缀取 immediate
                 # 修复 'full_id=[3:0]' (空 immediate) 和 doubled 拼接 (如 'top.data[3:0][3:0]')
@@ -625,7 +679,7 @@ class _PyslangSelectWalker:
         if kind == ExpressionKind.ElementSelect:
             chain = _extract_base_chain(node)
             if chain:
-                prefixed = [f"{self.instance_path}.{c}" if self.instance_path else c for c in chain]
+                prefixed = _prefixed_chain(chain, node, self.instance_path)
                 idx = _eval_to_int(getattr(node, 'selector', None))
                 # [FIX 2026-08-28 07:24] 同上拆 sel 后缀
                 immediate_full = prefixed[-1]
