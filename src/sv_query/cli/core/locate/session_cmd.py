@@ -70,7 +70,9 @@ def _serve(filelist: str | None, from_snapshot: str | None, file: str | None) ->
 
     try:
         with gs:
-            session = Session(handlers=gs.handlers())
+            handlers = gs.handlers()
+            handlers["capabilities"] = _capabilities_handler
+            session = Session(handlers=handlers)
             for raw in sys.stdin:
                 raw = raw.strip()
                 if not raw:
