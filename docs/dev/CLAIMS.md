@@ -103,7 +103,7 @@
 | C-83 | module-output evidence follows CONNECTION edges to the driver (direct-file and snapshot); multi-driver ambiguity remains scoped out (P194.5.13) | code/test | `test_p194_5_13_module_output_evidence.py` (2 tests) | `verified` |
 | C-84 | `session --serve` exposes `capabilities` with the same provider/result as `session --request`; graph ops unchanged (P194.5l) | code/test | `test_p194_5l_serve_capabilities.py` (4 variants) | `verified` |
 | C-85 | nested bit-select nodes anchor under elaborated instance paths (RangeSelect.value), shadow nodes removed, SERV bit verify 0 (P194.5.17) | code/test | `test_p194_5_17_semantic_bits.py` + SERV audit | `verified` |
-| C-86 | bit-select width filter uses declared index bounds (ConstantRange), not bitWidth, preserving absolute `[7:4]` selects (P194.5.18) | code/test | `test_p194_5_17_semantic_bits.py::test_absolute_range_select_keeps_parent_metadata` | `verified` |
+| C-86 | bit-select walker skips inactive generate branches via semantic `GenerateBlockSymbol.isUninstantiated` + `VisitAction.Skip`; active OOB RangeSelect and absolute `[7:4]` selects are reported (P194.5.18/19) | code/test | `test_p194_5_17_semantic_bits.py` (active OOB, inactive OOB, [7:4]) | `verified` |
 
 ---
 
