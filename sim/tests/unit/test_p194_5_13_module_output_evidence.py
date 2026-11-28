@@ -28,3 +28,30 @@ def test_output_port_and_connected_top_signal_have_driver_evidence(tmp_path):
         assert ev["source_location"]["line_start"] == 2
         assert "q <= d" in ev["source_text"]
         assert ev["is_verified"] is True
+
+
+def test_snapshot_connection_evidence_binds_source(tmp_path):
+    import os
+
+    sv = tmp_path / "snap_output.sv"
+    sv.write_text(
+        "module sub(input logic clk, input logic d, output logic q);\n"
+        "  always_ff @(posedge clk) q <= d;\n"
+        "endmodule\n"
+        "module top(input logic clk, input logic d, output logic y);\n"
+        "  sub u(.clk(clk), .d(d), .q(y));\n"
+        "endmodule\n")
+    env = {**os.environ, "SVQ_SNAPSHOT_DIR": str(tmp_path)}
+    tag = "p194513_snap"
+    save = subprocess.run(
+        [sys.executable, "run_cli.py", "snapshot", "save", str(sv), "--tag", tag],
+        cwd=ROOT, capture_output=True, text=True, timeout=120, env=env)
+    assert save.returncode == 0, save.stderr[-400:]
+    proc = subprocess.run(
+        [sys.executable, "run_cli.py", "trace", "evidence", "top.y",
+         "--from-snapshot", tag, "--json"],
+        cwd=ROOT, capture_output=True, text=True, timeout=120, env=env)
+    assert proc.returncode == 0, proc.stderr[-400:]
+    ev = json.loads(proc.stdout)["result"]["signals"][0]["evidence"]
+    assert ev["source_location"]["line_start"] == 2
+    assert "q <= d" in ev["source_text"]

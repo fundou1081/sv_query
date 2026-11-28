@@ -101,6 +101,30 @@ def _edge_line_ok(text: str, signal: str) -> bool:
     return bool(text) and _line_is_lhs(text, signal)
 
 
+def _snapshot_edge_candidate(graph, edge, seen):
+    loc = getattr(edge, "source_location", None)
+    if loc is not None and getattr(loc, "file", ""):
+        return [(edge, loc)]
+    if (getattr(edge, "assign_type", "") == "connection"
+            and getattr(edge, "src", "")):
+        return _snapshot_candidates(graph, edge.src, seen)
+    return []
+
+
+def _snapshot_candidates(graph, signal: str, seen=None):
+    seen = seen or set()
+    if graph is None or signal in seen:
+        return []
+    seen = {*seen, signal}
+    candidates = []
+    for src, dst in graph.edges():
+        if dst != signal:
+            continue
+        for edge in graph.get_edges(src, dst):
+            candidates.extend(_snapshot_edge_candidate(graph, edge, seen))
+    return candidates
+
+
 def _snapshot_edge_evidence(graph, signal: str, sources=None) -> dict | None:
     """Build assignment-level evidence from snapshot edges.
 
@@ -109,15 +133,7 @@ def _snapshot_edge_evidence(graph, signal: str, sources=None) -> dict | None:
     clock/reset edge, so evidence points at the assignment rather than the
     declaration or reset branch.
     """
-    candidates = []
-    for src, dst in graph.edges():
-        if dst != signal:
-            continue
-        for edge in graph.get_edges(src, dst):
-            loc = getattr(edge, "source_location", None)
-            if loc is None or not getattr(loc, "file", ""):
-                continue
-            candidates.append((edge, loc))
+    candidates = _snapshot_candidates(graph, signal)
     if not candidates:
         return None
     # Prefer a functional data assignment over a reset/const edge.
