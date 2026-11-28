@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P199.1 data-edge authority for all fanin surfaces (drivers depth=1, verify_driver, snapshot evidence) <待做>
+current item : P199.1 data-edge authority for all fanin surfaces (drivers depth=1, verify_driver, snapshot evidence; W039-01/04) <待做>
 
 ## 计划树
 
@@ -639,14 +639,15 @@ P196 independent review follow-up (2026-11-22) <已完成>
 -- P196.4 P1 remaining packed/fallback scalar width normalization; C-49 scope <已完成>
 -- P196.5 reconcile C-49 scope + stdio envelope contract + docs/count attribution <已完成>
 
-P199 requirements → architecture hardening (0.3.9 review) <待做>
--- P199.1 data-edge authority for all fanin surfaces (drivers depth=1, verify_driver, snapshot evidence) <待做>
--- P199.2 evidence is_verified requires assignment/semantic assignment_id, not token/condition <待做>
--- P199.3 semantic NodeKind.CONST literal classification (no id regex) in verification <待做>
--- P199.4 session contract: documented arguments shape + verify_consistency check support <待做>
--- P199.5 ports module-name -> elaborated instance resolution <待做>
--- P199.6 snapshot canonical edge_count + structured JSON save errors <待做>
--- P199.7 condition availability tri-state instead of false/unconditional sentinel <待做>
+P199 requirements → architecture hardening (0.3.9 worker review) <待做>
+-- P199.0 0.3.10 fast-follow release gate: P199.1–P199.3 P1 closed + independent review <待做>
+-- P199.1 data-edge authority for all fanin surfaces (drivers depth=1, verify_driver, snapshot evidence; W039-01/04) <待做>
+-- P199.2 evidence is_verified requires assignment/semantic assignment_id, not token/condition (W039-02) <待做>
+-- P199.3 semantic NodeKind.CONST literal classification (no id regex) in verification (W039-03) <待做>
+-- P199.4 session contract: documented `arguments` shape + verify_consistency check support (W039-06/07) <待做>
+-- P199.5 ports module-name -> elaborated instance resolution (W039-08) <待做>
+-- P199.6 snapshot canonical edge_count + structured JSON save errors (W039-09/10) <待做>
+-- P199.7 condition availability tri-state instead of false/unconditional sentinel (W039-05) <待做>
 P198 typed semantic expression IR (2026-11-24) <已完成>
 -- P198.1 Expr/AssignmentExpr/ExpressionStore + strict serialization <已完成>
 -- P198.2 semantic AST builder for IR <已完成>
